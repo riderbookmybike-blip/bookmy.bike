@@ -12,6 +12,7 @@ import MemberEditorWrapper from '@/components/modules/members/MemberEditorWrappe
 import { UserCheck, Activity, LayoutGrid, Search as SearchIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export interface MemberRow {
     id: string;
@@ -26,7 +27,14 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
     const { tenantId } = useTenant();
     const router = useRouter();
     const params = useParams();
+    const { device } = useBreakpoint();
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
+    const memberIdParam =
+        typeof params?.memberId === 'string'
+            ? params.memberId
+            : Array.isArray(params?.memberId)
+              ? params.memberId[0]
+              : null;
 
     const [members, setMembers] = useState<MemberRow[]>([]);
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(initialMemberId || null);
@@ -35,7 +43,10 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
     const [view, setView] = useState<'grid' | 'list'>('list');
 
     const fetchMembers = useCallback(async () => {
-        if (!tenantId) return;
+        if (!tenantId) {
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
         try {
             const result = await getMembersForTenant(tenantId, searchQuery, 1, 80);
@@ -61,20 +72,31 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
     }, [fetchMembers]);
 
     useEffect(() => {
+        if (!tenantId) return;
         const supabase = createClient();
         const channel = supabase
             .channel('members-live')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'id_members' }, () => fetchMembers())
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'id_members', filter: `tenant_id=eq.${tenantId}` },
+                () => fetchMembers()
+            )
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [fetchMembers]);
+    }, [fetchMembers, tenantId]);
 
     useEffect(() => {
-        if (initialMemberId) setSelectedMemberId(initialMemberId);
-    }, [initialMemberId]);
+        if (initialMemberId) {
+            setSelectedMemberId(initialMemberId);
+            return;
+        }
+        if (memberIdParam) {
+            setSelectedMemberId(memberIdParam);
+        }
+    }, [initialMemberId, memberIdParam]);
 
     const filteredMembers = useMemo(
         () =>
@@ -119,11 +141,20 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
                     onNew={() => toast.info('Create Member from Leads/Signup')}
                     searchPlaceholder="Search Members..."
                     onSearch={setSearchQuery}
-                    statsContent={<StatsHeader stats={stats} />}
-                    view={view}
+                    statsContent={<StatsHeader stats={stats} device={device} />}
+                    view={device === 'phone' ? 'list' : view}
                     onViewChange={setView}
+                    device={device}
                 >
-                    {view === 'grid' ? (
+                    {isLoading ? (
+                        <div className="py-10 text-center text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">
+                            Loading members…
+                        </div>
+                    ) : filteredMembers.length === 0 ? (
+                        <div className="py-10 text-center text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">
+                            No members found
+                        </div>
+                    ) : view === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
                             {filteredMembers.map(member => (
                                 <div
@@ -149,6 +180,39 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
                                         </div>
                                     </div>
                                 </div>
+                            ))}
+                        </div>
+                    ) : /* ── LIST VIEW: Phone-optimized cards vs Desktop table ── */
+                    device === 'phone' ? (
+                        <div className="space-y-2 pb-4">
+                            {filteredMembers.map(member => (
+                                <button
+                                    key={member.id}
+                                    onClick={() => handleOpenMember(member.id)}
+                                    className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden transition-all active:scale-[0.98] min-h-[56px]"
+                                >
+                                    <div className="flex">
+                                        <div className="w-1 shrink-0 bg-indigo-500" />
+                                        <div className="flex-1 px-4 py-3 min-w-0">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                                                    {formatDisplayId(member.displayId)}
+                                                </span>
+                                                <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600">
+                                                    {member.status || 'ACTIVE'}
+                                                </span>
+                                            </div>
+                                            <div className="text-[14px] font-black tracking-tight uppercase truncate text-slate-900 dark:text-white mb-0.5">
+                                                {member.fullName}
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-slate-400 truncate">
+                                                    {member.phone || '—'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
                             ))}
                         </div>
                     ) : (
@@ -210,7 +274,13 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
 
     return (
         <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans -m-6 md:-m-8">
-            <MasterListDetailLayout mode="list-detail" listPosition="left">
+            <MasterListDetailLayout
+                mode="list-detail"
+                listPosition="left"
+                device={device}
+                hasActiveDetail={!!selectedMemberId}
+                onBack={handleCloseDetail}
+            >
                 <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10] border-r border-slate-200 dark:border-white/5 w-full">
                     <div className="p-6 border-b border-slate-100 dark:border-white/5 space-y-4">
                         <div className="flex items-center justify-between">

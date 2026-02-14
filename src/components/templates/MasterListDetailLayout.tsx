@@ -59,14 +59,16 @@ export default function MasterListDetailLayout({
                 >
                     {/* Back bar */}
                     <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-[#0b0d10] shrink-0">
-                        <button
-                            onClick={onBack}
-                            className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-600 hover:text-indigo-700 transition-colors min-h-[44px] px-2"
-                            data-crm-allow
-                        >
-                            <ChevronLeft size={16} />
-                            Back
-                        </button>
+                        {onBack ? (
+                            <button
+                                onClick={onBack}
+                                className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-600 hover:text-indigo-700 transition-colors min-h-[44px] px-2"
+                                data-crm-allow
+                            >
+                                <ChevronLeft size={16} />
+                                Back
+                            </button>
+                        ) : null}
                     </div>
                     {/* Full-screen detail */}
                     <div className="flex-1 h-full min-w-0 overflow-hidden">{detailChild}</div>

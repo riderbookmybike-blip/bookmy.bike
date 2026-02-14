@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export interface ReceiptRow {
     id: string;
@@ -35,6 +36,7 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
     const { tenantId } = useTenant();
     const router = useRouter();
     const params = useParams();
+    const { device } = useBreakpoint();
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
 
     const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
@@ -181,6 +183,69 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
                                 </div>
                             ))}
                         </div>
+                    ) : device === 'phone' ? (
+                        <div className="space-y-3 pb-20 px-4">
+                            {filteredReceipts.map(receipt => {
+                                const isActive = selectedReceiptId === receipt.id;
+                                const statusLower = String(receipt.status).toLowerCase();
+                                const isSuccess = ['captured', 'success', 'paid'].includes(statusLower);
+                                const isPending = ['pending', 'processing'].includes(statusLower);
+
+                                return (
+                                    <button
+                                        key={receipt.id}
+                                        onClick={() => handleOpenReceipt(receipt.id)}
+                                        className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm active:scale-[0.98] transition-all"
+                                    >
+                                        <div className="flex">
+                                            <div
+                                                className={`w-1 shrink-0 ${
+                                                    isSuccess
+                                                        ? 'bg-emerald-500'
+                                                        : isPending
+                                                          ? 'bg-amber-500'
+                                                          : 'bg-indigo-500'
+                                                }`}
+                                            />
+                                            <div className="flex-1 px-4 py-3 min-w-0">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                        {formatDisplayId(receipt.displayId)}
+                                                    </span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        {isActive && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                                        )}
+                                                        <span
+                                                            className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                                                isSuccess
+                                                                    ? 'bg-emerald-500/10 text-emerald-600'
+                                                                    : isPending
+                                                                      ? 'bg-amber-500/10 text-amber-600'
+                                                                      : 'bg-indigo-500/10 text-indigo-600'
+                                                            }`}
+                                                        >
+                                                            {receipt.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight truncate mb-1">
+                                                    {receipt.method}
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] font-bold text-slate-400 truncate max-w-[60%]">
+                                                        {receipt.date}
+                                                    </span>
+                                                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-300">
+                                                        ₹{receipt.amount.toLocaleString('en-IN')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     ) : (
                         <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-sm">
                             <table className="w-full text-left border-collapse">
@@ -240,7 +305,13 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
 
     return (
         <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans -m-6 md:-m-8">
-            <MasterListDetailLayout mode="list-detail" listPosition="left">
+            <MasterListDetailLayout
+                mode="list-detail"
+                listPosition="left"
+                device={device}
+                hasActiveDetail={!!selectedReceiptId}
+                onBack={handleCloseDetail}
+            >
                 <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10] border-r border-slate-200 dark:border-white/5 w-full">
                     <div className="p-6 border-b border-slate-100 dark:border-white/5 space-y-4">
                         <div className="flex items-center justify-between">

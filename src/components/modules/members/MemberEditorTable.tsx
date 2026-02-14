@@ -104,6 +104,172 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
 
     const wallet = profile.wallet || {};
 
+    // Phone-first layout mirrors Leads/Quote mobile accordions
+    if (isPhone) {
+        const transactionTotal = leadCount + quoteCount + bookingCount + receiptCount;
+        return (
+            <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10]">
+                <div className="px-3 pt-2 pb-3 space-y-2.5">
+                    <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-base font-black shadow-lg shrink-0">
+                            {(profile.member?.full_name || 'M').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
+                                    {profile.member?.full_name || 'Member'}
+                                </h1>
+                                <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shrink-0 bg-indigo-500/10 text-indigo-600">
+                                    {profile.member?.member_status || 'ACTIVE'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-slate-400 font-bold flex-wrap">
+                                <span className="font-black uppercase tracking-widest">
+                                    {formatDisplayId(profile.member?.display_id || profile.member?.id || '')}
+                                </span>
+                                <span>•</span>
+                                <span>{formatDate(profile.member?.created_at)}</span>
+                            </div>
+                            {profile.member?.primary_phone && (
+                                <div className="flex items-center gap-1.5 mt-0.5 text-indigo-600">
+                                    <Phone size={11} />
+                                    <span className="text-[11px] font-black tracking-wide">
+                                        {profile.member?.primary_phone}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    className="flex-1 overflow-y-auto no-scrollbar bg-slate-50/80 dark:bg-slate-950 border-t border-slate-200 dark:border-white/5"
+                    style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+                >
+                    <PhoneSection title="Profile" defaultOpen>
+                        <div className="space-y-2 text-[12px] text-slate-700 dark:text-slate-200">
+                            <div className="flex items-center gap-2">
+                                <Phone size={14} className="text-slate-400" />
+                                <span className="font-black">{profile.member?.primary_phone || '—'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Mail size={14} className="text-slate-400" />
+                                <span className="font-black">{profile.member?.email || '—'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Calendar size={14} className="text-slate-400" />
+                                <span className="font-black">{formatDate(profile.member?.dob)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <BadgeCheck size={14} className="text-slate-400" />
+                                <span className="font-black">{profile.member?.kyc_status || 'KYC PENDING'}</span>
+                            </div>
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Addresses" count={profile.addresses?.length || 0}>
+                        <div className="space-y-3 text-[11px] text-slate-700 dark:text-slate-200">
+                            {(profile.addresses || []).slice(0, 4).map((addr, idx) => (
+                                <div key={idx} className="flex items-start gap-2">
+                                    <MapPin size={12} className="text-slate-400 mt-0.5" />
+                                    <div className="space-y-0.5">
+                                        <div className="font-black">{addr?.type || 'Address'}</div>
+                                        <div className="text-[10px] text-slate-500">
+                                            {formatAddressLines([
+                                                addr?.line1,
+                                                addr?.line2,
+                                                addr?.city,
+                                                addr?.state,
+                                                addr?.pincode,
+                                            ])}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {(profile.addresses?.length || 0) === 0 && (
+                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                    No addresses on file
+                                </div>
+                            )}
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="O'Club Wallet" count={profile.oclubLedger?.length || 0} defaultOpen>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between bg-indigo-600/10 border border-indigo-500/20 rounded-xl px-3 py-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700">
+                                    Balance
+                                </span>
+                                <span className="text-sm font-black text-indigo-700">
+                                    {wallet.balance !== undefined ? formatMoney(wallet.balance) : '—'}
+                                </span>
+                            </div>
+                            {(profile.oclubLedger || []).slice(0, 5).map((entry, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex items-center justify-between text-[11px] font-black text-slate-700 dark:text-slate-200"
+                                >
+                                    <span className="truncate">{entry?.description || 'Ledger entry'}</span>
+                                    <span className={cn(entry?.amount >= 0 ? 'text-emerald-600' : 'text-rose-600')}>
+                                        {entry?.amount >= 0 ? '+' : ''}
+                                        {entry?.amount}
+                                    </span>
+                                </div>
+                            ))}
+                            {(profile.oclubLedger?.length || 0) === 0 && (
+                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                    No ledger entries
+                                </div>
+                            )}
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Transactions" count={transactionTotal} defaultOpen>
+                        <div className="space-y-2 text-[11px] font-black text-slate-700 dark:text-slate-200">
+                            <div className="flex items-center justify-between">
+                                <span>Leads</span>
+                                <span className="text-indigo-600">{leadCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span>Quotes</span>
+                                <span className="text-indigo-600">{quoteCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span>Sales Orders</span>
+                                <span className="text-indigo-600">{bookingCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span>Receipts</span>
+                                <span className="text-indigo-600">{receiptCount}</span>
+                            </div>
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Timeline" count={timelineCount}>
+                        <div className="space-y-3 text-[11px] text-slate-700 dark:text-slate-200">
+                            {(profile.events || []).slice(0, 6).map((event, idx) => (
+                                <div key={idx} className="flex items-start gap-2">
+                                    <Clock size={12} className="text-slate-400 mt-0.5" />
+                                    <div className="space-y-0.5">
+                                        <div className="font-black">{event?.event || 'Event'}</div>
+                                        <div className="text-[10px] text-slate-400">
+                                            {formatDate(event?.created_at)}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {timelineCount === 0 && (
+                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                    No events yet
+                                </div>
+                            )}
+                        </div>
+                    </PhoneSection>
+                </div>
+            </div>
+        );
+    }
+
     const TransactionSection = ({
         title,
         count,
@@ -153,7 +319,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                     >
-                        <div className="px-6 pb-6 pt-4">{children}</div>
+                        <div className="px-4 pb-4 pt-4">{children}</div>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -176,7 +342,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
             <div className="border-b border-slate-100 dark:border-white/5">
                 <button
                     onClick={() => setOpen(!open)}
-                    className="w-full flex items-center justify-between px-3 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
                 >
                     <div className="flex items-center gap-2">
                         <ChevronRight
@@ -205,7 +371,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                         >
-                            <div className="px-3 pb-3">{children}</div>
+                            <div className="px-4 pb-4">{children}</div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -219,92 +385,241 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
         const oclubBalance = wallet.oclub_points_total || 0;
 
         return (
-            <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10]">
+            <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10] overflow-hidden">
                 {/* Mobile Header */}
-                <div className="px-3 pt-1 pb-3 space-y-2.5">
-                    <div className="flex items-start gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-base font-black shadow-lg shrink-0">
-                            {memberName.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
-                                {memberName}
-                            </h1>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold">
-                                <span className="font-black uppercase tracking-widest">{memberId}</span>
-                                <span>•</span>
-                                <span>Joined {formatDate(profile.member?.created_at)}</span>
+                <div className="px-4 pt-4 pb-3 border-b border-slate-100 dark:border-white/5">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm font-black shadow-lg">
+                                {memberName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-base font-black tracking-tight text-slate-900 dark:text-white truncate">
+                                    {memberName}
+                                </h1>
+                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                    {memberId}
+                                </div>
                             </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase tracking-widest border border-emerald-500/20">
+                                Active
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* O'CLUB QUICK VIEW */}
+                    <div className="bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/20 p-4">
+                        <div className="flex items-center justify-between text-indigo-100 text-[9px] font-black uppercase tracking-widest mb-1.5 opacity-80">
+                            <span>O'Club Balance</span>
+                            <Wallet size={12} />
+                        </div>
+                        <div className="text-xl font-black text-white">{oclubBalance.toLocaleString()} pts</div>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto no-scrollbar">
-                    {/* O'CLUB QUICK VIEW */}
-                    <div className="px-3 py-4 bg-indigo-600 mx-3 rounded-2xl shadow-xl shadow-indigo-600/20 mb-4">
-                        <div className="flex items-center justify-between text-indigo-100 text-[10px] font-black uppercase tracking-widest mb-1">
-                            <span>O'Club Points</span>
-                            <Wallet size={12} />
-                        </div>
-                        <div className="text-2xl font-black text-white">{oclubBalance.toLocaleString()} pts</div>
-                    </div>
-
-                    <PhoneSection title="Member Profile" defaultOpen={true}>
-                        <div className="space-y-3 pt-2">
-                            <div className="flex items-start gap-3">
-                                <Mail size={14} className="text-slate-400 mt-0.5" />
-                                <div className="min-w-0">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
+                    <PhoneSection title="Profile & Identity" defaultOpen={true}>
+                        <div className="space-y-4 pt-3">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        Phone
+                                    </div>
+                                    <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                        {profile.member?.phone || '—'}
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                         Email
                                     </div>
-                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                                    <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate">
                                         {profile.member?.email || '—'}
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-start gap-3">
-                                <Phone size={14} className="text-slate-400 mt-0.5" />
-                                <div className="min-w-0">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                        Phone
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        PAN
                                     </div>
-                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                                        {profile.member?.phone || '—'}
+                                    <div className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-200">
+                                        {profile.member?.pan_number || '—'}
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        Aadhaar
+                                    </div>
+                                    <div className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-200">
+                                        {profile.member?.aadhaar_number || '—'}
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-start gap-3">
-                                <MapPin size={14} className="text-slate-400 mt-0.5" />
-                                <div className="min-w-0">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                        Location
+
+                            <div className="grid grid-cols-2 gap-4 border-t border-slate-50 dark:border-white/5 pt-4">
+                                <div className="space-y-1">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        Birthday
                                     </div>
-                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                                        {profile.member?.district || '—'}, {profile.member?.state || '—'}
+                                    <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                        {formatDate(profile.member?.dob)}
                                     </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        RTO
+                                    </div>
+                                    <div className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                        {profile.member?.rto || '—'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1 border-t border-slate-50 dark:border-white/5 pt-4">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                    Work / Company
+                                </div>
+                                <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                    {profile.member?.work_company || '—'}
                                 </div>
                             </div>
                         </div>
                     </PhoneSection>
 
+                    <PhoneSection
+                        title="Addresses"
+                        count={(profile.addresses?.length || 0) > 0 ? profile.addresses.length : undefined}
+                    >
+                        <div className="space-y-4 pt-3">
+                            {/* Primary Addresses */}
+                            <div className="space-y-3">
+                                <div>
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                        Current
+                                    </div>
+                                    <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-relaxed italic">
+                                        {formatAddressLines([
+                                            profile.member?.current_address1,
+                                            profile.member?.current_address2,
+                                            profile.member?.current_address3,
+                                        ])}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                        Permanent
+                                    </div>
+                                    <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-relaxed italic">
+                                        {formatAddressLines([
+                                            profile.member?.aadhaar_address1,
+                                            profile.member?.aadhaar_address2,
+                                            profile.member?.aadhaar_address3,
+                                        ])}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Saved Addresses */}
+                            {profile.addresses?.length > 0 && (
+                                <div className="pt-3 border-t border-slate-50 dark:border-white/5 space-y-2">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                        Saved Locations
+                                    </div>
+                                    {profile.addresses.map((addr: any) => (
+                                        <div
+                                            key={addr.id}
+                                            className="bg-slate-50 dark:bg-white/5 p-2.5 rounded-xl border border-slate-100 dark:border-white/10"
+                                        >
+                                            <div className="text-[10px] font-black text-slate-900 dark:text-white mb-0.5">
+                                                {addr.label || 'Address'}
+                                            </div>
+                                            <div className="text-[9px] text-slate-500 font-medium italic leading-relaxed">
+                                                {formatAddressLines([
+                                                    addr.line1,
+                                                    addr.line2,
+                                                    addr.line3,
+                                                    addr.district,
+                                                    addr.state,
+                                                ])}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection
+                        title="Contacts"
+                        count={(profile.contacts?.length || 0) > 0 ? profile.contacts.length : undefined}
+                    >
+                        <div className="space-y-2 pt-3">
+                            {profile.contacts?.map((contact: any) => (
+                                <div
+                                    key={contact.id}
+                                    className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10"
+                                >
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-black text-slate-900 dark:text-white mb-0.5 truncate">
+                                            {contact.label || contact.contact_type}
+                                        </div>
+                                        <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                            {contact.contact_type}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-xs font-black text-slate-900 dark:text-white">
+                                            {contact.value}
+                                        </div>
+                                        {contact.contact_type?.toUpperCase() === 'PHONE' && (
+                                            <a
+                                                href={`tel:${contact.value}`}
+                                                className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg active:scale-95 transition-transform"
+                                            >
+                                                <Phone size={12} />
+                                            </a>
+                                        )}
+                                        {contact.contact_type?.toUpperCase() === 'EMAIL' && (
+                                            <a
+                                                href={`mailto:${contact.value}`}
+                                                className="p-2 bg-indigo-500/10 text-indigo-600 rounded-lg active:scale-95 transition-transform"
+                                            >
+                                                <Mail size={12} />
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            {(profile.contacts?.length || 0) === 0 && (
+                                <div className="text-[10px] text-slate-400 font-bold py-4 text-center italic">
+                                    No secondary contacts saved.
+                                </div>
+                            )}
+                        </div>
+                    </PhoneSection>
+
                     <PhoneSection title="O-Club Ledger" count={profile.oclubLedger?.length}>
-                        <div className="space-y-2 pt-2">
+                        <div className="space-y-2 pt-3">
                             {profile.oclubLedger?.map((entry: any, idx: number) => (
                                 <div
                                     key={idx}
-                                    className="bg-slate-50 dark:bg-white/5 rounded-lg p-2.5 flex items-center justify-between"
+                                    className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 flex items-center justify-between border border-slate-100 dark:border-white/10"
                                 >
                                     <div className="min-w-0">
-                                        <div className="text-[10px] font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
+                                        <div className="text-[10px] font-black uppercase tracking-tight text-slate-900 dark:text-white truncate mb-0.5">
                                             {entry.reason || 'Point Transaction'}
                                         </div>
-                                        <div className="text-[8px] font-bold text-slate-400">
+                                        <div className="text-[9px] font-bold text-slate-400 italic">
                                             {formatDate(entry.created_at)}
                                         </div>
                                     </div>
                                     <div
                                         className={cn(
-                                            'text-xs font-black',
+                                            'text-xs font-black px-2 py-1 rounded bg-white dark:bg-black border border-slate-100 dark:border-white/5',
                                             entry.points >= 0 ? 'text-emerald-500' : 'text-rose-500'
                                         )}
                                     >
@@ -314,34 +629,36 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                 </div>
                             ))}
                             {(profile.oclubLedger?.length || 0) === 0 && (
-                                <div className="text-[10px] text-slate-400 font-bold py-2 text-center">
-                                    No ledger activity
+                                <div className="text-[10px] text-slate-400 font-bold py-4 text-center italic">
+                                    No ledger activity recorded.
                                 </div>
                             )}
                         </div>
                     </PhoneSection>
 
                     <PhoneSection title="Transactions" count={leadCount + quoteCount + bookingCount + receiptCount}>
-                        <div className="space-y-4 pt-2">
-                            {/* Simple list of recent transactions grouped by type */}
+                        <div className="space-y-6 pt-4">
                             {bookingCount > 0 && (
                                 <div>
-                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 px-1">
                                         Sales Orders
                                     </div>
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-2">
                                         {profile.bookings.slice(0, 3).map((b: any) => (
                                             <div
                                                 key={b.id}
-                                                className="bg-slate-50 dark:bg-white/5 rounded-lg p-2 flex items-center justify-between"
+                                                className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 flex items-center justify-between border border-slate-100 dark:border-white/10 active:scale-[0.98] transition-all"
                                                 onClick={() => slug && router.push(`/app/${slug}/sales-orders/${b.id}`)}
                                             >
-                                                <div className="text-[10px] font-black text-slate-700 dark:text-slate-200">
-                                                    {formatDisplayId(b.display_id || b.id)}
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5">
+                                                        {formatDisplayId(b.display_id || b.id)}
+                                                    </div>
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        {b.vehicle_name || 'BOOKING'} • {b.status}
+                                                    </div>
                                                 </div>
-                                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase tracking-widest">
-                                                    {b.status}
-                                                </span>
+                                                <div className="text-[10px] font-black text-indigo-600">{b.status}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -350,21 +667,94 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
 
                             {quoteCount > 0 && (
                                 <div>
-                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 px-1">
                                         Quotes
                                     </div>
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-2">
                                         {profile.quotes.slice(0, 3).map((q: any) => (
                                             <div
                                                 key={q.id}
-                                                className="bg-slate-50 dark:bg-white/5 rounded-lg p-2 flex items-center justify-between"
+                                                className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 flex items-center justify-between border border-slate-100 dark:border-white/10 active:scale-[0.98] transition-all"
                                                 onClick={() => slug && router.push(`/app/${slug}/quotes/${q.id}`)}
                                             >
-                                                <div className="text-[10px] font-black text-slate-700 dark:text-slate-200">
-                                                    {formatDisplayId(q.displayId || q.id)}
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5">
+                                                        {formatDisplayId(q.displayId || q.id)}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                                            {q.status || 'DRAFT'}
+                                                        </span>
+                                                        <span className="text-[9px] text-slate-400 font-bold">
+                                                            {q.created_at ? formatDate(q.created_at) : '—'}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="text-[10px] font-black text-slate-900 dark:text-white">
-                                                    {formatMoney(q.pricing?.finalTotal)}
+                                                <div className="text-xs font-black text-indigo-600 tabular-nums">
+                                                    {formatMoney(q.pricing?.finalTotal || q.pricing?.summary?.payable)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {leadCount > 0 && (
+                                <div>
+                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 px-1">
+                                        Leads
+                                    </div>
+                                    <div className="space-y-2">
+                                        {profile.leads.slice(0, 3).map((l: any) => (
+                                            <div
+                                                key={l.id}
+                                                className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 flex items-center justify-between border border-slate-100 dark:border-white/10 active:scale-[0.98] transition-all"
+                                                onClick={() => slug && router.push(`/app/${slug}/leads/${l.id}`)}
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5">
+                                                        {formatDisplayId(l.display_id || l.id)}
+                                                    </div>
+                                                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                        {l.intent_score || 'WARM'} • {l.status}
+                                                    </div>
+                                                </div>
+                                                <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-[8px] font-black uppercase tracking-widest border border-amber-500/20">
+                                                    {l.status}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {receiptCount > 0 && (
+                                <div>
+                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 px-1">
+                                        Receipts
+                                    </div>
+                                    <div className="space-y-2">
+                                        {profile.payments.slice(0, 3).map((p: any) => (
+                                            <div
+                                                key={p.id}
+                                                className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 flex items-center justify-between border border-slate-100 dark:border-white/10 active:scale-[0.98] transition-all"
+                                                onClick={() => slug && router.push(`/app/${slug}/receipts/${p.id}`)}
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5">
+                                                        {formatDisplayId(p.display_id || p.id)}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                                            {p.status || 'PAID'}
+                                                        </span>
+                                                        <span className="text-[9px] text-slate-400 font-bold">
+                                                            {p.method}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-xs font-black text-emerald-600 tabular-nums">
+                                                    +{formatMoney(p.amount)}
                                                 </div>
                                             </div>
                                         ))}
@@ -375,20 +765,70 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                     </PhoneSection>
 
                     <PhoneSection title="Timeline" count={timelineCount}>
-                        <div className="space-y-3 pt-2">
-                            {profile.events?.slice(0, 10).map((event: any) => (
-                                <div key={event.id} className="flex gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 mt-1.5 shrink-0" />
-                                    <div className="min-w-0">
-                                        <div className="text-[10px] font-bold text-slate-700 dark:text-slate-200">
-                                            {event.event_type || 'Activity'}
+                        <div className="space-y-5 pt-4 pb-4 px-1">
+                            {profile.events?.slice(0, 10).map((event: any, idx: number) => (
+                                <div key={event.id || idx} className="flex gap-4 relative">
+                                    {idx !== profile.events.slice(0, 10).length - 1 && (
+                                        <div className="absolute left-[3px] top-[14px] bottom-[-20px] w-px bg-slate-100 dark:bg-white/5" />
+                                    )}
+                                    <div className="w-2 h-2 rounded-full bg-indigo-500/20 border border-indigo-500/50 mt-1.5 shrink-0 z-10" />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                                {event.event_type || 'Activity'}
+                                            </div>
+                                            <div className="text-[8px] font-black text-slate-400 tabular-nums">
+                                                {formatDate(event.created_at)}
+                                            </div>
                                         </div>
-                                        <div className="text-[8px] text-slate-400">{formatDate(event.created_at)}</div>
+                                        <div className="text-[10px] text-slate-500 leading-relaxed italic opacity-80">
+                                            {event.event_data?.message || event.description || 'System generated event'}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
+                            {timelineCount === 0 && (
+                                <div className="text-[10px] text-slate-400 font-bold py-6 text-center italic">
+                                    No activity recorded for this member.
+                                </div>
+                            )}
                         </div>
                     </PhoneSection>
+
+                    {/* Placeholders for future modules */}
+                    <PhoneSection title="Notes & Tasks">
+                        <div className="py-8 text-center space-y-2">
+                            <Clock size={20} className="mx-auto text-slate-300 mb-2 opacity-50" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Collaboration Coming Soon
+                            </p>
+                            <p className="text-[9px] text-slate-500 italic">
+                                Notes and Tasks will be available in the mobile view shortly.
+                            </p>
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Documents">
+                        <div className="py-8 text-center space-y-2">
+                            <FileText size={20} className="mx-auto text-slate-300 mb-2 opacity-50" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Vault Coming Soon
+                            </p>
+                            <p className="text-[9px] text-slate-500 italic">
+                                Secure document access is being optimized for mobile.
+                            </p>
+                        </div>
+                    </PhoneSection>
+                </div>
+
+                {/* Bottom Placeholder / Floating Action if needed */}
+                <div
+                    className="px-4 pt-3 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]"
+                    style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+                >
+                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center italic">
+                        Founder Member Identity • BookMy.Bike
+                    </div>
                 </div>
             </div>
         );

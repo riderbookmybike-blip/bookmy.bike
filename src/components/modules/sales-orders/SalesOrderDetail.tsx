@@ -39,7 +39,7 @@ export default function SalesOrderDetail({ order, onClose, onCreateBooking }: Sa
             <div className="border-b border-slate-100 dark:border-white/5">
                 <button
                     onClick={() => setOpen(!open)}
-                    className="w-full flex items-center justify-between px-3 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
                 >
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-slate-200">
@@ -48,7 +48,7 @@ export default function SalesOrderDetail({ order, onClose, onCreateBooking }: Sa
                     </div>
                     <span className="text-[10px] font-black text-slate-400">{open ? '−' : '+'}</span>
                 </button>
-                {open ? <div className="px-3 pb-3">{children}</div> : null}
+                {open ? <div className="px-4 pb-4">{children}</div> : null}
             </div>
         );
     };

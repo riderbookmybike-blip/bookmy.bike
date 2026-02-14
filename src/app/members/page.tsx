@@ -16,6 +16,11 @@ import {
     RotateCw,
     Loader2,
     X,
+    Coins,
+    Gem,
+    Gift,
+    Star,
+    Trophy,
 } from 'lucide-react';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
@@ -26,6 +31,20 @@ import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 type WheelItem = {
     id: string;
     label: string;
+    weight: number;
+};
+
+type SlotIcon = {
+    id: string;
+    label: string;
+    color: string;
+    Icon: typeof Sparkles;
+};
+
+type SlotCombo = {
+    id: string;
+    icons: string[];
+    reward: string;
     weight: number;
 };
 
@@ -76,6 +95,35 @@ const getRotationForItem = (rewardId: string, currentRotation: number, spins: nu
     return currentRotation + spins * 360 + delta;
 };
 
+const SLOT_ICONS: SlotIcon[] = [
+    { id: 'trophy', label: 'Jackpot', color: '#f59e0b', Icon: Trophy },
+    { id: 'star', label: 'Star', color: '#f472b6', Icon: Star },
+    { id: 'gem', label: 'Gem', color: '#22d3ee', Icon: Gem },
+    { id: 'coins', label: 'Coins', color: '#84cc16', Icon: Coins },
+    { id: 'gift', label: 'Gift', color: '#a855f7', Icon: Gift },
+];
+
+const SLOT_COMBOS: SlotCombo[] = [
+    { id: 'jackpot', icons: ['trophy', 'trophy', 'trophy'], reward: '₹1,000 Voucher', weight: 1 },
+    { id: 'gems', icons: ['gem', 'gem', 'gem'], reward: '₹500 Cashback', weight: 2 },
+    { id: 'coins', icons: ['coins', 'coins', 'coins'], reward: 'Free Accessories', weight: 2 },
+    { id: 'gift-star', icons: ['gift', 'star', 'gift'], reward: '₹200 Voucher', weight: 4 },
+    { id: 'mix', icons: ['star', 'coins', 'gem'], reward: '50 O Club Points', weight: 6 },
+];
+
+const getSlotIcon = (id: string) => SLOT_ICONS.find(icon => icon.id === id) || SLOT_ICONS[0];
+
+const pickCombo = (combos: SlotCombo[]) => {
+    const total = combos.reduce((sum, combo) => sum + combo.weight, 0);
+    const roll = Math.random() * total;
+    let cursor = 0;
+    for (const combo of combos) {
+        cursor += combo.weight;
+        if (roll <= cursor) return combo;
+    }
+    return combos[combos.length - 1];
+};
+
 export default function MembersHome() {
     const { userName, tenantId } = useTenant();
     const router = useRouter();
@@ -95,6 +143,8 @@ export default function MembersHome() {
     const [wheelLoading, setWheelLoading] = useState(true);
     const [wheelError, setWheelError] = useState<string | null>(null);
     const [wheelSpinning, setWheelSpinning] = useState(false);
+    const [slotReels, setSlotReels] = useState<string[]>(['trophy', 'star', 'gift']);
+    const [slotWinner, setSlotWinner] = useState<SlotCombo | null>(null);
 
     useEffect(() => {
         setMounted(true);

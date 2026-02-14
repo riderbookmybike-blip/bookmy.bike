@@ -86,6 +86,20 @@ function cn(...inputs: any[]) {
     return inputs.filter(Boolean).join(' ');
 }
 
+const formatDate = (value?: string | null) => {
+    if (!value) return '—';
+    try {
+        return new Date(value).toLocaleDateString();
+    } catch {
+        return value;
+    }
+};
+
+const formatMoney = (value?: number | null) => {
+    if (value === null || value === undefined) return '—';
+    return `₹${Number(value).toLocaleString('en-IN')}`;
+};
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -1265,7 +1279,7 @@ export default function QuoteEditorTable({
                     className="flex-1 overflow-y-auto no-scrollbar bg-slate-50/80 dark:bg-slate-950 border-t border-slate-200 dark:border-white/5"
                     style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
                 >
-                    <PhoneSection title="Quote" defaultOpen>
+                    <PhoneSection title="Quote" defaultOpen={mode !== 'receipt'}>
                         <div className="space-y-3">
                             <div className="flex items-center gap-3">
                                 <div className="w-14 h-10 bg-slate-100 dark:bg-white/5 rounded-lg overflow-hidden flex items-center justify-center text-[10px] font-black text-slate-400">
@@ -1279,7 +1293,7 @@ export default function QuoteEditorTable({
                                         'VEHICLE'
                                     )}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                     <div className="text-[11px] font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
                                         {quote.vehicle?.brand} {quote.vehicle?.model}
                                     </div>
@@ -1289,16 +1303,16 @@ export default function QuoteEditorTable({
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2">
-                                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2.5">
+                                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
                                         Final Price
                                     </div>
                                     <div className="text-[11px] font-black text-slate-900 dark:text-white">
                                         ₹{Number(localPricing.finalTotal || 0).toLocaleString('en-IN')}
                                     </div>
                                 </div>
-                                <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2">
-                                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2.5">
+                                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
                                         Ex-Showroom
                                     </div>
                                     <div className="text-[11px] font-black text-slate-900 dark:text-white">
@@ -1308,6 +1322,84 @@ export default function QuoteEditorTable({
                             </div>
                         </div>
                     </PhoneSection>
+
+                    {mode === 'receipt' && receipt && (
+                        <PhoneSection title="Receipt Details" defaultOpen>
+                            <div className="space-y-4 pt-2">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                            Amount
+                                        </div>
+                                        <div className="text-[13px] font-black text-emerald-600 italic">
+                                            ₹{(receiptDraft?.amount || receipt.amount || 0).toLocaleString('en-IN')}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                            Status
+                                        </div>
+                                        <div>
+                                            <span
+                                                className={cn(
+                                                    'px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border',
+                                                    (receiptDraft?.status || receipt.status) === 'success' ||
+                                                        (receiptDraft?.status || receipt.status) === 'captured'
+                                                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                                                        : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                                )}
+                                            >
+                                                {receiptDraft?.status || receipt.status || 'PENDING'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-3 pt-3 border-t border-slate-50 dark:border-white/5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                            Method
+                                        </div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                            {receiptDraft?.method || receipt.method || '—'}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                            Trans. ID
+                                        </div>
+                                        <div className="text-[10px] font-mono font-bold text-slate-500 truncate max-w-[140px]">
+                                            {receiptDraft?.transaction_id || receipt.transaction_id || '—'}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                            Reconciled
+                                        </div>
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                            {receipt.is_reconciled ? 'YES' : 'NO'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-2 flex gap-2">
+                                    <button
+                                        onClick={handleReceiptSave}
+                                        disabled={receiptSaving || !!receipt.is_reconciled}
+                                        className="flex-1 h-9 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-black/10 disabled:opacity-50"
+                                    >
+                                        {receiptSaving ? 'Saving...' : 'Save'}
+                                    </button>
+                                    <button
+                                        onClick={handleReceiptReconcile}
+                                        disabled={!!receipt.is_reconciled}
+                                        className="flex-1 h-9 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+                                    >
+                                        Reconcile
+                                    </button>
+                                </div>
+                            </div>
+                        </PhoneSection>
+                    )}
 
                     <PhoneSection title="Finance" count={financeCount}>
                         {financeEntries.length === 0 ? (
@@ -1345,30 +1437,53 @@ export default function QuoteEditorTable({
                                 {relatedQuotes.map(q => (
                                     <div
                                         key={q.id}
-                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2"
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-3 flex items-center justify-between active:scale-[0.98] transition-all"
+                                        onClick={() => slug && router.push(`/app/${slug}/quotes/${q.id}`)}
                                     >
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-700">
-                                            Quote {formatDisplayId(q.displayId || q.id)}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white mb-0.5">
+                                                Quote {formatDisplayId(q.displayId || q.id)}
+                                            </div>
+                                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                                {q.status || 'DRAFT'}
+                                            </div>
                                         </div>
+                                        <ChevronRight size={14} className="text-slate-300" />
                                     </div>
                                 ))}
                                 {bookings.map(b => (
                                     <div
                                         key={b.id}
-                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2"
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-3 flex items-center justify-between active:scale-[0.98] transition-all"
+                                        onClick={() => slug && router.push(`/app/${slug}/sales-orders/${b.id}`)}
                                     >
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-700">
-                                            Booking {formatDisplayId(b.displayId || b.id)}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white mb-0.5">
+                                                Order {formatDisplayId(b.displayId || b.id)}
+                                            </div>
+                                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                                {b.status || 'CONFIRMED'}
+                                            </div>
                                         </div>
+                                        <ChevronRight size={14} className="text-slate-300" />
                                     </div>
                                 ))}
                                 {payments.map(p => (
                                     <div
                                         key={p.id}
-                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2"
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl p-3 flex items-center justify-between active:scale-[0.98] transition-all"
+                                        onClick={() => slug && router.push(`/app/${slug}/receipts/${p.id}`)}
                                     >
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-700">
-                                            Receipt {formatDisplayId(p.displayId || p.id)}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white mb-0.5">
+                                                Receipt {formatDisplayId(p.display_id || p.id)}
+                                            </div>
+                                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                                {p.method} • {p.status}
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] font-black text-emerald-600">
+                                            +{formatMoney(p.amount)}
                                         </div>
                                     </div>
                                 ))}

@@ -1,10 +1,10 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import ReceiptEditorWrapper from '@/components/modules/receipts/ReceiptEditorWrapper';
+import ReceiptsPage from '@/components/modules/receipts/ReceiptsPage';
 
 export default function ReceiptDetailPage() {
     const params = useParams();
     const id = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : '';
-    return <ReceiptEditorWrapper receiptId={id} />;
+    return <ReceiptsPage initialReceiptId={id} />;
 }
