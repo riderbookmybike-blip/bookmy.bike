@@ -144,50 +144,73 @@ export async function resolvePricingContext({
         }
     }
 
-    // 2) Team session dealer lock (highest priority after explicit)
-    let sessionDealerId: string | null = null;
-    const dealerSessionCookie = cookieStore.get('bmb_dealer_session')?.value;
-    if (dealerSessionCookie) {
-        try {
-            const sessionData = JSON.parse(decodeURIComponent(dealerSessionCookie));
-            if (sessionData?.mode === 'TEAM' && sessionData?.activeTenantId) {
-                sessionDealerId = sessionData.activeTenantId;
-                if (!resolvedDistrict && sessionData.district) {
-                    resolvedDistrict = sessionData.district;
-                }
-            }
-        } catch {
-            // ignore parse errors
-        }
-    }
-
-    // 3) Lead context can override district (primary dealer still applies)
+    // 2) Lead context (High Priority)
+    // If leadId is present, the associated lead's tenant dictates pricing.
+    // Precedence: selected_dealer_tenant_id > tenant_id
     if (leadId) {
         const { data: lead } = await supabase
             .from('crm_leads')
-            .select('customer_pincode')
+            .select('tenant_id, selected_dealer_tenant_id, customer_pincode')
             .eq('id', leadId)
             .maybeSingle();
 
-        const pincode = lead?.customer_pincode;
-        if (pincode) {
-            const { data: pin } = await supabase
-                .from('loc_pincodes')
-                .select('district, state_code')
-                .eq('pincode', pincode)
-                .maybeSingle();
+        if (lead) {
+            const leadTenantId = lead.selected_dealer_tenant_id || lead.tenant_id;
 
-            if (pin?.district) {
-                resolvedDistrict = pin.district;
-                stateCode = pin.state_code || stateCode;
+            if (leadTenantId) {
+                // Verify tenant exists and is active before locking
+                const { data: tenant } = await supabase
+                    .from('id_tenants')
+                    .select('id')
+                    .eq('id', leadTenantId)
+                    .maybeSingle();
+
+                if (tenant) {
+                    await applyDealerLocation(leadTenantId);
+                    return {
+                        dealerId: leadTenantId,
+                        district: resolvedDistrict,
+                        stateCode,
+                        source: 'EXPLICIT', // Lead context acts as explicit authority
+                    };
+                } else {
+                    console.warn(
+                        `[PricingContext] Lead ${leadId} references missing/inactive tenant ${leadTenantId}. Falling back to location.`
+                    );
+                }
+            }
+
+            // Still resolve location from lead if tenant lock failed or wasn't present
+            const pincode = lead.customer_pincode;
+            if (pincode && !resolvedDistrict) {
+                const { data: pin } = await supabase
+                    .from('loc_pincodes')
+                    .select('district, state_code')
+                    .eq('pincode', pincode)
+                    .maybeSingle();
+
+                if (pin?.district) {
+                    resolvedDistrict = pin.district;
+                    stateCode = pin.state_code || stateCode;
+                }
             }
         }
     }
 
-    // 4) Resolve dealer (explicit dealer id or studio id)
+    // 3) Resolve dealer (explicit dealer id or studio id from URL parameters)
     let resolvedDealerId: string | null = dealerId || null;
     if (!resolvedDealerId && studio) {
         resolvedDealerId = await getDealerIdByStudioId(studio.trim());
+    }
+
+    if (resolvedDealerId) {
+        await applyDealerLocation(resolvedDealerId);
+        return {
+            dealerId: resolvedDealerId,
+            district: resolvedDistrict,
+            stateCode,
+            source: 'EXPLICIT',
+        };
     }
 
     // Ensure stateCode is aligned to dealer location if a dealer is explicitly resolved
@@ -211,15 +234,7 @@ export async function resolvePricingContext({
         };
     }
 
-    if (sessionDealerId) {
-        await applyDealerLocation(sessionDealerId);
-        return {
-            dealerId: sessionDealerId,
-            district: resolvedDistrict,
-            stateCode,
-            source: 'TEAM',
-        };
-    }
+    // Removed TEAM session lock from marketplace to unify experience
 
     if (resolvedDistrict) {
         // Use withCache for primary dealer resolution (District)

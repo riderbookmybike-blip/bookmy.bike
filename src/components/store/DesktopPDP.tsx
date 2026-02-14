@@ -110,6 +110,13 @@ interface DesktopPDPProps {
     bestOffer?: any;
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
+    isGated?: boolean;
+    serviceability?: {
+        isServiceable: boolean;
+        status: string;
+        pincode?: string;
+        taluka?: string;
+    };
 }
 
 const FullLayoutDebugger = () => {
@@ -228,6 +235,8 @@ export function DesktopPDP({
     bestOffer,
     walletCoins = null,
     showOClubPrompt = false,
+    isGated = false,
+    serviceability,
 }: DesktopPDPProps) {
     const { language } = useI18n();
     // Configuration Constants
@@ -1600,9 +1609,17 @@ export function DesktopPDP({
                             {/* CTA Button */}
                             <button
                                 onClick={handleBookingRequest}
-                                className="h-10 px-6 bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 font-black text-xs uppercase tracking-widest rounded-full shadow-xl shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 group relative overflow-hidden"
+                                disabled={
+                                    isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
+                                }
+                                className={`h-10 px-6 font-black text-xs uppercase tracking-widest rounded-full shadow-xl transition-all duration-300 flex items-center gap-2 group relative overflow-hidden
+                                    ${
+                                        isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
+                                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                                            : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
+                                    }`}
                             >
-                                <span className="relative z-10">Get Quote</span>
+                                <span className="relative z-10">{isGated ? 'OPEN LEAD FIRST' : 'Get Quote'}</span>
                                 <ArrowRight
                                     size={14}
                                     className="relative z-10 group-hover:translate-x-0.5 transition-transform"
@@ -1654,6 +1671,7 @@ export function DesktopPDP({
                                     .join(' • ') || data.pricingSource
                             }
                             leadName={leadContext?.name}
+                            isGated={isGated}
                         />
                     </motion.div>
 
@@ -1851,13 +1869,22 @@ export function DesktopPDP({
                             </span>
                         )}
                     </div>
-                    <button
-                        onClick={handleBookingRequest}
-                        className="h-11 px-5 bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 font-black text-[11px] uppercase tracking-widest rounded-full shadow-xl shadow-[#FFD700]/20 flex items-center gap-2"
-                    >
-                        Get Quote
-                        <ArrowRight size={14} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleBookingRequest}
+                            disabled={isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)}
+                            className={`h-11 px-5 font-black text-[11px] uppercase tracking-widest rounded-full shadow-xl flex items-center gap-2 transition-all
+                            ${
+                                isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
+                                    ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                                    : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20'
+                            }
+                        `}
+                        >
+                            {isGated ? 'OPEN LEAD FIRST' : 'GET QUOTE'}
+                            <ArrowRight size={14} />
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

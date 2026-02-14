@@ -29,6 +29,9 @@ interface PricingCardProps {
         status: string;
         pincode?: string;
         taluka?: string;
+        insuranceRequiredItems?: any; // Assuming 'any' based on the instruction's lack of type
+        warrantyItems?: any; // Assuming 'any'
+        initialFinance?: any; // Assuming 'any'
     };
     coinPricing?: {
         coinsUsed: number;
@@ -36,6 +39,7 @@ interface PricingCardProps {
         effectivePrice: number;
     } | null;
     showOClubPrompt?: boolean;
+    isGated?: boolean;
 }
 
 export default function PricingCard({
@@ -53,6 +57,7 @@ export default function PricingCard({
     serviceability,
     coinPricing = null,
     showOClubPrompt = false,
+    isGated = false,
 }: PricingCardProps) {
     // If originalPrice not provided, fallback to total + savings
     const displayOriginal = originalPrice || totalOnRoad + totalSavings;

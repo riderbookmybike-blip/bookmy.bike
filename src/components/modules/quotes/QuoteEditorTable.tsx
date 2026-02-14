@@ -698,6 +698,87 @@ export default function QuoteEditorTable({
     }, []);
     const [hasChanges, setHasChanges] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+
+    const [groups, setGroups] = useState({
+        exShowroom: true,
+        registration: true,
+        insurance: false,
+        accessories: false,
+        services: false,
+        pricing: true, // New Toggle for Line-Item Breakdown
+        finance: true, // New Toggle for Finance Section
+        transactionQuotes: true,
+        transactionBookings: false,
+        transactionPayments: false,
+    });
+
+    // --- TRACK QUOTE OPENED ---
+    // TODO: Task List for Quote Editor Table Refactor
+    // - [x] Implement "Quote Opened" logging logic.
+    // - [ ] Phase 10: Live Finance Integration
+    //     - [ ] Update `buildCommercials` in `ProductClient.tsx` to include finance scheme details.
+    //     - [ ] Update `QuoteEditorData` interface in `crm.ts`.
+    //     - [ ] Update `getQuoteById` in `crm.ts` to map finance data.
+    //     - [ ] Update `QuoteEditorTable.tsx` to display live finance data.
+    //     - [ ] Verify persistence and display of finance data across PDP and Quote Editor.
+    useEffect(() => {
+        if (quote.id) {
+            import('@/actions/crm').then(({ logQuoteEvent }) => {
+                logQuoteEvent(quote.id, 'Quote Viewed in Editor', 'Team Member', 'team');
+            });
+        }
+    }, [quote.id]);
+
+    // Handle price recalculation when inputs change
+
+    // Recalculation engine
+    useEffect(() => {
+        const accessoriesTotal = localPricing.accessories
+            .filter(a => a.selected)
+            .reduce((sum, a) => sum + a.price * (a.qty || 1), 0);
+        const servicesTotal = (localPricing.services || [])
+            .filter((s: any) => s.selected)
+            .reduce((sum: number, s: any) => sum + s.price * (s.qty || 1), 0);
+        const insuranceAddonsTotal = localPricing.insuranceAddons
+            .filter(a => a.selected)
+            .reduce((sum, a) => sum + a.amount, 0);
+        const gstRate = localPricing.insuranceGstRate || 18;
+        const insuranceBase = localPricing.insuranceOD + localPricing.insuranceTP + insuranceAddonsTotal;
+        const insuranceGST = Math.round(insuranceBase * (gstRate / 100));
+        const insuranceTotal = insuranceBase + insuranceGST;
+
+        const subtotal =
+            localPricing.exShowroom + localPricing.rtoTotal + insuranceTotal + accessoriesTotal + servicesTotal;
+        const colorDelta = Number(localPricing.colorDelta || 0);
+        const offersDelta = Number(localPricing.offersDelta || 0);
+        const dealerDiscount = Number(localPricing.dealerDiscount || 0);
+        const managerDiscount = parseFloat(managerDiscountInput) || 0;
+        const finalTotal = subtotal + colorDelta + offersDelta + dealerDiscount - Math.abs(managerDiscount);
+
+        setLocalPricing(prev => ({
+            ...prev,
+            accessoriesTotal,
+            servicesTotal,
+            insuranceGST,
+            insuranceTotal,
+            onRoadTotal: subtotal + colorDelta + offersDelta + dealerDiscount,
+            managerDiscount: -Math.abs(managerDiscount),
+            finalTotal,
+        }));
+    }, [
+        localPricing.exShowroom,
+        localPricing.rtoTotal,
+        localPricing.insuranceOD,
+        localPricing.insuranceTP,
+        localPricing.insuranceAddons,
+        localPricing.accessories,
+        localPricing.services,
+        localPricing.colorDelta,
+        localPricing.offersDelta,
+        localPricing.dealerDiscount,
+        managerDiscountInput,
+    ]);
+
     const [pendingChanges, setPendingChanges] = useState<QuoteChange[]>([]);
     const [pendingPayload, setPendingPayload] = useState<Partial<QuoteData> | null>(null);
     const [activeTab, setActiveTab] = useState<
@@ -1029,6 +1110,358 @@ export default function QuoteEditorTable({
         }
     };
 
+    const statusConfig = STATUS_CONFIG[quote.status] || STATUS_CONFIG.DRAFT;
+
+    const formatDate = (value?: string | null) => {
+        if (!value) return '—';
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return '—';
+        return d.toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
+    const customerName = quote.customer?.name || 'Customer';
+    const primaryPhone =
+        quote.customerProfile?.primaryPhone || quote.customer?.phone || quote.customerProfile?.whatsapp || '';
+    const phoneDigits = primaryPhone ? primaryPhone.replace(/\D/g, '') : '';
+    const waPhone = phoneDigits ? (phoneDigits.startsWith('91') ? phoneDigits : `91${phoneDigits}`) : '';
+
+    const PhoneSection = ({
+        title,
+        defaultOpen = false,
+        count,
+        children,
+    }: {
+        title: string;
+        defaultOpen?: boolean;
+        count?: number;
+        children: React.ReactNode;
+    }) => {
+        const [open, setOpen] = useState(defaultOpen);
+        return (
+            <div className="border-b border-slate-100 dark:border-white/5">
+                <button
+                    onClick={() => setOpen(!open)}
+                    data-crm-allow
+                    className="w-full flex items-center justify-between px-3 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
+                >
+                    <div className="flex items-center gap-2">
+                        <ChevronRight
+                            size={14}
+                            className={cn('text-slate-400 transition-transform duration-200', open && 'rotate-90')}
+                        />
+                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-slate-200">
+                            {title}
+                        </span>
+                        {count !== undefined && count > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-[8px] font-black text-indigo-600">
+                                {count}
+                            </span>
+                        )}
+                    </div>
+                    <ChevronDown
+                        size={14}
+                        className={cn('text-slate-300 transition-transform duration-200', open && 'rotate-180')}
+                    />
+                </button>
+                <AnimatePresence>
+                    {open && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="px-3 pb-3">{children}</div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        );
+    };
+
+    if (isPhone) {
+        const transactionCount = relatedQuotes.length + bookings.length + payments.length;
+        const financeCount = financeEntries.length;
+        return (
+            <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10]">
+                <div className="px-3 pt-1 pb-3 space-y-2.5">
+                    <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-base font-black shadow-lg shrink-0">
+                            {customerName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
+                                    {customerName}
+                                </h1>
+                                <span
+                                    className={cn(
+                                        'px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shrink-0',
+                                        statusConfig.color
+                                    )}
+                                >
+                                    {statusConfig.label}
+                                </span>
+                            </div>
+                            {primaryPhone && (
+                                <div className="flex items-center gap-1.5 mt-0.5 text-indigo-600">
+                                    <Phone size={11} />
+                                    <span className="text-[11px] font-black tracking-wide">{primaryPhone}</span>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-slate-400 font-bold flex-wrap">
+                                <span className="font-black uppercase tracking-widest">
+                                    {formatDisplayId(quote.displayId || quote.id)}
+                                </span>
+                                <span>•</span>
+                                <span>{formatDate(quote.createdAt)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-black italic uppercase tracking-tighter text-slate-900 dark:text-white whitespace-nowrap">
+                            ₹{Number(localPricing.finalTotal || 0).toLocaleString('en-IN')}
+                        </span>
+                        <div className="flex items-center gap-1 h-7 px-2 rounded-lg text-[8px] font-black uppercase tracking-wider bg-slate-900 text-white">
+                            <statusConfig.icon size={12} />
+                            {statusConfig.label}
+                        </div>
+                    </div>
+
+                    <div className="flex gap-1.5">
+                        {phoneDigits && (
+                            <a
+                                href={`tel:${phoneDigits}`}
+                                className="flex-1 flex items-center justify-center gap-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-transform"
+                            >
+                                <Phone size={13} /> Call
+                            </a>
+                        )}
+                        {waPhone && (
+                            <a
+                                href={`https://wa.me/${waPhone}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 flex items-center justify-center gap-1 py-2 bg-[#25D366] text-white rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-transform"
+                            >
+                                💬 WhatsApp
+                            </a>
+                        )}
+                        <button
+                            onClick={handleShareDossier}
+                            className="flex-1 flex items-center justify-center gap-1 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-transform"
+                        >
+                            <FileText size={13} /> Dossier
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    className="flex-1 overflow-y-auto no-scrollbar bg-slate-50/80 dark:bg-slate-950 border-t border-slate-200 dark:border-white/5"
+                    style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+                >
+                    <PhoneSection title="Quote" defaultOpen>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-14 h-10 bg-slate-100 dark:bg-white/5 rounded-lg overflow-hidden flex items-center justify-center text-[10px] font-black text-slate-400">
+                                    {quote.vehicle?.imageUrl ? (
+                                        <img
+                                            src={quote.vehicle.imageUrl}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        'VEHICLE'
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-[11px] font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
+                                        {quote.vehicle?.brand} {quote.vehicle?.model}
+                                    </div>
+                                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider truncate">
+                                        {quote.vehicle?.variant} • {quote.vehicle?.color}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2">
+                                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                        Final Price
+                                    </div>
+                                    <div className="text-[11px] font-black text-slate-900 dark:text-white">
+                                        ₹{Number(localPricing.finalTotal || 0).toLocaleString('en-IN')}
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2">
+                                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                        Ex-Showroom
+                                    </div>
+                                    <div className="text-[11px] font-black text-slate-900 dark:text-white">
+                                        ₹{Number(localPricing.exShowroom || 0).toLocaleString('en-IN')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Finance" count={financeCount}>
+                        {financeEntries.length === 0 ? (
+                            <div className="text-[10px] text-slate-400 font-bold py-2">No finance entries</div>
+                        ) : (
+                            <div className="space-y-2">
+                                {financeEntries.map(entry => (
+                                    <div
+                                        key={entry.id}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                {entry.bankName || 'Finance'}
+                                            </span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-amber-600">
+                                                {entry.status || 'IN_PROCESS'}
+                                            </span>
+                                        </div>
+                                        <div className="text-[9px] text-slate-500 font-bold">
+                                            EMI: ₹{Number(entry.emi || 0).toLocaleString('en-IN')} • Tenure:{' '}
+                                            {entry.tenure || 0}M
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </PhoneSection>
+
+                    <PhoneSection title="Transactions" count={transactionCount}>
+                        {transactionCount === 0 ? (
+                            <div className="text-[10px] text-slate-400 font-bold py-2">No linked activity</div>
+                        ) : (
+                            <div className="space-y-2">
+                                {relatedQuotes.map(q => (
+                                    <div
+                                        key={q.id}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2"
+                                    >
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                                            Quote {formatDisplayId(q.displayId || q.id)}
+                                        </div>
+                                    </div>
+                                ))}
+                                {bookings.map(b => (
+                                    <div
+                                        key={b.id}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2"
+                                    >
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                                            Booking {formatDisplayId(b.displayId || b.id)}
+                                        </div>
+                                    </div>
+                                ))}
+                                {payments.map(p => (
+                                    <div
+                                        key={p.id}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2"
+                                    >
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                                            Receipt {formatDisplayId(p.displayId || p.id)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </PhoneSection>
+
+                    <PhoneSection title="Tasks" count={localTasks.length}>
+                        {localTasks.length === 0 ? (
+                            <div className="text-[10px] text-slate-400 font-bold py-2">No tasks yet</div>
+                        ) : (
+                            <div className="space-y-2">
+                                {localTasks.map(task => (
+                                    <div
+                                        key={task.id}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2"
+                                    >
+                                        <div className="text-[10px] font-black text-slate-900 dark:text-white">
+                                            {task.title}
+                                        </div>
+                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                            {task.status}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </PhoneSection>
+
+                    <PhoneSection title="Notes">
+                        <textarea
+                            value={managerNote}
+                            onChange={e => {
+                                setManagerNote(e.target.value);
+                                setHasChanges(true);
+                            }}
+                            rows={5}
+                            className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+                            placeholder="Add internal notes..."
+                        />
+                    </PhoneSection>
+
+                    <PhoneSection title="Documents" count={docCount}>
+                        <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2 text-[10px] text-slate-500">
+                            Open Documents tab on desktop to manage files.
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Member">
+                        <div className="space-y-2">
+                            <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2">
+                                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                    Phone
+                                </div>
+                                <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                                    {primaryPhone || '—'}
+                                </div>
+                            </div>
+                            <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2">
+                                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                    Email
+                                </div>
+                                <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                                    {quote.customerProfile?.primaryEmail || quote.customerProfile?.email || '—'}
+                                </div>
+                            </div>
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Timeline" count={quote.timeline?.length || 0}>
+                        {(quote.timeline || []).length === 0 ? (
+                            <div className="text-[10px] text-slate-400 font-bold py-2">No events yet</div>
+                        ) : (
+                            <div className="space-y-2">
+                                {quote.timeline.slice(0, 8).map((ev, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2"
+                                    >
+                                        <div className="text-[10px] font-bold text-slate-900 dark:text-white">
+                                            {ev.event || 'Event'}
+                                        </div>
+                                        <div className="text-[9px] text-slate-400">{formatDate(ev.timestamp)}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </PhoneSection>
+                </div>
+            </div>
+        );
+    }
+
     const fetchDocuments = () => {
         // This is now handled within MemberMediaManager
         // But we keep the function name if needed for re-fetching or just leave it empty
@@ -1255,99 +1688,9 @@ export default function QuoteEditorTable({
         }
     };
 
-    const [groups, setGroups] = useState({
-        exShowroom: true,
-        registration: true,
-        insurance: false,
-        accessories: false,
-        services: false,
-        pricing: true, // New Toggle for Line-Item Breakdown
-        finance: true, // New Toggle for Finance Section
-        transactionQuotes: true,
-        transactionBookings: false,
-        transactionPayments: false,
-    });
-
-    // --- TRACK QUOTE OPENED ---
-    // TODO: Task List for Quote Editor Table Refactor
-    // - [x] Implement "Quote Opened" logging logic.
-    // - [ ] Phase 10: Live Finance Integration
-    //     - [ ] Update `buildCommercials` in `ProductClient.tsx` to include finance scheme details.
-    //     - [ ] Update `QuoteEditorData` interface in `crm.ts`.
-    //     - [ ] Update `getQuoteById` in `crm.ts` to map finance data.
-    //     - [ ] Update `QuoteEditorTable.tsx` to display live finance data.
-    //     - [ ] Verify persistence and display of finance data across PDP and Quote Editor.
-    useEffect(() => {
-        if (quote.id) {
-            import('@/actions/crm').then(({ logQuoteEvent }) => {
-                logQuoteEvent(quote.id, 'Quote Viewed in Editor', 'Team Member', 'team');
-            });
-        }
-    }, [quote.id]);
-
-    // Handle price recalculation when inputs change
-    const statusConfig = STATUS_CONFIG[quote.status] || STATUS_CONFIG.DRAFT;
-
-    // Recalculation engine
-    useEffect(() => {
-        const accessoriesTotal = localPricing.accessories
-            .filter(a => a.selected)
-            .reduce((sum, a) => sum + a.price * (a.qty || 1), 0);
-        const servicesTotal = (localPricing.services || [])
-            .filter((s: any) => s.selected)
-            .reduce((sum: number, s: any) => sum + s.price * (s.qty || 1), 0);
-        const insuranceAddonsTotal = localPricing.insuranceAddons
-            .filter(a => a.selected)
-            .reduce((sum, a) => sum + a.amount, 0);
-        const gstRate = localPricing.insuranceGstRate || 18;
-        const insuranceBase = localPricing.insuranceOD + localPricing.insuranceTP + insuranceAddonsTotal;
-        const insuranceGST = Math.round(insuranceBase * (gstRate / 100));
-        const insuranceTotal = insuranceBase + insuranceGST;
-
-        const subtotal =
-            localPricing.exShowroom + localPricing.rtoTotal + insuranceTotal + accessoriesTotal + servicesTotal;
-        const colorDelta = Number(localPricing.colorDelta || 0);
-        const offersDelta = Number(localPricing.offersDelta || 0);
-        const dealerDiscount = Number(localPricing.dealerDiscount || 0);
-        const managerDiscount = parseFloat(managerDiscountInput) || 0;
-        const finalTotal = subtotal + colorDelta + offersDelta + dealerDiscount - Math.abs(managerDiscount);
-
-        setLocalPricing(prev => ({
-            ...prev,
-            accessoriesTotal,
-            servicesTotal,
-            insuranceGST,
-            insuranceTotal,
-            onRoadTotal: subtotal + colorDelta + offersDelta + dealerDiscount,
-            managerDiscount: -Math.abs(managerDiscount),
-            finalTotal,
-        }));
-    }, [
-        localPricing.exShowroom,
-        localPricing.rtoTotal,
-        localPricing.insuranceOD,
-        localPricing.insuranceTP,
-        localPricing.insuranceAddons,
-        localPricing.accessories,
-        localPricing.services,
-        localPricing.dealerDiscount,
-        localPricing.colorDelta,
-        localPricing.offersDelta,
-        managerDiscountInput,
-    ]);
-
     const formatCurrency = (amount: number) => {
         const formatted = Math.abs(amount).toLocaleString('en-IN');
         return amount < 0 ? `-₹${formatted}` : `₹${formatted}`;
-    };
-
-    const formatDate = (dateStr: string) => {
-        return new Date(dateStr).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
     };
 
     const formatList = (items: string[]) => (items.length > 0 ? items.join(', ') : 'None');

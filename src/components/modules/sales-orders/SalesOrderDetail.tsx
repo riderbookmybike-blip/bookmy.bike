@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import DetailPanel, { SnapshotItem } from '@/components/templates/DetailPanel';
 import { MockOrder } from '@/lib/dataStore';
 import { User, ShoppingCart, ShoppingBag, ArrowRight, Activity, Clock, ShieldCheck } from 'lucide-react';
 import { formatDisplayId } from '@/utils/displayId';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface SalesOrderDetailProps {
     order: MockOrder | null;
@@ -11,6 +12,9 @@ interface SalesOrderDetailProps {
 }
 
 export default function SalesOrderDetail({ order, onClose, onCreateBooking }: SalesOrderDetailProps) {
+    const { device } = useBreakpoint();
+    const isPhone = device === 'phone';
+
     if (!order) {
         return (
             <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-500">
@@ -20,6 +24,34 @@ export default function SalesOrderDetail({ order, onClose, onCreateBooking }: Sa
             </div>
         );
     }
+
+    const PhoneSection = ({
+        title,
+        defaultOpen = false,
+        children,
+    }: {
+        title: string;
+        defaultOpen?: boolean;
+        children: React.ReactNode;
+    }) => {
+        const [open, setOpen] = useState(defaultOpen);
+        return (
+            <div className="border-b border-slate-100 dark:border-white/5">
+                <button
+                    onClick={() => setOpen(!open)}
+                    className="w-full flex items-center justify-between px-3 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
+                >
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-slate-200">
+                            {title}
+                        </span>
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400">{open ? '−' : '+'}</span>
+                </button>
+                {open ? <div className="px-3 pb-3">{children}</div> : null}
+            </div>
+        );
+    };
 
     const renderContent = (activeTab: string) => {
         switch (activeTab) {
@@ -136,6 +168,56 @@ export default function SalesOrderDetail({ order, onClose, onCreateBooking }: Sa
                 return null;
         }
     };
+
+    if (isPhone) {
+        return (
+            <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10]">
+                <div className="px-3 pt-1 pb-3 space-y-2.5">
+                    <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-base font-black shadow-lg shrink-0">
+                            {order.customer?.charAt(0) || 'S'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
+                                    {order.customer}
+                                </h1>
+                                <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600">
+                                    {order.status}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-slate-400 font-bold flex-wrap">
+                                <span className="font-black uppercase tracking-widest">
+                                    {formatDisplayId(order.displayId || order.id)}
+                                </span>
+                                <span>•</span>
+                                <span>{order.date}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {order.status === 'BOOKED' && (
+                        <button
+                            onClick={() => onCreateBooking(order.id)}
+                            className="w-full flex items-center justify-center gap-2 py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-transform"
+                        >
+                            Create Booking <ArrowRight size={14} />
+                        </button>
+                    )}
+                </div>
+
+                <div
+                    className="flex-1 overflow-y-auto no-scrollbar bg-slate-50/80 dark:bg-slate-950 border-t border-slate-200 dark:border-white/5"
+                    style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+                >
+                    <PhoneSection title="Overview" defaultOpen>
+                        {renderContent('Overview')}
+                    </PhoneSection>
+                    <PhoneSection title="Activity">{renderContent('Activity')}</PhoneSection>
+                </div>
+            </div>
+        );
+    }
 
     const snapshotItems: SnapshotItem[] = [
         {

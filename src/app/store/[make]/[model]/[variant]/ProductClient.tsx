@@ -75,7 +75,25 @@ export default function ProductClient({
     const router = useRouter();
     const leadIdFromUrl = searchParams.get('leadId');
     const [leadContext, setLeadContext] = useState<{ id: string; name: string } | null>(null);
+    const [isTeamMember, setIsTeamMember] = useState(false);
     const { availableCoins, isLoggedIn } = useOClubWallet();
+
+    // Authority: Determine if team member is gated (Marketplace without lead context)
+    const isGated = isTeamMember && !leadIdFromUrl;
+
+    useEffect(() => {
+        const checkUser = async () => {
+            const supabase = createClient();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (user?.email?.endsWith('@bookmy.bike')) {
+                setIsTeamMember(true);
+            }
+        };
+        checkUser();
+    }, []);
+
     useEffect(() => {
         if (leadIdFromUrl) {
             const fetchLead = async () => {
@@ -597,6 +615,7 @@ export default function ProductClient({
         serverPricing, // SSPP v1: Server-calculated pricing breakdown
         walletCoins: isLoggedIn ? availableCoins : null,
         showOClubPrompt: !isLoggedIn,
+        isGated,
     };
 
     return (

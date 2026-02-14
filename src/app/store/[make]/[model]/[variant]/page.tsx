@@ -762,7 +762,23 @@ export default async function Page({ params, searchParams }: Props) {
                       const linkedSkus = colorSkuMap.get(color.id) || [];
                       const sku = linkedSkus[0] || null;
                       const assetImage = pickImageFromAssets(sku?.assets);
-                      const cleanName = color.specs?.color || color.name;
+                      let cleanName = color.specs?.color || color.name;
+                      if (!color.specs?.color) {
+                          const brandName = item.brand?.name || '';
+                          const modelName = item.parent?.name || '';
+                          const variantName = item.name || '';
+
+                          const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                          const regex = new RegExp(
+                              `^\\s*(${[brandName, modelName, variantName]
+                                  .filter(Boolean)
+                                  .map(escapeRegExp)
+                                  .join('|')})\\s+`,
+                              'gi'
+                          );
+
+                          cleanName = color.name.replace(regex, '').trim();
+                      }
                       const cleanId = slugify(cleanName);
                       const rawOffer = sku?.id ? marketOffers[sku.id] || 0 : 0;
 
@@ -794,12 +810,21 @@ export default async function Page({ params, searchParams }: Props) {
             : (skus || [])
                   .map((sku: any) => {
                       let cleanName = sku.specs?.color || sku.name;
-                      if (!sku.specs?.color && sku.name.includes(item.name)) {
-                          cleanName = sku.name
-                              .replace(item.name, '')
-                              .replace(item.brand?.name || '', '')
-                              .replace(item.parent?.name || '', '')
-                              .trim();
+                      if (!sku.specs?.color) {
+                          const brandName = item.brand?.name || '';
+                          const modelName = item.parent?.name || '';
+                          const variantName = item.name || '';
+
+                          const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                          const regex = new RegExp(
+                              `^\\s*(${[brandName, modelName, variantName]
+                                  .filter(Boolean)
+                                  .map(escapeRegExp)
+                                  .join('|')})\\s+`,
+                              'gi'
+                          );
+
+                          cleanName = sku.name.replace(regex, '').trim();
                       }
 
                       const cleanId = slugify(cleanName);

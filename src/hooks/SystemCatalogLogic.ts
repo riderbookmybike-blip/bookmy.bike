@@ -432,60 +432,56 @@ export function useSystemCatalogLogic(leadId?: string) {
                 let offerData: any = null;
                 let resolvedDealerId: string | null = null;
 
-                // Team session lock (client cookie)
-                if (typeof document !== 'undefined') {
-                    const cookies = document.cookie.split(';').reduce(
-                        (acc, cookie) => {
-                            const [key, value] = cookie.trim().split('=');
-                            acc[key] = value;
-                            return acc;
-                        },
-                        {} as Record<string, string>
-                    );
-                    const sessionCookie = cookies['bmb_dealer_session'];
-                    if (sessionCookie) {
-                        try {
-                            const session = JSON.parse(decodeURIComponent(sessionCookie));
-                            if (
-                                session?.mode === 'TEAM' &&
-                                session?.activeTenantId &&
-                                isValidUuid(session.activeTenantId)
-                            ) {
-                                resolvedDealerId = session.activeTenantId;
-                            }
-                        } catch {}
-                    }
-                }
+                // Removed TEAM session lock from marketplace to unify experience
 
                 if (leadId) {
                     const { data: lead } = await supabase
                         .from('crm_leads')
-                        .select('customer_pincode')
+                        .select('tenant_id, selected_dealer_tenant_id, customer_pincode')
                         .eq('id', leadId)
-                        .returns<{ customer_pincode: string | null }[]>()
-                        .single();
+                        .maybeSingle();
 
-                    if (lead?.customer_pincode && lead.customer_pincode.length === 6) {
-                        const { data: pincodeData } = await supabase
-                            .from('loc_pincodes')
-                            .select('district, state_code')
-                            .eq('pincode', lead.customer_pincode)
-                            .returns<{ district: string | null; state_code: string | null }[]>()
-                            .single();
+                    if (lead) {
+                        // Precedence: selected_dealer_tenant_id > tenant_id
+                        const leadTenantId = lead.selected_dealer_tenant_id || lead.tenant_id;
 
-                        if (pincodeData) {
-                            resolvedUserDistrict = pincodeData.district || resolvedUserDistrict;
-                            resolvedStateCode = pincodeData.state_code || resolvedStateCode;
-                            setUserDistrict(resolvedUserDistrict || '');
-                            setStateCode(resolvedStateCode || '');
+                        if (leadTenantId) {
+                            // Verify tenant exists/active (optional but good for consistency)
+                            const { data: tenant } = await supabase
+                                .from('id_tenants')
+                                .select('id')
+                                .eq('id', leadTenantId)
+                                .maybeSingle();
 
-                            updateDebug({
-                                pricingSource: 'PRIMARY (Lead District)',
-                                district: resolvedUserDistrict || '',
-                                stateCode: resolvedStateCode || '',
-                                locSource: 'LEAD_PINCODE',
-                                pincode: lead.customer_pincode || '',
-                            });
+                            if (tenant) {
+                                resolvedDealerId = leadTenantId;
+                            }
+                        }
+
+                        // Also resolve location from lead if district not resolved yet
+                        if (lead.customer_pincode && lead.customer_pincode.length === 6) {
+                            const { data: pincodeData } = await supabase
+                                .from('loc_pincodes')
+                                .select('district, state_code')
+                                .eq('pincode', lead.customer_pincode)
+                                .maybeSingle();
+
+                            if (pincodeData) {
+                                resolvedUserDistrict = pincodeData.district || resolvedUserDistrict;
+                                resolvedStateCode = pincodeData.state_code || resolvedStateCode;
+                                setUserDistrict(resolvedUserDistrict || '');
+                                setStateCode(resolvedStateCode || '');
+
+                                updateDebug({
+                                    pricingSource: resolvedDealerId
+                                        ? 'PRIMARY (Lead Tenant)'
+                                        : 'PRIMARY (Lead District)',
+                                    district: resolvedUserDistrict || '',
+                                    stateCode: resolvedStateCode || '',
+                                    locSource: 'LEAD_PINCODE',
+                                    pincode: lead.customer_pincode || '',
+                                });
+                            }
                         }
                     }
                 }

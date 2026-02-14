@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDisplayId } from '@/utils/displayId';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface MemberProfile {
     member: any;
@@ -61,6 +62,9 @@ function cn(...inputs: any[]) {
 }
 
 export default function MemberEditorTable({ profile }: { profile: MemberProfile }) {
+    const { device } = useBreakpoint();
+    const isPhone = device === 'phone';
+
     const params = useParams();
     const router = useRouter();
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
@@ -155,6 +159,240 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
             </AnimatePresence>
         </div>
     );
+
+    const PhoneSection = ({
+        title,
+        defaultOpen = false,
+        count,
+        children,
+    }: {
+        title: string;
+        defaultOpen?: boolean;
+        count?: number;
+        children: React.ReactNode;
+    }) => {
+        const [open, setOpen] = useState(defaultOpen);
+        return (
+            <div className="border-b border-slate-100 dark:border-white/5">
+                <button
+                    onClick={() => setOpen(!open)}
+                    className="w-full flex items-center justify-between px-3 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
+                >
+                    <div className="flex items-center gap-2">
+                        <ChevronRight
+                            size={14}
+                            className={cn('text-slate-400 transition-transform duration-200', open && 'rotate-90')}
+                        />
+                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-slate-200">
+                            {title}
+                        </span>
+                        {count !== undefined && count > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-[8px] font-black text-indigo-600">
+                                {count}
+                            </span>
+                        )}
+                    </div>
+                    <ChevronDown
+                        size={14}
+                        className={cn('text-slate-300 transition-transform duration-200', open && 'rotate-180')}
+                    />
+                </button>
+                <AnimatePresence>
+                    {open && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="px-3 pb-3">{children}</div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        );
+    };
+
+    if (isPhone) {
+        const memberName = profile.member?.full_name || 'Member';
+        const memberId = profile.member?.display_id || formatDisplayId(profile.member?.id);
+        const oclubBalance = wallet.oclub_points_total || 0;
+
+        return (
+            <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10]">
+                {/* Mobile Header */}
+                <div className="px-3 pt-1 pb-3 space-y-2.5">
+                    <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-base font-black shadow-lg shrink-0">
+                            {memberName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
+                                {memberName}
+                            </h1>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold">
+                                <span className="font-black uppercase tracking-widest">{memberId}</span>
+                                <span>•</span>
+                                <span>Joined {formatDate(profile.member?.created_at)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto no-scrollbar">
+                    {/* O'CLUB QUICK VIEW */}
+                    <div className="px-3 py-4 bg-indigo-600 mx-3 rounded-2xl shadow-xl shadow-indigo-600/20 mb-4">
+                        <div className="flex items-center justify-between text-indigo-100 text-[10px] font-black uppercase tracking-widest mb-1">
+                            <span>O'Club Points</span>
+                            <Wallet size={12} />
+                        </div>
+                        <div className="text-2xl font-black text-white">{oclubBalance.toLocaleString()} pts</div>
+                    </div>
+
+                    <PhoneSection title="Member Profile" defaultOpen={true}>
+                        <div className="space-y-3 pt-2">
+                            <div className="flex items-start gap-3">
+                                <Mail size={14} className="text-slate-400 mt-0.5" />
+                                <div className="min-w-0">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Email
+                                    </div>
+                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                                        {profile.member?.email || '—'}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <Phone size={14} className="text-slate-400 mt-0.5" />
+                                <div className="min-w-0">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Phone
+                                    </div>
+                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                        {profile.member?.phone || '—'}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <MapPin size={14} className="text-slate-400 mt-0.5" />
+                                <div className="min-w-0">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Location
+                                    </div>
+                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                        {profile.member?.district || '—'}, {profile.member?.state || '—'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="O-Club Ledger" count={profile.oclubLedger?.length}>
+                        <div className="space-y-2 pt-2">
+                            {profile.oclubLedger?.map((entry: any, idx: number) => (
+                                <div
+                                    key={idx}
+                                    className="bg-slate-50 dark:bg-white/5 rounded-lg p-2.5 flex items-center justify-between"
+                                >
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
+                                            {entry.reason || 'Point Transaction'}
+                                        </div>
+                                        <div className="text-[8px] font-bold text-slate-400">
+                                            {formatDate(entry.created_at)}
+                                        </div>
+                                    </div>
+                                    <div
+                                        className={cn(
+                                            'text-xs font-black',
+                                            entry.points >= 0 ? 'text-emerald-500' : 'text-rose-500'
+                                        )}
+                                    >
+                                        {entry.points >= 0 ? '+' : ''}
+                                        {entry.points}
+                                    </div>
+                                </div>
+                            ))}
+                            {(profile.oclubLedger?.length || 0) === 0 && (
+                                <div className="text-[10px] text-slate-400 font-bold py-2 text-center">
+                                    No ledger activity
+                                </div>
+                            )}
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Transactions" count={leadCount + quoteCount + bookingCount + receiptCount}>
+                        <div className="space-y-4 pt-2">
+                            {/* Simple list of recent transactions grouped by type */}
+                            {bookingCount > 0 && (
+                                <div>
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                        Sales Orders
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        {profile.bookings.slice(0, 3).map((b: any) => (
+                                            <div
+                                                key={b.id}
+                                                className="bg-slate-50 dark:bg-white/5 rounded-lg p-2 flex items-center justify-between"
+                                                onClick={() => slug && router.push(`/app/${slug}/sales-orders/${b.id}`)}
+                                            >
+                                                <div className="text-[10px] font-black text-slate-700 dark:text-slate-200">
+                                                    {formatDisplayId(b.display_id || b.id)}
+                                                </div>
+                                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase tracking-widest">
+                                                    {b.status}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {quoteCount > 0 && (
+                                <div>
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                        Quotes
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        {profile.quotes.slice(0, 3).map((q: any) => (
+                                            <div
+                                                key={q.id}
+                                                className="bg-slate-50 dark:bg-white/5 rounded-lg p-2 flex items-center justify-between"
+                                                onClick={() => slug && router.push(`/app/${slug}/quotes/${q.id}`)}
+                                            >
+                                                <div className="text-[10px] font-black text-slate-700 dark:text-slate-200">
+                                                    {formatDisplayId(q.displayId || q.id)}
+                                                </div>
+                                                <div className="text-[10px] font-black text-slate-900 dark:text-white">
+                                                    {formatMoney(q.pricing?.finalTotal)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Timeline" count={timelineCount}>
+                        <div className="space-y-3 pt-2">
+                            {profile.events?.slice(0, 10).map((event: any) => (
+                                <div key={event.id} className="flex gap-3">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 mt-1.5 shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-bold text-slate-700 dark:text-slate-200">
+                                            {event.event_type || 'Activity'}
+                                        </div>
+                                        <div className="text-[8px] text-slate-400">{formatDate(event.created_at)}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </PhoneSection>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-full flex flex-col">
