@@ -159,7 +159,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                 target_brand_id, target_family_id, target_variant_id
             `
             )
-            .eq('sku_id', skuId);
+            .eq('item_id', skuId);
         if (compat) {
             // Enrich with names
             const enriched = await Promise.all(
@@ -1279,10 +1279,10 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                         await supabase
                                             .from('cat_item_compatibility')
                                             .delete()
-                                            .eq('sku_id', editingSku.id);
+                                            .eq('item_id', editingSku.id);
                                         if (compatEntries.length > 0) {
                                             const compatRows = compatEntries.map((c: any) => ({
-                                                sku_id: editingSku.id,
+                                                item_id: editingSku.id,
                                                 is_universal: c.is_universal || false,
                                                 target_brand_id: c.target_brand_id || null,
                                                 target_family_id: c.target_family_id || null,

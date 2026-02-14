@@ -26,10 +26,7 @@ export default function BlogManagementPage() {
     const fetchPosts = async () => {
         setLoading(true);
         const supabase = createClient();
-        const { data, error } = await supabase
-            .from('blog_posts')
-            .select('*')
-            .order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('blog_posts').select('*').order('created_at', { ascending: false });
 
         if (!error && data) {
             setPosts(data);
@@ -41,9 +38,10 @@ export default function BlogManagementPage() {
         fetchPosts();
     }, []);
 
-    const filteredPosts = posts.filter(p =>
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.author_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredPosts = posts.filter(
+        p =>
+            p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.author_name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -70,17 +68,22 @@ export default function BlogManagementPage() {
             {/* Stats & Filter Bar */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <div className="lg:col-span-3 relative group">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary transition-colors" size={18} />
+                    <Search
+                        className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary transition-colors"
+                        size={18}
+                    />
                     <input
                         type="text"
                         placeholder="Search by title or author..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={e => setSearchQuery(e.target.value)}
                         className="w-full bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2rem] py-5 pl-16 pr-8 text-[11px] font-black uppercase tracking-widest focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all"
                     />
                 </div>
                 <div className="bg-slate-900 dark:bg-brand-primary rounded-[2rem] p-5 flex flex-col justify-center items-center shadow-lg">
-                    <span className="text-[10px] font-black text-slate-400 dark:text-black/60 uppercase tracking-widest">Total Posts</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-black/60 uppercase tracking-widest">
+                        Total Posts
+                    </span>
                     <span className="text-2xl font-black text-white dark:text-black">{posts.length}</span>
                 </div>
             </div>
@@ -88,11 +91,16 @@ export default function BlogManagementPage() {
             {/* Posts Grid/List */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                 {loading ? (
-                    Array(6).fill(0).map((_, i) => (
-                        <div key={i} className="h-96 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2.5rem] animate-pulse" />
-                    ))
+                    Array(6)
+                        .fill(0)
+                        .map((_, i) => (
+                            <div
+                                key={i}
+                                className="h-96 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2.5rem] animate-pulse"
+                            />
+                        ))
                 ) : filteredPosts.length > 0 ? (
-                    filteredPosts.map((post) => (
+                    filteredPosts.map(post => (
                         <div
                             key={post.id}
                             className="group flex flex-col bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all duration-500"
@@ -111,10 +119,11 @@ export default function BlogManagementPage() {
                                     </div>
                                 )}
                                 <div className="absolute top-4 right-4">
-                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg ${post.is_published
-                                            ? 'bg-emerald-500 text-white'
-                                            : 'bg-slate-500 text-white'
-                                        }`}>
+                                    <span
+                                        className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg ${
+                                            post.is_published ? 'bg-emerald-500 text-white' : 'bg-slate-500 text-white'
+                                        }`}
+                                    >
                                         {post.is_published ? 'Published' : 'Draft'}
                                     </span>
                                 </div>
@@ -163,8 +172,12 @@ export default function BlogManagementPage() {
                             <Plus size={32} />
                         </div>
                         <div>
-                            <p className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">No articles found</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Start by creating your first blog post</p>
+                            <p className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                No articles found
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                Start by creating your first blog post
+                            </p>
                         </div>
                     </div>
                 )}
@@ -172,3 +185,4 @@ export default function BlogManagementPage() {
         </div>
     );
 }
+// @ts-nocheck

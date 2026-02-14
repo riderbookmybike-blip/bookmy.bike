@@ -24,9 +24,31 @@ import ImageColorPicker from '../components/ImageColorPicker';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+
+// Helper to extract meaningful error message from Supabase PostgrestError or standard Error
+const extractErrorMessage = (error: unknown): string => {
+    if (!error) return 'Unknown error';
+    // Supabase PostgrestError has message, details, hint, code
+    if (typeof error === 'object' && error !== null) {
+        const e = error as Record<string, unknown>;
+        if (typeof e.message === 'string' && e.message) return e.message;
+        if (typeof e.details === 'string' && e.details) return e.details;
+        if (typeof e.hint === 'string' && e.hint) return e.hint;
+        if (typeof e.code === 'string' && e.code) return `DB Error: ${e.code}`;
+        // Last resort: try to stringify
+        try {
+            const s = JSON.stringify(error);
+            if (s !== '{}') return s;
+        } catch {}
+    }
+    if (typeof error === 'string') return error;
+    return 'Unknown error';
+};
 import CopyableId from '@/components/ui/CopyableId';
 
-export default function UnitStep({ family, existingColors, onUpdate }: any) {
+export default function UnitStep({ family, variants = [], existingColors, onUpdate }: any) {
+    // UX guard: at least one variant must exist before creating units
+    const hasVariants = variants.length > 0;
     const [isSaving, setIsSaving] = useState(false);
     const [mediaModalOpen, setMediaModalOpen] = useState(false);
     const [activeColorId, setActiveColorId] = useState<string | null>(null);
@@ -111,11 +133,11 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
                 .eq('id', id);
 
             if (error) throw error;
-            toast.success(`${l2Label} updated successfully`);
+            toast.success(`${l2Label} "${normalizedName}" updated (${id.slice(0, 8)})`);
         } catch (error: unknown) {
             console.error('Update failed:', error);
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            toast.error(`Failed to update ${l2Label.toLowerCase()}: ` + message);
+            const message = extractErrorMessage(error);
+            toast.error(`Failed to update ${l2Label.toLowerCase()}: ${message}`);
         } finally {
             setIsSaving(false);
         }
@@ -132,6 +154,12 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
             toast.error(`${l2Label} already exists`);
             return;
         }
+        // UNIT parent is PRODUCT (independent dimension; combines with VARIANT at SKU level)
+        if (!hasVariants) {
+            toast.error('Create at least one variant first (previous step)');
+            return;
+        }
+
         setIsSaving(true);
         try {
             const supabase = createClient();
@@ -153,8 +181,8 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
                 status: 'ACTIVE', // SOT: Default to ACTIVE - AUMS needs active SKUs for pricing
                 brand_id: family.brand_id,
                 category: family.category || 'VEHICLE',
-                parent_id: family.id,
-                slug: `${family.slug}-color-${normalizedName.toLowerCase()}`.replace(/ /g, '-'),
+                parent_id: family.id, // UNIT is child of PRODUCT (independent dimension)
+                slug: `${family.slug}-unit-${normalizedName.toLowerCase()}`.replace(/ /g, '-'),
                 position: nextPosition,
             };
 
@@ -176,12 +204,12 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
                         .sort((a: any, b: any) => a.position - b.position)
                 );
             }
-            toast.success(`${l2Label} added successfully`);
+            toast.success(`${l2Label} "${normalizedName}" added (${data.id.slice(0, 8)})`);
         } catch (error: unknown) {
             console.error('Add failed:', error);
-            const message = error instanceof Error ? error.message : 'Unknown error';
+            const message = extractErrorMessage(error);
             setError(message);
-            toast.error(`Failed to add ${l2Label.toLowerCase()}: ` + message);
+            toast.error(`Failed to add ${l2Label.toLowerCase()}: ${message}`);
         } finally {
             setIsSaving(false);
         }
@@ -282,11 +310,11 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
             const { error } = await supabase.from('cat_items').update({ specs: newSpecs }).eq('id', activeColorId);
 
             if (error) throw error;
-            toast.success('Color hex updated');
+            toast.success(`Color hex updated (${activeColorId.slice(0, 8)})`);
             setPickerOpen(false);
         } catch (error: unknown) {
             console.error('Hex update failed:', error);
-            const message = error instanceof Error ? error.message : 'Unknown error';
+            const message = extractErrorMessage(error);
             toast.error('Failed to update hex: ' + message);
         }
     };
@@ -396,10 +424,10 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
                     const { error: assetsError } = await supabase.from('cat_assets').insert(assetsPayload);
                 }
             }
-            toast.success('Media saved successfully');
+            toast.success(`Media saved (${activeColorId.slice(0, 8)})`);
         } catch (error: unknown) {
             console.error('Media save failed:', error);
-            const message = error instanceof Error ? error.message : 'Unknown error';
+            const message = extractErrorMessage(error);
             toast.error('Failed to save media: ' + message);
         }
     };
@@ -423,6 +451,16 @@ export default function UnitStep({ family, existingColors, onUpdate }: any) {
                     animation: swatchShimmer 3s ease-in-out infinite;
                 }
             `}</style>
+
+            {/* UX Guard: Units require at least one variant to exist */}
+            {!hasVariants && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-red-600">
+                        ⚠ No variants found — create a variant first (previous step)
+                    </span>
+                </div>
+            )}
+
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 p-1 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">

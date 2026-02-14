@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Camera, Save, Building2, MapPin, Phone, Mail, Globe } from 'lucide-react';
+import { Camera, Save, Building2, MapPin, Phone, Mail, Globe, Image as ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 import { checkServiceability } from '@/actions/serviceArea';
@@ -22,6 +22,7 @@ interface IdentitySettingsProps {
 export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsProps) {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [uploadingFavicon, setUploadingFavicon] = useState(false);
     const [cropSource, setCropSource] = useState<string | null>(null);
     const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
     const [pincodeLookup, setPincodeLookup] = useState<{
@@ -206,6 +207,73 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                     <div className="text-center">
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Brand Logo</h3>
                         <p className="text-xs text-slate-400 mt-1">Recommended: 512x512px PNG</p>
+                    </div>
+                </div>
+
+                {/* Favicon Section */}
+                <div className="w-full md:w-auto flex flex-col items-center gap-4">
+                    <div className="relative group">
+                        <div className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center overflow-hidden shadow-sm">
+                            {dealer.favicon_url ? (
+                                <Image
+                                    src={dealer.favicon_url}
+                                    alt="Favicon"
+                                    width={80}
+                                    height={80}
+                                    className="object-cover w-full h-full"
+                                />
+                            ) : (
+                                <ImageIcon size={28} className="text-slate-300" />
+                            )}
+
+                            {uploadingFavicon && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            )}
+                        </div>
+
+                        <label className="absolute -bottom-2 -right-2 p-1.5 bg-amber-600 text-white rounded-lg shadow-lg cursor-pointer hover:bg-amber-700 transition-colors">
+                            <Camera size={12} />
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/png,image/ico,image/svg+xml,image/x-icon"
+                                onChange={async e => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setUploadingFavicon(true);
+                                    try {
+                                        const supabase = createClient();
+                                        const fileName = `favicon-${dealer.id}-${Date.now()}.png`;
+                                        const { error: uploadError } = await supabase.storage
+                                            .from('id_tenants')
+                                            .upload(fileName, file, { upsert: true, contentType: file.type });
+                                        if (uploadError) throw uploadError;
+                                        const {
+                                            data: { publicUrl },
+                                        } = supabase.storage.from('id_tenants').getPublicUrl(fileName);
+                                        const { error: updateError } = await supabase
+                                            .from('id_tenants')
+                                            .update({ favicon_url: publicUrl })
+                                            .eq('id', dealer.id);
+                                        if (updateError) throw updateError;
+                                        onUpdate();
+                                    } catch (error) {
+                                        console.error('Error uploading favicon:', error);
+                                        alert('Failed to upload favicon');
+                                    } finally {
+                                        setUploadingFavicon(false);
+                                    }
+                                    e.target.value = '';
+                                }}
+                                disabled={uploadingFavicon}
+                            />
+                        </label>
+                    </div>
+                    <div className="text-center">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Favicon</h3>
+                        <p className="text-xs text-slate-400 mt-1">Browser tab icon (32x32px)</p>
                     </div>
                 </div>
 

@@ -60,7 +60,14 @@ export default function DebugPortal() {
                 .order('created_at', { ascending: false })
                 .limit(50);
 
-            if (data) setLogs(data);
+            if (data) {
+                setLogs(
+                    data.map((log: any) => ({
+                        ...log,
+                        created_at: log.created_at || '',
+                    }))
+                );
+            }
         };
 
         fetchInitialLogs();
@@ -116,7 +123,7 @@ export default function DebugPortal() {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 z-[9999] bg-slate-900 text-white w-12 h-12 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group flex items-center justify-center border border-white/10"
+                className="fixed bottom-24 sm:bottom-6 right-6 z-[9999] bg-slate-900 text-white w-12 h-12 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group flex items-center justify-center border border-white/10"
                 title="Antigravity Debug"
             >
                 <Terminal size={20} className="group-hover:rotate-12 transition-transform" />

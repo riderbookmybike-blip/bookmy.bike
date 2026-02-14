@@ -113,7 +113,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                     studio_id: m.studio_id || null,
                     district_name: m.district_name || null,
                 },
-            })) as Membership[];
+            })) as unknown as Membership[];
 
             if (mapped.length === 0) {
                 const { data: fallbackMemberships } = await supabase

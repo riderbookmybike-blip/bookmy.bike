@@ -163,6 +163,8 @@ export async function createOrLinkMember(input: MemberCreateInput) {
         }
     }
 
+    let createdNewMember = false;
+
     if (!memberId) {
         const authId = await ensureAuthUser(input.phone, input.fullName);
 
@@ -233,6 +235,8 @@ export async function createOrLinkMember(input: MemberCreateInput) {
                 is_primary: true,
             });
         }
+
+        createdNewMember = true;
     } else {
         const updates: Record<string, string | undefined> = {};
         if (input.fullName) updates.full_name = toTitleCase(input.fullName);
@@ -262,6 +266,14 @@ export async function createOrLinkMember(input: MemberCreateInput) {
             source: 'members_module',
         },
     });
+
+    if (createdNewMember) {
+        try {
+            await adminClient.rpc('oclub_credit_signup' as any, { p_member_id: memberId } as any);
+        } catch (err) {
+            console.error('[createOrLinkMember] O-Club signup bonus error:', err);
+        }
+    }
 
     const { data: member, error: memberError } = await adminClient
         .from('id_members')
@@ -527,11 +539,13 @@ export async function getMemberAnalytics(tenantId: string, timeframe: '7d' | '30
     }
 
     newMembers?.forEach(m => {
+        if (!m.created_at) return;
         const key = m.created_at.split('T')[0];
         if (stats[key]) stats[key].new++;
     });
 
     revisitedMembers?.forEach(m => {
+        if (!m.updated_at) return;
         const key = m.updated_at.split('T')[0];
         if (stats[key]) stats[key].revisited++;
     });
@@ -543,12 +557,32 @@ export async function getMemberFullProfile(memberId: string) {
     const { data: member, error } = await adminClient
         .from('id_members')
         .select(
-            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, member_status, created_at, updated_at'
+            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, created_at, updated_at'
         )
         .eq('id', memberId)
-        .single();
+        .maybeSingle();
 
-    if (error) throw error;
+    let resolvedMember = member;
+    if (!resolvedMember && memberId) {
+        if (error) {
+            console.error('getMemberFullProfile: member lookup by id failed', { memberId, error });
+        }
+        const { data: memberByDisplay, error: displayError } = await adminClient
+            .from('id_members')
+            .select(
+                'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, created_at, updated_at'
+            )
+            .eq('display_id', memberId)
+            .maybeSingle();
+        if (displayError) {
+            console.error('getMemberFullProfile: member lookup by display_id failed', { memberId, displayError });
+        }
+        resolvedMember = memberByDisplay || null;
+    }
+
+    if (!resolvedMember) {
+        return null;
+    }
 
     const [
         { data: contacts },
@@ -556,8 +590,9 @@ export async function getMemberFullProfile(memberId: string) {
         { data: events },
         { data: assets },
         { data: payments },
-        { data: bookings },
         { data: leads },
+        { data: wallet },
+        { data: ledger },
     ] = await Promise.all([
         adminClient
             .from('id_member_contacts')
@@ -580,19 +615,45 @@ export async function getMemberFullProfile(memberId: string) {
             .eq('entity_id', memberId)
             .order('created_at', { ascending: false }),
         adminClient
-            .from('crm_payments')
+            .from('crm_receipts' as any)
             .select('*')
             .eq('member_id', memberId)
             .order('created_at', { ascending: false }),
+        adminClient.from('crm_leads').select('*').eq('customer_id', memberId).order('created_at', { ascending: false }),
         adminClient
+            .from('oclub_wallets' as any)
+            .select(
+                'available_system, available_referral, available_sponsored, locked_referral, pending_sponsored, lifetime_earned, lifetime_redeemed, updated_at'
+            )
+            .eq('member_id', memberId)
+            .maybeSingle(),
+        adminClient
+            .from('oclub_coin_ledger' as any)
+            .select('id, coin_type, delta, status, source_type, source_id, sponsor_id, metadata, created_at')
+            .eq('member_id', memberId)
+            .order('created_at', { ascending: false })
+            .limit(50),
+    ]);
+
+    let bookings: any[] = [];
+    try {
+        const { data: bookingsData, error: bookingsError } = await adminClient
             .from('crm_bookings')
             .select(
                 '*, insurance:crm_insurance(*), allotment:crm_allotments(*), registration:crm_registration(*), pdi:crm_pdi(*)'
             )
             .eq('user_id', memberId)
-            .order('created_at', { ascending: false }),
-        adminClient.from('crm_leads').select('*').eq('customer_id', memberId).order('created_at', { ascending: false }),
-    ]);
+            .order('created_at', { ascending: false });
+        if (bookingsError) throw bookingsError;
+        bookings = bookingsData || [];
+    } catch (error) {
+        const { data: bookingsFallback } = await adminClient
+            .from('crm_bookings')
+            .select('*')
+            .eq('user_id', memberId)
+            .order('created_at', { ascending: false });
+        bookings = bookingsFallback || [];
+    }
 
     const leadIds = (leads || []).map(l => l.id);
     const { data: quotes } =
@@ -604,13 +665,14 @@ export async function getMemberFullProfile(memberId: string) {
                   .order('created_at', { ascending: false })
             : { data: [] };
 
-    const mappedMember = member
+    const mappedMember = resolvedMember
         ? {
-              ...member,
-              phone: member.primary_phone,
-              email: member.primary_email,
+              ...resolvedMember,
+              phone: resolvedMember.primary_phone,
+              email: resolvedMember.primary_email,
+              member_status: (resolvedMember as any).member_status || 'ACTIVE',
           }
-        : member;
+        : resolvedMember;
 
     return {
         member: mappedMember,
@@ -622,6 +684,8 @@ export async function getMemberFullProfile(memberId: string) {
         bookings: bookings || [],
         leads: leads || [],
         quotes: quotes || [],
+        wallet: wallet || null,
+        oclubLedger: ledger || [],
     };
 }
 
@@ -673,11 +737,11 @@ export async function addMemberEvent(
     eventType: string,
     payload?: Record<string, unknown>
 ) {
-    const { error } = await adminClient.from('id_member_events').insert({
+    const { error } = await (adminClient as any).from('id_member_events').insert({
         member_id: memberId,
         tenant_id: tenantId,
         event_type: eventType,
-        payload: payload || {},
+        payload: (payload || {}) as any,
     });
 
     if (error) throw error;

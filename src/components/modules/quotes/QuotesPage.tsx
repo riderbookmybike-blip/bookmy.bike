@@ -45,6 +45,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [view, setView] = useState<'grid' | 'list'>('list');
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
     const fetchQuotes = useCallback(async () => {
         setIsLoading(true);
@@ -101,10 +102,11 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
         () =>
             quotes.filter(
                 q =>
-                    q.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    formatDisplayId(q.displayId).toLowerCase().includes(searchQuery.toLowerCase())
+                    (statusFilter === 'ALL' || q.status === statusFilter) &&
+                    (q.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        formatDisplayId(q.displayId).toLowerCase().includes(searchQuery.toLowerCase()))
             ),
-        [quotes, searchQuery]
+        [quotes, searchQuery, statusFilter]
     );
 
     const stats = [
@@ -141,7 +143,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     };
 
     // Responsive negative margin: phone=-m-3, tablet=-m-5, desktop=-m-6 md:-m-8
-    const negativeMargin = isPhone ? '-m-3' : device === 'tablet' ? '-m-5' : '-m-6 md:-m-8';
+    const negativeMargin = isPhone ? '' : device === 'tablet' ? '-m-5' : '-m-6 md:-m-8';
 
     // Phone forces list view
     const effectiveView = isPhone ? 'list' : view;
@@ -211,7 +213,34 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                         </div>
                     ) : /* ── LIST VIEW: Phone-optimized cards vs Desktop table ── */
                     isPhone ? (
-                        <div className="space-y-2 pb-20">
+                        <div className="space-y-2 pb-4">
+                            {/* Status filter chips */}
+                            <div className="overflow-x-auto no-scrollbar -mx-4 px-4 mb-3">
+                                <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
+                                    {['ALL', 'DRAFT', 'IN_REVIEW', 'SENT', 'APPROVED'].map(chip => {
+                                        const chipColor =
+                                            chip === 'APPROVED' ? 'emerald' : chip === 'IN_REVIEW' ? 'amber' : 'indigo';
+                                        return (
+                                            <button
+                                                key={chip}
+                                                onClick={() => setStatusFilter(chip)}
+                                                data-crm-allow
+                                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                                                    statusFilter === chip
+                                                        ? chipColor === 'emerald'
+                                                            ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                                                            : chipColor === 'amber'
+                                                              ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
+                                                              : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                                                        : 'bg-white dark:bg-white/5 text-slate-500 border border-slate-200 dark:border-white/10'
+                                                }`}
+                                            >
+                                                {chip.replace('_', ' ')}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                             {filteredQuotes.map(quote => {
                                 const statusColor =
                                     quote.status === 'APPROVED' || quote.status === 'SENT'

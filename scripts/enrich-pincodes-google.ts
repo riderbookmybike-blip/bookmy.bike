@@ -39,9 +39,10 @@ async function enrichWithGoogle() {
         return;
     }
 
-    console.log(`Pincodes missing GPS: ${totalMissing}`);
+    const totalMissingSafe = totalMissing ?? 0;
+    console.log(`Pincodes missing GPS: ${totalMissingSafe}`);
 
-    if (totalMissing === 0) {
+    if (totalMissingSafe === 0) {
         console.log('No pincodes missing GPS data. Enrichment complete!');
         return;
     }
@@ -55,7 +56,7 @@ async function enrichWithGoogle() {
     console.log(`Starting enrichment in batches of ${PAGE_SIZE}...`);
 
     // TEST MODE: Only run 10 records
-    while (processedCount < (totalMissing || 0)) {
+    while (processedCount < totalMissingSafe) {
         const { data: batch, error: fetchError } = await supabase
             .from('loc_pincodes')
             .select('pincode, state, city, district')
@@ -74,7 +75,7 @@ async function enrichWithGoogle() {
             // More specific regional query works better
             const query = `${pincode}, ${city || district || ''}, ${state || ''}, India`.replace(/, ,/g, ',');
 
-            console.log(`[${processedCount + 1}/${totalMissing}] Geocoding ${pincode} (${query})...`);
+            console.log(`[${processedCount + 1}/${totalMissingSafe}] Geocoding ${pincode} (${query})...`);
 
             try {
                 const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_KEY}`;
@@ -128,7 +129,7 @@ async function enrichWithGoogle() {
     console.log('\n--- Enrichment Summary ---');
     console.log(`Total Success: ${successCount}`);
     console.log(`Total Failures: ${failCount}`);
-    console.log(`Remaining missing: ${totalMissing - successCount}`);
+    console.log(`Remaining missing: ${totalMissingSafe - successCount}`);
 }
 
 enrichWithGoogle();

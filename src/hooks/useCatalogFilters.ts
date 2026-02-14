@@ -182,7 +182,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
             const matchesMake = isAllMakesSelected || selectedMakeSet.has(normalizedMake);
 
-            const isElectric = v.model.toLowerCase().includes('electric') || v.fuelType === 'ELECTRIC';
+            const isElectric = v.model.toLowerCase().includes('electric') || v.fuelType === 'EV';
             const fuelType = v.fuelType === 'CNG' ? 'CNG' : isElectric ? 'Electric' : 'Petrol';
             const matchesFuel = selectedFuels.length === 0 || selectedFuels.includes(fuelType);
 
@@ -223,10 +223,12 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             }
             const matchesBrakes = selectedBrakes.length === 0 || selectedBrakes.includes(brakeTag);
 
-            const wheelType = v.specifications?.wheels?.front?.toLowerCase().includes('alloy') ? 'Alloy' : 'Spoke';
+            const wheelType = (v.specifications as any)?.wheels?.front?.toLowerCase().includes('alloy')
+                ? 'Alloy'
+                : 'Spoke';
             const matchesWheels = selectedWheels.length === 0 || selectedWheels.includes(wheelType);
 
-            const consoleType = v.specifications?.console?.toLowerCase().includes('digital')
+            const consoleType = (v.specifications as any)?.console?.toLowerCase().includes('digital')
                 ? 'Full Digital'
                 : 'Analog';
             const matchesConsole = selectedConsole.length === 0 || selectedConsole.includes(consoleType);

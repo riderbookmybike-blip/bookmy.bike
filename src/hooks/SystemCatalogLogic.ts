@@ -429,7 +429,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                     .limit(1);
 
                 // Fetch Offers (Primary Dealer Only)
-                let offerData;
+                let offerData: any = null;
                 let resolvedDealerId: string | null = null;
 
                 // Team session lock (client cookie)

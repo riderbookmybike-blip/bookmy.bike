@@ -108,6 +108,22 @@ export default function SalesOrderDetail({ order, onClose, onCreateBooking }: Sa
                                 </div>
                             </div>
                         )}
+
+                        {order.status === 'PENDING_CORPORATE' && (
+                            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg p-6 flex items-center gap-4">
+                                <span className="p-3 bg-amber-100 dark:bg-amber-500/10 rounded-full text-amber-600 dark:text-amber-300">
+                                    <Clock size={24} />
+                                </span>
+                                <div>
+                                    <h4 className="font-bold text-amber-900 dark:text-amber-300">
+                                        Pending Corporate Confirmation
+                                    </h4>
+                                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                                        Sponsored coins applied. Awaiting corporate approval and payment.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             case 'Activity':

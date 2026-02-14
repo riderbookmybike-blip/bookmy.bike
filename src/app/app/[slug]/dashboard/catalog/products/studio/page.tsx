@@ -617,6 +617,7 @@ export default function UnifiedStudioPage() {
                     {currentStep === 4 && familyData && (
                         <UnitStep
                             family={familyData}
+                            variants={variants}
                             existingColors={colors}
                             onUpdate={(newDeduplicatedColors: any[]) => {
                                 setColors(newDeduplicatedColors);

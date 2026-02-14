@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
             id: userId,
             full_name: displayName,
             phone: cleanPhone,
+            primary_phone: cleanPhone,
             role: 'BMB_USER',
             referral_code: referralCode,
             pincode: pincode || null,
@@ -105,6 +106,12 @@ export async function POST(req: NextRequest) {
             console.error('Signup Profile Error:', profileError);
             // Rollback? Deleting auth user might be dangerous if async, but ideally yes.
             // For now, allow it, but log error.
+        }
+
+        try {
+            await adminClient.rpc('oclub_credit_signup' as any, { p_member_id: userId } as any);
+        } catch (err) {
+            console.error('Signup O-Club bonus error:', err);
         }
 
         // 4. Auto-Login

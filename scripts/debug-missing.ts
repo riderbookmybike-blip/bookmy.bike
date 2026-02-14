@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import fetch from 'node-fetch';
+// Use global fetch (Node 18+)
 
 dotenv.config({ path: '.env.local' });
 

@@ -17,7 +17,7 @@ export async function createFinanceApplication(data: {
             lender_name: data.lender_name,
             requested_amount: data.requested_amount,
             notes: data.notes,
-            status: 'APPLIED'
+            status: 'APPLIED',
         })
         .select()
         .single();
@@ -27,14 +27,23 @@ export async function createFinanceApplication(data: {
     return app;
 }
 
-export async function updateFinanceStatus(appId: string, updates: {
-    status?: string;
-    approved_amount?: number;
-    interest_rate?: number;
-    tenure_months?: number;
-    notes?: string;
-    is_active_closing?: boolean;
-}) {
+export async function updateFinanceStatus(
+    appId: string,
+    updates: {
+        status?: string;
+        approved_amount?: number;
+        interest_rate?: number;
+        tenure_months?: number;
+        notes?: string;
+        is_active_closing?: boolean;
+        agreement_signed_at?: string | null;
+        enach_done_at?: string | null;
+        insurance_requested_at?: string | null;
+        onboarding_initiated_at?: string | null;
+        disbursement_initiated_at?: string | null;
+        disbursement_completed_at?: string | null;
+    }
+) {
     // If setting as active closing, first unset any others for the same booking
     if (updates.is_active_closing) {
         const { data: currentApp } = await adminClient
@@ -43,7 +52,7 @@ export async function updateFinanceStatus(appId: string, updates: {
             .eq('id', appId)
             .single();
 
-        if (currentApp) {
+        if (currentApp?.booking_id) {
             await adminClient
                 .from('crm_finance')
                 .update({ is_active_closing: false })
@@ -53,7 +62,10 @@ export async function updateFinanceStatus(appId: string, updates: {
 
     const { data: updated, error } = await adminClient
         .from('crm_finance')
-        .update(updates)
+        .update({
+            ...updates,
+            updated_at: new Date().toISOString(),
+        })
         .eq('id', appId)
         .select()
         .single();

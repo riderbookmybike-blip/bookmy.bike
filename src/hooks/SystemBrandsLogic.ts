@@ -33,7 +33,13 @@ export function useSystemBrandsLogic() {
                 if (error) throw error;
 
                 if (data) {
-                    setBrands(data);
+                    setBrands(
+                        data.map(b => ({
+                            ...b,
+                            logo_svg: b.logo_svg || undefined,
+                            brand_logos: (b.brand_logos as any) || undefined,
+                        }))
+                    );
                 }
             } catch (err: unknown) {
                 // Ignore AbortError - expected in React StrictMode double-render
@@ -41,9 +47,10 @@ export function useSystemBrandsLogic() {
                 if (errObj?.name === 'AbortError' || errObj?.message?.includes('AbortError')) {
                     return;
                 }
-                const errorMessage = err instanceof Error
-                    ? err.message
-                    : (err as { message?: string })?.message ?? JSON.stringify(err);
+                const errorMessage =
+                    err instanceof Error
+                        ? err.message
+                        : ((err as { message?: string })?.message ?? JSON.stringify(err));
                 console.error('Error fetching brands:', errorMessage);
                 setError(errorMessage);
             } finally {

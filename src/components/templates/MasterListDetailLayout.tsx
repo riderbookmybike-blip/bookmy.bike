@@ -34,7 +34,7 @@ export default function MasterListDetailLayout({
     // List-only mode: Full-width list, no detail panel
     if (mode === 'list-only') {
         return (
-            <div className="flex h-full overflow-hidden" style={{ height: '100%' }}>
+            <div className="flex h-full w-full overflow-hidden" style={{ height: '100%' }}>
                 <div className="flex-1 h-full min-h-0">{listChild}</div>
             </div>
         );
@@ -43,7 +43,7 @@ export default function MasterListDetailLayout({
     // Detail-only mode: Full-width detail, no list panel
     if (mode === 'detail-only') {
         return (
-            <div className="flex h-full overflow-hidden bg-white dark:bg-[#0b0d10]">
+            <div className="flex h-full w-full overflow-hidden bg-white dark:bg-[#0b0d10]">
                 <div className="flex-1 h-full min-w-0">{detailChild}</div>
             </div>
         );
@@ -54,7 +54,7 @@ export default function MasterListDetailLayout({
         if (hasActiveDetail && detailChild) {
             return (
                 <div
-                    className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0b0d10]"
+                    className="flex flex-col h-full w-full overflow-hidden bg-white dark:bg-[#0b0d10]"
                     style={{ height: '100%' }}
                 >
                     {/* Back bar */}
@@ -76,7 +76,7 @@ export default function MasterListDetailLayout({
 
         // Show list only
         return (
-            <div className="flex h-full overflow-hidden" style={{ height: '100%' }}>
+            <div className="flex h-full w-full overflow-hidden" style={{ height: '100%' }}>
                 <div className="flex-1 h-full min-h-0">{listChild}</div>
             </div>
         );

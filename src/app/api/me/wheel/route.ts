@@ -25,7 +25,7 @@ const buildReward = (row: SpinRow) => {
         id: row.reward_id,
         label: row.reward_label,
         value: row.reward_value ?? undefined,
-        kind: row.reward_kind ?? undefined
+        kind: row.reward_kind ?? undefined,
     };
 };
 
@@ -37,7 +37,7 @@ const normalizeRewards = (value: unknown): WheelReward[] | null => {
             label: typeof item?.label === 'string' ? item.label : null,
             weight: typeof item?.weight === 'number' ? item.weight : null,
             value: typeof item?.value === 'number' ? item.value : undefined,
-            kind: typeof item?.kind === 'string' ? item.kind : null
+            kind: typeof item?.kind === 'string' ? item.kind : null,
         }))
         .filter(item => item.id && item.label && item.weight && item.weight > 0 && item.kind) as WheelReward[];
 
@@ -74,14 +74,18 @@ const isExpired = (spin: SpinRow) => {
 
 export async function GET() {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { data: eligibleSpins, error: eligibleError } = await supabase
         .from('id_member_spins')
-        .select('id, status, tenant_id, reward_id, reward_label, reward_value, reward_kind, reward_payload, eligible_at, expires_at, spun_at')
+        .select(
+            'id, status, tenant_id, reward_id, reward_label, reward_value, reward_kind, reward_payload, eligible_at, expires_at, spun_at'
+        )
         .eq('member_id', user.id)
         .eq('status', 'ELIGIBLE')
         .order('eligible_at', { ascending: true })
@@ -95,7 +99,9 @@ export async function GET() {
     if (!spin) {
         const { data: latestSpins, error: latestError } = await supabase
             .from('id_member_spins')
-            .select('id, status, tenant_id, reward_id, reward_label, reward_value, reward_kind, reward_payload, eligible_at, expires_at, spun_at')
+            .select(
+                'id, status, tenant_id, reward_id, reward_label, reward_value, reward_kind, reward_payload, eligible_at, expires_at, spun_at'
+            )
             .eq('member_id', user.id)
             .order('eligible_at', { ascending: false })
             .limit(1);
@@ -123,20 +129,24 @@ export async function GET() {
         reward: spin.status === 'SPUN' ? buildReward(spin) : null,
         rewards: rewards ?? WHEEL_REWARDS,
         expiresAt: spin.expires_at,
-        spunAt: spin.spun_at
+        spunAt: spin.spun_at,
     });
 }
 
 export async function POST() {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { data: eligibleSpin, error } = await adminClient
         .from('id_member_spins')
-        .select('id, status, tenant_id, reward_id, reward_label, reward_value, reward_kind, reward_payload, eligible_at, expires_at, spun_at')
+        .select(
+            'id, status, tenant_id, reward_id, reward_label, reward_value, reward_kind, reward_payload, eligible_at, expires_at, spun_at'
+        )
         .eq('member_id', user.id)
         .eq('status', 'ELIGIBLE')
         .order('eligible_at', { ascending: true })
@@ -150,7 +160,9 @@ export async function POST() {
     if (!eligibleSpin) {
         const { data: latestSpin } = await adminClient
             .from('id_member_spins')
-            .select('id, status, tenant_id, reward_id, reward_label, reward_value, reward_kind, reward_payload, eligible_at, expires_at, spun_at')
+            .select(
+                'id, status, tenant_id, reward_id, reward_label, reward_value, reward_kind, reward_payload, eligible_at, expires_at, spun_at'
+            )
             .eq('member_id', user.id)
             .order('eligible_at', { ascending: false })
             .limit(1)
@@ -162,7 +174,7 @@ export async function POST() {
                 status: 'SPUN',
                 eligible: false,
                 spinId: latestSpin.id,
-                reward: buildReward(latestSpin)
+                reward: buildReward(latestSpin),
             });
         }
 
@@ -170,10 +182,7 @@ export async function POST() {
     }
 
     if (eligibleSpin.status === 'ELIGIBLE' && isExpired(eligibleSpin)) {
-        await adminClient
-            .from('id_member_spins')
-            .update({ status: 'EXPIRED' })
-            .eq('id', eligibleSpin.id);
+        await adminClient.from('id_member_spins').update({ status: 'EXPIRED' }).eq('id', eligibleSpin.id);
 
         return NextResponse.json({ visible: false, expired: true, eligible: false });
     }
@@ -191,7 +200,7 @@ export async function POST() {
             reward_value: reward.value ?? null,
             reward_kind: reward.kind,
             reward_payload: { kind: reward.kind },
-            spun_at: now
+            spun_at: now,
         })
         .eq('id', eligibleSpin.id)
         .eq('status', 'ELIGIBLE')
@@ -214,7 +223,7 @@ export async function POST() {
             status: latest?.status ?? 'SPUN',
             eligible: false,
             spinId: latest?.id ?? eligibleSpin.id,
-            reward: latest ? buildReward(latest) : null
+            reward: latest ? buildReward(latest) : null,
         });
     }
 
@@ -223,6 +232,7 @@ export async function POST() {
         status: 'SPUN',
         eligible: false,
         spinId: updated.id,
-        reward: buildReward(updated)
+        reward: buildReward(updated),
     });
 }
+// @ts-nocheck

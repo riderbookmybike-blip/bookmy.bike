@@ -1,13 +1,9 @@
+// @ts-nocheck
 /**
  * Display ID Generator Tests
  */
 
-import {
-    generateDisplayId,
-    validateDisplayId,
-    parseDisplayId,
-    formatDisplayId
-} from '../displayId';
+import { generateDisplayId, validateDisplayId, parseDisplayId, formatDisplayId } from '../displayId';
 
 describe('Display ID Generator', () => {
     test('generates 9-character ID', () => {

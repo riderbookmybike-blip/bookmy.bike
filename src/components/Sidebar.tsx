@@ -75,7 +75,7 @@ export default function Sidebar({
 
     if (!tenantType) {
         return (
-            <aside className="fixed z-40 inset-y-0 left-0 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-white/5 w-20 transition-all">
+            <aside className="fixed z-40 inset-y-0 left-0 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-white/5 w-20 transition-all hidden md:flex flex-col">
                 <div className="h-16 flex items-center justify-center border-b border-slate-100 dark:border-white/5">
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 animate-pulse" />
                 </div>
@@ -83,15 +83,19 @@ export default function Sidebar({
         );
     }
 
+    // If this Sidebar instance is mobile-only (has onMobileClose), skip the desktop aside entirely
+    const isMobileOnly = !!onMobileClose;
+
     return (
         <>
-            {/* Desktop Sidebar */}
-            <motion.aside
-                initial={false}
-                animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
-                onMouseEnter={() => onHoverChange(true)}
-                onMouseLeave={() => onHoverChange(false)}
-                className={`
+            {/* Desktop Sidebar — skip when this Sidebar instance is mobile-only */}
+            {!isMobileOnly && (
+                <motion.aside
+                    initial={false}
+                    animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
+                    onMouseEnter={() => onHoverChange(true)}
+                    onMouseLeave={() => onHoverChange(false)}
+                    className={`
                     fixed z-[60] inset-y-0 left-0 
                     bg-white dark:bg-slate-950/90 backdrop-blur-xl
                     flex flex-col 
@@ -99,90 +103,91 @@ export default function Sidebar({
                     hidden md:flex overflow-hidden
                     ${className}
                 `}
-            >
-                {/* Header */}
-                <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0 overflow-hidden">
-                    <div className="flex items-center gap-3">
+                >
+                    {/* Header */}
+                    <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0 overflow-hidden">
                         <div className="flex items-center gap-3">
-                            <Logo
-                                mode="auto"
-                                variant={isExpanded ? 'full' : 'icon'}
-                                className="transition-all duration-300"
-                            />
+                            <div className="flex items-center gap-3">
+                                <Logo
+                                    mode="auto"
+                                    variant={isExpanded ? 'full' : 'icon'}
+                                    className="transition-all duration-300"
+                                />
+                            </div>
                         </div>
+
+                        {isExpanded && (
+                            <motion.button
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                onClick={onPinToggle}
+                                className={`p-2 rounded-lg transition-colors ${isPinned ? 'text-brand-primary bg-brand-primary/10 dark:bg-brand-primary/5' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'}`}
+                            >
+                                {isPinned ? <Pin size={16} fill="currentColor" /> : <PinOff size={16} />}
+                            </motion.button>
+                        )}
                     </div>
 
-                    {isExpanded && (
-                        <motion.button
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            onClick={onPinToggle}
-                            className={`p-2 rounded-lg transition-colors ${isPinned ? 'text-brand-primary bg-brand-primary/10 dark:bg-brand-primary/5' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'}`}
-                        >
-                            {isPinned ? <Pin size={16} fill="currentColor" /> : <PinOff size={16} />}
-                        </motion.button>
-                    )}
-                </div>
+                    {/* Navigation */}
+                    <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-none">
+                        {sidebarGroups.map((section, idx) => (
+                            <div key={section.group + idx} className="space-y-2">
+                                {/* Section Label */}
+                                <div className="h-4 flex items-center">
+                                    <AnimatePresence mode="wait">
+                                        {isExpanded ? (
+                                            <motion.h3
+                                                key="expanded-label"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2"
+                                            >
+                                                {section.group}
+                                            </motion.h3>
+                                        ) : (
+                                            <motion.div
+                                                key="collapsed-divider"
+                                                initial={{ scaleX: 0 }}
+                                                animate={{ scaleX: 1 }}
+                                                className="w-full h-px bg-slate-100 dark:bg-white/5 mx-2"
+                                            />
+                                        )}
+                                    </AnimatePresence>
+                                </div>
 
-                {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-none">
-                    {sidebarGroups.map((section, idx) => (
-                        <div key={section.group + idx} className="space-y-2">
-                            {/* Section Label */}
-                            <div className="h-4 flex items-center">
-                                <AnimatePresence mode="wait">
-                                    {isExpanded ? (
-                                        <motion.h3
-                                            key="expanded-label"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2"
-                                        >
-                                            {section.group}
-                                        </motion.h3>
-                                    ) : (
-                                        <motion.div
-                                            key="collapsed-divider"
-                                            initial={{ scaleX: 0 }}
-                                            animate={{ scaleX: 1 }}
-                                            className="w-full h-px bg-slate-100 dark:bg-white/5 mx-2"
-                                        />
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                                <ul className="space-y-1">
+                                    {section.items.map((item, itemIndex) => {
+                                        // Rewrite URL for Tenant Context
+                                        let href = item.href;
+                                        const shouldPrefix =
+                                            tenantSlug &&
+                                            (href.startsWith('/dashboard') ||
+                                                href.startsWith('/leads') ||
+                                                href.startsWith('/members') ||
+                                                href.startsWith('/customers') ||
+                                                href.startsWith('/quotes') ||
+                                                href.startsWith('/sales-orders') ||
+                                                href.startsWith('/receipts') ||
+                                                href.startsWith('/finance-applications') ||
+                                                href.startsWith('/audit-logs') ||
+                                                href.startsWith('/finance') ||
+                                                href.startsWith('/superadmin') ||
+                                                href.startsWith('/inventory') ||
+                                                href.startsWith('/catalog'));
+                                        if (shouldPrefix) {
+                                            href = `/app/${tenantSlug}${href}`;
+                                        }
 
-                            <ul className="space-y-1">
-                                {section.items.map((item, itemIndex) => {
-                                    // Rewrite URL for Tenant Context
-                                    let href = item.href;
-                                    const shouldPrefix =
-                                        tenantSlug &&
-                                        (href.startsWith('/dashboard') ||
-                                            href.startsWith('/leads') ||
-                                            href.startsWith('/members') ||
-                                            href.startsWith('/customers') ||
-                                            href.startsWith('/quotes') ||
-                                            href.startsWith('/sales-orders') ||
-                                            href.startsWith('/finance-applications') ||
-                                            href.startsWith('/audit-logs') ||
-                                            href.startsWith('/finance') ||
-                                            href.startsWith('/superadmin') ||
-                                            href.startsWith('/inventory') ||
-                                            href.startsWith('/catalog'));
-                                    if (shouldPrefix) {
-                                        href = `/app/${tenantSlug}${href}`;
-                                    }
+                                        const isActive = pathname === href;
+                                        const Icon = item.icon;
+                                        const iconColor = item.color || iconPalette[itemIndex % iconPalette.length];
 
-                                    const isActive = pathname === href;
-                                    const Icon = item.icon;
-                                    const iconColor = item.color || iconPalette[itemIndex % iconPalette.length];
-
-                                    return (
-                                        <li key={item.href} className="relative group/item">
-                                            <Link
-                                                href={href}
-                                                className={`
+                                        return (
+                                            <li key={item.href} className="relative group/item">
+                                                <Link
+                                                    href={href}
+                                                    className={`
                                                     relative flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300
                                                     ${
                                                         isActive
@@ -190,83 +195,88 @@ export default function Sidebar({
                                                             : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                                                     }
                                                 `}
-                                            >
-                                                {/* Active Background Pill (Sliding Motion) */}
-                                                {isActive && (
-                                                    <motion.div
-                                                        layoutId="active-pill"
-                                                        className="absolute inset-0 bg-brand-primary/[0.12] dark:bg-brand-primary/[0.15] rounded-xl shadow-[0_4px_20px_rgba(244,176,0,0.1)] z-0"
-                                                        transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                                                    />
-                                                )}
-
-                                                {/* Active Accent Bar */}
-                                                {isActive && (
-                                                    <motion.div
-                                                        layoutId="active-bar"
-                                                        className="absolute left-[-2px] top-1/2 -translate-y-1/2 w-1.5 h-6 bg-brand-primary rounded-full shadow-[0_0_15px_rgba(244,176,0,0.6)] z-10"
-                                                        transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                                                    />
-                                                )}
-
-                                                <div
-                                                    className={`relative z-10 shrink-0 ${isActive ? 'text-brand-primary' : iconColor}`}
                                                 >
-                                                    {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
-                                                </div>
-
-                                                <AnimatePresence>
-                                                    {isExpanded && (
-                                                        <motion.span
-                                                            initial={{ opacity: 0, x: -10 }}
-                                                            animate={{ opacity: 1, x: 0 }}
-                                                            exit={{ opacity: 0, x: -10 }}
-                                                            className="text-sm font-bold whitespace-nowrap"
-                                                        >
-                                                            {item.title}
-                                                        </motion.span>
+                                                    {/* Active Background Pill (Sliding Motion) */}
+                                                    {isActive && (
+                                                        <motion.div
+                                                            layoutId="active-pill"
+                                                            className="absolute inset-0 bg-brand-primary/[0.12] dark:bg-brand-primary/[0.15] rounded-xl shadow-[0_4px_20px_rgba(244,176,0,0.1)] z-0"
+                                                            transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                                                        />
                                                     )}
-                                                </AnimatePresence>
 
-                                                {/* Tooltip for Collapsed View */}
-                                                {!isExpanded && (
-                                                    <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold rounded-lg shadow-xl opacity-0 invisible group-hover/item:opacity-100 group-hover/item:visible transition-all whitespace-nowrap z-[100]">
-                                                        {item.title}
-                                                        <div className="absolute right-full top-1/2 -translate-y-1/2 border-8 border-transparent border-r-slate-900 dark:border-r-white" />
+                                                    {/* Active Accent Bar */}
+                                                    {isActive && (
+                                                        <motion.div
+                                                            layoutId="active-bar"
+                                                            className="absolute left-[-2px] top-1/2 -translate-y-1/2 w-1.5 h-6 bg-brand-primary rounded-full shadow-[0_0_15px_rgba(244,176,0,0.6)] z-10"
+                                                            transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                                                        />
+                                                    )}
+
+                                                    <div
+                                                        className={`relative z-10 shrink-0 ${isActive ? 'text-brand-primary' : iconColor}`}
+                                                    >
+                                                        {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
                                                     </div>
-                                                )}
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    ))}
-                </nav>
 
-                {/* Footer / System Status */}
-                <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-                    <div
-                        className={`flex items-center gap-3 px-2 py-2 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer`}
-                    >
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
-                            <span className="w-2.5 h-2.5 rounded-full bg-white dark:bg-white animate-pulse" />
+                                                    <AnimatePresence>
+                                                        {isExpanded && (
+                                                            <motion.span
+                                                                initial={{ opacity: 0, x: -10 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                exit={{ opacity: 0, x: -10 }}
+                                                                className="text-sm font-bold whitespace-nowrap"
+                                                            >
+                                                                {item.title}
+                                                            </motion.span>
+                                                        )}
+                                                    </AnimatePresence>
+
+                                                    {/* Tooltip for Collapsed View */}
+                                                    {!isExpanded && (
+                                                        <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold rounded-lg shadow-xl opacity-0 invisible group-hover/item:opacity-100 group-hover/item:visible transition-all whitespace-nowrap z-[100]">
+                                                            {item.title}
+                                                            <div className="absolute right-full top-1/2 -translate-y-1/2 border-8 border-transparent border-r-slate-900 dark:border-r-white" />
+                                                        </div>
+                                                    )}
+                                                </Link>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+                        ))}
+                    </nav>
+
+                    {/* Footer / System Status */}
+                    <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
+                        <div
+                            className={`flex items-center gap-3 px-2 py-2 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer`}
+                        >
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
+                                <span className="w-2.5 h-2.5 rounded-full bg-white dark:bg-white animate-pulse" />
+                            </div>
+                            <AnimatePresence>
+                                {isExpanded && (
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="flex flex-col"
+                                    >
+                                        <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                                            System Status
+                                        </span>
+                                        <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">
+                                            99.9% Operational
+                                        </span>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
-                        <AnimatePresence>
-                            {isExpanded && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col">
-                                    <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
-                                        System Status
-                                    </span>
-                                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">
-                                        99.9% Operational
-                                    </span>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
                     </div>
-                </div>
-            </motion.aside>
+                </motion.aside>
+            )}
 
             {/* Mobile Drawer (Simplied for now) */}
             {isMobileOpen && (
@@ -295,6 +305,7 @@ export default function Sidebar({
                                                     href.startsWith('/customers') ||
                                                     href.startsWith('/quotes') ||
                                                     href.startsWith('/sales-orders') ||
+                                                    href.startsWith('/receipts') ||
                                                     href.startsWith('/finance-applications') ||
                                                     href.startsWith('/audit-logs') ||
                                                     href.startsWith('/finance') ||

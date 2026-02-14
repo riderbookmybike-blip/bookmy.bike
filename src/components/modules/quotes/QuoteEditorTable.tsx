@@ -323,7 +323,7 @@ interface QuoteEditorTableProps {
     onConfirmBooking: () => Promise<void>;
     onRefresh?: () => void;
     isEditable?: boolean;
-    mode?: 'quote' | 'booking';
+    mode?: 'quote' | 'booking' | 'receipt';
     dynamicTabLabel?: string;
     defaultTab?: 'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'TRANSACTIONS';
     booking?: {
@@ -530,7 +530,7 @@ const TransactionSection = ({
     <div className="border-b border-slate-100 dark:border-white/5 last:border-b-0">
         <div
             className={cn(
-                'flex items-center justify-between px-6 py-2.5 transition-colors',
+                'flex items-center justify-between px-4 sm:px-6 py-2.5 transition-colors',
                 expanded
                     ? 'bg-slate-50 dark:bg-white/[0.04] border-b border-slate-100 dark:border-white/5'
                     : 'hover:bg-slate-50/50 dark:hover:bg-white/[0.02]'
@@ -2749,9 +2749,19 @@ export default function QuoteEditorTable({
                     {activeTab === 'DYNAMIC' && (
                         <>
                             {mode === 'receipt' && receipt && (
-                                <div className="w-full px-4 pt-6">
-                                    <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2.5rem] shadow-2xl dark:shadow-none overflow-hidden mb-6">
-                                        <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between">
+                                <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
+                                    <div
+                                        className={cn(
+                                            'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 shadow-2xl dark:shadow-none overflow-hidden mb-6',
+                                            isPhone ? 'rounded-none' : 'rounded-[2.5rem]'
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                'py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-xl bg-indigo-600 dark:bg-white flex items-center justify-center text-white dark:text-black shadow-lg shadow-indigo-600/30 dark:shadow-white/10">
                                                     <Receipt size={16} />
@@ -2765,14 +2775,19 @@ export default function QuoteEditorTable({
                                             </div>
                                         </div>
 
-                                        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div
+                                            className={cn(
+                                                'grid grid-cols-1 md:grid-cols-3 gap-4',
+                                                isPhone ? 'p-4' : 'p-6'
+                                            )}
+                                        >
                                             <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
                                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                     Amount
                                                 </div>
                                                 <input
                                                     type="number"
-                                                    disabled={receipt.is_reconciled}
+                                                    disabled={!!receipt.is_reconciled}
                                                     value={receiptDraft?.amount ?? 0}
                                                     onChange={e =>
                                                         setReceiptDraft((prev: any) => ({
@@ -2789,7 +2804,7 @@ export default function QuoteEditorTable({
                                                 </div>
                                                 <input
                                                     type="text"
-                                                    disabled={receipt.is_reconciled}
+                                                    disabled={!!receipt.is_reconciled}
                                                     value={receiptDraft?.method ?? ''}
                                                     onChange={e =>
                                                         setReceiptDraft((prev: any) => ({
@@ -2807,7 +2822,7 @@ export default function QuoteEditorTable({
                                                 </div>
                                                 <input
                                                     type="text"
-                                                    disabled={receipt.is_reconciled}
+                                                    disabled={!!receipt.is_reconciled}
                                                     value={receiptDraft?.status ?? ''}
                                                     onChange={e =>
                                                         setReceiptDraft((prev: any) => ({
@@ -2825,7 +2840,7 @@ export default function QuoteEditorTable({
                                                 </div>
                                                 <input
                                                     type="text"
-                                                    disabled={receipt.is_reconciled}
+                                                    disabled={!!receipt.is_reconciled}
                                                     value={receiptDraft?.transaction_id ?? ''}
                                                     onChange={e =>
                                                         setReceiptDraft((prev: any) => ({
@@ -2842,7 +2857,7 @@ export default function QuoteEditorTable({
                                                 </div>
                                                 <input
                                                     type="text"
-                                                    disabled={receipt.is_reconciled}
+                                                    disabled={!!receipt.is_reconciled}
                                                     value={receiptDraft?.currency ?? 'INR'}
                                                     onChange={e =>
                                                         setReceiptDraft((prev: any) => ({
@@ -2863,7 +2878,12 @@ export default function QuoteEditorTable({
                                             </div>
                                         </div>
 
-                                        <div className="px-8 pb-6 flex items-center justify-between">
+                                        <div
+                                            className={cn(
+                                                'pb-6 flex items-center justify-between',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
                                             <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                 {receipt.reconciled_at
                                                     ? `Reconciled at ${formatDate(receipt.reconciled_at)}`
@@ -2872,14 +2892,14 @@ export default function QuoteEditorTable({
                                             <div className="flex items-center gap-2">
                                                 <Button
                                                     onClick={handleReceiptSave}
-                                                    disabled={receiptSaving || receipt.is_reconciled}
+                                                    disabled={receiptSaving || !!receipt.is_reconciled}
                                                     className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 h-9 text-[10px] font-black uppercase tracking-widest"
                                                 >
                                                     {receiptSaving ? 'Saving...' : 'Save Receipt'}
                                                 </Button>
                                                 <Button
                                                     onClick={handleReceiptReconcile}
-                                                    disabled={receipt.is_reconciled}
+                                                    disabled={!!receipt.is_reconciled}
                                                     className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 h-9 text-[10px] font-black uppercase tracking-widest"
                                                 >
                                                     Mark Reconciled
@@ -2891,9 +2911,19 @@ export default function QuoteEditorTable({
                             )}
 
                             {mode === 'booking' && booking && (
-                                <div className="w-full px-4 pt-6">
-                                    <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2.5rem] shadow-2xl dark:shadow-none overflow-hidden mb-6">
-                                        <div className="px-8 py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between">
+                                <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
+                                    <div
+                                        className={cn(
+                                            'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 shadow-2xl dark:shadow-none overflow-hidden mb-6',
+                                            isPhone ? 'rounded-none' : 'rounded-[2.5rem]'
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                'py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-xl bg-emerald-600 dark:bg-white flex items-center justify-center text-white dark:text-black shadow-lg shadow-emerald-600/30 dark:shadow-white/10">
                                                     <ShoppingBag size={16} />
@@ -2907,7 +2937,12 @@ export default function QuoteEditorTable({
                                             </div>
                                         </div>
 
-                                        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div
+                                            className={cn(
+                                                'grid grid-cols-1 md:grid-cols-3 gap-4',
+                                                isPhone ? 'p-4' : 'p-6'
+                                            )}
+                                        >
                                             <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
                                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                     Status
@@ -2965,12 +3000,20 @@ export default function QuoteEditorTable({
                             )}
 
                             {/* 2. QUOTATION DETAILS PANEL (COLLAPSIBLE) */}
-                            <div className="w-full px-4 pt-6">
-                                <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2.5rem] shadow-2xl dark:shadow-none overflow-hidden mb-6">
+                            <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
+                                <div
+                                    className={cn(
+                                        'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 shadow-2xl dark:shadow-none overflow-hidden mb-6',
+                                        isPhone ? 'rounded-none' : 'rounded-[2.5rem]'
+                                    )}
+                                >
                                     {/* Section Header - Collapsible Trigger */}
                                     <button
                                         onClick={() => setGroups(g => ({ ...g, pricing: !g.pricing }))}
-                                        className="w-full px-8 py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between hover:bg-slate-100/50 dark:hover:bg-white/[0.02] transition-colors"
+                                        className={cn(
+                                            'w-full py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between hover:bg-slate-100/50 dark:hover:bg-white/[0.02] transition-colors',
+                                            isPhone ? 'px-4' : 'px-8'
+                                        )}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-xl bg-indigo-600 dark:bg-white flex items-center justify-center text-white dark:text-black shadow-lg shadow-indigo-600/30 dark:shadow-white/10">
@@ -2999,7 +3042,12 @@ export default function QuoteEditorTable({
                                     {groups.pricing && (
                                         <div className="flex flex-col animate-in fade-in slide-in-from-top-2 duration-300">
                                             {quote.delivery && (
-                                                <div className="px-8 py-4 bg-slate-50/60 dark:bg-white/[0.02] border-b border-slate-100 dark:border-white/5">
+                                                <div
+                                                    className={cn(
+                                                        'py-4 bg-slate-50/60 dark:bg-white/[0.02] border-b border-slate-100 dark:border-white/5',
+                                                        isPhone ? 'px-4' : 'px-8'
+                                                    )}
+                                                >
                                                     <div className="flex items-center justify-between">
                                                         <div>
                                                             <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
@@ -3766,9 +3814,14 @@ export default function QuoteEditorTable({
                     )}
 
                     {activeTab === 'FINANCE' && (
-                        <div className="p-6">
+                        <div className={cn(isPhone ? 'p-0' : 'p-6')}>
                             {mode === 'booking' && (
-                                <div className="mb-6 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
+                                <div
+                                    className={cn(
+                                        'mb-6 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10',
+                                        isPhone ? 'rounded-none p-4' : 'rounded-[2rem] p-6'
+                                    )}
+                                >
                                     <div className="flex items-center justify-between mb-4">
                                         <div>
                                             <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
@@ -3790,7 +3843,12 @@ export default function QuoteEditorTable({
                                             No finance application linked to this booking.
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div
+                                            className={cn(
+                                                'grid gap-3',
+                                                isPhone ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'
+                                            )}
+                                        >
                                             {[
                                                 { key: 'agreement_signed_at', label: 'Agreement Signed' },
                                                 { key: 'enach_done_at', label: 'eNACH Done' },
@@ -3825,7 +3883,12 @@ export default function QuoteEditorTable({
                             )}
                             <div className={mode === 'booking' ? 'pointer-events-none opacity-75' : ''}>
                                 {financeMode === 'CASH' ? (
-                                    <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-12 text-center">
+                                    <div
+                                        className={cn(
+                                            'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 text-center',
+                                            isPhone ? 'rounded-none p-6' : 'rounded-[2rem] p-12'
+                                        )}
+                                    >
                                         <div className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
                                             <Wallet size={32} className="text-slate-400" />
                                         </div>
@@ -3846,10 +3909,18 @@ export default function QuoteEditorTable({
                                 ) : (
                                     <div className="space-y-6">
                                         {/* FINANCE SCHEME CARD */}
-                                        <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-indigo-500/5 transition-all">
+                                        <div
+                                            className={cn(
+                                                'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 overflow-hidden shadow-2xl shadow-indigo-500/5 transition-all',
+                                                isPhone ? 'rounded-none' : 'rounded-[2.5rem]'
+                                            )}
+                                        >
                                             {/* Card Header with Avatar — READ-ONLY, COLLAPSIBLE */}
                                             <div
-                                                className="p-8 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-50 dark:border-white/5 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                                                className={cn(
+                                                    'pb-4 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-50 dark:border-white/5 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors',
+                                                    isPhone ? 'p-4' : 'p-8'
+                                                )}
                                                 onClick={() => setIsPrimaryFinanceExpanded(prev => !prev)}
                                             >
                                                 <div className="flex items-center gap-5">
@@ -4739,7 +4810,7 @@ export default function QuoteEditorTable({
                                                                             fetchSchemesForBank(bankObj.id);
                                                                             fetchBankTeam(bankObj.id);
                                                                         }
-                                                                        setNewFinanceEntries(prev =>
+                                                                        setFinanceEntries(prev =>
                                                                             prev.map(en => {
                                                                                 if (en.id !== entry.id) return en;
                                                                                 const updated = {
@@ -4808,7 +4879,7 @@ export default function QuoteEditorTable({
                                                                     value={entry.executiveName}
                                                                     onChange={e => {
                                                                         const val = e.target.value;
-                                                                        setNewFinanceEntries(prev =>
+                                                                        setFinanceEntries(prev =>
                                                                             prev.map(en => {
                                                                                 if (en.id !== entry.id) return en;
                                                                                 const updated = {
@@ -4938,7 +5009,7 @@ export default function QuoteEditorTable({
                                                                                 value={entry.assetCost || 0}
                                                                                 onChange={e => {
                                                                                     const val = e.target.value;
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -4989,7 +5060,7 @@ export default function QuoteEditorTable({
                                                                                 value={entry.accessoriesCharges || 0}
                                                                                 onChange={e => {
                                                                                     const val = e.target.value;
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -5060,7 +5131,7 @@ export default function QuoteEditorTable({
                                                                                 value={entry.finalAmountPayable || 0}
                                                                                 onChange={e => {
                                                                                     const val = e.target.value;
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -5138,7 +5209,7 @@ export default function QuoteEditorTable({
                                                                                     scheme?.charges?.filter(
                                                                                         c => c.impact === 'FUNDED'
                                                                                     ) || [];
-                                                                                setNewFinanceEntries(prev =>
+                                                                                setFinanceEntries(prev =>
                                                                                     prev.map(en =>
                                                                                         en.id === entry.id
                                                                                             ? {
@@ -5196,7 +5267,7 @@ export default function QuoteEditorTable({
                                                                                 value={entry.loanAmount || 0}
                                                                                 onChange={e => {
                                                                                     const val = e.target.value;
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -5273,7 +5344,7 @@ export default function QuoteEditorTable({
                                                                             </span>
                                                                             <button
                                                                                 onClick={() => {
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -5308,7 +5379,7 @@ export default function QuoteEditorTable({
                                                                             impact: 'UPFRONT',
                                                                             taxStatus: 'NOT_APPLICABLE',
                                                                         };
-                                                                        setNewFinanceEntries(prev =>
+                                                                        setFinanceEntries(prev =>
                                                                             prev.map(en =>
                                                                                 en.id === entry.id
                                                                                     ? {
@@ -5356,7 +5427,7 @@ export default function QuoteEditorTable({
                                                                                 type="number"
                                                                                 value={entry.downPayment || 0}
                                                                                 onChange={e =>
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -5415,7 +5486,7 @@ export default function QuoteEditorTable({
                                                                             </span>
                                                                             <button
                                                                                 onClick={() => {
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -5449,7 +5520,7 @@ export default function QuoteEditorTable({
                                                                             impact: 'FUNDED',
                                                                             taxStatus: 'NOT_APPLICABLE',
                                                                         };
-                                                                        setNewFinanceEntries(prev =>
+                                                                        setFinanceEntries(prev =>
                                                                             prev.map(en =>
                                                                                 en.id === entry.id
                                                                                     ? {
@@ -5507,7 +5578,7 @@ export default function QuoteEditorTable({
                                                                                 type="number"
                                                                                 value={entry.tenure || 0}
                                                                                 onChange={e =>
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -5539,7 +5610,7 @@ export default function QuoteEditorTable({
                                                                                 type="number"
                                                                                 value={entry.emi || 0}
                                                                                 onChange={e =>
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -5570,7 +5641,7 @@ export default function QuoteEditorTable({
                                                                                 value={entry.roi || 0}
                                                                                 step="0.01"
                                                                                 onChange={e =>
-                                                                                    setNewFinanceEntries(prev =>
+                                                                                    setFinanceEntries(prev =>
                                                                                         prev.map(en =>
                                                                                             en.id === entry.id
                                                                                                 ? {
@@ -5908,8 +5979,13 @@ export default function QuoteEditorTable({
                                     : lastEvent?.actor;
 
                             return (
-                                <div className="p-6">
-                                    <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
+                                <div className={cn(isPhone ? 'p-0' : 'p-6')}>
+                                    <div
+                                        className={cn(
+                                            'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10',
+                                            isPhone ? 'rounded-none p-4' : 'rounded-[2rem] p-6'
+                                        )}
+                                    >
                                         <div className="flex items-center justify-between mb-6">
                                             <div className="text-xs font-black uppercase tracking-widest text-slate-500">
                                                 Timeline
@@ -6105,8 +6181,13 @@ export default function QuoteEditorTable({
                         })()}
 
                     {activeTab === 'TRANSACTIONS' && (
-                        <div className="p-6">
-                            <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] overflow-hidden">
+                        <div className={cn(isPhone ? 'p-0' : 'p-6')}>
+                            <div
+                                className={cn(
+                                    'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 overflow-hidden',
+                                    isPhone ? 'rounded-none' : 'rounded-[2rem]'
+                                )}
+                            >
                                 {/* Quotes Section */}
                                 <TransactionSection
                                     title="Quotes"
@@ -6114,69 +6195,27 @@ export default function QuoteEditorTable({
                                     expanded={groups.transactionQuotes || false}
                                     onToggle={() => setGroups(g => ({ ...g, transactionQuotes: !g.transactionQuotes }))}
                                 >
-                                    <div className="w-full overflow-x-auto">
-                                        <table className="w-full min-w-[700px] text-left border-collapse">
-                                            <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
-                                                <tr className="border-b border-slate-100 dark:border-white/5">
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Date
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        ID
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Vehicle
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Total
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Generated By
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Status
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
-                                                        Actions
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {relatedQuotes.map(q => (
-                                                    <tr
+                                    {isPhone ? (
+                                        /* ── PHONE: Vertical card layout ── */
+                                        <div className="divide-y divide-slate-100 dark:divide-white/5">
+                                            {relatedQuotes.length === 0 ? (
+                                                <div className="py-8 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    No quotes found
+                                                </div>
+                                            ) : (
+                                                relatedQuotes.map(q => (
+                                                    <button
                                                         key={q.id}
-                                                        className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                                                        onClick={() => {
+                                                            if (slug)
+                                                                window.location.href = `/app/${slug}/quotes/${q.id}`;
+                                                        }}
+                                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
                                                     >
-                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
-                                                            {q.createdAt ? formatDate(q.createdAt) : '—'}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                            {formatDisplayId(q.displayId)}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                                                            {q.vehicleName ||
-                                                                `${quote.vehicle?.brand} ${quote.vehicle?.model}`}
-                                                            {q.vehicleColor ? (
-                                                                <span className="text-slate-400">
-                                                                    {' '}
-                                                                    • {q.vehicleColor}
-                                                                </span>
-                                                            ) : (
-                                                                ''
-                                                            )}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white tabular-nums">
-                                                            {q.onRoadPrice
-                                                                ? `₹${Number(q.onRoadPrice).toLocaleString('en-IN')}`
-                                                                : '—'}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
-                                                            {q.createdBy
-                                                                ? teamMembers.find(m => m.id === q.createdBy)?.name ||
-                                                                  '—'
-                                                                : '—'}
-                                                        </td>
-                                                        <td className="px-4 py-3">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                                {formatDisplayId(q.displayId)}
+                                                            </span>
                                                             <span
                                                                 className={cn(
                                                                     'px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest',
@@ -6188,33 +6227,137 @@ export default function QuoteEditorTable({
                                                             >
                                                                 {q.status}
                                                             </span>
-                                                        </td>
-                                                        <td className="py-3 px-4 text-right">
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (!slug) return;
-                                                                    window.location.href = `/app/${slug}/quotes/${q.id}`;
-                                                                }}
-                                                                className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-opacity"
-                                                            >
-                                                                View →
-                                                            </button>
-                                                        </td>
+                                                        </div>
+                                                        <div className="text-[10px] font-bold text-slate-500 truncate">
+                                                            {q.vehicleName ||
+                                                                `${quote.vehicle?.brand} ${quote.vehicle?.model}`}
+                                                            {q.vehicleColor ? (
+                                                                <span className="text-slate-400">
+                                                                    {' '}
+                                                                    • {q.vehicleColor}
+                                                                </span>
+                                                            ) : (
+                                                                ''
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center justify-between mt-1">
+                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums">
+                                                                {q.onRoadPrice
+                                                                    ? `₹${Number(q.onRoadPrice).toLocaleString('en-IN')}`
+                                                                    : '—'}
+                                                            </span>
+                                                            <span className="text-[9px] font-bold text-slate-400">
+                                                                {q.createdAt ? formatDate(q.createdAt) : '—'}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    ) : (
+                                        /* ── DESKTOP: Wide table ── */
+                                        <div className="w-full overflow-x-auto">
+                                            <table className="w-full min-w-[700px] text-left border-collapse">
+                                                <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
+                                                    <tr className="border-b border-slate-100 dark:border-white/5">
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Date
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            ID
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Vehicle
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Total
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Generated By
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Status
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                            Actions
+                                                        </th>
                                                     </tr>
-                                                ))}
-                                                {relatedQuotes.length === 0 && (
-                                                    <tr>
-                                                        <td
-                                                            colSpan={7}
-                                                            className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                </thead>
+                                                <tbody>
+                                                    {relatedQuotes.map(q => (
+                                                        <tr
+                                                            key={q.id}
+                                                            className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
                                                         >
-                                                            No quotes found
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                            <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                                {q.createdAt ? formatDate(q.createdAt) : '—'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                                {formatDisplayId(q.displayId)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                                                {q.vehicleName ||
+                                                                    `${quote.vehicle?.brand} ${quote.vehicle?.model}`}
+                                                                {q.vehicleColor ? (
+                                                                    <span className="text-slate-400">
+                                                                        {' '}
+                                                                        • {q.vehicleColor}
+                                                                    </span>
+                                                                ) : (
+                                                                    ''
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white tabular-nums">
+                                                                {q.onRoadPrice
+                                                                    ? `₹${Number(q.onRoadPrice).toLocaleString('en-IN')}`
+                                                                    : '—'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                                {q.createdBy
+                                                                    ? teamMembers.find(m => m.id === q.createdBy)
+                                                                          ?.name || '—'
+                                                                    : '—'}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <span
+                                                                    className={cn(
+                                                                        'px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest',
+                                                                        STATUS_CONFIG[q.status || 'DRAFT']?.bg ||
+                                                                            'bg-slate-100',
+                                                                        STATUS_CONFIG[q.status || 'DRAFT']?.color ||
+                                                                            'text-slate-600'
+                                                                    )}
+                                                                >
+                                                                    {q.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 px-4 text-right">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (!slug) return;
+                                                                        window.location.href = `/app/${slug}/quotes/${q.id}`;
+                                                                    }}
+                                                                    className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-opacity"
+                                                                >
+                                                                    View →
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {relatedQuotes.length === 0 && (
+                                                        <tr>
+                                                            <td
+                                                                colSpan={7}
+                                                                className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                            >
+                                                                No quotes found
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
                                 </TransactionSection>
 
                                 {/* Bookings Section */}
@@ -6226,67 +6369,100 @@ export default function QuoteEditorTable({
                                         setGroups(g => ({ ...g, transactionBookings: !g.transactionBookings }))
                                     }
                                 >
-                                    <div className="w-full overflow-x-auto">
-                                        <table className="w-full min-w-[600px] text-left border-collapse">
-                                            <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
-                                                <tr className="border-b border-slate-100 dark:border-white/5">
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Date
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Booking ID
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Status
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Amount
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
-                                                        Actions
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {bookings.map(b => (
-                                                    <tr
-                                                        key={b.id}
-                                                        className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group"
-                                                    >
-                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
-                                                            {formatDate(b.created_at)}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                            {formatDisplayId(b.display_id || b.id)}
-                                                        </td>
-                                                        <td className="px-4 py-3">
+                                    {isPhone ? (
+                                        /* ── PHONE: Vertical card layout ── */
+                                        <div className="divide-y divide-slate-100 dark:divide-white/5">
+                                            {bookings.length === 0 ? (
+                                                <div className="py-8 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    No bookings found
+                                                </div>
+                                            ) : (
+                                                bookings.map(b => (
+                                                    <div key={b.id} className="px-4 py-3">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                                {formatDisplayId(b.display_id || b.id)}
+                                                            </span>
                                                             <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 text-[8px] font-black uppercase tracking-widest">
                                                                 {b.status}
                                                             </span>
-                                                        </td>
-                                                        <td className="py-3 text-[10px] font-black text-slate-900 dark:text-white">
-                                                            {formatCurrency(b.booking_amount_received || 0)}
-                                                        </td>
-                                                        <td className="py-3 text-right">
-                                                            <button className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                Manage
-                                                            </button>
-                                                        </td>
+                                                        </div>
+                                                        <div className="flex items-center justify-between mt-1">
+                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white">
+                                                                {formatCurrency(b.booking_amount_received || 0)}
+                                                            </span>
+                                                            <span className="text-[9px] font-bold text-slate-400">
+                                                                {formatDate(b.created_at)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    ) : (
+                                        /* ── DESKTOP: Wide table ── */
+                                        <div className="w-full overflow-x-auto">
+                                            <table className="w-full min-w-[600px] text-left border-collapse">
+                                                <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
+                                                    <tr className="border-b border-slate-100 dark:border-white/5">
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Date
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Booking ID
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Status
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Amount
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                            Actions
+                                                        </th>
                                                     </tr>
-                                                ))}
-                                                {bookings.length === 0 && (
-                                                    <tr>
-                                                        <td
-                                                            colSpan={5}
-                                                            className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                </thead>
+                                                <tbody>
+                                                    {bookings.map(b => (
+                                                        <tr
+                                                            key={b.id}
+                                                            className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group"
                                                         >
-                                                            No bookings found
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                            <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                                {formatDate(b.created_at)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                                {formatDisplayId(b.display_id || b.id)}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 text-[8px] font-black uppercase tracking-widest">
+                                                                    {b.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 text-[10px] font-black text-slate-900 dark:text-white">
+                                                                {formatCurrency(b.booking_amount_received || 0)}
+                                                            </td>
+                                                            <td className="py-3 text-right">
+                                                                <button className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    Manage
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {bookings.length === 0 && (
+                                                        <tr>
+                                                            <td
+                                                                colSpan={5}
+                                                                className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                            >
+                                                                No bookings found
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
                                 </TransactionSection>
 
                                 {/* Receipts Section */}
@@ -6298,51 +6474,26 @@ export default function QuoteEditorTable({
                                         setGroups(g => ({ ...g, transactionPayments: !g.transactionPayments }))
                                     }
                                 >
-                                    <div className="w-full overflow-x-auto">
-                                        <table className="w-full min-w-[600px] text-left border-collapse">
-                                            <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
-                                                <tr className="border-b border-slate-100 dark:border-white/5">
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Date
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Receipt ID
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Method
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Amount
-                                                    </th>
-                                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
-                                                        Status
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {payments.map(p => (
-                                                    <tr
+                                    {isPhone ? (
+                                        /* ── PHONE: Vertical card layout ── */
+                                        <div className="divide-y divide-slate-100 dark:divide-white/5">
+                                            {payments.length === 0 ? (
+                                                <div className="py-8 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    No receipts found
+                                                </div>
+                                            ) : (
+                                                payments.map(p => (
+                                                    <button
                                                         key={p.id}
-                                                        className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group cursor-pointer"
                                                         onClick={() => {
-                                                            if (slug) {
-                                                                router.push(`/app/${slug}/receipts/${p.id}`);
-                                                            }
+                                                            if (slug) router.push(`/app/${slug}/receipts/${p.id}`);
                                                         }}
+                                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
                                                     >
-                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
-                                                            {formatDate(p.created_at)}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                            {formatDisplayId(p.display_id || p.id)}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
-                                                            {p.method}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white">
-                                                            {formatCurrency(p.amount)}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                                {formatDisplayId(p.display_id || p.id)}
+                                                            </span>
                                                             <span
                                                                 className={cn(
                                                                     'px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest',
@@ -6353,22 +6504,94 @@ export default function QuoteEditorTable({
                                                             >
                                                                 {p.status}
                                                             </span>
-                                                        </td>
+                                                        </div>
+                                                        <div className="flex items-center justify-between mt-1">
+                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white">
+                                                                {formatCurrency(p.amount)}
+                                                            </span>
+                                                            <span className="text-[9px] font-bold text-slate-400">
+                                                                {p.method?.toUpperCase()} • {formatDate(p.created_at)}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    ) : (
+                                        /* ── DESKTOP: Wide table ── */
+                                        <div className="w-full overflow-x-auto">
+                                            <table className="w-full min-w-[600px] text-left border-collapse">
+                                                <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
+                                                    <tr className="border-b border-slate-100 dark:border-white/5">
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Date
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Receipt ID
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Method
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                            Amount
+                                                        </th>
+                                                        <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                            Status
+                                                        </th>
                                                     </tr>
-                                                ))}
-                                                {payments.length === 0 && (
-                                                    <tr>
-                                                        <td
-                                                            colSpan={5}
-                                                            className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                </thead>
+                                                <tbody>
+                                                    {payments.map(p => (
+                                                        <tr
+                                                            key={p.id}
+                                                            className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group cursor-pointer"
+                                                            onClick={() => {
+                                                                if (slug) {
+                                                                    router.push(`/app/${slug}/receipts/${p.id}`);
+                                                                }
+                                                            }}
                                                         >
-                                                            No receipts found
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                            <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                                {formatDate(p.created_at)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                                {formatDisplayId(p.display_id || p.id)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
+                                                                {p.method}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white">
+                                                                {formatCurrency(p.amount)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <span
+                                                                    className={cn(
+                                                                        'px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest',
+                                                                        p.status === 'captured' ||
+                                                                            p.status === 'success'
+                                                                            ? 'bg-emerald-500/10 text-emerald-600'
+                                                                            : 'bg-amber-500/10 text-amber-600'
+                                                                    )}
+                                                                >
+                                                                    {p.status}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {payments.length === 0 && (
+                                                        <tr>
+                                                            <td
+                                                                colSpan={5}
+                                                                className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                            >
+                                                                No receipts found
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
                                 </TransactionSection>
                             </div>
                         </div>

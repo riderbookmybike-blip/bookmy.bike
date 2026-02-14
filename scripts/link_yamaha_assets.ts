@@ -93,7 +93,7 @@ async function main() {
                 status: 'ACTIVE',
                 created_by: systemUserId,
                 tenant_id: AUMS_TENANT_ID,
-            })
+            } as any)
             .select()
             .single();
 
@@ -145,7 +145,7 @@ async function main() {
                                     : '#FF0000',
                     },
                     tenant_id: AUMS_TENANT_ID,
-                })
+                } as any)
                 .select()
                 .single();
 
@@ -178,7 +178,7 @@ async function main() {
                     tenant_id: AUMS_TENANT_ID,
                     brand_id: YAMAHA_BRAND_ID,
                     template_id: VEHICLE_TEMPLATE_ID,
-                })
+                } as any)
                 .eq('id', existingSku.id);
         } else {
             console.log(`Creating SKU: ${skuSlug}`);
@@ -195,7 +195,7 @@ async function main() {
                     status: 'ACTIVE',
                     created_by: systemUserId,
                     tenant_id: AUMS_TENANT_ID,
-                })
+                } as any)
                 .select()
                 .single();
 

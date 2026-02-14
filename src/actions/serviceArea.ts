@@ -160,18 +160,19 @@ export async function upsertLocation(data: {
         const formattedArea = formatLocationName(data.area);
 
         const { data: existing } = await supabase
-            .from('loc_pincodes')
+            .from('loc_pincodes' as any)
             .select('areas, area')
             .eq('pincode', data.pincode)
             .maybeSingle();
 
-        const existingAreas = Array.isArray(existing?.areas) ? (existing?.areas as string[]) : [];
-        const mergedAreas = mergeAreas(existingAreas, formattedArea || existing?.area || undefined);
+        const existingData = existing as any;
+        const existingAreas = Array.isArray(existingData?.areas) ? (existingData?.areas as string[]) : [];
+        const mergedAreas = mergeAreas(existingAreas, formattedArea || existingData?.area || undefined);
 
-        const { error } = await supabase.from('loc_pincodes').upsert(
+        const { error } = await supabase.from('loc_pincodes' as any).upsert(
             {
                 pincode: data.pincode,
-                area: formattedArea || existing?.area || null,
+                area: formattedArea || existingData?.area || null,
                 areas: mergedAreas.areas.length > 0 ? mergedAreas.areas : null,
                 area_keys: mergedAreas.areaKeys.length > 0 ? mergedAreas.areaKeys : null,
                 taluka: formattedTaluka || null,

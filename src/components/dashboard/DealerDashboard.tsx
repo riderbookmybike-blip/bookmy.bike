@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import Link from 'next/link';
+import { useTenant } from '@/lib/tenant/tenantContext';
 import {
     LayoutDashboard,
     CheckCircle2,
@@ -23,16 +26,9 @@ import {
     FileText,
     ShieldCheck,
     Landmark,
-    ChevronDown
+    ChevronDown,
 } from 'lucide-react';
-import {
-    AreaChart,
-    Area,
-    XAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer
-} from 'recharts';
+import { AreaChart, Area, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { KpiCard, FunnelWidget, PaymentsWidget, RecentActivity, AlertsWidget } from './DashboardWidgets';
 import { InventoryTable } from './InventoryTable';
 
@@ -51,13 +47,19 @@ export default function DealerDashboard({ tenant, role }: any) {
     const [period, setPeriod] = useState('Today');
     const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
     const [displayName, setDisplayName] = useState('');
+    const { device } = useBreakpoint();
+    const { tenantSlug } = useTenant();
+    const isPhone = device === 'phone';
 
     useEffect(() => {
         const fetchUser = async () => {
             const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
             if (user) {
-                const name = user.user_metadata?.full_name?.split(' ')[0] ||
+                const name =
+                    user.user_metadata?.full_name?.split(' ')[0] ||
                     user.user_metadata?.name?.split(' ')[0] ||
                     user.email?.split('@')[0] ||
                     'User';
@@ -68,11 +70,130 @@ export default function DealerDashboard({ tenant, role }: any) {
     }, []);
 
     const periodOptions = [
-        'Today', 'Yesterday', 'This Week', 'Last Week',
-        'MTD', 'Last Month', 'QTD', 'YTD', 'All Time'
+        'Today',
+        'Yesterday',
+        'This Week',
+        'Last Week',
+        'MTD',
+        'Last Month',
+        'QTD',
+        'YTD',
+        'All Time',
     ];
 
     const displayTitle = displayName ? `${displayName}'S` : 'USER';
+
+    // ── PHONE DASHBOARD ──────────────────────────────────────────────
+    if (isPhone) {
+        const resolveHref = (path: string) => (tenantSlug ? `/app/${tenantSlug}${path}` : path);
+        return (
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Greeting */}
+                <div className="pt-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">
+                        Welcome back
+                    </p>
+                    <h1 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white italic uppercase">
+                        {displayName || 'User'} <span className="text-indigo-600">↗</span>
+                    </h1>
+                </div>
+
+                {/* KPI Grid — 2 cols on phone */}
+                <div className="grid grid-cols-2 gap-3">
+                    {[
+                        { label: 'Leads', value: '482', sub: '86 new', color: 'indigo' },
+                        { label: 'Quotes', value: '156', sub: '12 waiting', color: 'violet' },
+                        { label: 'Bookings', value: '42', sub: '₹1.8Cr', color: 'emerald' },
+                        { label: 'Delivery', value: '18', sub: 'PDI ready', color: 'amber' },
+                    ].map(kpi => (
+                        <div
+                            key={kpi.label}
+                            className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 space-y-1.5"
+                        >
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                                {kpi.label}
+                            </p>
+                            <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
+                                {kpi.value}
+                            </p>
+                            <p className={`text-[9px] font-bold text-${kpi.color}-500 uppercase tracking-wider`}>
+                                {kpi.sub}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Quick Actions */}
+                <div className="space-y-2">
+                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">
+                        Quick Actions
+                    </h2>
+                    <div className="grid grid-cols-3 gap-2">
+                        {[
+                            { label: 'New Lead', icon: Users, href: '/leads', color: 'indigo' },
+                            { label: 'Follow Up', icon: Clock, href: '/leads', color: 'amber' },
+                            { label: 'Quotes', icon: FileText, href: '/quotes', color: 'emerald' },
+                        ].map(action => (
+                            <Link
+                                key={action.label}
+                                href={resolveHref(action.href)}
+                                className="flex flex-col items-center gap-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 active:scale-95 transition-transform"
+                            >
+                                <div
+                                    className={`w-10 h-10 rounded-xl bg-${action.color}-500/10 flex items-center justify-center`}
+                                >
+                                    <action.icon size={18} className={`text-${action.color}-600`} />
+                                </div>
+                                <span className="text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center">
+                                    {action.label}
+                                </span>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Target Progress */}
+                <div className="bg-indigo-600 p-5 rounded-2xl text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5">
+                            <Activity size={14} /> Monthly Target
+                        </span>
+                        <span className="text-xs font-black">72%</span>
+                    </div>
+                    <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden mb-3">
+                        <div className="h-full bg-white rounded-full w-[72%]" />
+                    </div>
+                    <p className="text-[10px] font-bold opacity-80 leading-relaxed">
+                        12 deliveries to Tier 1 incentive
+                    </p>
+                </div>
+
+                {/* Today&apos;s Feed */}
+                <div className="space-y-2">
+                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Today</h2>
+                    {[
+                        { text: '3 leads need follow-up', time: '2h ago', dot: 'bg-amber-500' },
+                        { text: 'Quote #Q-0045 approved', time: '4h ago', dot: 'bg-emerald-500' },
+                        { text: 'New lead from website', time: '5h ago', dot: 'bg-indigo-500' },
+                    ].map((item, i) => (
+                        <div
+                            key={i}
+                            className="flex items-center gap-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3"
+                        >
+                            <div className={`w-2 h-2 rounded-full ${item.dot} shrink-0`} />
+                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex-1">
+                                {item.text}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-400 shrink-0">{item.time}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // ── DESKTOP DASHBOARD (unchanged) ────────────────────────────────
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 p-4 md:p-8">
@@ -90,34 +211,37 @@ export default function DealerDashboard({ tenant, role }: any) {
                         className="flex items-center gap-3 bg-white dark:bg-white/5 px-5 py-2.5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm hover:border-indigo-500/30 transition-all active:scale-95"
                     >
                         <Calendar size={16} className="text-indigo-600" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">{period}</span>
-                        <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isPeriodDropdownOpen ? 'rotate-180' : ''}`} />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                            {period}
+                        </span>
+                        <ChevronDown
+                            size={14}
+                            className={`text-slate-400 transition-transform duration-300 ${isPeriodDropdownOpen ? 'rotate-180' : ''}`}
+                        />
                     </button>
 
                     <AnimatePresence>
                         {isPeriodDropdownOpen && (
                             <>
-                                <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setIsPeriodDropdownOpen(false)}
-                                />
+                                <div className="fixed inset-0 z-40" onClick={() => setIsPeriodDropdownOpen(false)} />
                                 <motion.div
                                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                     className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl z-50 overflow-hidden p-1.5"
                                 >
-                                    {periodOptions.map((p) => (
+                                    {periodOptions.map(p => (
                                         <button
                                             key={p}
                                             onClick={() => {
                                                 setPeriod(p);
                                                 setIsPeriodDropdownOpen(false);
                                             }}
-                                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-between group/item ${period === p
-                                                ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600'
-                                                : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-                                                }`}
+                                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-between group/item ${
+                                                period === p
+                                                    ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600'
+                                                    : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                                            }`}
                                         >
                                             {p}
                                             {period === p && <div className="w-1 h-1 rounded-full bg-indigo-600" />}
@@ -132,48 +256,12 @@ export default function DealerDashboard({ tenant, role }: any) {
 
             {/* Industrial KPI Grid - 6 Column Protocol */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <KpiCard
-                    title="Leads"
-                    value="482"
-                    sub="86 New Today"
-                    trend="up"
-                    icon={Users}
-                />
-                <KpiCard
-                    title="Quotes"
-                    value="156"
-                    sub="12 Waiting"
-                    trend="up"
-                    icon={FileText}
-                />
-                <KpiCard
-                    title="Bookings"
-                    value="42"
-                    sub="₹ 1.8 Cr Booked"
-                    trend="up"
-                    icon={CheckCircle2}
-                />
-                <KpiCard
-                    title="Insurance"
-                    value="38"
-                    sub="4 Pending"
-                    trend="neutral"
-                    icon={ShieldCheck}
-                />
-                <KpiCard
-                    title="Registration"
-                    value="24"
-                    sub="In RTO Queue"
-                    trend="down"
-                    icon={Landmark}
-                />
-                <KpiCard
-                    title="Delivery"
-                    value="18"
-                    sub="Ready for PDI"
-                    trend="up"
-                    icon={Package}
-                />
+                <KpiCard title="Leads" value="482" sub="86 New Today" trend="up" icon={Users} />
+                <KpiCard title="Quotes" value="156" sub="12 Waiting" trend="up" icon={FileText} />
+                <KpiCard title="Bookings" value="42" sub="₹ 1.8 Cr Booked" trend="up" icon={CheckCircle2} />
+                <KpiCard title="Insurance" value="38" sub="4 Pending" trend="neutral" icon={ShieldCheck} />
+                <KpiCard title="Registration" value="24" sub="In RTO Queue" trend="down" icon={Landmark} />
+                <KpiCard title="Delivery" value="18" sub="Ready for PDI" trend="up" icon={Package} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -186,7 +274,9 @@ export default function DealerDashboard({ tenant, role }: any) {
                                     <Target size={18} className="text-indigo-600" />
                                     Sales Velocity
                                 </h3>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Daily Booking Volume</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    Daily Booking Volume
+                                </p>
                             </div>
                             <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2">
                                 <ArrowUpRight size={12} className="text-emerald-600" />
@@ -203,7 +293,12 @@ export default function DealerDashboard({ tenant, role }: any) {
                                             <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748b" strokeOpacity={0.1} />
+                                    <CartesianGrid
+                                        strokeDasharray="3 3"
+                                        vertical={false}
+                                        stroke="#64748b"
+                                        strokeOpacity={0.1}
+                                    />
                                     <XAxis
                                         dataKey="day"
                                         axisLine={false}
@@ -211,7 +306,12 @@ export default function DealerDashboard({ tenant, role }: any) {
                                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                                     />
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff' }}
+                                        contentStyle={{
+                                            backgroundColor: '#0f172a',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            color: '#fff',
+                                        }}
                                         labelStyle={{ fontWeight: 900, marginBottom: '4px' }}
                                     />
                                     <Area

@@ -12,6 +12,7 @@ import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { CrmReadOnlyGuard } from '@/components/layout/CrmReadOnlyGuard';
 import { MobileViewBanner } from '@/components/layout/MobileViewBanner';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
     const { userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded, tenantConfig } = useTenant();
@@ -157,7 +158,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     // No gate needed — MobileViewBanner shows a dismissible "best on desktop" hint instead.
 
     // Responsive padding: phone=p-3, tablet=p-5, desktop=p-6/p-8
-    const mainPadding = isPhone ? 'p-3' : isTablet ? 'p-5' : 'p-6 md:p-8';
+    const mainPadding = isPhone ? 'pb-[84px]' : isTablet ? 'p-5' : 'p-6 md:p-8';
     // On phone: no sidebar margin. On tablet: always collapsed (md:ml-20). On desktop: dynamic.
     const contentMargin = isPhone ? '' : isTablet ? 'md:ml-20' : isSidebarExpanded ? 'md:ml-64' : 'md:ml-20';
 
@@ -182,8 +183,6 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
                         isPinned={isTablet ? false : isSidebarPinned}
                         onHoverChange={isTablet ? () => {} : handleSidebarHoverChange}
                         onPinToggle={isTablet ? () => {} : toggleSidebarPin}
-                        isMobileOpen={false}
-                        onMobileClose={() => {}}
                     />
                 )}
 
@@ -201,17 +200,22 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
                 )}
 
                 {/* Main Content Area */}
-                <div className={`flex-1 flex flex-col h-full transition-all duration-300 ease-in-out ${contentMargin}`}>
+                <div
+                    className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-300 ease-in-out ${contentMargin}`}
+                >
                     <main
-                        className={`flex-1 h-full overflow-y-auto ${mainPadding} bg-slate-50 dark:bg-slate-950 relative`}
+                        className={`flex-1 h-full min-w-0 w-full ${isPhone ? 'overflow-hidden' : 'overflow-y-auto'} ${mainPadding} bg-slate-50 dark:bg-slate-950 relative`}
                     >
                         <CrmReadOnlyGuard>{children}</CrmReadOnlyGuard>
                     </main>
                 </div>
             </div>
 
-            {/* Mobile View Banner (only renders on phone/tablet) */}
-            <MobileViewBanner />
+            {/* Phone: Bottom Nav replaces sidebar */}
+            {isPhone && <MobileBottomNav onMoreClick={() => setIsMobileSidebarOpen(true)} />}
+
+            {/* Mobile View Banner (only tablet — phone has bottom nav) */}
+            {!isPhone && <MobileViewBanner />}
             <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="TERMINAL" />
         </div>
     );

@@ -1,13 +1,24 @@
 import {
     ProductVariant,
-    DealerProduct,
     DealerBrandConfig,
     MOCK_VEHICLES,
     MOCK_ACCESSORIES,
     MOCK_SERVICES,
-    MOCK_DEALER_PRODUCTS,
-    MOCK_DEALER_BRANDS
+    MOCK_DEALER_BRANDS,
 } from '@/types/productMaster';
+
+// Local mock override type (not part of shared productMaster exports)
+interface DealerProduct {
+    productVariantId: string;
+    dealerId: string;
+    purchasePrice: number;
+    margin: number;
+    sellingPrice: number;
+    isActive: boolean;
+}
+
+// Local mock overrides (empty by default)
+const MOCK_DEALER_PRODUCTS: DealerProduct[] = [];
 
 export interface PriceBreakdown {
     basePrice: number; // Cost / Purchase Price
@@ -17,7 +28,7 @@ export interface PriceBreakdown {
 }
 
 // Helper to find Master Product
-const getMasterProduct = (variantId: string): ProductVariant | undefined => {
+const getMasterProduct = (variantId: string): any => {
     return [...MOCK_VEHICLES, ...MOCK_ACCESSORIES, ...MOCK_SERVICES].find(p => p.id === variantId);
 };
 
@@ -28,50 +39,43 @@ export function calculateDealerPrice(variantId: string, dealerId: string = 'curr
     }
 
     // 1. Check Variant Override
-    const override = MOCK_DEALER_PRODUCTS.find(
-        dp => dp.productVariantId === variantId && dp.dealerId === dealerId
-    );
+    const override = MOCK_DEALER_PRODUCTS.find(dp => dp.productVariantId === variantId && dp.dealerId === dealerId);
 
     if (override && override.isActive) {
         return {
             basePrice: override.purchasePrice,
             margin: override.margin,
             sellingPrice: override.sellingPrice,
-            source: 'VARIANT_OVERRIDE'
+            source: 'VARIANT_OVERRIDE',
         };
     }
 
     // 2. Check Brand Rule
-    const brandConfig = MOCK_DEALER_BRANDS.find(
-        b => b.brandName === master.make && b.dealerId === dealerId
-    );
+    const brandConfig = MOCK_DEALER_BRANDS.find(b => b.brandName === master.make);
 
-    // Mock Master Base Price (Assume standard purchase price is ~85% of some hypothetical MRP, 
+    // Mock Master Base Price (Assume standard purchase price is ~85% of some hypothetical MRP,
     // but since we don't have MRP in Master, let's assume a base cost for the mock)
-    // For specific mock items, we can harcode or derive. 
+    // For specific mock items, we can harcode or derive.
     // Let's derive a "Standard Purchase Price" based on a mock lookup or random for prototype.
     // actually, let's just assume a base cost map for the MOCK_VEHICLES
     let baseCost = 70000;
-    if (master.type === 'ACCESSORY') baseCost = 1500;
-    if (master.type === 'SERVICE') baseCost = 500;
+    const masterType = (master as any)?.type;
+    if (masterType === 'ACCESSORY') baseCost = 1500;
+    if (masterType === 'SERVICE') baseCost = 500;
 
     // Better mock data handling:
-    if (master.model.includes('Activa')) baseCost = 72000;
-    if (master.model.includes('Classic')) baseCost = 180000;
+    const modelName = (master as any)?.model || (master as any)?.name || '';
+    if (modelName.includes('Activa')) baseCost = 72000;
+    if (modelName.includes('Classic')) baseCost = 180000;
 
     if (brandConfig && brandConfig.isActive) {
-        let margin = 0;
-        if (brandConfig.defaultMarginType === 'FIXED') {
-            margin = brandConfig.defaultMarginValue;
-        } else {
-            margin = baseCost * (brandConfig.defaultMarginValue / 100);
-        }
+        const margin = baseCost * ((brandConfig.margin || 0) / 100);
 
         return {
             basePrice: baseCost,
             margin: margin,
             sellingPrice: baseCost + margin,
-            source: 'BRAND_RULE'
+            source: 'BRAND_RULE',
         };
     }
 
@@ -80,7 +84,7 @@ export function calculateDealerPrice(variantId: string, dealerId: string = 'curr
         basePrice: baseCost,
         margin: 0,
         sellingPrice: baseCost, // Sell at cost? Or maybe valid logic is it's not sellable.
-        source: 'MASTER_FALLBACK'
+        source: 'MASTER_FALLBACK',
     };
 }
 

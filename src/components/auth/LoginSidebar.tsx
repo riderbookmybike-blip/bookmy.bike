@@ -575,7 +575,7 @@ export default function LoginSidebar({
         }
 
         // Fetch Memberships & Redirect
-        let memberships = [];
+        let memberships: any[] = [];
         try {
             const { data: mData, error: mError } = await supabase
                 .from('memberships')
@@ -947,7 +947,9 @@ export default function LoginSidebar({
                                                 disabled={
                                                     loading ||
                                                     (step === 'OTP' && otp.length < 4) ||
-                                                    (step === 'GPS_UPDATE' && location.latitude && location.longitude)
+                                                    Boolean(
+                                                        step === 'GPS_UPDATE' && location.latitude && location.longitude
+                                                    )
                                                 }
                                                 className="w-[80%] max-w-sm mx-auto py-5 bg-black dark:bg-white text-white dark:text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
                                             >

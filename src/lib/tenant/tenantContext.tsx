@@ -163,7 +163,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                         setTenantId(data.id);
                         setTenantNameState(data.name);
                         setTenantTypeState(mappedType);
-                        setTenantConfig(data.config || null);
+                        setTenantConfig((data.config as unknown as TenantConfig) || null);
                         localStorage.setItem('tenant_id', data.id);
                         localStorage.setItem('tenant_name', data.name);
                         localStorage.setItem('tenant_type', mappedType);

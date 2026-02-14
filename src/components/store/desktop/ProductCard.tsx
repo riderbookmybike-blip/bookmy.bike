@@ -10,6 +10,7 @@ import type { ProductVariant } from '@/types/productMaster';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
+import { coinsNeededForPrice } from '@/lib/oclub/coin';
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
     const fullStars = Math.floor(rating);
@@ -42,6 +43,9 @@ export const ProductCard = ({
     isParentCompact = false,
     serverPricing, // SSPP v1: Server-calculated pricing
     isPdp = false, // Hide "Know More" on PDP
+    walletCoins,
+    showOClubPrompt,
+    showBcoinBadge = true,
 }: {
     v: ProductVariant;
     viewMode?: 'grid' | 'list';
@@ -79,6 +83,9 @@ export const ProductCard = ({
         location?: { district?: string | null; state_code?: string | null };
     } | null;
     isPdp?: boolean;
+    walletCoins?: number | null;
+    showOClubPrompt?: boolean;
+    showBcoinBadge?: boolean;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { language } = useI18n();
@@ -200,11 +207,23 @@ export const ProductCard = ({
 
     const pricingLabel = isTrulyOnRoad ? 'ON-ROAD' : 'EX-SHOWROOM';
 
+    const onRoad = v.price?.onRoad || 0;
+    const offerPrice = v.price?.offerPrice || basePrice;
+
+    // SSPP v1: B-Coin Integration
+    // bcoinTotal is the alternative currency view (13 Coins = 1000 INR)
+    const bcoinTotal = coinsNeededForPrice(offerPrice);
+
+    // Assume standard 13-coin signup bonus (₹1000) for catalog potential if no specific pricing
+    const coinPricing = (v.price as any)?.coinPricing || {
+        discount: 1000,
+        coinsUsed: 13,
+    };
+    const bcoinAdjustment = coinPricing.discount || 0;
+
     // If dealer offer exists, price is CONFIRMED not estimated
     const isConfirmedPrice = !!bestOffer;
     // Savings calculation
-    const onRoad = v.price?.onRoad || 0;
-    const offerPrice = v.price?.offerPrice || basePrice;
 
     const offerDelta = bestOffer?.price ?? 0;
     // Calculate savings based on source (Live Best Offer vs Server/Mapped Data)
@@ -704,7 +723,7 @@ export const ProductCard = ({
             </div>
 
             <div
-                className={`${isTv ? 'p-5' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative overflow-hidden bg-[#FAFAFA] dark:bg-[#0f1115]`}
+                className={`${isTv ? 'p-5' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative bg-[#FAFAFA] dark:bg-[#0f1115] z-10`}
             >
                 <div className="relative z-10">
                     <div className="flex items-center justify-between">
@@ -797,67 +816,138 @@ export const ProductCard = ({
                     </div>
                 </div>
 
-                <div className="mt-1.5 md:mt-4 pt-1.5 md:pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
-                    <div className="flex flex-col items-start">
-                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5 italic">
-                            {pricingLabel}
-                        </p>
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="text-xl md:text-2xl font-black italic text-slate-900 dark:text-white px-1 pb-1">
-                                ₹{basePrice.toLocaleString('en-IN')}
-                            </span>
-                        </div>
-                        {districtLabelDisplay && (
-                            <div className="relative group/location flex items-center gap-1.5 mt-2 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg w-fit border border-slate-200/50 dark:border-white/5">
-                                <MapPin size={12} className="text-brand-primary animate-bounce-subtle" />
-                                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest italic">
-                                    {combinedLocationLabel}
-                                </p>
-                                {(dealerLabel || districtLabel) && (
-                                    <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] text-slate-700 dark:text-slate-200 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none z-50">
-                                        <div className="px-3 py-2 space-y-1">
-                                            <p className="font-bold uppercase tracking-widest text-slate-500">
-                                                Studio ID:{' '}
-                                                <span className="text-slate-900 dark:text-white">
-                                                    {studioIdLabel || 'UNASSIGNED'}
-                                                </span>
-                                            </p>
-                                            <p className="font-bold uppercase tracking-widest text-slate-500">
-                                                District:{' '}
-                                                <span className="text-slate-900 dark:text-white">
-                                                    {districtLabelDisplay}
-                                                </span>
-                                            </p>
-                                        </div>
-                                        <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-white dark:bg-slate-900 border-b border-r border-slate-200 dark:border-white/10" />
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {v.price?.isEstimate && !isConfirmedPrice && (
-                            <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest italic mt-1 font-black">
-                                *ESTIMATED PRICE
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex flex-col items-end group/emi relative">
-                        <div className="flex items-center gap-1 mb-0.5">
-                            <p className="text-[10px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest italic">
-                                LOWEST EMI
+                <div className="mt-3 md:mt-6 pt-3 md:pt-6 border-t border-slate-100 dark:border-white/5 grid grid-cols-[1fr_auto_1fr] gap-0 relative z-30">
+                    {/* Left Panel: Offer Price */}
+                    <div className="flex flex-col items-start pr-4">
+                        <div className="relative group/offer flex items-center gap-1.5 mb-1.5">
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.1em] italic">
+                                Offer Price
                             </p>
                             <CircleHelp
                                 size={12}
-                                className="text-slate-400 group-hover/emi:text-green-500 transition-colors cursor-help"
+                                className="text-slate-400 group-hover/offer:text-brand-primary transition-colors cursor-help shrink-0"
                             />
+                            <div className="absolute bottom-full left-0 mb-3 w-56 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-900 shadow-2xl shadow-black/10 opacity-0 invisible group-hover/offer:opacity-100 group-hover/offer:visible transition-all duration-300 pointer-events-none z-50 overflow-hidden">
+                                {/* Header */}
+                                <div className="px-3.5 py-2 bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
+                                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                        Price Breakdown
+                                    </p>
+                                </div>
+                                {/* Rows */}
+                                <div className="px-3.5 py-2.5 space-y-1.5 text-[10px]">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium uppercase tracking-widest text-slate-400">
+                                            On-Road
+                                        </span>
+                                        <span className="font-black text-slate-800 dark:text-white tabular-nums">
+                                            {onRoad > 0 ? `₹${onRoad.toLocaleString('en-IN')}` : '—'}
+                                        </span>
+                                    </div>
+                                    {onRoad > 0 && onRoad > offerPrice && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-medium uppercase tracking-widest text-slate-400">
+                                                Discount
+                                            </span>
+                                            <span className="font-black text-rose-500 tabular-nums">
+                                                −₹{Math.max(0, onRoad - offerPrice).toLocaleString('en-IN')}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {bcoinAdjustment > 0 && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-medium uppercase tracking-widest text-slate-400">
+                                                B-Coin Adj
+                                            </span>
+                                            <span className="font-black text-brand-primary dark:text-yellow-500 tabular-nums">
+                                                −₹{bcoinAdjustment.toLocaleString('en-IN')}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Divider + Total */}
+                                <div className="px-3.5 py-2 bg-slate-50/80 dark:bg-white/[0.03] border-t border-dashed border-slate-200 dark:border-white/10 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-600 dark:text-slate-300">
+                                            Total Offer
+                                        </span>
+                                        <span className="text-[13px] font-black text-slate-900 dark:text-white tabular-nums">
+                                            ₹{(offerPrice - bcoinAdjustment).toLocaleString('en-IN')}
+                                        </span>
+                                    </div>
+
+                                    {(districtLabelDisplay || studioIdLabel) && (
+                                        <div className="pt-2 mt-2 border-t border-slate-200/50 dark:border-white/5 space-y-1">
+                                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                Location Context
+                                            </p>
+                                            <div className="flex flex-col gap-0.5">
+                                                <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                                                    Studio:{' '}
+                                                    <span className="text-slate-900 dark:text-white">
+                                                        {studioIdLabel || 'UNASSIGNED'}
+                                                    </span>
+                                                </p>
+                                                <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                                                    District:{' '}
+                                                    <span className="text-slate-900 dark:text-white">
+                                                        {districtLabelDisplay}
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Arrow */}
+                                <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-slate-50/80 dark:bg-slate-900 border-b border-r border-slate-200/80 dark:border-white/10" />
+                            </div>
                         </div>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-xl md:text-2xl font-black text-green-600 dark:text-green-500 italic">
-                                {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
+
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-[22px] md:text-3xl font-black italic text-slate-900 dark:text-white leading-none">
+                                ₹{offerPrice.toLocaleString('en-IN')}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">/mo</span>
+                            {showBcoinBadge && (
+                                <div className="flex items-center gap-1.5 pl-0.5">
+                                    <span className="relative w-4.5 h-4.5 rounded-full bg-gradient-to-tr from-[#9B7F13] via-[#F4B000] to-[#FFD700] text-slate-950 text-[9px] font-black flex items-center justify-center shrink-0 shadow-[0_2px_5px_rgba(0,0,0,0.15)] border border-[#F4B000]/30 overflow-hidden ring-1 ring-white/20">
+                                        <span style={{ fontFamily: 'Georgia, serif' }} className="relative z-10">
+                                            B
+                                        </span>
+                                        <motion.div
+                                            animate={{ x: ['-100%', '200%'] }}
+                                            transition={{
+                                                duration: 2,
+                                                repeat: Infinity,
+                                                ease: 'linear',
+                                                repeatDelay: 3,
+                                            }}
+                                            className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-20deg]"
+                                        />
+                                    </span>
+                                    <span className="text-base md:text-lg font-bold italic text-slate-600 dark:text-brand-primary/80 leading-none">
+                                        {bcoinTotal.toLocaleString('en-IN')}
+                                    </span>
+                                </div>
+                            )}
                         </div>
-                        {emiValue !== null && (
-                            <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-xl shadow-xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-200 z-50 pointer-events-none">
+                    </div>
+
+                    {/* Vertical Divider */}
+                    <div className="w-px bg-slate-100 dark:bg-white/5 self-stretch my-1" />
+
+                    {/* Right Panel: Lowest EMI */}
+                    <div className="flex flex-col items-end pl-4 group/emi relative">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                            <CircleHelp
+                                size={12}
+                                className="text-slate-400 group-hover/emi:text-emerald-500 transition-colors cursor-help shrink-0"
+                            />
+                            <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-[0.1em] italic text-right">
+                                Lowest EMI
+                            </p>
+
+                            {/* EMI Tooltip */}
+                            <div className="absolute bottom-full right-0 mb-3 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-[10px] rounded-2xl shadow-2xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-300 z-50 pointer-events-none">
                                 {(cachedScheme?.bankName || cachedScheme?.schemeName) && (
                                     <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-white/10">
                                         <span className="font-black text-brand-primary uppercase tracking-wider">
@@ -868,21 +958,50 @@ export const ProductCard = ({
                                         )}
                                     </div>
                                 )}
-                                <p className="leading-relaxed">
-                                    This EMI is calculated on{' '}
-                                    <span className="font-bold text-green-400">
-                                        ₹{(downpayment || 0).toLocaleString('en-IN')}
-                                    </span>{' '}
-                                    downpayment at <span className="font-bold text-green-400">{tenure} months</span>
-                                    {emiIsApprox ? ' (approx)' : ''}.
-                                </p>
-                                <p className="mt-1.5 text-slate-300">
-                                    Adjust your downpayment & tenure or set your budget from the{' '}
-                                    <span className="font-bold text-brand-primary">Filters</span> above.
-                                </p>
-                                <div className="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-2 h-2 bg-slate-900 dark:bg-slate-800"></div>
+                                <div className="space-y-1.5">
+                                    <p className="leading-relaxed text-slate-200">
+                                        EMI calculated on actual on-road price for{' '}
+                                        <span className="text-brand-primary font-bold">
+                                            {serviceability?.location || 'Palghar'}
+                                        </span>{' '}
+                                        district.
+                                    </p>
+                                    <p className="leading-relaxed">
+                                        Based on{' '}
+                                        <span className="font-black text-emerald-400">
+                                            ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                        </span>{' '}
+                                        downpayment at{' '}
+                                        <span className="font-black text-emerald-400">{tenure} months</span>
+                                        {emiIsApprox ? ' (approx)' : ''}.
+                                    </p>
+                                    <p className="pt-1 text-[9px] text-slate-400 italic">
+                                        Adjust your downpayment & tenure from the filters above.
+                                    </p>
+                                </div>
+                                <div className="absolute bottom-0 right-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-slate-900 dark:bg-slate-800" />
                             </div>
-                        )}
+                        </div>
+
+                        <div className="flex flex-col items-end">
+                            <div className="flex items-baseline">
+                                <span className="text-[22px] md:text-3xl font-black text-emerald-600 dark:text-emerald-500 italic leading-none">
+                                    {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
+                                </span>
+                                <span className="text-slate-300 dark:text-white/15 text-lg font-light select-none mx-1">
+                                    /
+                                </span>
+                                <span className="text-base md:text-lg font-bold text-emerald-600/60 dark:text-emerald-500/60 italic leading-none">
+                                    {tenure}
+                                </span>
+                            </div>
+
+                            <div className="mt-1 flex items-center gap-1 bg-emerald-500/5 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/10">
+                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                                    Downpayment ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

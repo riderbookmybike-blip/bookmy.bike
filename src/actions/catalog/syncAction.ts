@@ -320,6 +320,7 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
                         .from('cat_items')
                         .insert({
                             brand_id: plan.brand_id,
+                            category: (family.provenance as any)?.category || 'VEHICLE',
                             type: 'PRODUCT',
                             name: family.name,
                             slug,

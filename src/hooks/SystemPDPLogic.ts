@@ -684,7 +684,7 @@ export function useSystemPDPLogic({
         value: number;
         isDeduction: boolean;
         helpText?: string;
-        impact?: 'UPFRONT' | 'FUNDED';
+        impact?: 'UPFRONT' | 'FUNDED' | 'MONTHLY';
         type?: string;
         calculationBasis?: string;
         taxStatus?: string;

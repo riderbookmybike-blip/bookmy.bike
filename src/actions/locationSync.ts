@@ -44,21 +44,22 @@ export async function syncMemberLocation(input: LocationSyncInput) {
     const resolvedArea = formatLocationName(input.area || pinData?.area || null);
 
     const { data: existingPin } = await adminClient
-        .from('loc_pincodes')
+        .from('loc_pincodes' as any)
         .select('areas, area')
         .eq('pincode', pincode)
         .maybeSingle();
 
-    const existingAreas = Array.isArray(existingPin?.areas) ? (existingPin?.areas as string[]) : [];
-    const mergedAreas = mergeAreas(existingAreas, resolvedArea || existingPin?.area || undefined);
+    const existingPinData = existingPin as any;
+    const existingAreas = Array.isArray(existingPinData?.areas) ? (existingPinData?.areas as string[]) : [];
+    const mergedAreas = mergeAreas(existingAreas, resolvedArea || existingPinData?.area || undefined);
 
-    await adminClient.from('loc_pincodes').upsert(
+    await adminClient.from('loc_pincodes' as any).upsert(
         {
             pincode,
             state: resolvedState,
             district: resolvedDistrict,
             taluka: resolvedTaluka,
-            area: resolvedArea || existingPin?.area || null,
+            area: resolvedArea || existingPinData?.area || null,
             areas: mergedAreas.areas.length > 0 ? mergedAreas.areas : null,
             area_keys: mergedAreas.areaKeys.length > 0 ? mergedAreas.areaKeys : null,
             state_key: resolvedState ? normalizeLocationKey(resolvedState) : null,
@@ -71,12 +72,17 @@ export async function syncMemberLocation(input: LocationSyncInput) {
         { onConflict: 'pincode' }
     );
 
-    const { data: member } = await adminClient.from('id_members').select('metadata').eq('id', user.id).maybeSingle();
+    const { data: member } = await adminClient
+        .from('id_members' as any)
+        .select('metadata')
+        .eq('id', user.id)
+        .maybeSingle();
+    const memberData = member as any;
 
     const updatedMetadata = {
-        ...(member?.metadata || {}),
+        ...(memberData?.metadata || {}),
         location: {
-            ...(member?.metadata as any)?.location,
+            ...(memberData?.metadata as any)?.location,
             area: resolvedArea || null,
             areas: mergedAreas.areas.length > 0 ? mergedAreas.areas : null,
             pincode,
@@ -84,7 +90,7 @@ export async function syncMemberLocation(input: LocationSyncInput) {
     };
 
     await adminClient
-        .from('id_members')
+        .from('id_members' as any)
         .update({
             pincode,
             state: resolvedState,

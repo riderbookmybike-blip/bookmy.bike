@@ -354,7 +354,7 @@ export type Database = {
                     created_at: string;
                     id: string;
                     is_universal: boolean;
-                    sku_id: string;
+                    item_id: string;
                     target_brand_id: string | null;
                     target_family_id: string | null;
                     target_variant_id: string | null;
@@ -363,7 +363,7 @@ export type Database = {
                     created_at?: string;
                     id?: string;
                     is_universal?: boolean;
-                    sku_id: string;
+                    item_id: string;
                     target_brand_id?: string | null;
                     target_family_id?: string | null;
                     target_variant_id?: string | null;
@@ -372,15 +372,15 @@ export type Database = {
                     created_at?: string;
                     id?: string;
                     is_universal?: boolean;
-                    sku_id?: string;
+                    item_id?: string;
                     target_brand_id?: string | null;
                     target_family_id?: string | null;
                     target_variant_id?: string | null;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'cat_item_compatibility_sku_id_fkey';
-                        columns: ['sku_id'];
+                        foreignKeyName: 'cat_item_compatibility_item_id_fkey';
+                        columns: ['item_id'];
                         isOneToOne: false;
                         referencedRelation: 'cat_items';
                         referencedColumns: ['id'];
@@ -1415,6 +1415,7 @@ export type Database = {
                     registration_number: string | null;
                     registration_status: string | null;
                     rto_receipt_number: string | null;
+                    sales_order_snapshot: Json | null;
                     stage_updated_at: string | null;
                     stage_updated_by: string | null;
                     status: string | null;
@@ -1457,6 +1458,7 @@ export type Database = {
                     registration_number?: string | null;
                     registration_status?: string | null;
                     rto_receipt_number?: string | null;
+                    sales_order_snapshot?: Json | null;
                     stage_updated_at?: string | null;
                     stage_updated_by?: string | null;
                     status?: string | null;
@@ -1499,6 +1501,7 @@ export type Database = {
                     registration_number?: string | null;
                     registration_status?: string | null;
                     rto_receipt_number?: string | null;
+                    sales_order_snapshot?: Json | null;
                     stage_updated_at?: string | null;
                     stage_updated_by?: string | null;
                     status?: string | null;
@@ -1578,48 +1581,66 @@ export type Database = {
             };
             crm_finance: {
                 Row: {
+                    agreement_signed_at: string | null;
                     application_number: string | null;
                     approved_amount: number | null;
                     booking_id: string | null;
                     created_at: string | null;
                     display_id: string | null;
+                    disbursement_completed_at: string | null;
+                    disbursement_initiated_at: string | null;
+                    enach_done_at: string | null;
                     id: string;
+                    insurance_requested_at: string | null;
                     interest_rate: number | null;
                     is_active_closing: boolean | null;
                     lender_name: string | null;
                     notes: string | null;
+                    onboarding_initiated_at: string | null;
                     requested_amount: number | null;
                     status: string | null;
                     tenure_months: number | null;
                     updated_at: string | null;
                 };
                 Insert: {
+                    agreement_signed_at?: string | null;
                     application_number?: string | null;
                     approved_amount?: number | null;
                     booking_id?: string | null;
                     created_at?: string | null;
                     display_id?: string | null;
+                    disbursement_completed_at?: string | null;
+                    disbursement_initiated_at?: string | null;
+                    enach_done_at?: string | null;
                     id?: string;
+                    insurance_requested_at?: string | null;
                     interest_rate?: number | null;
                     is_active_closing?: boolean | null;
                     lender_name?: string | null;
                     notes?: string | null;
+                    onboarding_initiated_at?: string | null;
                     requested_amount?: number | null;
                     status?: string | null;
                     tenure_months?: number | null;
                     updated_at?: string | null;
                 };
                 Update: {
+                    agreement_signed_at?: string | null;
                     application_number?: string | null;
                     approved_amount?: number | null;
                     booking_id?: string | null;
                     created_at?: string | null;
                     display_id?: string | null;
+                    disbursement_completed_at?: string | null;
+                    disbursement_initiated_at?: string | null;
+                    enach_done_at?: string | null;
                     id?: string;
+                    insurance_requested_at?: string | null;
                     interest_rate?: number | null;
                     is_active_closing?: boolean | null;
                     lender_name?: string | null;
                     notes?: string | null;
+                    onboarding_initiated_at?: string | null;
                     requested_amount?: number | null;
                     status?: string | null;
                     tenure_months?: number | null;
@@ -2063,6 +2084,111 @@ export type Database = {
                     },
                     {
                         foreignKeyName: 'crm_4_payments_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            crm_receipts: {
+                Row: {
+                    amount: number | null;
+                    booking_id: string | null;
+                    created_at: string | null;
+                    currency: string | null;
+                    deleted_at: string | null;
+                    deleted_by: string | null;
+                    display_id: string | null;
+                    id: string;
+                    is_deleted: boolean | null;
+                    is_reconciled: boolean | null;
+                    lead_id: string | null;
+                    member_id: string | null;
+                    method: string | null;
+                    provider_data: Json | null;
+                    reconciled_at: string | null;
+                    reconciled_by: string | null;
+                    status: string | null;
+                    tenant_id: string | null;
+                    transaction_id: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    amount?: number | null;
+                    booking_id?: string | null;
+                    created_at?: string | null;
+                    currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
+                    display_id?: string | null;
+                    id?: string;
+                    is_deleted?: boolean | null;
+                    is_reconciled?: boolean | null;
+                    lead_id?: string | null;
+                    member_id?: string | null;
+                    method?: string | null;
+                    provider_data?: Json | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    transaction_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    amount?: number | null;
+                    booking_id?: string | null;
+                    created_at?: string | null;
+                    currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
+                    display_id?: string | null;
+                    id?: string;
+                    is_deleted?: boolean | null;
+                    is_reconciled?: boolean | null;
+                    lead_id?: string | null;
+                    member_id?: string | null;
+                    method?: string | null;
+                    provider_data?: Json | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    transaction_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_receipts_booking_id_fkey';
+                        columns: ['booking_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_receipts_lead_id_fkey';
+                        columns: ['lead_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_leads';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_receipts_member_id_fkey';
+                        columns: ['member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_receipts_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_receipts_tenant_id_fkey';
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'tenants';
@@ -3707,6 +3833,7 @@ export type Database = {
                     created_at: string | null;
                     display_id: string | null;
                     email: string | null;
+                    favicon_url: string | null;
                     id: string;
                     location: string | null;
                     logo_url: string | null;
@@ -3723,6 +3850,7 @@ export type Database = {
                     created_at?: string | null;
                     display_id?: string | null;
                     email?: string | null;
+                    favicon_url?: string | null;
                     id?: string;
                     location?: string | null;
                     logo_url?: string | null;
@@ -3739,6 +3867,7 @@ export type Database = {
                     created_at?: string | null;
                     display_id?: string | null;
                     email?: string | null;
+                    favicon_url?: string | null;
                     id?: string;
                     location?: string | null;
                     logo_url?: string | null;
@@ -4424,6 +4553,389 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            oclub_booking_coin_applies: {
+                Row: {
+                    booking_id: string;
+                    coin_amount: number;
+                    coin_type: string;
+                    created_at: string;
+                    id: string;
+                    sponsor_id: string | null;
+                    status: string;
+                };
+                Insert: {
+                    booking_id: string;
+                    coin_amount: number;
+                    coin_type: string;
+                    created_at?: string;
+                    id?: string;
+                    sponsor_id?: string | null;
+                    status?: string;
+                };
+                Update: {
+                    booking_id?: string;
+                    coin_amount?: number;
+                    coin_type?: string;
+                    created_at?: string;
+                    id?: string;
+                    sponsor_id?: string | null;
+                    status?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'oclub_booking_coin_applies_booking_id_fkey';
+                        columns: ['booking_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            oclub_coin_ledger: {
+                Row: {
+                    coin_type: string;
+                    created_at: string;
+                    delta: number;
+                    id: string;
+                    member_id: string;
+                    metadata: Json | null;
+                    source_id: string | null;
+                    source_type: string;
+                    sponsor_id: string | null;
+                    status: string;
+                };
+                Insert: {
+                    coin_type: string;
+                    created_at?: string;
+                    delta: number;
+                    id?: string;
+                    member_id: string;
+                    metadata?: Json | null;
+                    source_id?: string | null;
+                    source_type: string;
+                    sponsor_id?: string | null;
+                    status: string;
+                };
+                Update: {
+                    coin_type?: string;
+                    created_at?: string;
+                    delta?: number;
+                    id?: string;
+                    member_id?: string;
+                    metadata?: Json | null;
+                    source_id?: string | null;
+                    source_type?: string;
+                    sponsor_id?: string | null;
+                    status?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'oclub_coin_ledger_member_id_fkey';
+                        columns: ['member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            oclub_redemption_requests: {
+                Row: {
+                    agent_id: string;
+                    approved_at: string | null;
+                    approved_by: string | null;
+                    booking_id: string;
+                    coin_amount: number;
+                    id: string;
+                    payment_confirmed_at: string | null;
+                    payment_ref: string | null;
+                    rejected_at: string | null;
+                    rejected_by: string | null;
+                    requested_at: string;
+                    sponsor_id: string | null;
+                    status: string;
+                };
+                Insert: {
+                    agent_id: string;
+                    approved_at?: string | null;
+                    approved_by?: string | null;
+                    booking_id: string;
+                    coin_amount: number;
+                    id?: string;
+                    payment_confirmed_at?: string | null;
+                    payment_ref?: string | null;
+                    rejected_at?: string | null;
+                    rejected_by?: string | null;
+                    requested_at?: string;
+                    sponsor_id?: string | null;
+                    status?: string;
+                };
+                Update: {
+                    agent_id?: string;
+                    approved_at?: string | null;
+                    approved_by?: string | null;
+                    booking_id?: string;
+                    coin_amount?: number;
+                    id?: string;
+                    payment_confirmed_at?: string | null;
+                    payment_ref?: string | null;
+                    rejected_at?: string | null;
+                    rejected_by?: string | null;
+                    requested_at?: string;
+                    sponsor_id?: string | null;
+                    status?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'oclub_redemption_requests_agent_id_fkey';
+                        columns: ['agent_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'oclub_redemption_requests_booking_id_fkey';
+                        columns: ['booking_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'oclub_redemption_requests_sponsor_id_fkey';
+                        columns: ['sponsor_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'oclub_sponsors';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            oclub_referrals: {
+                Row: {
+                    created_at: string;
+                    id: string;
+                    lead_id: string;
+                    referred_member_id: string | null;
+                    referrer_member_id: string;
+                    reward_coins: number;
+                    status: string;
+                    unlocked_at: string | null;
+                };
+                Insert: {
+                    created_at?: string;
+                    id?: string;
+                    lead_id: string;
+                    referred_member_id?: string | null;
+                    referrer_member_id: string;
+                    reward_coins?: number;
+                    status?: string;
+                    unlocked_at?: string | null;
+                };
+                Update: {
+                    created_at?: string;
+                    id?: string;
+                    lead_id?: string;
+                    referred_member_id?: string | null;
+                    referrer_member_id?: string;
+                    reward_coins?: number;
+                    status?: string;
+                    unlocked_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'oclub_referrals_lead_id_fkey';
+                        columns: ['lead_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_leads';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'oclub_referrals_referred_member_id_fkey';
+                        columns: ['referred_member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'oclub_referrals_referrer_member_id_fkey';
+                        columns: ['referrer_member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            oclub_sponsor_agents: {
+                Row: {
+                    agent_id: string;
+                    created_at: string;
+                    id: string;
+                    is_primary: boolean;
+                    sponsor_id: string;
+                    status: string;
+                };
+                Insert: {
+                    agent_id: string;
+                    created_at?: string;
+                    id?: string;
+                    is_primary?: boolean;
+                    sponsor_id: string;
+                    status?: string;
+                };
+                Update: {
+                    agent_id?: string;
+                    created_at?: string;
+                    id?: string;
+                    is_primary?: boolean;
+                    sponsor_id?: string;
+                    status?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'oclub_sponsor_agents_agent_id_fkey';
+                        columns: ['agent_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'oclub_sponsor_agents_sponsor_id_fkey';
+                        columns: ['sponsor_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'oclub_sponsors';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            oclub_sponsor_allocations: {
+                Row: {
+                    agent_id: string;
+                    coins: number;
+                    created_at: string;
+                    expires_at: string | null;
+                    id: string;
+                    notes: string | null;
+                    sponsor_id: string;
+                };
+                Insert: {
+                    agent_id: string;
+                    coins: number;
+                    created_at?: string;
+                    expires_at?: string | null;
+                    id?: string;
+                    notes?: string | null;
+                    sponsor_id: string;
+                };
+                Update: {
+                    agent_id?: string;
+                    coins?: number;
+                    created_at?: string;
+                    expires_at?: string | null;
+                    id?: string;
+                    notes?: string | null;
+                    sponsor_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'oclub_sponsor_allocations_agent_id_fkey';
+                        columns: ['agent_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'oclub_sponsor_allocations_sponsor_id_fkey';
+                        columns: ['sponsor_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'oclub_sponsors';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            oclub_sponsors: {
+                Row: {
+                    billing_contact: Json | null;
+                    created_at: string;
+                    id: string;
+                    name: string;
+                    status: string;
+                    tenant_id: string;
+                };
+                Insert: {
+                    billing_contact?: Json | null;
+                    created_at?: string;
+                    id?: string;
+                    name: string;
+                    status?: string;
+                    tenant_id: string;
+                };
+                Update: {
+                    billing_contact?: Json | null;
+                    created_at?: string;
+                    id?: string;
+                    name?: string;
+                    status?: string;
+                    tenant_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'oclub_sponsors_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'oclub_sponsors_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            oclub_wallets: {
+                Row: {
+                    available_referral: number;
+                    available_sponsored: number;
+                    available_system: number;
+                    lifetime_earned: number;
+                    lifetime_redeemed: number;
+                    locked_referral: number;
+                    member_id: string;
+                    pending_sponsored: number;
+                    updated_at: string;
+                };
+                Insert: {
+                    available_referral?: number;
+                    available_sponsored?: number;
+                    available_system?: number;
+                    lifetime_earned?: number;
+                    lifetime_redeemed?: number;
+                    locked_referral?: number;
+                    member_id: string;
+                    pending_sponsored?: number;
+                    updated_at?: string;
+                };
+                Update: {
+                    available_referral?: number;
+                    available_sponsored?: number;
+                    available_system?: number;
+                    lifetime_earned?: number;
+                    lifetime_redeemed?: number;
+                    locked_referral?: number;
+                    member_id?: string;
+                    pending_sponsored?: number;
+                    updated_at?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'oclub_wallets_member_id_fkey';
+                        columns: ['member_id'];
+                        isOneToOne: true;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             sys_role_templates: {
                 Row: {
                     created_at: string | null;
@@ -4564,6 +5076,28 @@ export type Database = {
             check_is_tenant_owner_for_pricing: {
                 Args: { p_tenant_id: string; p_user_id: string };
                 Returns: boolean;
+            };
+            oclub_apply_booking_coins: {
+                Args: {
+                    p_booking_id: string;
+                    p_member_id: string;
+                    p_system_coins: number;
+                    p_referral_coins: number;
+                    p_sponsored_coins: number;
+                };
+                Returns: string;
+            };
+            oclub_approve_redemption: {
+                Args: { p_request_id: string; p_approved_by: string };
+                Returns: undefined;
+            };
+            oclub_confirm_redemption_paid: {
+                Args: { p_request_id: string; p_payment_ref: string };
+                Returns: undefined;
+            };
+            oclub_reject_redemption: {
+                Args: { p_request_id: string; p_rejected_by: string };
+                Returns: undefined;
             };
             encode_base33: { Args: { length: number; num: number }; Returns: string };
             generate_display_id: { Args: never; Returns: string };

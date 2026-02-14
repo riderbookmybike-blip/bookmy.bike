@@ -10,6 +10,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { createQuoteAction } from '@/actions/crm';
 import { toast } from 'sonner';
 import { useSystemDealerContext } from '@/hooks/useSystemDealerContext';
+import { useOClubWallet } from '@/hooks/useOClubWallet';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -74,6 +75,7 @@ export default function ProductClient({
     const router = useRouter();
     const leadIdFromUrl = searchParams.get('leadId');
     const [leadContext, setLeadContext] = useState<{ id: string; name: string } | null>(null);
+    const { availableCoins, isLoggedIn } = useOClubWallet();
     useEffect(() => {
         if (leadIdFromUrl) {
             const fetchLead = async () => {
@@ -593,6 +595,8 @@ export default function ProductClient({
         initialLocation: resolvedLocation || initialLocation,
         bestOffer, // Passing bestOffer to children
         serverPricing, // SSPP v1: Server-calculated pricing breakdown
+        walletCoins: isLoggedIn ? availableCoins : null,
+        showOClubPrompt: !isLoggedIn,
     };
 
     return (

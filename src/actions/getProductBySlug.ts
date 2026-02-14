@@ -78,7 +78,8 @@ export async function getProductBySlug(
     }
 
     // Find the specific variant within the family
-    const variants = (familyData.children || []).filter((c: any) => c.type === 'VARIANT');
+    const children = ((familyData as any).children || []) as any[];
+    const variants = children.filter((c: any) => c.type === 'VARIANT');
     const matchedVariant = variants.find(
         (v: any) =>
             possibleVariantSlugs.includes(v.slug) ||
@@ -125,7 +126,8 @@ export async function getProductBySlug(
 
     // Create a modified family structure with only the matched variant
     const filteredFamily: CatalogItemDB = {
-        ...familyData,
+        ...(familyData as any),
+        slug: familyData.slug || '',
         brand: familyData.brand as any,
         children: matchedVariant ? [matchedVariant] : variants.length > 0 ? [variants[0]] : [],
     };

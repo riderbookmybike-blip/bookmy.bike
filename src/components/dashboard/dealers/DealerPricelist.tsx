@@ -252,7 +252,7 @@ export const DealerPricelist = ({
                     data: { user },
                 } = await supabase.auth.getUser();
                 if (user?.id && tenantId) {
-                    await supabase.from('audit_logs').insert({
+                    await supabase.from('audit_logs' as any).insert({
                         tenant_id: tenantId,
                         actor_id: user.id,
                         action: 'DEALER_PRICING_UPDATED',

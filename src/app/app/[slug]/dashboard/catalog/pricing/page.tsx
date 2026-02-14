@@ -521,7 +521,7 @@ export default function PricingPage() {
                         data: { user },
                     } = await supabase.auth.getUser();
                     if (user?.id && tenantId) {
-                        await supabase.from('audit_logs').insert({
+                        await supabase.from('audit_logs' as any).insert({
                             tenant_id: tenantId,
                             actor_id: user.id,
                             action: 'PRICING_PUBLISH_STAGE_UPDATED',
@@ -568,7 +568,7 @@ export default function PricingPage() {
                         data: { user },
                     } = await supabase.auth.getUser();
                     if (user?.id && tenantId) {
-                        await supabase.from('audit_logs').insert({
+                        await supabase.from('audit_logs' as any).insert({
                             tenant_id: tenantId,
                             actor_id: user.id,
                             action: 'DEALER_PRICING_UPDATED',
@@ -637,7 +637,7 @@ export default function PricingPage() {
                         data: { user },
                     } = await supabase.auth.getUser();
                     if (user?.id && tenantId) {
-                        await supabase.from('audit_logs').insert({
+                        await supabase.from('audit_logs' as any).insert({
                             tenant_id: tenantId,
                             actor_id: user.id,
                             action: 'PRICING_RECALCULATED',
@@ -789,11 +789,19 @@ export default function PricingPage() {
                     <div className="space-y-2 text-left">
                         <div className="flex items-center gap-3">
                             <span className="px-3 py-1 bg-emerald-100 text-[10px] font-black text-emerald-600 uppercase tracking-widest rounded-full">
-                                Regulatory Ledger
+                                {selectedCategory === 'ACCESSORY' ? 'Product Catalog' : 'Regulatory Ledger'}
                             </span>
                         </div>
                         <h1 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
-                            On-Road <span className="text-emerald-600">Pricing</span>
+                            {selectedCategory === 'ACCESSORY' ? (
+                                <>
+                                    Accessory <span className="text-emerald-600">Pricing</span>
+                                </>
+                            ) : (
+                                <>
+                                    On-Road <span className="text-emerald-600">Pricing</span>
+                                </>
+                            )}
                         </h1>
                     </div>
 

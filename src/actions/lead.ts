@@ -146,6 +146,21 @@ export async function submitLead(formData: FormData) {
             return { success: false, message: 'System busy (db). Please try WhatsApp.' };
         }
 
+        if (referrerUserId && lead?.id) {
+            try {
+                await adminClient.rpc(
+                    'oclub_credit_referral' as any,
+                    {
+                        p_referrer_id: referrerUserId,
+                        p_lead_id: lead.id,
+                        p_referred_member_id: member.id,
+                    } as any
+                );
+            } catch (err) {
+                console.error('O-Club referral credit failed:', err);
+            }
+        }
+
         // 6. AUTO-SHARE Logic
         // A. If Dealer explicitly Selected by customer
         if (rawData.selectedDealerId && lead) {

@@ -31,7 +31,7 @@ export async function getDealerPriceAction(itemId: string, stateCode?: string): 
         .maybeSingle();
 
     if (price?.ex_showroom_price) {
-        return parseFloat(price.ex_showroom_price);
+        return Number(price.ex_showroom_price);
     }
 
     // 2. Fallback: Get the base price from cat_items if district price not found

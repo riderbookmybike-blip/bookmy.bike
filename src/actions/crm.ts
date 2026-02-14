@@ -234,6 +234,9 @@ export async function getLeadById(leadId: string) {
     const last9 = data.id.replace(/-/g, '').slice(-9).toUpperCase();
     const displayId = `${last9.slice(0, 3)}-${last9.slice(3, 6)}-${last9.slice(6, 9)}`;
 
+    const utmData = (data.utm_data as any) || {};
+    const referralData = (data.referral_data as any) || {};
+
     return {
         id: data.id,
         displayId,
@@ -244,11 +247,11 @@ export async function getLeadById(leadId: string) {
         taluka: data.customer_taluka,
         dob: data.customer_dob,
         status: data.status,
-        source: data.utm_data?.utm_source || 'WEBSITE',
+        source: utmData.utm_source || 'WEBSITE',
         interestModel: data.interest_model,
         created_at: data.created_at,
         intentScore: data.intent_score || 'COLD',
-        referralSource: data.referral_data?.referred_by_name || data.referral_data?.source,
+        referralSource: referralData.referred_by_name || referralData.source,
         events_log: data.events_log || [],
         raw: data,
     };
@@ -477,7 +480,7 @@ export async function createLeadAction(data: {
             await serverLog({
                 component: 'CRM',
                 action: 'createLeadAction',
-                status: 'SKIP',
+                status: 'INFO',
                 message: `Duplicate lead attempt detected; using existing lead ${existingLead.id}`,
                 payload: { existingLeadId: existingLead.id, customerId },
                 duration_ms: Date.now() - startTime,
@@ -1037,7 +1040,7 @@ export async function getBookingById(bookingId: string) {
 }
 
 export async function createBookingFromQuote(quoteId: string) {
-    const { data: bookingId, error: rpcError } = await adminClient.rpc('create_booking_from_quote', {
+    const { data: bookingId, error: rpcError } = await (adminClient as any).rpc('create_booking_from_quote', {
         quote_id: quoteId,
     });
 
@@ -1046,10 +1049,11 @@ export async function createBookingFromQuote(quoteId: string) {
         return { success: false, message: rpcError.message };
     }
 
+    const bookingIdValue = bookingId as string;
     const { data: booking, error: bookingError } = await adminClient
         .from('crm_bookings')
         .select('*')
-        .eq('id', bookingId)
+        .eq('id', bookingIdValue)
         .eq('is_deleted', false)
         .single();
 
@@ -1579,19 +1583,19 @@ export async function getQuoteById(
     // Cast to any since we just added new columns that aren't in generated types yet
     const q = quote as any;
 
-    const commercials = q.commercials || {};
-    const pricingSnapshot = commercials.pricing_snapshot || {};
+    const commercials: any = q.commercials || {};
+    const pricingSnapshot: any = commercials.pricing_snapshot || {};
     const dealerFromPricing = pricingSnapshot?.dealer || commercials?.dealer || null;
 
     // Fetch high-fidelity pricing from cat_price_state
-    const adminClient = await createClient(true);
+    const pricingClient = await createClient();
     let highFidelityPricing = null;
     const colorId = q.color_id || q.vehicle_sku_id || pricingSnapshot?.color_id;
     const stateCode = commercials.location?.state_code || pricingSnapshot?.location?.state_code;
     const district = commercials.location?.district || pricingSnapshot?.location?.district;
 
     if (colorId && stateCode) {
-        const { data: priceData } = await adminClient
+        const { data: priceData } = await pricingClient
             .from('cat_price_state')
             .select('gst_rate, rto, hsn_code')
             .eq('vehicle_color_id', colorId)
@@ -1907,7 +1911,7 @@ export async function getQuoteById(
             rtoType: pricingSnapshot.rto_type || commercials.rto_type || 'STATE',
             rtoBreakdown: (() => {
                 const type = pricingSnapshot.rto_type || commercials.rto_type || 'STATE';
-                const highFidelityRto = highFidelityPricing?.rto?.[type];
+                const highFidelityRto = (highFidelityPricing as any)?.rto?.[type];
 
                 if (highFidelityRto && typeof highFidelityRto === 'object') {
                     return Object.entries(highFidelityRto)
@@ -2730,7 +2734,7 @@ export async function getTeamMembersForTenant(tenantId: string) {
             teamId: m.id,
             role: m.role,
             displayId: m.display_id,
-            name: memberNameMap.get(m.user_id) || m.display_id || m.role || 'Team Member',
+            name: memberNameMap.get((m.user_id || '') as string) || m.display_id || m.role || 'Team Member',
         }));
 }
 
@@ -3136,8 +3140,8 @@ export async function getQuoteByDisplayId(
     }
 
     // Map to a unified format for the dossier
-    const commercials = quote.commercials || {};
-    const pricingSnapshot = commercials.pricing_snapshot || {};
+    const commercials: any = (quote.commercials as any) || {};
+    const pricingSnapshot: any = commercials.pricing_snapshot || {};
 
     // Fetch high-fidelity pricing (for RTO breakdown parity with CRM)
     let highFidelityPricing = null;
@@ -3417,14 +3421,12 @@ export async function getQuoteByDisplayId(
         return null;
     };
 
-    if (
-        (!resolvedImageUrl || Object.keys(vehicleSpecs).length === 0 || !itemHex) &&
-        (quote.color_id || quote.variant_id)
-    ) {
+    const itemId = (quote.color_id || quote.variant_id) as string | null;
+    if ((!resolvedImageUrl || Object.keys(vehicleSpecs).length === 0 || !itemHex) && itemId) {
         const { data: item } = await supabase
             .from('cat_items')
             .select('image_url, specs, type, parent_id')
-            .eq('id', quote.color_id || quote.variant_id)
+            .eq('id', itemId)
             .maybeSingle();
 
         if (item) {
@@ -3593,7 +3595,7 @@ export async function getQuoteByDisplayId(
     }));
 
     // PDP Options: Registration + Insurance
-    const rtoJson = highFidelityPricing?.rto;
+    const rtoJson: any = (highFidelityPricing as any)?.rto;
     const rtoByType = {
         STATE: parseRtoData(rtoJson?.STATE),
         BH: parseRtoData(rtoJson?.BH),
@@ -3629,7 +3631,7 @@ export async function getQuoteByDisplayId(
         pdpRtoOptions = pricingSnapshot.rto_options;
     }
 
-    const insuranceJson = highFidelityPricing?.insurance;
+    const insuranceJson: any = (highFidelityPricing as any)?.insurance;
     const insuranceGstRate = Number(
         insuranceJson?.gst_rate ?? pricingSnapshot?.insurance_gst_rate ?? pricingSnapshot?.insurance_gst ?? 18
     );
@@ -3768,7 +3770,7 @@ export async function getQuoteByDisplayId(
             customer: {
                 name: quote.customer?.full_name || quote.lead?.customer_name || 'Valued Customer',
                 phone: quote.customer?.primary_phone || quote.lead?.customer_phone || '',
-                email: quote.customer?.primary_email || quote.lead?.customer_email || null,
+                email: quote.customer?.primary_email || (quote.lead as any)?.customer_email || null,
             },
             vehicle: {
                 brand: commercials.brand || '',
@@ -3829,7 +3831,7 @@ export async function getQuoteByDisplayId(
                 rtoTotal: quote.rto_amount || pricingSnapshot?.rto_total || 0,
                 rtoBreakdown: (() => {
                     const type = pricingSnapshot?.rto_type || commercials?.rto_type || 'STATE';
-                    const highFidelityRto = highFidelityPricing?.rto?.[type];
+                    const highFidelityRto = (highFidelityPricing as any)?.rto?.[type];
                     if (highFidelityRto && typeof highFidelityRto === 'object') {
                         return Object.entries(highFidelityRto)
                             .filter(([key]) => key !== 'total' && key !== 'id')
@@ -4094,7 +4096,7 @@ export async function updateReceipt(receiptId: string, updates: Record<string, a
         return { success: false, error: fetchError.message };
     }
 
-    if (existing?.is_reconciled) {
+    if ((existing as any)?.is_reconciled) {
         return { success: false, error: 'Receipt already reconciled' };
     }
 
@@ -4293,7 +4295,7 @@ export async function reassignQuoteDealership(
  */
 export async function getAlternativeRecommendations(variantId: string) {
     // 1. Check persistent recommendations
-    const { data: persistent, error: persistentError } = await adminClient
+    const { data: persistent, error: persistentError } = await (adminClient as any)
         .from('cat_recommendations')
         .select(
             `
@@ -4313,8 +4315,8 @@ export async function getAlternativeRecommendations(variantId: string) {
         .limit(3);
 
     if (!persistentError && persistent && persistent.length > 0) {
-        return persistent.map(p => {
-            const item = p.item as any;
+        return (persistent as any[]).map(p => {
+            const item = (p as any).item as any;
             return {
                 id: item.id,
                 name: item.name,

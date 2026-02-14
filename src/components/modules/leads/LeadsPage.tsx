@@ -11,7 +11,16 @@ import ModuleLanding from '@/components/modules/shared/ModuleLanding';
 import LeadEditorWrapper from '@/components/modules/leads/LeadEditorWrapper';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useCrmMobile } from '@/hooks/useCrmMobile';
-import { Users, Flame, Target, TrendingUp, Clock, LayoutGrid, Search as SearchIcon } from 'lucide-react';
+import {
+    Users,
+    Flame,
+    Target,
+    TrendingUp,
+    Clock,
+    LayoutGrid,
+    Search as SearchIcon,
+    Phone as PhoneIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
 
@@ -40,6 +49,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [view, setView] = useState<'grid' | 'list'>('list');
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
     const fetchLeads = useCallback(async () => {
         if (!tenantId) return;
@@ -88,11 +98,12 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         () =>
             leads.filter(
                 l =>
-                    l.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    formatDisplayId(l.displayId).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (l.phone || '').includes(searchQuery)
+                    (statusFilter === 'ALL' || l.status === statusFilter) &&
+                    (l.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        formatDisplayId(l.displayId).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (l.phone || '').includes(searchQuery))
             ),
-        [leads, searchQuery]
+        [leads, searchQuery, statusFilter]
     );
 
     const stats = [
@@ -131,7 +142,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
     };
 
     // Responsive negative margin: phone=-m-3 (matches ShellLayout p-3), tablet=-m-5, desktop=-m-6 md:-m-8
-    const negativeMargin = isPhone ? '-m-3' : device === 'tablet' ? '-m-5' : '-m-6 md:-m-8';
+    const negativeMargin = isPhone ? '' : device === 'tablet' ? '-m-5' : '-m-6 md:-m-8';
 
     // Phone forces list view (grid cards too large)
     const effectiveView = isPhone ? 'list' : view;
@@ -189,7 +200,28 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                         </div>
                     ) : /* ── LIST VIEW: Phone-optimized cards vs Desktop table ── */
                     isPhone ? (
-                        <div className="space-y-2 pb-20">
+                        <div className="space-y-2 pb-4">
+                            {/* Status filter chips */}
+                            <div className="overflow-x-auto no-scrollbar -mx-4 px-4 mb-3">
+                                <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
+                                    {['ALL', 'NEW', 'CONTACTED', 'QUALIFIED', 'HOT', 'QUOTE', 'BOOKING', 'JUNK'].map(
+                                        chip => (
+                                            <button
+                                                key={chip}
+                                                onClick={() => setStatusFilter(chip)}
+                                                data-crm-allow
+                                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                                                    statusFilter === chip
+                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                                                        : 'bg-white dark:bg-white/5 text-slate-500 border border-slate-200 dark:border-white/10'
+                                                }`}
+                                            >
+                                                {chip}
+                                            </button>
+                                        )
+                                    )}
+                                </div>
+                            </div>
                             {filteredLeads.map(lead => (
                                 <button
                                     key={lead.id}
@@ -215,9 +247,19 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                                 <span className="text-[10px] font-bold text-slate-400 truncate">
                                                     {lead.phone}
                                                 </span>
-                                                <span className="text-[9px] font-black text-slate-500">
-                                                    {lead.intentScore || 'COLD'}
-                                                </span>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <a
+                                                        href={`tel:${lead.phone}`}
+                                                        onClick={e => e.stopPropagation()}
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 active:scale-90 transition-transform"
+                                                        data-crm-allow
+                                                    >
+                                                        <PhoneIcon size={12} />
+                                                    </a>
+                                                    <span className="text-[9px] font-black text-slate-500">
+                                                        {lead.intentScore || 'COLD'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

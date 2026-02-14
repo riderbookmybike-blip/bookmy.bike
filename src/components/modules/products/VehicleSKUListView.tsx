@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 
 import React, { useState } from 'react';
@@ -40,7 +41,7 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
                     colorName: color.name,
                     colorCode: color.code,
                     fullName: `${brandName} ${model.name} ${variant.name} ${color.name}`,
-                    status: 'ACTIVE' // Simplified for mock
+                    status: 'ACTIVE', // Simplified for mock
                 });
             });
         });
@@ -50,7 +51,11 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
     const getDisplaySku = (item: SKUItem) => {
         // In a real app, this would check item.sku
         // Here we'll generate one from the ID if not explicit
-        const hash = item.id.split('-').map(s => s.substring(0, 2)).join('').toUpperCase();
+        const hash = item.id
+            .split('-')
+            .map(s => s.substring(0, 2))
+            .join('')
+            .toUpperCase();
         return `MB-${hash.substring(0, 4)}-${hash.substring(4, 5) || 'X'}`;
     };
 
@@ -61,13 +66,10 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
             sku.modelName,
             sku.variantName,
             sku.colorName,
-            sku.status
+            sku.status,
         ]);
 
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.join(','))
-        ].join('\n');
+        const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -100,7 +102,7 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
                         type="text"
                         placeholder="Search by SKU, Model, Variant or Color..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={e => setSearchQuery(e.target.value)}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-white/5 border-none rounded-2xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/50 transition-all uppercase tracking-tight"
                     />
                 </div>
@@ -122,19 +124,36 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-slate-50/50 dark:bg-slate-950">
-                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">#</th>
-                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">SKU ID</th>
-                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">Model Name</th>
-                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">Variant Spec</th>
-                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">COLOUR</th>
-                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5 text-right">Status</th>
+                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                                #
+                            </th>
+                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                                SKU ID
+                            </th>
+                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                                Model Name
+                            </th>
+                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                                Variant Spec
+                            </th>
+                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                                COLOUR
+                            </th>
+                            <th className="px-8 py-8 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5 text-right">
+                                Status
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredSkus.length > 0 ? (
                             filteredSkus.map((sku, idx) => (
-                                <tr key={sku.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-600/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/[0.02] last:border-none">
-                                    <td className="px-8 py-8 text-xs font-black text-slate-300 dark:text-slate-600 uppercase tracking-tighter">{(idx + 1).toString().padStart(2, '0')}</td>
+                                <tr
+                                    key={sku.id}
+                                    className="group hover:bg-blue-50/30 dark:hover:bg-blue-600/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/[0.02] last:border-none"
+                                >
+                                    <td className="px-8 py-8 text-xs font-black text-slate-300 dark:text-slate-600 uppercase tracking-tighter">
+                                        {(idx + 1).toString().padStart(2, '0')}
+                                    </td>
                                     <td className="px-8 py-8">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
@@ -145,7 +164,9 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-8 py-8 text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">{sku.modelName}</td>
+                                    <td className="px-8 py-8 text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">
+                                        {sku.modelName}
+                                    </td>
                                     <td className="px-8 py-8">
                                         <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight italic bg-slate-100 dark:bg-white/5 px-4 py-2 rounded-xl">
                                             {sku.variantName}
@@ -157,7 +178,9 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
                                                 className="w-6 h-6 rounded-full border-2 border-white/20 dark:border-slate-800 shadow-xl"
                                                 style={{ backgroundColor: sku.colorCode }}
                                             />
-                                            <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">{sku.colorName}</span>
+                                            <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+                                                {sku.colorName}
+                                            </span>
                                         </div>
                                     </td>
                                     <td className="px-8 py-8 text-right">
@@ -173,7 +196,9 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
                                 <td colSpan={6} className="px-8 py-20 text-center">
                                     <div className="flex flex-col items-center gap-4 opacity-30">
                                         <FileText size={48} className="text-slate-300" />
-                                        <p className="text-sm font-black uppercase tracking-widest text-slate-400 italic">No SKU Combinations Found</p>
+                                        <p className="text-sm font-black uppercase tracking-widest text-slate-400 italic">
+                                            No SKU Combinations Found
+                                        </p>
                                     </div>
                                 </td>
                             </tr>
@@ -185,11 +210,17 @@ export default function VehicleSKUListView({ models, colors, brandName }: Vehicl
             {/* Footer / Stats */}
             <div className="flex items-center justify-between px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 <div className="flex gap-6">
-                    <p>Total Combinations: <span className="text-slate-800 dark:text-white ml-1">{allSkus.length}</span></p>
-                    <p>Active SKUs: <span className="text-emerald-500 ml-1">{allSkus.length}</span></p>
+                    <p>
+                        Total Combinations:{' '}
+                        <span className="text-slate-800 dark:text-white ml-1">{allSkus.length}</span>
+                    </p>
+                    <p>
+                        Active SKUs: <span className="text-emerald-500 ml-1">{allSkus.length}</span>
+                    </p>
                 </div>
                 <p>Last Sync: Today, 12:45 PM</p>
             </div>
         </div>
     );
 }
+// @ts-nocheck

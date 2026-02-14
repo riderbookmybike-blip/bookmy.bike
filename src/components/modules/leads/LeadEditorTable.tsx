@@ -2,7 +2,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useTenant } from '@/lib/tenant/tenantContext';
 import {
     Calendar,
     ChevronDown,
@@ -55,6 +57,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
+    const { tenantSlug } = useTenant();
 
     const [activeTab, setActiveTab] = useState<
         'LEAD' | 'QUOTES' | 'BOOKINGS' | 'TRANSACTIONS' | 'TASKS' | 'NOTES' | 'DOCUMENTS' | 'TIMELINE'
@@ -147,11 +150,346 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
               ? 'bg-amber-500/10 text-amber-600'
               : 'bg-slate-100 text-slate-600';
 
+    // ── PHONE DETAIL VIEW ──────────────────────────────────────────
+    if (isPhone) {
+        const resolveHref = (path: string) => (tenantSlug ? `/app/${tenantSlug}${path}` : path);
+        const phoneNumber = lead.phone?.replace(/\D/g, '') || '';
+        const waPhone = phoneNumber.startsWith('91') ? phoneNumber : `91${phoneNumber}`;
+        const timelineEvents = (lead as any).events_log || [];
+
+        const PhoneSection = ({
+            title,
+            defaultOpen = false,
+            count,
+            children,
+        }: {
+            title: string;
+            defaultOpen?: boolean;
+            count?: number;
+            children: React.ReactNode;
+        }) => {
+            const [open, setOpen] = useState(defaultOpen);
+            return (
+                <div className="border-b border-slate-100 dark:border-white/5">
+                    <button
+                        onClick={() => setOpen(!open)}
+                        data-crm-allow
+                        className="w-full flex items-center justify-between px-3 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
+                    >
+                        <div className="flex items-center gap-2">
+                            <ChevronRight
+                                size={14}
+                                className={cn('text-slate-400 transition-transform duration-200', open && 'rotate-90')}
+                            />
+                            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-slate-200">
+                                {title}
+                            </span>
+                            {count !== undefined && count > 0 && (
+                                <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-[8px] font-black text-indigo-600">
+                                    {count}
+                                </span>
+                            )}
+                        </div>
+                        <ChevronDown
+                            size={14}
+                            className={cn('text-slate-300 transition-transform duration-200', open && 'rotate-180')}
+                        />
+                    </button>
+                    <AnimatePresence>
+                        {open && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="px-3 pb-3">{children}</div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            );
+        };
+
+        return (
+            <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10]">
+                {/* Contact Card Hero */}
+                <div className="px-3 pt-1 pb-3 space-y-2.5">
+                    <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-base font-black shadow-lg shrink-0">
+                            {(lead.customerName || 'L').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
+                                    {lead.customerName || 'Lead'}
+                                </h1>
+                                <span
+                                    className={cn(
+                                        'px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shrink-0',
+                                        intentBadge
+                                    )}
+                                >
+                                    {lead.intentScore || 'COLD'}
+                                </span>
+                            </div>
+                            {phoneNumber && (
+                                <a
+                                    href={`tel:${phoneNumber}`}
+                                    className="flex items-center gap-1.5 mt-0.5 text-indigo-600"
+                                >
+                                    <Phone size={11} />
+                                    <span className="text-[11px] font-black tracking-wide">{lead.phone}</span>
+                                </a>
+                            )}
+                            <div className="flex items-center gap-2 mt-0.5 text-[9px] text-slate-400 font-bold flex-wrap">
+                                <span className="font-black uppercase tracking-widest">
+                                    {formatDisplayId(lead.displayId || lead.id)}
+                                </span>
+                                <span>•</span>
+                                <span>{formatDate(lead.created_at)}</span>
+                                {lead.pincode && (
+                                    <>
+                                        <span>•</span>
+                                        <span>📍 {lead.pincode}</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Bar */}
+                    <div className="flex gap-1.5">
+                        {phoneNumber && (
+                            <a
+                                href={`tel:${phoneNumber}`}
+                                className="flex-1 flex items-center justify-center gap-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-transform"
+                            >
+                                <Phone size={13} /> Call
+                            </a>
+                        )}
+                        {phoneNumber && (
+                            <a
+                                href={`https://wa.me/${waPhone}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 flex items-center justify-center gap-1 py-2 bg-[#25D366] text-white rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-transform"
+                            >
+                                💬 WhatsApp
+                            </a>
+                        )}
+                        <Link
+                            href={resolveHref(`/quotes`)}
+                            className="flex-1 flex items-center justify-center gap-1 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-transform"
+                        >
+                            <FileText size={13} /> Quote
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Accordion Sections */}
+                <div
+                    className="flex-1 overflow-y-auto no-scrollbar bg-slate-50/80 dark:bg-slate-950 border-t border-slate-200 dark:border-white/5"
+                    style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+                >
+                    {/* Lead Info */}
+                    <PhoneSection title="Lead Info" defaultOpen={true}>
+                        <div className="space-y-0">
+                            {[
+                                { label: 'Status', value: lead.status || 'NEW' },
+                                { label: 'Source', value: lead.source || '—' },
+                                { label: 'Score', value: lead.intentScore || 'COLD' },
+                                { label: 'Interest', value: lead.interestModel || '—' },
+                                { label: 'Referral', value: lead.referralSource || '—' },
+                                { label: 'Phone', value: lead.phone || '—' },
+                                { label: 'DOB', value: formatDate(lead.dob) },
+                                { label: 'Pincode', value: lead.pincode || '—' },
+                                { label: 'Taluka', value: lead.taluka || '—' },
+                            ].map(row => (
+                                <div
+                                    key={row.label}
+                                    className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-white/5 last:border-0"
+                                >
+                                    <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
+                                        {row.label}
+                                    </span>
+                                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 text-right">
+                                        {row.value}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </PhoneSection>
+
+                    {/* Quotes */}
+                    <PhoneSection title="Quotes" count={quoteCount}>
+                        {quoteCount === 0 ? (
+                            <p className="text-[10px] text-slate-400 font-bold py-2">No quotes yet</p>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {(profile.quotes || []).map((q: any) => {
+                                    const statusColor =
+                                        q.status === 'APPROVED' || q.status === 'SENT'
+                                            ? 'bg-emerald-500/10 text-emerald-600'
+                                            : q.status === 'DRAFT'
+                                              ? 'bg-slate-100 text-slate-600'
+                                              : 'bg-amber-500/10 text-amber-600';
+                                    return (
+                                        <Link
+                                            key={q.id}
+                                            href={resolveHref(`/quotes/${q.id}`)}
+                                            className="block bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2.5 active:scale-[0.98] transition-transform"
+                                        >
+                                            <div className="flex items-center justify-between mb-0.5">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                    {formatDisplayId(q.displayId || q.id)}
+                                                </span>
+                                                <span
+                                                    className={cn(
+                                                        'px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest',
+                                                        statusColor
+                                                    )}
+                                                >
+                                                    {q.status}
+                                                </span>
+                                            </div>
+                                            <div className="text-[9px] text-slate-400 font-bold">
+                                                {formatDate(q.created_at)}
+                                                {q.commercials?.grand_total && (
+                                                    <> • {formatMoney(q.commercials.grand_total)}</>
+                                                )}
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </PhoneSection>
+
+                    {/* Bookings */}
+                    <PhoneSection title="Bookings" count={bookingCount}>
+                        {bookingCount === 0 ? (
+                            <p className="text-[10px] text-slate-400 font-bold py-2">No bookings yet</p>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {(profile.bookings || []).map((b: any) => (
+                                    <div
+                                        key={b.id}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2.5"
+                                    >
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                {formatDisplayId(b.displayId || b.id)}
+                                            </span>
+                                            <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-[8px] font-black text-indigo-600 uppercase tracking-widest">
+                                                {b.status || 'ACTIVE'}
+                                            </span>
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 font-bold">
+                                            {formatDate(b.created_at)}
+                                            {b.amount && <> • {formatMoney(b.amount)}</>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </PhoneSection>
+
+                    {/* Receipts */}
+                    <PhoneSection title="Receipts" count={profile.receipts?.length || 0}>
+                        {(profile.receipts?.length || 0) === 0 ? (
+                            <p className="text-[10px] text-slate-400 font-bold py-2">No receipts yet</p>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {(profile.receipts || []).map((r: any) => (
+                                    <div
+                                        key={r.id}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2.5"
+                                    >
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                {formatDisplayId(r.displayId || r.id)}
+                                            </span>
+                                            <span className="text-[10px] font-black text-emerald-600">
+                                                {formatMoney(r.amount)}
+                                            </span>
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 font-bold">
+                                            {formatDate(r.created_at)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </PhoneSection>
+
+                    {/* Notes */}
+                    <PhoneSection title="Notes">
+                        <textarea
+                            placeholder="Add a note about this lead..."
+                            className="w-full h-24 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-3 text-[11px] font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 placeholder:text-slate-400 resize-none"
+                        />
+                    </PhoneSection>
+
+                    {/* Tasks */}
+                    <PhoneSection title="Tasks">
+                        <div className="py-4 text-center">
+                            <Clock size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                Tasks coming soon
+                            </p>
+                        </div>
+                    </PhoneSection>
+
+                    {/* Documents */}
+                    <PhoneSection title="Documents">
+                        <div className="py-4 text-center">
+                            <FileText size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                Documents coming soon
+                            </p>
+                        </div>
+                    </PhoneSection>
+
+                    {/* Timeline */}
+                    <PhoneSection title="Timeline" count={timelineEvents.length || undefined}>
+                        {timelineEvents.length === 0 ? (
+                            <div className="py-4 text-center">
+                                <Clock size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                    No timeline events
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {timelineEvents.map((ev: any, i: number) => (
+                                    <div
+                                        key={i}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2.5"
+                                    >
+                                        <div className="text-[10px] font-black text-slate-700 dark:text-slate-200">
+                                            {ev.title || ev.type?.replace('_', ' ')}
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 font-bold mt-0.5">
+                                            {ev.description || 'System event'}
+                                            {ev.timestamp && <> • {new Date(ev.timestamp).toLocaleDateString()}</>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </PhoneSection>
+                </div>
+            </div>
+        );
+    }
+
+    // ── DESKTOP DETAIL VIEW (unchanged) ──────────────────────────────
     return (
         <div className="h-full flex flex-col">
             {/* HEADER */}
             <div className="bg-white dark:bg-[#0b0d10] border-b border-slate-100 dark:border-white/5">
-                <div className={cn(isPhone ? 'px-4 pt-4 pb-3' : 'px-6 pt-6 pb-4', 'flex flex-col gap-4')}>
+                <div className="px-6 pt-6 pb-4 flex flex-col gap-4">
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4 min-w-0">
                             <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-lg font-black shadow-lg">
@@ -182,19 +520,17 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                 </div>
                             </div>
                         </div>
-                        {!isPhone && (
-                            <div className="flex items-center gap-2">
-                                <button className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors">
-                                    Edit
-                                </button>
-                                <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
-                                    Generate Quote <ChevronDown size={14} />
-                                </button>
-                                <button className="p-2 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 hover:text-indigo-600 transition-colors">
-                                    <MoreHorizontal size={18} />
-                                </button>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <button className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors">
+                                Edit
+                            </button>
+                            <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
+                                Generate Quote <ChevronDown size={14} />
+                            </button>
+                            <button className="p-2 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 hover:text-indigo-600 transition-colors">
+                                <MoreHorizontal size={18} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -203,22 +539,17 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             <div
                 className={cn(
                     'sticky top-0 z-10 bg-white/20 dark:bg-white/[0.03] backdrop-blur-xl rounded-2xl overflow-hidden border border-white/20 dark:border-white/5 shadow-sm',
-                    isPhone ? 'mx-2 mt-2' : 'mx-4 mt-4'
+                    'mx-4 mt-4'
                 )}
             >
-                <div
-                    className={cn(
-                        'text-[9px] font-black uppercase tracking-widest w-full',
-                        isPhone ? 'flex overflow-x-auto no-scrollbar' : 'grid grid-cols-8'
-                    )}
-                >
+                <div className={cn('text-[9px] font-black uppercase tracking-widest w-full', 'grid grid-cols-8')}>
                     {tabs.map((tab, idx) => (
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key as any)}
                             className={cn(
                                 'py-3 text-center transition-all relative whitespace-nowrap',
-                                isPhone ? 'min-w-[80px] shrink-0 px-3' : 'w-full',
+                                'w-full',
                                 idx < 7 ? 'border-r border-slate-100 dark:border-white/10' : '',
                                 activeTab === tab.key
                                     ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'

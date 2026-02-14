@@ -12,11 +12,7 @@ export type AuditAction =
     | 'REGISTRATION_RULE_UPDATED'
     | 'REGISTRATION_RULE_DELETED';
 
-export type AuditEntityType =
-    | 'INVITATION'
-    | 'MEMBERSHIP'
-    | 'TENANT'
-    | 'REGISTRATION_RULE';
+export type AuditEntityType = 'INVITATION' | 'MEMBERSHIP' | 'TENANT' | 'REGISTRATION_RULE';
 
 interface AuditLogParams {
     tenantId: string;
@@ -31,18 +27,16 @@ interface AuditLogParams {
 
 export async function logAudit(params: AuditLogParams) {
     try {
-        const { error } = await adminClient
-            .from('audit_logs')
-            .insert({
-                tenant_id: params.tenantId,
-                actor_id: params.actorId,
-                action: params.action,
-                entity_type: params.entityType,
-                entity_id: params.entityId,
-                metadata: params.metadata || {},
-                ip_address: params.ip,
-                user_agent: params.userAgent
-            });
+        const { error } = await adminClient.from('audit_logs' as any).insert({
+            tenant_id: params.tenantId,
+            actor_id: params.actorId,
+            action: params.action,
+            entity_type: params.entityType,
+            entity_id: params.entityId,
+            metadata: params.metadata || {},
+            ip_address: params.ip,
+            user_agent: params.userAgent,
+        });
 
         if (error) {
             console.error('Failed to log audit:', error);

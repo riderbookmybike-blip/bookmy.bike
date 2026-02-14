@@ -33,10 +33,10 @@ import { Button } from '@/components/ui/button';
 interface Document {
     id: string;
     path: string;
-    file_type: string;
-    purpose: string;
+    file_type: string | null;
+    purpose: string | null;
     metadata: any;
-    created_at: string;
+    created_at: string | null;
 }
 
 interface DocumentManagerProps {
@@ -401,10 +401,10 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                                   >
                                       <div className="flex items-center gap-4">
                                           <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-black/20 flex items-center justify-center">
-                                              {doc.file_type.includes('image') ? (
+                                              {(doc.file_type || '').includes('image') ? (
                                                   <img
                                                       src={getViewUrl(doc.path, doc.id)}
-                                                      alt={doc.purpose}
+                                                      alt={doc.purpose || ''}
                                                       className="w-full h-full object-cover"
                                                   />
                                               ) : (
@@ -413,7 +413,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                                           </div>
                                           <div>
                                               <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">
-                                                  {doc.purpose}
+                                                  {doc.purpose || 'DOCUMENT'}
                                               </div>
                                               <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
                                                   {doc.metadata?.originalName || 'document.bin'}
@@ -466,10 +466,10 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                                       </button>
                                   )}
 
-                                  {doc.file_type.includes('image') ? (
+                                  {(doc.file_type || '').includes('image') ? (
                                       <img
                                           src={getViewUrl(doc.path, doc.id)}
-                                          alt={doc.purpose}
+                                          alt={doc.purpose || ''}
                                           className="w-full h-full object-contain bg-slate-200 dark:bg-black/50 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
                                       />
                                   ) : (
@@ -488,7 +488,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                                       <div className="flex items-center justify-between">
                                           <div>
                                               <div className="px-3 py-1 bg-indigo-500/20 border border-indigo-500/30 rounded-lg text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-2 inline-block">
-                                                  {doc.purpose}
+                                                  {doc.purpose || 'DOCUMENT'}
                                               </div>
                                               <p className="text-xs font-bold text-white uppercase tracking-tighter truncate max-w-[120px]">
                                                   {doc.metadata?.originalName || 'document.bin'}
@@ -647,7 +647,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                             </div>
 
                             <div className="flex items-center gap-4">
-                                {viewingDoc.file_type.includes('image') && (
+                                {(viewingDoc.file_type || '').includes('image') && (
                                     <Button
                                         onClick={() => {
                                             const url = getViewUrl(viewingDoc.path, viewingDoc.id);
@@ -739,10 +739,10 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                         </div>
 
                         <div className="flex-1 w-full bg-black/40 rounded-[3rem] border border-white/5 overflow-hidden flex items-center justify-center relative">
-                            {viewingDoc.file_type.includes('image') ? (
+                            {(viewingDoc.file_type || '').includes('image') ? (
                                 <img
                                     src={getViewUrl(viewingDoc.path, viewingDoc.id)}
-                                    alt={viewingDoc.purpose}
+                                    alt={viewingDoc.purpose || ''}
                                     className="max-w-full max-h-full object-contain"
                                 />
                             ) : (

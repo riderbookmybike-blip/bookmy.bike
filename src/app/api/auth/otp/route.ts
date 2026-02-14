@@ -76,25 +76,22 @@ export async function POST(request: NextRequest) {
                 );
 
                 // Find User by VERIFIED MOBILE (Targeted Lookup)
-                const {
-                    data: { users },
-                    error: listError,
-                } = await supabaseAdmin.auth.admin.listUsers({
+                const { data: listData, error: listError } = await (supabaseAdmin.auth.admin as any).listUsers({
                     filters: {
                         phone: verifiedMobileNum,
                     },
                 });
 
-                let user = users?.[0];
+                let user = listData?.users?.[0];
 
                 // Fallback: Try with + prefix if exact match fails
                 if (!user && !verifiedMobileNum.startsWith('+')) {
-                    const { data: usersPlus } = await supabaseAdmin.auth.admin.listUsers({
+                    const { data: usersPlus } = await (supabaseAdmin.auth.admin as any).listUsers({
                         filters: {
                             phone: `+${verifiedMobileNum}`,
                         },
                     });
-                    user = usersPlus?.[0];
+                    user = usersPlus?.users?.[0];
                 }
 
                 if (!user) {

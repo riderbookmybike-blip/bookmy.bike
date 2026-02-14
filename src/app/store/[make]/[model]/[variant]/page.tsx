@@ -492,10 +492,30 @@ export default async function Page({ params, searchParams }: Props) {
     // Only fetch SKU-type items (final products), not PRODUCT/VARIANT hierarchy items
     const { data: accessoriesData } = await supabase
         .from('cat_items')
-        .select('*, brand:cat_brands(name), category')
+        .select('*, brand:cat_brands(name), category, image_url')
         .eq('category', 'ACCESSORY')
         .eq('type', 'SKU') // Only final SKUs, not PRODUCT or VARIANT
         .eq('status', 'ACTIVE');
+
+    // Batch-fetch parent hierarchy for product grouping (SKU → VARIANT → PRODUCT)
+    const accParentIds = [...new Set((accessoriesData || []).map((a: any) => a.parent_id).filter(Boolean))];
+    let accVariantMap = new Map<string, any>();
+    let accProductMap = new Map<string, any>();
+    if (accParentIds.length > 0) {
+        const { data: accVariants } = await supabase
+            .from('cat_items')
+            .select('id, name, parent_id, image_url')
+            .in('id', accParentIds);
+        (accVariants || []).forEach((v: any) => accVariantMap.set(v.id, v));
+        const accGrandparentIds = [...new Set((accVariants || []).map((v: any) => v.parent_id).filter(Boolean))];
+        if (accGrandparentIds.length > 0) {
+            const { data: accProducts } = await supabase
+                .from('cat_items')
+                .select('id, name, image_url')
+                .in('id', accGrandparentIds);
+            (accProducts || []).forEach((p: any) => accProductMap.set(p.id, p));
+        }
+    }
 
     const { data: servicesData } = await supabase.from('cat_services').select('*').eq('status', 'ACTIVE');
 
@@ -854,11 +874,24 @@ export default async function Page({ params, searchParams }: Props) {
         })
         .map((a: any) => {
             const rule = accessoryRules.get(a.id);
-            const offer = rule ? rule.offer : 0; // Negative for discount
-            const basePrice = Number(a.price_base);
-            // Effective price is Base + Offer (e.g. 2500 + (-2500) = 0)
-            // Ensure strictly non-negative
-            const discountPrice = Math.max(0, basePrice + offer);
+            const offer = rule ? rule.offer : 0;
+            const basePrice = Number(a.price_base) || 0;
+
+            // Pricing logic for accessories:
+            // - offer < 0: abs(offer) IS the sell price (dealer commercial stores sell price as negative)
+            // - offer > 0: offer IS the sell price (e.g. helmets at ₹499)
+            // - offer = 0: no dealer pricing, fall back to price_base
+            // - price_base > 0: this is the MRP (for strikethrough display)
+            let mrp = basePrice;
+            let sellPrice = basePrice; // default: sell = MRP (no discount)
+            if (offer < 0) {
+                sellPrice = Math.abs(offer);
+            } else if (offer > 0) {
+                sellPrice = offer;
+            }
+            // If MRP not set, use sell price as MRP (no strikethrough)
+            if (mrp === 0) mrp = sellPrice;
+            // price = MRP (for strikethrough display), discountPrice = actual selling price
 
             const inclusionType =
                 rule?.inclusion ||
@@ -882,20 +915,38 @@ export default async function Page({ params, searchParams }: Props) {
             const displayName = [a.brand?.name, a.name].filter(Boolean).join(' ');
             const descriptionLabel = [accessoryName, colorLabel].filter(Boolean).join(' ');
 
+            // Resolve product group from parent chain
+            const parentVariant = accVariantMap.get(a.parent_id);
+            const parentProduct = parentVariant ? accProductMap.get(parentVariant.parent_id) : null;
+            const productGroupName = parentProduct?.name || parentVariant?.name || accessoryName;
+            const productGroupImage = parentProduct?.image_url || parentVariant?.image_url || null;
+            const skuImage =
+                a.image_url ||
+                a.specs?.primary_image ||
+                a.specs?.gallery?.[0] ||
+                parentVariant?.image_url ||
+                productGroupImage ||
+                null;
+
             return {
                 id: a.id,
                 name: a.name,
                 displayName: displayName,
                 description: descriptionLabel,
                 suitableFor: a.specs?.suitable_for || '',
-                price: basePrice,
-                discountPrice: discountPrice,
-                maxQty: 1,
+                price: mrp,
+                discountPrice: sellPrice,
+                maxQty: a.specs?.max_qty || 1,
                 isMandatory: isMandatory,
                 inclusionType: inclusionType,
                 category: a.category || 'OTHERS',
                 brand: a.brand?.name || null,
                 subCategory: null,
+                productGroup: productGroupName,
+                variantName: parentVariant?.name || '',
+                unit: a.specs?.Unit || '',
+                productGroupImage: productGroupImage,
+                image: skuImage,
             };
         });
 

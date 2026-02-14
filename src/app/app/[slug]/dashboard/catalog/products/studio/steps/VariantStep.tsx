@@ -1,7 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, Plus, Search, ImageIcon, Video, FileText, Edit2, Gauge, Box, CheckCircle2 } from 'lucide-react';
+import {
+    Trash2,
+    Plus,
+    Search,
+    ImageIcon,
+    Video,
+    FileText,
+    Edit2,
+    Gauge,
+    Box,
+    CheckCircle2,
+    Link2,
+    X,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import Modal from '@/components/ui/Modal';
@@ -36,6 +49,227 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
 
     const [editingVariant, setEditingVariant] = useState<any>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+    // ─── Compatibility (Suitable For) State ───
+    const [compatEntries, setCompatEntries] = useState<any[]>([]);
+    const [compatBrands, setCompatBrands] = useState<any[]>([]);
+    const [compatModels, setCompatModels] = useState<any[]>([]);
+    const [compatVariants, setCompatVariants] = useState<any[]>([]);
+    const [selCompatBrand, setSelCompatBrand] = useState<string>('');
+    const [selCompatModel, setSelCompatModel] = useState<string>('');
+    const [selCompatVariant, setSelCompatVariant] = useState<string>('');
+    const [isSavingVariant, setIsSavingVariant] = useState(false);
+
+    // Card-level compatibility display (map of variantId -> label[])
+    const [cardCompatMap, setCardCompatMap] = useState<Record<string, string[]>>({});
+
+    // Fetch brands for compatibility on mount + load card compat for all variants
+    useEffect(() => {
+        if (family?.category !== 'ACCESSORY') return;
+        const fetchBrands = async () => {
+            const supabase = createClient();
+            const { data } = await supabase.from('cat_brands').select('id, name').eq('is_active', true).order('name');
+            if (data) setCompatBrands(data);
+        };
+        fetchBrands();
+        loadAllCardCompat();
+    }, [family?.category, existingVariants?.length]);
+
+    // Load compatibility labels for all variant cards
+    const loadAllCardCompat = async () => {
+        if (family?.category !== 'ACCESSORY' || !existingVariants?.length) return;
+        const supabase = createClient();
+        const variantIds = existingVariants.map((v: any) => v.id);
+        const { data: allCompat } = await supabase
+            .from('cat_item_compatibility')
+            .select('item_id, is_universal, target_brand_id, target_family_id, target_variant_id')
+            .in('item_id', variantIds);
+        if (!allCompat || allCompat.length === 0) {
+            setCardCompatMap({});
+            return;
+        }
+
+        // Collect unique IDs for batch lookup
+        const brandIds = new Set<string>();
+        const familyIds = new Set<string>();
+        const varIds = new Set<string>();
+        allCompat.forEach((c: any) => {
+            if (c.target_brand_id) brandIds.add(c.target_brand_id);
+            if (c.target_family_id) familyIds.add(c.target_family_id);
+            if (c.target_variant_id) varIds.add(c.target_variant_id);
+        });
+
+        const [brandsRes, familiesRes, varsRes] = await Promise.all([
+            brandIds.size > 0
+                ? supabase.from('cat_brands').select('id, name').in('id', Array.from(brandIds))
+                : { data: [] },
+            familyIds.size > 0
+                ? supabase.from('cat_items').select('id, name').in('id', Array.from(familyIds))
+                : { data: [] },
+            varIds.size > 0 ? supabase.from('cat_items').select('id, name').in('id', Array.from(varIds)) : { data: [] },
+        ]);
+        const brandMap = new Map((brandsRes.data || []).map((b: any) => [b.id, b.name]));
+        const familyMap = new Map((familiesRes.data || []).map((f: any) => [f.id, f.name]));
+        const varMap = new Map((varsRes.data || []).map((v: any) => [v.id, v.name]));
+
+        const result: Record<string, string[]> = {};
+        allCompat.forEach((c: any) => {
+            let label = '';
+            if (c.is_universal) {
+                label = 'UNIVERSAL';
+            } else {
+                const parts: string[] = [];
+                if (c.target_brand_id) parts.push(brandMap.get(c.target_brand_id) || '?');
+                if (c.target_family_id) parts.push(familyMap.get(c.target_family_id) || '');
+                else if (c.target_brand_id) parts.push('All');
+                if (c.target_variant_id) parts.push(varMap.get(c.target_variant_id) || '');
+                label = parts.filter(Boolean).join(' ');
+            }
+            if (!result[c.item_id]) result[c.item_id] = [];
+            result[c.item_id].push(label);
+        });
+        setCardCompatMap(result);
+    };
+
+    // Fetch models when compat brand changes
+    useEffect(() => {
+        if (!selCompatBrand || selCompatBrand === 'UNIVERSAL') {
+            setCompatModels([]);
+            return;
+        }
+        const fetch = async () => {
+            const supabase = createClient();
+            const { data } = await supabase
+                .from('cat_items')
+                .select('id, name')
+                .eq('brand_id', selCompatBrand)
+                .eq('type', 'PRODUCT')
+                .eq('category', 'VEHICLE')
+                .eq('status', 'ACTIVE')
+                .order('name');
+            if (data) setCompatModels(data);
+        };
+        fetch();
+    }, [selCompatBrand]);
+
+    // Fetch variants when compat model changes
+    useEffect(() => {
+        if (!selCompatModel || selCompatModel === 'ALL_MODELS') {
+            setCompatVariants([]);
+            return;
+        }
+        const fetch = async () => {
+            const supabase = createClient();
+            const { data } = await supabase
+                .from('cat_items')
+                .select('id, name')
+                .eq('parent_id', selCompatModel)
+                .eq('type', 'VARIANT')
+                .eq('status', 'ACTIVE')
+                .order('name');
+            if (data) setCompatVariants(data);
+        };
+        fetch();
+    }, [selCompatModel]);
+
+    // Fetch compatibility entries when opening edit modal
+    const fetchCompatibility = async (variantId: string) => {
+        const supabase = createClient();
+        const { data: compat } = await supabase
+            .from('cat_item_compatibility')
+            .select('id, is_universal, target_brand_id, target_family_id, target_variant_id')
+            .eq('item_id', variantId);
+        if (compat && compat.length > 0) {
+            const enriched = await Promise.all(
+                compat.map(async (c: any) => {
+                    let label = '';
+                    if (c.is_universal) {
+                        label = 'UNIVERSAL / ALL MODELS';
+                    } else {
+                        const parts: string[] = [];
+                        if (c.target_brand_id) {
+                            const { data: brand } = await supabase
+                                .from('cat_brands')
+                                .select('name')
+                                .eq('id', c.target_brand_id)
+                                .single();
+                            parts.push(brand?.name || 'Unknown Brand');
+                        }
+                        if (c.target_family_id) {
+                            const { data: fam } = await supabase
+                                .from('cat_items')
+                                .select('name')
+                                .eq('id', c.target_family_id)
+                                .single();
+                            if (!c.target_variant_id) parts.push(`${fam?.name || 'All Models'}`);
+                            else parts.push(fam?.name || '');
+                        } else if (c.target_brand_id && !c.target_family_id) {
+                            parts.push('(All Models)');
+                        }
+                        if (c.target_variant_id) {
+                            const { data: v } = await supabase
+                                .from('cat_items')
+                                .select('name')
+                                .eq('id', c.target_variant_id)
+                                .single();
+                            parts.push(v?.name || '');
+                        }
+                        label = parts.join(' ');
+                    }
+                    return { ...c, label };
+                })
+            );
+            setCompatEntries(enriched);
+        } else {
+            setCompatEntries([]);
+        }
+    };
+
+    const addCompatEntry = (overrideBrand?: string) => {
+        const brandVal = overrideBrand || selCompatBrand;
+        if (brandVal === 'UNIVERSAL') {
+            if (compatEntries.some(c => c.is_universal)) return;
+            setCompatEntries([
+                ...compatEntries,
+                {
+                    id: `new-${Date.now()}`,
+                    is_universal: true,
+                    target_brand_id: null,
+                    target_family_id: null,
+                    target_variant_id: null,
+                    label: 'UNIVERSAL / ALL MODELS',
+                },
+            ]);
+        } else if (brandVal) {
+            const brandName = compatBrands.find(b => b.id === selCompatBrand)?.name || '';
+            const modelName =
+                selCompatModel && selCompatModel !== 'ALL_MODELS'
+                    ? compatModels.find(m => m.id === selCompatModel)?.name || ''
+                    : '';
+            const variantName =
+                selCompatVariant && selCompatVariant !== 'ALL_VARIANTS'
+                    ? compatVariants.find(v => v.id === selCompatVariant)?.name || ''
+                    : '';
+            const entry: any = {
+                id: `new-${Date.now()}`,
+                is_universal: false,
+                target_brand_id: selCompatBrand,
+                target_family_id: selCompatModel && selCompatModel !== 'ALL_MODELS' ? selCompatModel : null,
+                target_variant_id: selCompatVariant && selCompatVariant !== 'ALL_VARIANTS' ? selCompatVariant : null,
+                label: [brandName, modelName || '(All Models)', variantName].filter(Boolean).join(' '),
+            };
+            const isDup = compatEntries.some(
+                c =>
+                    c.target_brand_id === entry.target_brand_id &&
+                    c.target_family_id === entry.target_family_id &&
+                    c.target_variant_id === entry.target_variant_id
+            );
+            if (!isDup) setCompatEntries([...compatEntries, entry]);
+        }
+        setSelCompatBrand('');
+        setSelCompatModel('');
+        setSelCompatVariant('');
+    };
 
     // Media Manager State
     const [activeMediaVariant, setActiveMediaVariant] = useState<any>(null);
@@ -404,6 +638,9 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                     onClick={() => {
                                         setEditingVariant(v);
                                         setIsEditModalOpen(true);
+                                        if (family?.category === 'ACCESSORY') {
+                                            fetchCompatibility(v.id);
+                                        }
                                     }}
                                     className="p-2 bg-slate-100 dark:bg-white/10 rounded-full text-slate-400 hover:text-indigo-600 transition-colors"
                                 >
@@ -430,6 +667,26 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                 <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-1 block opacity-30">
                                     {v.slug}
                                 </span>
+
+                                {/* Suitable For — on Card */}
+                                {family?.category === 'ACCESSORY' && (
+                                    <div className="flex flex-wrap items-center gap-1 mt-3">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-emerald-500 mr-1">
+                                            Suitable For:
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20">
+                                            {v.name}
+                                        </span>
+                                        {cardCompatMap[v.id]?.map((label: string, i: number) => (
+                                            <span
+                                                key={i}
+                                                className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20"
+                                            >
+                                                {label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
 
                                 {/* Variant Media Button */}
                                 <div className="mt-4">
@@ -878,9 +1135,115 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                 </div>
                             ))}
                         </div>
+
+                        {/* ─── SUITABLE FOR (ACCESSORY only) ─── */}
+                        {family?.category === 'ACCESSORY' && (
+                            <div className="pt-6 mt-4 border-t border-slate-100 dark:border-white/5 space-y-4">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                    <Link2 size={12} className="text-indigo-500" /> Suitable For (Vehicle Compatibility)
+                                </label>
+                                <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
+                                    {compatEntries.map((entry: any) => (
+                                        <div
+                                            key={entry.id}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm"
+                                        >
+                                            {entry.label}
+                                            <button
+                                                onClick={() =>
+                                                    setCompatEntries(
+                                                        compatEntries.filter((c: any) => c.id !== entry.id)
+                                                    )
+                                                }
+                                                className="hover:scale-125 transition-transform"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {compatEntries.length === 0 && (
+                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest px-2 py-1">
+                                            No Compatibility Set
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-3">
+                                    {/* Brand Selector */}
+                                    <select
+                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
+                                        value={selCompatBrand}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setSelCompatBrand(val);
+                                            setSelCompatModel('');
+                                            setSelCompatVariant('');
+                                            if (val === 'UNIVERSAL') addCompatEntry('UNIVERSAL');
+                                        }}
+                                    >
+                                        <option value="">Select Brand...</option>
+                                        <option value="UNIVERSAL">UNIVERSAL / ALL MODELS</option>
+                                        {compatBrands.map(b => (
+                                            <option key={b.id} value={b.id}>
+                                                {b.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {/* Model Selector */}
+                                    {selCompatBrand && selCompatBrand !== 'UNIVERSAL' && (
+                                        <select
+                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
+                                            value={selCompatModel}
+                                            onChange={e => {
+                                                setSelCompatModel(e.target.value);
+                                                setSelCompatVariant('');
+                                            }}
+                                        >
+                                            <option value="">Select Model...</option>
+                                            <option value="ALL_MODELS">
+                                                All {compatBrands.find(b => b.id === selCompatBrand)?.name} Models
+                                            </option>
+                                            {compatModels.map(m => (
+                                                <option key={m.id} value={m.id}>
+                                                    {m.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                    {/* Variant Selector */}
+                                    {selCompatModel && selCompatModel !== 'ALL_MODELS' && (
+                                        <select
+                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500 shadow-sm"
+                                            value={selCompatVariant}
+                                            onChange={e => setSelCompatVariant(e.target.value)}
+                                        >
+                                            <option value="">Select Variant...</option>
+                                            <option value="ALL_VARIANTS">
+                                                All {compatModels.find(m => m.id === selCompatModel)?.name} Variants
+                                            </option>
+                                            {compatVariants.map(v => (
+                                                <option key={v.id} value={v.id}>
+                                                    {v.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                    {/* Add Button */}
+                                    {selCompatBrand && selCompatBrand !== 'UNIVERSAL' && (
+                                        <button
+                                            onClick={() => addCompatEntry()}
+                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all w-fit"
+                                        >
+                                            <Plus size={12} /> Add Compatibility
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         <div className="flex justify-end pt-6 border-t border-slate-100 dark:border-white/5">
                             <button
+                                disabled={isSavingVariant}
                                 onClick={async () => {
+                                    setIsSavingVariant(true);
                                     try {
                                         // Save Logic
                                         const supabase = createClient();
@@ -913,7 +1276,29 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
 
                                         if (error) throw error;
 
-                                        // 3. Update Local State (including the new variant data)
+                                        // 3. Sync compatibility entries (ACCESSORY only)
+                                        if (family?.category === 'ACCESSORY') {
+                                            await supabase
+                                                .from('cat_item_compatibility')
+                                                .delete()
+                                                .eq('item_id', editingVariant.id);
+                                            if (compatEntries.length > 0) {
+                                                const compatRows = compatEntries.map((c: any) => ({
+                                                    item_id: editingVariant.id,
+                                                    is_universal: c.is_universal || false,
+                                                    target_brand_id: c.target_brand_id || null,
+                                                    target_family_id: c.target_family_id || null,
+                                                    target_variant_id: c.target_variant_id || null,
+                                                }));
+                                                const { error: compatErr } = await supabase
+                                                    .from('cat_item_compatibility')
+                                                    .insert(compatRows);
+                                                if (compatErr)
+                                                    console.error('Compatibility insert warning:', compatErr);
+                                            }
+                                        }
+
+                                        // 4. Update Local State (including the new variant data)
                                         const updatedVariant = {
                                             ...editingVariant,
                                             name: nameTitle,
@@ -927,9 +1312,15 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                             )
                                         );
                                         setIsEditModalOpen(false);
-                                        toast.success('Variant updated');
+                                        if (family?.category === 'ACCESSORY') loadAllCardCompat();
+                                        toast.success(
+                                            'Variant updated' +
+                                                (family?.category === 'ACCESSORY' ? ' with compatibility' : '')
+                                        );
                                     } catch (err: any) {
                                         toast.error('Failed to update variant: ' + err.message);
+                                    } finally {
+                                        setIsSavingVariant(false);
                                     }
                                 }}
                                 className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-sm hover:scale-105 transition-transform"

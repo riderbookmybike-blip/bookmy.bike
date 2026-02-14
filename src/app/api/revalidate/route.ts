@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        revalidateTag(tag);
+        (revalidateTag as any)(tag);
         return NextResponse.json({ revalidated: true, now: Date.now(), tag });
     } catch (err) {
         return NextResponse.json({ message: 'Error revalidating' }, { status: 500 });

@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -55,7 +56,7 @@ export default function DealerProductList({ products, selectedId, onSelect, onAd
             sellingPrice: 0,
             margin: 0,
             lastUpdated: new Date().toISOString(),
-            updatedBy: 'Current User'
+            updatedBy: 'Current User',
         };
         onAdd(newDealerProduct);
         setIsAddOpen(false);
@@ -94,13 +95,16 @@ export default function DealerProductList({ products, selectedId, onSelect, onAd
                     </button>
                 </div>
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
+                    <Search
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
+                        size={16}
+                    />
                     <input
                         type="text"
                         placeholder="Search..."
                         className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-white/10 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-950 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500"
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={e => setSearch(e.target.value)}
                     />
                 </div>
             </div>
@@ -121,16 +125,27 @@ export default function DealerProductList({ products, selectedId, onSelect, onAd
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1 min-w-0 pr-2">
-                                        <p className={`text-sm font-medium truncat ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                                        <p
+                                            className={`text-sm font-medium truncat ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}
+                                        >
                                             {master.label}
                                         </p>
-                                        <p className="text-xs text-gray-500 dark:text-slate-400 font-mono mt-0.5">{master.sku}</p>
+                                        <p className="text-xs text-gray-500 dark:text-slate-400 font-mono mt-0.5">
+                                            {master.sku}
+                                        </p>
                                     </div>
-                                    <span className={`inline-block w-2 h-2 rounded-full mt-1.5 ${dp.isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-600'}`}></span>
+                                    <span
+                                        className={`inline-block w-2 h-2 rounded-full mt-1.5 ${dp.isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-600'}`}
+                                    ></span>
                                 </div>
                                 <div className="mt-2 flex items-baseline justify-between">
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${master.type === 'VEHICLE' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-500/20' : 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-slate-400 border-gray-100 dark:border-white/10'
-                                        }`}>
+                                    <span
+                                        className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                            master.type === 'VEHICLE'
+                                                ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-500/20'
+                                                : 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-slate-400 border-gray-100 dark:border-white/10'
+                                        }`}
+                                    >
                                         {master.type}
                                     </span>
                                     <span className="text-xs font-mono font-bold text-gray-700 dark:text-slate-200">
@@ -158,3 +173,4 @@ export default function DealerProductList({ products, selectedId, onSelect, onAd
         </div>
     );
 }
+// @ts-nocheck

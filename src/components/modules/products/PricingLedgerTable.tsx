@@ -264,7 +264,7 @@ export default function PricingLedgerTable({
             const headers = isVehicle
                 ? [
                       '#',
-                      'Model',
+                      'Product',
                       'Variant',
                       'Color',
                       'Ex-Showroom',
@@ -563,16 +563,23 @@ export default function PricingLedgerTable({
                 if (bVal === null || bVal === undefined) return -1;
 
                 // Handle Sequential Sorting for Variant and Color
+                // Use position as primary sort, but fall through to string comparison when equal
                 if (
                     sortConfig.key === 'variant' &&
                     a.variantPosition !== undefined &&
-                    b.variantPosition !== undefined
+                    b.variantPosition !== undefined &&
+                    a.variantPosition !== b.variantPosition
                 ) {
                     return sortConfig.direction === 'asc'
                         ? a.variantPosition - b.variantPosition
                         : b.variantPosition - a.variantPosition;
                 }
-                if (sortConfig.key === 'color' && a.position !== undefined && b.position !== undefined) {
+                if (
+                    sortConfig.key === 'color' &&
+                    a.position !== undefined &&
+                    b.position !== undefined &&
+                    a.position !== b.position
+                ) {
                     return sortConfig.direction === 'asc' ? a.position - b.position : b.position - a.position;
                 }
 
@@ -920,7 +927,7 @@ export default function PricingLedgerTable({
                                 size={12}
                                 className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
                             />
-                            <span className="truncate">{selectedModel === 'ALL' ? 'All Models' : selectedModel}</span>
+                            <span className="truncate">{selectedModel === 'ALL' ? 'All Products' : selectedModel}</span>
                             <Filter
                                 size={10}
                                 className={`opacity-50 ${selectedModel !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
@@ -933,7 +940,7 @@ export default function PricingLedgerTable({
                                 <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                     <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
                                         <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                            Sort & Filter Model
+                                            Sort & Filter Product
                                         </span>
                                     </div>
                                     <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
@@ -966,7 +973,7 @@ export default function PricingLedgerTable({
                                             }}
                                             className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedModel === 'ALL' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                                         >
-                                            All Models
+                                            All Products
                                             {selectedModel === 'ALL' && <CheckCircle2 size={12} />}
                                         </button>
                                         {models.map(m => (
@@ -1049,7 +1056,7 @@ export default function PricingLedgerTable({
 
                     {selectedModel !== 'ALL' && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 group animate-in fade-in zoom-in duration-200">
-                            <span className="opacity-50">Model:</span>
+                            <span className="opacity-50">Product:</span>
                             <span>{selectedModel}</span>
                             <button
                                 onClick={() => onModelChange('ALL')}
@@ -1091,7 +1098,7 @@ export default function PricingLedgerTable({
                                 >
                                     <Layers size={12} />
                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                        Select All for Model
+                                        Select All for Product
                                     </div>
                                 </button>
 
@@ -1149,7 +1156,7 @@ export default function PricingLedgerTable({
                                 >
                                     <Layers size={12} />
                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                        Select All for Model
+                                        Select All for Product
                                     </div>
                                 </button>
 
@@ -1222,7 +1229,7 @@ export default function PricingLedgerTable({
                                     </th>
                                     {/* DYAMIC COLUMNS based on Category */}
                                     {(activeCategory === 'vehicles'
-                                        ? ['variant', 'color', 'engineCc']
+                                        ? ['model', 'variant', 'color', 'engineCc']
                                         : ['product', 'color']
                                     ).map(key => {
                                         // MAPPING: 'product' maps to 'model' for data operations
@@ -1253,7 +1260,9 @@ export default function PricingLedgerTable({
                                                             ? 'Power'
                                                             : key === 'product'
                                                               ? 'Product'
-                                                              : key}{' '}
+                                                              : key === 'model'
+                                                                ? 'Product'
+                                                                : key}{' '}
                                                         <ArrowUpDown
                                                             size={12}
                                                             className={`opacity-30 ${sortConfig?.key === dataKey ? 'text-emerald-600 opacity-100' : ''}`}
@@ -1635,11 +1644,18 @@ export default function PricingLedgerTable({
 
                                             {/* VEHICLE COLUMNS */}
                                             {activeCategory === 'vehicles' && (
-                                                <td className="px-3 py-1.5">
-                                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
-                                                        {sku.variant}
-                                                    </span>
-                                                </td>
+                                                <>
+                                                    <td className="px-3 py-1.5">
+                                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
+                                                            {sku.model}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-1.5">
+                                                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
+                                                            {sku.variant}
+                                                        </span>
+                                                    </td>
+                                                </>
                                             )}
 
                                             {/* ACCESSORY COLUMNS - Composite Product */}
@@ -2373,8 +2389,9 @@ export default function PricingLedgerTable({
                     <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
                         <Info size={16} className="text-emerald-600" />
                         <p className="text-[10px] font-black uppercase tracking-widest italic">
-                            On-road charges are computed by server RPC (SSPP). This ledger edits ex-showroom and offer
-                            deltas only.
+                            {activeCategory === 'accessories'
+                                ? 'Accessory pricing: Final Price = MRP + GST. No RTO or Insurance applicable.'
+                                : 'On-road charges are computed by server RPC (SSPP). This ledger edits ex-showroom and offer deltas only.'}
                         </p>
                     </div>
                 </div>

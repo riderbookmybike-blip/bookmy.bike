@@ -67,7 +67,8 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
         >
             <div className={`w-full ${isPhone ? 'px-3' : 'px-6'} h-14 flex items-center justify-between`}>
                 <div className="flex items-center flex-1 gap-4">
-                    {onMenuClick && (
+                    {/* Hamburger: hidden on phone (bottom nav has "More"), shown on tablet only */}
+                    {onMenuClick && !isPhone && (
                         <button
                             onClick={onMenuClick}
                             className="p-2 mr-4 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white md:hidden"

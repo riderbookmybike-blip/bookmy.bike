@@ -18,7 +18,10 @@ export async function getPageDebugInfo(pathname: string): Promise<PageDebugInfo>
     const supabase = await createClient();
 
     // 1. Fetch all registered pages with route patterns
-    const { data: pages } = (await supabase.from('sys_page_registry').select('*').not('route_pattern', 'is', null)) as {
+    const { data: pages } = (await supabase
+        .from('sys_page_registry' as any)
+        .select('*')
+        .not('route_pattern', 'is', null)) as {
         data: any[] | null;
     };
 

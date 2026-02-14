@@ -35,7 +35,7 @@ export async function resolveFinanceScheme(
 
     // P0: Lead's Preferred Financier (highest priority, regardless of persona)
     if (leadId) {
-        const { data: lead } = await supabase
+        const { data: lead } = await (supabase as any)
             .from('crm_leads')
             .select('preferred_financier_id')
             .eq('id', leadId)

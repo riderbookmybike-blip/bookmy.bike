@@ -29,12 +29,12 @@ export async function getDashboardStats(): Promise<AnalyticsStats> {
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
     // 1. Total Sessions (All time for now, or filter by range)
-    const { count: totalSessions } = await adminClient
+    const { count: totalSessions } = await (adminClient as any)
         .from('analytics_sessions')
         .select('*', { count: 'exact', head: true });
 
     // 2. Active Users (Last 24h)
-    const { count: activeUsers24h } = await adminClient
+    const { count: activeUsers24h } = await (adminClient as any)
         .from('analytics_sessions')
         .select('*', { count: 'exact', head: true })
         .gte('last_active_at', twentyFourHoursAgo);
@@ -47,7 +47,7 @@ export async function getDashboardStats(): Promise<AnalyticsStats> {
 
     // 4. Avg Session Duration (Simplified calculation)
     // Fetch last 100 sessions to calculate average duration
-    const { data: recentSessions } = await adminClient
+    const { data: recentSessions } = await (adminClient as any)
         .from('analytics_sessions')
         .select('started_at, last_active_at')
         .limit(100)
@@ -57,7 +57,7 @@ export async function getDashboardStats(): Promise<AnalyticsStats> {
     let validSessions = 0;
 
     if (recentSessions) {
-        recentSessions.forEach(session => {
+        recentSessions.forEach((session: any) => {
             const start = new Date(session.started_at).getTime();
             const end = new Date(session.last_active_at).getTime();
             const duration = (end - start) / 1000; // seconds
@@ -74,14 +74,15 @@ export async function getDashboardStats(): Promise<AnalyticsStats> {
         totalSessions: totalSessions || 0,
         activeUsers24h: activeUsers24h || 0,
         totalPageViews: totalPageViews || 0,
-        avgSessionDuration
+        avgSessionDuration,
     };
 }
 
 export async function getRecentEvents(limit = 20): Promise<RecentEvent[]> {
     const { data } = await adminClient
         .from('analytics_events')
-        .select(`
+        .select(
+            `
             id,
             event_type,
             page_path,
@@ -89,7 +90,8 @@ export async function getRecentEvents(limit = 20): Promise<RecentEvent[]> {
             created_at,
             session_id,
             analytics_sessions (taluka)
-        `)
+        `
+        )
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -102,7 +104,7 @@ export async function getRecentEvents(limit = 20): Promise<RecentEvent[]> {
         event_name: item.event_name,
         created_at: item.created_at,
         session_id: item.session_id,
-        taluka: item.analytics_sessions?.taluka || 'Unknown'
+        taluka: item.analytics_sessions?.taluka || 'Unknown',
     }));
 }
 
@@ -111,7 +113,7 @@ export async function getLocationStats(): Promise<LocationStat[]> {
     // We will fetch recent sessions and aggregate in basic JS for now (sufficient for MVP).
     // For production scaling, create a Database View or RPC.
 
-    const { data } = await adminClient
+    const { data } = await (adminClient as any)
         .from('analytics_sessions')
         .select('taluka')
         .not('taluka', 'is', null)

@@ -76,17 +76,29 @@ export default function ReviewStep({ brand, family, variants, colors, allColors,
         const directColor = resolvePool.find((c: any) => c.id === sku.parent_id);
         if (directColor) return directColor;
         // Fallback: name/hex match against full pool
-        return resolvePool.find((c: any) => {
-            if (colorName && c.name?.toUpperCase() === colorName.toUpperCase()) return true;
-            if (sku.specs?.hex_primary && c.specs?.hex_primary?.toLowerCase() === sku.specs.hex_primary.toLowerCase())
-                return true;
-            return false;
-        });
+        if (colorName) {
+            const nameMatch = resolvePool.find((c: any) => c.name?.toUpperCase() === colorName.toUpperCase());
+            if (nameMatch) return nameMatch;
+        }
+        if (sku.specs?.hex_primary) {
+            return resolvePool.find(
+                (c: any) => c.specs?.hex_primary?.toLowerCase() === sku.specs.hex_primary.toLowerCase()
+            );
+        }
+        return undefined;
     };
 
     const resolveVariantId = (sku: any) => {
+        // New architecture: SKU parent is VARIANT directly
+        const directVariant = variants.find((v: any) => v.id === sku.parent_id);
+        if (directVariant) return directVariant.id;
+        // Old architecture: SKU → UNIT → VARIANT (colorObj.parent_id was VARIANT)
         const colorObj = resolveColorObj(sku);
-        return colorObj?.parent_id || sku.parent_id;
+        if (colorObj) {
+            const colorParentVariant = variants.find((v: any) => v.id === colorObj.parent_id);
+            if (colorParentVariant) return colorParentVariant.id;
+        }
+        return sku.parent_id;
     };
 
     React.useEffect(() => {

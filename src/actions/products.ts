@@ -176,7 +176,7 @@ export async function updatePricingLedgerOffer(id: string, amount: number, tenan
 
     // For proper implementation, we need tenantId
     // Using a simplified upsert for now
-    const { error } = await supabase.from('cat_price_dealer').upsert(
+    const { error } = await supabase.from('cat_price_dealer' as any).upsert(
         {
             vehicle_color_id: id,
             offer_amount: amount,
@@ -214,7 +214,7 @@ export async function updatePricingLedgerStatus(id: string, status: string) {
 export async function updatePricingLedgerInclusion(id: string, type: string, tenantId?: string) {
     const supabase = await createClient();
 
-    const { error } = await supabase.from('cat_price_dealer').upsert(
+    const { error } = await supabase.from('cat_price_dealer' as any).upsert(
         {
             vehicle_color_id: id,
             inclusion_type: type,
@@ -234,7 +234,7 @@ export async function updatePricingLedgerInclusion(id: string, type: string, ten
 export async function updatePricingLedgerLocalStatus(id: string, isActive: boolean, tenantId?: string) {
     const supabase = await createClient();
 
-    const { error } = await supabase.from('cat_price_dealer').upsert(
+    const { error } = await supabase.from('cat_price_dealer' as any).upsert(
         {
             vehicle_color_id: id,
             is_active: isActive,

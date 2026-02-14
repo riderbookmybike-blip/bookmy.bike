@@ -30,17 +30,23 @@ export async function getAllTemplates(tenantFilter?: string) {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data as DashboardTemplate[];
+    return (data || []).map((item: any) => ({
+        ...item,
+        layout_config: item.layout_config as unknown as DashboardConfig,
+        sidebar_config: item.sidebar_config as unknown as SidebarConfig,
+    })) as DashboardTemplate[];
 }
 
 export async function getAllAssignments() {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('sys_role_templates')
-        .select(`
+        .select(
+            `
             *,
             sys_dashboard_templates (name)
-        `)
+        `
+        )
         .order('tenant_type')
         .order('role');
 
@@ -48,7 +54,7 @@ export async function getAllAssignments() {
 
     return data.map((item: any) => ({
         ...item,
-        template_name: item.sys_dashboard_templates?.name
+        template_name: item.sys_dashboard_templates?.name,
     })) as RoleAssignment[];
 }
 
@@ -73,7 +79,7 @@ export async function cloneTemplate(templateId: string, newName: string) {
             tenant_type: original.tenant_type,
             layout_config: original.layout_config,
             sidebar_config: original.sidebar_config,
-            is_system: false
+            is_system: false,
         })
         .select()
         .single();
@@ -84,13 +90,14 @@ export async function cloneTemplate(templateId: string, newName: string) {
 
 export async function assignTemplateToRole(tenantType: string, role: string, templateId: string) {
     const supabase = await createClient();
-    const { error } = await supabase
-        .from('sys_role_templates')
-        .upsert({
+    const { error } = await supabase.from('sys_role_templates').upsert(
+        {
             tenant_type: tenantType,
             role: role,
-            template_id: templateId
-        }, { onConflict: 'tenant_type,role' });
+            template_id: templateId,
+        },
+        { onConflict: 'tenant_type,role' }
+    );
 
     if (error) throw error;
 }

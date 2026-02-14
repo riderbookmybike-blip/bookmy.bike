@@ -748,6 +748,36 @@ export default function ProductStep({
                             </div>
                         </div>
 
+                        {/* Max Order Quantity — ACCESSORY only */}
+                        {formData.category === 'ACCESSORY' && (
+                            <div className="flex items-center gap-4 p-4 bg-amber-50/50 dark:bg-amber-500/5 rounded-2xl border border-amber-100 dark:border-amber-500/10">
+                                <div className="flex-1 space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-widest">
+                                        Max Order Quantity
+                                    </label>
+                                    <p className="text-[9px] text-slate-400">
+                                        Maximum units a customer can add in a single order. Default is 1.
+                                    </p>
+                                </div>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={99}
+                                    value={(formData.specs as any).max_qty || 1}
+                                    onChange={e =>
+                                        setFormData({
+                                            ...formData,
+                                            specs: {
+                                                ...formData.specs,
+                                                max_qty: Math.max(1, parseInt(e.target.value) || 1),
+                                            },
+                                        })
+                                    }
+                                    className="w-20 px-3 py-2 text-center text-xl font-black bg-white dark:bg-slate-900 border-2 border-amber-200 dark:border-amber-500/20 rounded-xl focus:border-amber-500 outline-none transition-all"
+                                />
+                            </div>
+                        )}
+
                         <div className="bg-slate-50 dark:bg-white/5 p-6 rounded-3xl border border-slate-100 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                             <div className="flex-1">
                                 <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase italic mb-3">

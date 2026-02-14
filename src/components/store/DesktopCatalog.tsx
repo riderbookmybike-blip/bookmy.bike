@@ -34,6 +34,7 @@ import { LocationPicker } from './LocationPicker';
 import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
 import { setLocationCookie } from '@/actions/locationCookie';
 import { ProductCard } from './desktop/ProductCard';
+import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { CatalogGridSkeleton } from './CatalogSkeleton';
 import { getSelfMemberLocation, updateSelfMemberLocation } from '@/actions/members';
 
@@ -536,12 +537,12 @@ export const DesktopCatalog = ({
         const visibleOptions = isExpanded ? options : options.slice(0, 3);
 
         return (
-            <div className="space-y-6">
+            <div className="space-y-4">
                 <div
-                    className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-4 cursor-pointer group"
+                    className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-2 cursor-pointer group"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                 >
-                    <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white flex items-center gap-2">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white flex items-center gap-2">
                         <div
                             className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${selectedValues.length > 0 ? 'bg-brand-primary shadow-[0_0_12px_#F4B000]' : 'bg-slate-300 dark:bg-slate-700'}`}
                         />
@@ -560,40 +561,40 @@ export const DesktopCatalog = ({
                             </button>
                         )}
                         <ChevronDown
-                            size={14}
+                            size={12}
                             className={`text-slate-400 dark:text-slate-500 transition-transform duration-500 ${isCollapsed ? '-rotate-90' : 'rotate-0'} group-hover:text-brand-primary`}
                         />
                     </div>
                 </div>
 
                 {!isCollapsed && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="grid grid-cols-1 gap-2">
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="grid grid-cols-2 gap-2">
                             {visibleOptions.map((opt: string) => (
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
+                                    className={`group relative flex items-center justify-between p-2.5 rounded-xl border transition-all duration-300 ${
                                         selectedValues.includes(opt)
                                             ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
                                             : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
                                     }`}
                                 >
                                     <span
-                                        className={`text-[10px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900 dark:text-brand-primary' : 'text-slate-500 dark:text-slate-300 group-hover:text-slate-800 dark:hover:text-slate-100'}`}
+                                        className={`text-[9px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900 dark:text-brand-primary' : 'text-slate-500 dark:text-slate-300 group-hover:text-slate-800 dark:hover:text-slate-100'}`}
                                     >
                                         {opt}
                                     </span>
-                                    <div
-                                        className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${selectedValues.includes(opt) ? 'bg-brand-primary shadow-[0_0_10px_#F4B000] scale-125' : 'bg-slate-200 dark:bg-slate-700'}`}
-                                    />
+                                    {selectedValues.includes(opt) && (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-brand-primary shadow-[0_0_8px_#F4B000]" />
+                                    )}
                                 </button>
                             ))}
                         </div>
                         {options.length > 3 && (
                             <button
                                 onClick={() => setIsExpanded(!isExpanded)}
-                                className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-primary transition-colors w-full text-center py-1.5 border border-dashed border-slate-200 dark:border-white/10 rounded-md bg-slate-50/50 dark:bg-white/[0.02]"
+                                className="w-full py-2 flex items-center justify-center gap-2 text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-brand-primary transition-colors border border-dashed border-slate-200 dark:border-white/5 rounded-xl"
                             >
                                 {isExpanded ? 'Show Less' : `+ Show ${options.length - 3} More`}
                             </button>
@@ -623,6 +624,7 @@ export const DesktopCatalog = ({
     const [smartVariant, setSmartVariant] = useState<string | null>(null);
     const [smartColor, setSmartColor] = useState<string | null>(null);
     const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
+    const { availableCoins, isLoggedIn } = useOClubWallet();
 
     useEffect(() => {
         if (!isSmart) return;
@@ -768,15 +770,22 @@ export const DesktopCatalog = ({
                     <div className="w-full">
                         <div className="rounded-full bg-slate-50/15 dark:bg-[#0b0d10]/25 backdrop-blur-3xl border border-slate-200 dark:border-white/10 shadow-2xl h-14 px-4 flex items-center">
                             <div className="flex items-center gap-3 w-full">
+                                <button
+                                    onClick={() => setIsFilterOpen(true)}
+                                    className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white shrink-0"
+                                >
+                                    <Menu size={16} />
+                                </button>
+
                                 <div className="flex-1">
-                                    <div className="flex flex-wrap items-center gap-2 w-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2">
+                                    <div className="flex items-center gap-2 w-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2 h-10">
                                         <Search size={14} className="text-slate-400" />
                                         <input
                                             type="text"
                                             placeholder="Search brand, product, variant"
                                             value={searchQuery}
                                             onChange={e => setSearchQuery(e.target.value)}
-                                            className="flex-1 min-w-[140px] bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                                            className="flex-1 min-w-0 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
                                         />
                                         {searchQuery && (
                                             <button
@@ -796,67 +805,38 @@ export const DesktopCatalog = ({
                                                 <X size={10} />
                                             </button>
                                         )}
-                                        {!isSmart && (
-                                            <div className="flex items-center gap-2">
-                                                {bodyOptions.map(body => {
-                                                    const active = selectedBodyTypes.includes(body);
-                                                    return (
-                                                        <button
-                                                            key={`body-pill-${body}`}
-                                                            onClick={() => {
-                                                                if (active) {
-                                                                    setSelectedBodyTypes(
-                                                                        selectedBodyTypes.filter(item => item !== body)
-                                                                    );
-                                                                } else {
-                                                                    setSelectedBodyTypes([body]);
-                                                                }
-                                                            }}
-                                                            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${
-                                                                active
-                                                                    ? 'bg-brand-primary/10 border-brand-primary text-brand-primary'
-                                                                    : 'bg-white/70 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/80 hover:border-brand-primary/40 hover:text-brand-primary'
-                                                            }`}
-                                                        >
-                                                            {body === 'MOTORCYCLE'
-                                                                ? 'Motorcycle'
-                                                                : body === 'SCOOTER'
-                                                                  ? 'Scooter'
-                                                                  : 'Moped'}
-                                                            {active && <X size={10} />}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
-                                {isSmart && (
-                                    <div className="flex-1 flex items-center justify-end gap-2">
-                                        <div className="flex flex-wrap items-center gap-2 max-w-[900px] justify-end">
-                                            {!smartModel && (
-                                                <>
-                                                    {modelOptions.map(model => (
-                                                        <button
-                                                            key={`model-${model}`}
-                                                            onClick={() => {
-                                                                setSmartModel(model);
-                                                                setSmartVariant(null);
-                                                                setSmartColor(null);
-                                                                setSearchQuery(model);
-                                                            }}
-                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80 hover:border-brand-primary/40 hover:text-brand-primary transition-all"
-                                                        >
-                                                            {model}
-                                                            <span className="text-slate-400">•</span>
-                                                            <span className="text-brand-primary">
-                                                                {modelCounts.get(model) || 0}
-                                                            </span>
-                                                        </button>
-                                                    ))}
-                                                </>
-                                            )}
-                                            {smartModel && !smartVariant && (
+
+                                {isSmart && !smartModel && (
+                                    <div className="flex-none flex items-center justify-end gap-2 overflow-x-auto no-scrollbar max-w-[50%]">
+                                        <div className="flex items-center gap-2">
+                                            {modelOptions.map(model => (
+                                                <button
+                                                    key={`model-${model}`}
+                                                    onClick={() => {
+                                                        setSmartModel(model);
+                                                        setSmartVariant(null);
+                                                        setSmartColor(null);
+                                                        setSearchQuery(model);
+                                                    }}
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap"
+                                                >
+                                                    {model}
+                                                    <span className="text-slate-400">•</span>
+                                                    <span className="text-brand-primary">
+                                                        {modelCounts.get(model) || 0}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isSmart && smartModel && (
+                                    <div className="flex-none flex items-center justify-end gap-2 overflow-x-auto no-scrollbar max-w-[50%]">
+                                        <div className="flex items-center gap-2">
+                                            {!smartVariant && (
                                                 <>
                                                     <button
                                                         onClick={() => {
@@ -865,7 +845,7 @@ export const DesktopCatalog = ({
                                                             setSmartColor(null);
                                                             setSearchQuery('');
                                                         }}
-                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80 whitespace-nowrap"
                                                     >
                                                         {smartModel}
                                                         <X size={10} />
@@ -877,7 +857,7 @@ export const DesktopCatalog = ({
                                                                 setSmartVariant(v.name);
                                                                 setSmartColor(null);
                                                             }}
-                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80 hover:border-brand-primary/40 hover:text-brand-primary transition-all"
+                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap"
                                                         >
                                                             {v.name}
                                                             <span className="text-slate-400">•</span>
@@ -886,14 +866,14 @@ export const DesktopCatalog = ({
                                                     ))}
                                                 </>
                                             )}
-                                            {smartModel && smartVariant && (
+                                            {smartVariant && (
                                                 <>
                                                     <button
                                                         onClick={() => {
                                                             setSmartVariant(null);
                                                             setSmartColor(null);
                                                         }}
-                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80"
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80 whitespace-nowrap"
                                                     >
                                                         {smartVariant}
                                                         <X size={10} />
@@ -904,8 +884,8 @@ export const DesktopCatalog = ({
                                                             onClick={() => {
                                                                 setSmartColor(c.name);
                                                             }}
-                                                            className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden ${
-                                                                normalize(smartColor) === normalize(c.name)
+                                                            className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${
+                                                                normalize(smartColor || undefined) === normalize(c.name)
                                                                     ? 'ring-2 ring-brand-primary/40'
                                                                     : ''
                                                             }`}
@@ -916,7 +896,7 @@ export const DesktopCatalog = ({
                                                     {smartColor && (
                                                         <button
                                                             onClick={() => setSmartColor(null)}
-                                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-500"
+                                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap"
                                                         >
                                                             Clear
                                                         </button>
@@ -926,12 +906,6 @@ export const DesktopCatalog = ({
                                         </div>
                                     </div>
                                 )}
-                                <button
-                                    onClick={() => setIsFilterOpen(true)}
-                                    className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white"
-                                >
-                                    <Menu size={16} />
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -1246,6 +1220,9 @@ export const DesktopCatalog = ({
                                         onLocationClick={() => setIsLocationPickerOpen(true)}
                                         isTv={isTv}
                                         leadId={leadId}
+                                        walletCoins={isLoggedIn ? availableCoins : null}
+                                        showOClubPrompt={!isLoggedIn}
+                                        showBcoinBadge={isLoggedIn}
                                         onExplodeColors={
                                             isSmart
                                                 ? () => {
@@ -1295,22 +1272,22 @@ export const DesktopCatalog = ({
                             </div>
 
                             {/* Overlay Content */}
-                            <div className="flex-1 overflow-y-auto py-10 custom-scrollbar">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                            <div className="flex-1 overflow-y-auto py-6 custom-scrollbar">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     {/* Left Column: EMI & Search */}
-                                    <div className="space-y-12">
-                                        <div className="space-y-6">
+                                    <div className="space-y-8">
+                                        <div className="space-y-4">
                                             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
                                                 Finance Settings
                                             </h4>
-                                            <div className="p-8 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2.5rem]">
-                                                <div className="space-y-8">
-                                                    <div className="space-y-4">
+                                            <div className="p-6 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2rem]">
+                                                <div className="space-y-6">
+                                                    <div className="space-y-3">
                                                         <div className="flex justify-between items-end">
-                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                                 Downpayment
                                                             </span>
-                                                            <span className="text-xl font-black text-[#F4B000]">
+                                                            <span className="text-lg font-black text-[#F4B000]">
                                                                 ₹{downpayment.toLocaleString('en-IN')}
                                                             </span>
                                                         </div>
@@ -1321,11 +1298,11 @@ export const DesktopCatalog = ({
                                                             step="5000"
                                                             value={downpayment}
                                                             onChange={e => setDownpayment(parseInt(e.target.value))}
-                                                            className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#F4B000]"
+                                                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#F4B000]"
                                                         />
                                                     </div>
-                                                    <div className="space-y-4">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                    <div className="space-y-3">
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                             Tenure (Months)
                                                         </span>
                                                         <div className="grid grid-cols-6 gap-2">
@@ -1333,7 +1310,7 @@ export const DesktopCatalog = ({
                                                                 <button
                                                                     key={t}
                                                                     onClick={() => setTenure(t)}
-                                                                    className={`py-3 rounded-xl text-[10px] font-black transition-all ${tenure === t ? 'bg-[#F4B000] text-black shadow-lg scale-110' : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500'}`}
+                                                                    className={`py-2.5 rounded-xl text-[9px] font-black transition-all ${tenure === t ? 'bg-[#F4B000] text-black shadow-lg scale-105' : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500'}`}
                                                                 >
                                                                     {t}
                                                                 </button>
@@ -1344,28 +1321,28 @@ export const DesktopCatalog = ({
                                             </div>
                                         </div>
 
-                                        <div className="space-y-6">
+                                        <div className="space-y-4">
                                             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
                                                 Search
                                             </h4>
                                             <div className="relative">
                                                 <Search
-                                                    className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"
-                                                    size={20}
+                                                    className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
+                                                    size={16}
                                                 />
                                                 <input
                                                     type="text"
                                                     placeholder="SEARCH FOR BIKES..."
                                                     value={searchQuery}
                                                     onChange={e => setSearchQuery(e.target.value)}
-                                                    className="w-full py-5 pl-16 pr-6 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-3xl text-[11px] font-black tracking-widest uppercase focus:ring-2 focus:ring-[#F4B000]/20"
+                                                    className="w-full py-4 pl-14 pr-6 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-2xl text-[10px] font-black tracking-widest uppercase focus:ring-2 focus:ring-[#F4B000]/20 outline-none"
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Right Column: Filters */}
-                                    <div className="space-y-12">
+                                    <div className="space-y-8">
                                         <FilterGroup
                                             title="Brands"
                                             options={makeOptions}
@@ -1419,16 +1396,16 @@ export const DesktopCatalog = ({
                             </div>
 
                             {/* Overlay Footer */}
-                            <div className="p-8 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] flex items-center justify-between">
+                            <div className="p-6 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] flex items-center justify-between">
                                 <button
                                     onClick={clearAll}
-                                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                    className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                                 >
                                     Clear all filters
                                 </button>
                                 <button
                                     onClick={() => setIsFilterOpen(false)}
-                                    className="px-12 py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-[#F4B000]/20 hover:scale-105 transition-all"
+                                    className="px-10 py-4 bg-[#F4B000] text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-[#F4B000]/20 hover:scale-105 transition-all"
                                 >
                                     Show {results.length} {results.length === 1 ? 'Result' : 'Results'}
                                 </button>

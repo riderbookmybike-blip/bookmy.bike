@@ -30,6 +30,12 @@ interface PricingCardProps {
         pincode?: string;
         taluka?: string;
     };
+    coinPricing?: {
+        coinsUsed: number;
+        discount: number;
+        effectivePrice: number;
+    } | null;
+    showOClubPrompt?: boolean;
 }
 
 export default function PricingCard({
@@ -45,6 +51,8 @@ export default function PricingCard({
     leadName,
     infoColorClass = 'text-slate-500 dark:text-slate-400',
     serviceability,
+    coinPricing = null,
+    showOClubPrompt = false,
 }: PricingCardProps) {
     // If originalPrice not provided, fallback to total + savings
     const displayOriginal = originalPrice || totalOnRoad + totalSavings;
@@ -208,6 +216,16 @@ export default function PricingCard({
                             <span className="text-4xl font-black italic tracking-tighter text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-in zoom-in-95 duration-700">
                                 ₹{totalOnRoad.toLocaleString()}
                             </span>
+                            {coinPricing && (
+                                <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                                    B-Coin: {coinPricing.coinsUsed} used · Save ₹{coinPricing.discount.toLocaleString()}
+                                </span>
+                            )}
+                            {!coinPricing && showOClubPrompt && (
+                                <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                                    Signup & get 13 O-Club coins
+                                </span>
+                            )}
                         </div>
                     </div>
 

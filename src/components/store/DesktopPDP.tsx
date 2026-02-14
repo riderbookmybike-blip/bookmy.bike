@@ -39,7 +39,7 @@ import CascadingAccessorySelector from './Personalize/CascadingAccessorySelector
 import { ServiceOption } from '@/types/store';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
-import { computeOClubPricing } from '@/lib/oclub/coin';
+import { computeOClubPricing, OCLUB_COIN_VALUE } from '@/lib/oclub/coin';
 
 // Lazy load tab components for code splitting
 const FinanceTab = dynamic(() => import('./Personalize/Tabs/FinanceTab'), {
@@ -285,9 +285,13 @@ export function DesktopPDP({
         initialFinance,
     } = data;
 
+    const walletCoinsValue = Number(walletCoins);
     const coinPricing =
-        typeof walletCoins === 'number' && walletCoins > 0 ? computeOClubPricing(totalOnRoad, walletCoins) : null;
+        Number.isFinite(walletCoinsValue) && walletCoinsValue > 0
+            ? computeOClubPricing(totalOnRoad, walletCoinsValue)
+            : null;
     const displayOnRoad = coinPricing?.effectivePrice ?? totalOnRoad;
+    const showCoinRate = Number.isFinite(walletCoinsValue);
 
     const {
         handleColorChange,
@@ -377,6 +381,19 @@ export function DesktopPDP({
         { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
         { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
+        ...(coinPricing
+            ? [
+                  {
+                      label: 'B-Coin Discount',
+                      value: coinPricing.discount,
+                      isDeduction: true,
+                      helpText: [
+                          `${coinPricing.coinsUsed} coins applied`,
+                          `Value ₹${coinPricing.discount.toLocaleString('en-IN')}`,
+                      ],
+                  },
+              ]
+            : []),
         ...(totalSurge > 0 ? [{ label: 'Surge Applied', value: totalSurge, helpText: surgeHelpLines }] : []),
     ];
 
@@ -1564,8 +1581,13 @@ export function DesktopPDP({
                                 </div>
                                 {coinPricing && (
                                     <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-500 text-right">
-                                        O-Club: {coinPricing.coinsUsed} coins · Save ₹
+                                        B-Coin: {coinPricing.coinsUsed} used · Save ₹
                                         {coinPricing.discount.toLocaleString()}
+                                    </p>
+                                )}
+                                {showCoinRate && (
+                                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">
+                                        1 coin = ₹{OCLUB_COIN_VALUE.toFixed(2)}
                                     </p>
                                 )}
                                 {!coinPricing && showOClubPrompt && (
@@ -1815,7 +1837,12 @@ export function DesktopPDP({
                         </div>
                         {coinPricing && (
                             <span className="mt-1 text-[9px] font-black uppercase tracking-widest text-emerald-500">
-                                {coinPricing.coinsUsed} coins · Save ₹{coinPricing.discount.toLocaleString()}
+                                B-Coin: {coinPricing.coinsUsed} used · Save ₹{coinPricing.discount.toLocaleString()}
+                            </span>
+                        )}
+                        {showCoinRate && (
+                            <span className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                                1 coin = ₹{OCLUB_COIN_VALUE.toFixed(2)}
                             </span>
                         )}
                         {!coinPricing && showOClubPrompt && (

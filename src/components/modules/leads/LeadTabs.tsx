@@ -401,18 +401,18 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
         const ids = Array.from(new Set((quotes || []).map(q => q.created_by).filter(Boolean))) as string[];
         if (ids.length === 0) return;
         const supabase = createClient();
-        supabase
-            .from('id_members')
-            .select('id, full_name')
-            .in('id', ids)
-            .then(({ data }) => {
+        (async () => {
+            try {
+                const { data } = await supabase.from('id_members').select('id, full_name').in('id', ids);
                 const map: Record<string, string> = {};
                 (data || []).forEach(m => {
                     if (m.id && m.full_name) map[m.id] = m.full_name;
                 });
                 setCreatorNameMap(map);
-            })
-            .catch(() => null);
+            } catch {
+                // ignore
+            }
+        })();
     }, [quotes]);
 
     const handleAction = async (quoteId: string, actionType: 'ACCEPT' | 'CONFIRM' | 'LOCK') => {
@@ -756,7 +756,7 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                         </span>
                                                         <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
                                                             {accessoryItems
-                                                                .map(i =>
+                                                                .map((i: any) =>
                                                                     i.discountPrice
                                                                         ? `${i.name} (₹${Number(i.discountPrice).toLocaleString()})`
                                                                         : i.price
@@ -774,7 +774,7 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                         </span>
                                                         <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
                                                             {serviceItems
-                                                                .map(i =>
+                                                                .map((i: any) =>
                                                                     i.discountPrice
                                                                         ? `${i.name} (₹${Number(i.discountPrice).toLocaleString()})`
                                                                         : i.price
@@ -792,7 +792,7 @@ export function LeadQuotes({ leadId }: { leadId: string }) {
                                                         </span>
                                                         <div className="mt-1 text-slate-600 dark:text-slate-300 font-semibold">
                                                             {insuranceItems
-                                                                .map(i =>
+                                                                .map((i: any) =>
                                                                     i.discountPrice
                                                                         ? `${i.name} (₹${Number(i.discountPrice).toLocaleString()})`
                                                                         : i.price

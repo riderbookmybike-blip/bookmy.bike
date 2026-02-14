@@ -40,6 +40,13 @@ export async function savePrices(
                 district: p.district || 'ALL',
                 ex_showroom_price: p.ex_showroom_price,
                 is_active: p.is_active,
+                // Explicitly NULL on-road fields so chk_on_road_calc_v2 constraint passes
+                // (accessories have no RTO/insurance; publishPrices sets these for vehicles)
+                on_road_price: null,
+                rto: null,
+                insurance: null,
+                rto_total: null,
+                insurance_total: null,
                 ...(p.publish_stage && { publish_stage: p.publish_stage }),
                 ...(p.is_popular !== undefined && { is_popular: p.is_popular }),
                 updated_at: new Date().toISOString(),

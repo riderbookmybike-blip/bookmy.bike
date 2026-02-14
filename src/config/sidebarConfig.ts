@@ -34,6 +34,7 @@ import {
     Database,
     Languages,
     Bookmark,
+    MessageCircle,
 } from 'lucide-react';
 import { TenantType } from '@/lib/tenant/tenantContext';
 
@@ -145,7 +146,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 ],
             },
             {
-                title: 'Bookings',
+                title: 'Sales Orders',
                 href: '/sales-orders?stage=BOOKING',
                 icon: ShoppingBag,
                 color: 'text-blue-600',
@@ -160,10 +161,55 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 ],
             },
             {
-                title: 'Payments',
-                href: '/sales-orders?stage=PAYMENT',
+                title: 'Receipts',
+                href: '/receipts',
                 icon: CreditCard,
                 color: 'text-emerald-500',
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedRoles: [
+                    'OWNER',
+                    'ADMIN',
+                    'SUPER_ADMIN',
+                    'MARKETPLACE_ADMIN',
+                    'DEALERSHIP_ADMIN',
+                    'DEALERSHIP_STAFF',
+                ],
+            },
+            {
+                title: 'Allotment',
+                href: '/sales-orders?stage=ALLOTMENT',
+                icon: Bookmark,
+                color: 'text-indigo-600',
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedRoles: [
+                    'OWNER',
+                    'ADMIN',
+                    'SUPER_ADMIN',
+                    'MARKETPLACE_ADMIN',
+                    'DEALERSHIP_ADMIN',
+                    'DEALERSHIP_STAFF',
+                ],
+            },
+            {
+                title: 'Pre-Delivery',
+                href: '/sales-orders?stage=PDI',
+                icon: ClipboardCheck,
+                color: 'text-amber-500',
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedRoles: [
+                    'OWNER',
+                    'ADMIN',
+                    'SUPER_ADMIN',
+                    'MARKETPLACE_ADMIN',
+                    'DEALERSHIP_ADMIN',
+                    'DEALERSHIP_STAFF',
+                ],
+            },
+            {
+                title: 'Insurance',
+                href: '/sales-orders?stage=INSURANCE',
+                icon: ShieldCheck,
+                color: 'text-purple-600',
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
                 allowedRoles: [
                     'OWNER',
@@ -190,10 +236,10 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 ],
             },
             {
-                title: 'Allotment',
-                href: '/sales-orders?stage=ALLOTMENT',
-                icon: Bookmark,
-                color: 'text-indigo-600',
+                title: 'Registration',
+                href: '/sales-orders?stage=REGISTRATION',
+                icon: FileText,
+                color: 'text-amber-500',
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
                 allowedRoles: [
                     'OWNER',
@@ -234,6 +280,41 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_STAFF',
                 ],
             },
+            {
+                title: 'Feedback',
+                href: '/sales-orders?stage=FEEDBACK',
+                icon: MessageCircle,
+                color: 'text-sky-500',
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedRoles: [
+                    'OWNER',
+                    'ADMIN',
+                    'SUPER_ADMIN',
+                    'MARKETPLACE_ADMIN',
+                    'DEALERSHIP_ADMIN',
+                    'DEALERSHIP_STAFF',
+                ],
+            },
+        ],
+    },
+    {
+        group: 'Rewards',
+        items: [
+            {
+                title: 'O-Club',
+                href: '/dashboard/oclub',
+                icon: Wallet,
+                color: 'text-emerald-500',
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedRoles: [
+                    'OWNER',
+                    'ADMIN',
+                    'SUPER_ADMIN',
+                    'MARKETPLACE_ADMIN',
+                    'DEALERSHIP_ADMIN',
+                    'DEALERSHIP_STAFF',
+                ],
+            },
         ],
     },
     {
@@ -262,6 +343,15 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 color: 'text-indigo-500',
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
                 allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
+            },
+            {
+                title: 'Price List',
+                href: '/dashboard/catalog/pricing',
+                icon: Tags,
+                color: 'text-amber-500',
+                allowedTenants: ['DEALER'],
+                allowedRoles: ['OWNER', 'ADMIN', 'DEALERSHIP_ADMIN'],
+                permissions: ['read'],
             },
             {
                 title: 'PDI Tasks',
@@ -344,15 +434,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 allowedTenants: ['DEALER'],
                 allowedRoles: ['OWNER', 'ADMIN', 'DEALERSHIP_ADMIN'],
             },
-            {
-                title: 'Price List',
-                href: '/dashboard/catalog/pricing',
-                icon: Tags,
-                color: 'text-amber-500',
-                allowedTenants: ['DEALER'],
-                allowedRoles: ['OWNER', 'ADMIN', 'DEALERSHIP_ADMIN'],
-                permissions: ['read'],
-            },
+
             {
                 title: 'Product Catalog',
                 href: '/dashboard/catalog/products',

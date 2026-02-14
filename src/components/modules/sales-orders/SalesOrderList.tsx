@@ -17,7 +17,10 @@ export default function SalesOrderList({ orders, selectedId, onSelect }: SalesOr
             <div className="p-4 border-b border-gray-200 dark:border-white/10 space-y-3">
                 <h2 className="font-bold text-gray-700 dark:text-slate-200">Sales Orders</h2>
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
+                    <Search
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
+                        size={16}
+                    />
                     <input
                         type="text"
                         placeholder="Search Orders..."
@@ -38,17 +41,33 @@ export default function SalesOrderList({ orders, selectedId, onSelect }: SalesOr
                                 className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-white/5 ${isSelected ? 'bg-blue-50 dark:bg-blue-500/10 border-l-4 border-blue-600' : 'border-l-4 border-transparent'}`}
                             >
                                 <div className="flex justify-between items-start mb-1">
-                                    <span className={`font-mono font-bold text-xs ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-slate-400'}`}>{order.displayId}</span>
-                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${order.status === 'CONVERTED' ? 'bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300' : 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400'}`}>
+                                    <span
+                                        className={`font-mono font-bold text-xs ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-slate-400'}`}
+                                    >
+                                        {order.displayId}
+                                    </span>
+                                    <span
+                                        className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                                            order.status === 'PENDING_CORPORATE'
+                                                ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                                                : order.status === 'CONVERTED'
+                                                  ? 'bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300'
+                                                  : 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400'
+                                        }`}
+                                    >
                                         {order.status}
                                     </span>
                                 </div>
-                                <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">{order.customer}</h4>
+                                <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                                    {order.customer}
+                                </h4>
                                 <div className="text-xs text-gray-500 dark:text-slate-400 mt-1 truncate flex items-center gap-1">
                                     <span className="opacity-75">Ref:</span>
                                     <span className="font-mono text-[10px]">{order.quoteDisplayId}</span>
                                 </div>
-                                <p className="text-xs font-mono font-medium text-gray-700 dark:text-slate-200 mt-2">₹{order.price.toLocaleString()}</p>
+                                <p className="text-xs font-mono font-medium text-gray-700 dark:text-slate-200 mt-2">
+                                    ₹{order.price.toLocaleString()}
+                                </p>
                             </div>
                         );
                     })}
