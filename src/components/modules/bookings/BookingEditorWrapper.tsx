@@ -22,7 +22,7 @@ interface BookingEditorWrapperProps {
     bookingId: string;
     onClose?: () => void;
     onRefresh?: () => void;
-    defaultTab?: 'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'TRANSACTIONS';
+    defaultTab?: 'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'HISTORY';
 }
 
 export default function BookingEditorWrapper({

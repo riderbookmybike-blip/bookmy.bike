@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import ShellLayout from '@/components/layout/ShellLayout';
 import TenantHydrator from '@/components/tenant/TenantHydrator';
 import { createClient } from '@/lib/supabase/server';
-import DebugPortal from '@/components/debug/DebugPortal';
+
 import { TenantType, TenantProvider, TenantConfig, Membership } from '@/lib/tenant/tenantContext';
 import { CelebrationProvider } from '@/components/providers/CelebrationProvider';
 import { getAuthUser } from '@/lib/auth/resolver';
@@ -146,7 +146,6 @@ export default async function TenantDashboardLayout({
             <CelebrationProvider>
                 <ShellLayout>{children}</ShellLayout>
             </CelebrationProvider>
-            <DebugPortal />
         </TenantProvider>
     );
 }

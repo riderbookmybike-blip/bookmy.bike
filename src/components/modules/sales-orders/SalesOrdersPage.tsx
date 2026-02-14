@@ -186,6 +186,16 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
         }
     };
 
+    const statusFilters = [
+        { label: 'ALL', value: 'ALL' },
+        { label: 'BOOKED', value: 'BOOKED' },
+        { label: 'FINANCE', value: 'FINANCE' },
+        { label: 'INSURANCE', value: 'INSURANCE' },
+        { label: 'REGISTRATION', value: 'REGISTRATION' },
+        { label: 'COMPLIANCE', value: 'COMPLIANCE' },
+        { label: 'DELIVERED', value: 'DELIVERED' },
+    ];
+
     if (!selectedOrderId) {
         return (
             <div className="h-full bg-slate-50 dark:bg-[#0b0d10] -m-6 md:-m-8">
@@ -195,9 +205,10 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
                     onNew={() => toast.info('Create Sales Order from Quote')}
                     searchPlaceholder={`Search ${stageTitle}...`}
                     onSearch={setSearchQuery}
-                    statsContent={<StatsHeader stats={stats} />}
+                    statsContent={<StatsHeader stats={stats} device={device} />}
                     view={view}
                     onViewChange={setView}
+                    device={device}
                 >
                     {view === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
@@ -241,7 +252,31 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
                             ))}
                         </div>
                     ) : device === 'phone' ? (
-                        <div className="space-y-3 pb-20 px-4">
+                        <div className="space-y-2 pb-4">
+                            <div className="overflow-x-auto no-scrollbar -mx-4 px-4 mb-1.5">
+                                <div className="flex items-center gap-2 min-w-fit">
+                                    {statusFilters.map(filter => {
+                                        const active = (stageParam || 'ALL') === filter.value;
+                                        return (
+                                            <button
+                                                key={filter.value}
+                                                onClick={() => {
+                                                    const query =
+                                                        filter.value === 'ALL' ? '' : `?stage=${filter.value}`;
+                                                    if (slug) router.push(`/app/${slug}/sales-orders${query}`);
+                                                }}
+                                                className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                                                    active
+                                                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-500/30'
+                                                        : 'bg-white dark:bg-white/5 text-slate-500 border-slate-200 dark:border-white/10'
+                                                }`}
+                                            >
+                                                {filter.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                             {filteredOrders.map(order => {
                                 const isActive = selectedOrderId === order.id;
                                 const statusColor =
@@ -254,7 +289,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
                                     <button
                                         key={order.id}
                                         onClick={() => handleOpenOrder(order.id)}
-                                        className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm active:scale-[0.98] transition-all"
+                                        className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm active:scale-[0.98] transition-all min-h-[56px]"
                                     >
                                         <div className="flex">
                                             <div
@@ -266,9 +301,9 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
                                                           : 'bg-indigo-500'
                                                 }`}
                                             />
-                                            <div className="flex-1 px-4 py-3 min-w-0">
+                                            <div className="flex-1 px-3.5 py-3 min-w-0">
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
                                                         {formatDisplayId(order.displayId)}
                                                     </span>
                                                     <div className="flex items-center gap-1.5">
@@ -276,7 +311,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
                                                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
                                                         )}
                                                         <span
-                                                            className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                                            className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
                                                                 statusColor === 'emerald'
                                                                     ? 'bg-emerald-500/10 text-emerald-600'
                                                                     : statusColor === 'amber'
@@ -288,7 +323,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
                                                         </span>
                                                     </div>
                                                 </div>
-                                                <div className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight truncate mb-1">
+                                                <div className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-tight truncate mb-1">
                                                     {order.customerName}
                                                 </div>
                                                 <div className="flex items-center justify-between">
@@ -297,7 +332,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
                                                             .filter(Boolean)
                                                             .join(' ')}
                                                     </span>
-                                                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-300">
+                                                    <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 tabular-nums">
                                                         ₹{order.price.toLocaleString('en-IN')}
                                                     </span>
                                                 </div>

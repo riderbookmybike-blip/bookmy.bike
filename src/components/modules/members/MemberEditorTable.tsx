@@ -109,7 +109,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
         const transactionTotal = leadCount + quoteCount + bookingCount + receiptCount;
         return (
             <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10]">
-                <div className="px-3 pt-2 pb-3 space-y-2.5">
+                <div className="px-4 pt-2 pb-3 space-y-2.5">
                     <div className="flex items-start gap-3">
                         <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-base font-black shadow-lg shrink-0">
                             {(profile.member?.full_name || 'M').charAt(0).toUpperCase()}
@@ -196,7 +196,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
 
                     <PhoneSection title="O'Club Wallet" count={profile.oclubLedger?.length || 0} defaultOpen>
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between bg-indigo-600/10 border border-indigo-500/20 rounded-xl px-3 py-2">
+                            <div className="flex items-center justify-between bg-indigo-600/10 border border-indigo-500/20 rounded-xl px-4 py-2">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700">
                                     Balance
                                 </span>
@@ -306,7 +306,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                     </div>
                 </button>
                 <div className="flex items-center gap-4">
-                    <button className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5 px-3 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors">
+                    <button className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5 px-4 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors">
                         <Plus size={10} /> New
                     </button>
                 </div>

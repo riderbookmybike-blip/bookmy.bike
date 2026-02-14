@@ -52,11 +52,16 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { updateTaskStatus, createTask, getTasksForEntity, getTeamMembersForTenant } from '@/actions/crm';
 import {
-    updateTaskStatus,
-    createTask,
-    getTasksForEntity,
-    getTeamMembersForTenant,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
     updateMemberProfile,
     updateMemberAvatar,
     setQuoteFinanceMode,
@@ -339,7 +344,7 @@ interface QuoteEditorTableProps {
     isEditable?: boolean;
     mode?: 'quote' | 'booking' | 'receipt';
     dynamicTabLabel?: string;
-    defaultTab?: 'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'TRANSACTIONS';
+    defaultTab?: 'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'HISTORY';
     booking?: {
         id?: string | null;
         status?: string | null;
@@ -796,7 +801,7 @@ export default function QuoteEditorTable({
     const [pendingChanges, setPendingChanges] = useState<QuoteChange[]>([]);
     const [pendingPayload, setPendingPayload] = useState<Partial<QuoteData> | null>(null);
     const [activeTab, setActiveTab] = useState<
-        'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'TRANSACTIONS'
+        'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'HISTORY'
     >(defaultTab);
     const [financeMode, setFinanceMode] = useState<'CASH' | 'LOAN'>(quote.financeMode || 'CASH');
     const [docCount, setDocCount] = useState(0);
@@ -2203,23 +2208,6 @@ export default function QuoteEditorTable({
                                     {isSaving ? 'Updating...' : 'Save'}
                                 </Button>
                             )}
-                            {mode === 'quote' && (
-                                <Button
-                                    onClick={onConfirmBooking}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 h-10 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
-                                >
-                                    Convert to Sales Order
-                                </Button>
-                            )}
-                            {mode === 'booking' && (
-                                <Button
-                                    onClick={onConfirmBooking}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 h-10 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
-                                >
-                                    Confirm Sales Order
-                                </Button>
-                            )}
-
                             <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-1 gap-1">
                                 <Button
                                     variant="ghost"
@@ -2289,13 +2277,44 @@ export default function QuoteEditorTable({
                                     );
                                 })()}
                                 <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-1" />
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 rounded-lg text-slate-500 hover:text-slate-900"
-                                >
-                                    <MoreHorizontal size={14} />
-                                </Button>
+
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 rounded-lg text-slate-500 hover:text-slate-900 data-[state=open]:bg-slate-200 dark:data-[state=open]:bg-white/10"
+                                        >
+                                            <MoreHorizontal size={14} />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-56 p-1">
+                                        <DropdownMenuLabel className="text-xs font-black text-slate-400 uppercase tracking-widest px-2 py-1.5">
+                                            Actions
+                                        </DropdownMenuLabel>
+
+                                        {(mode === 'quote' || mode === 'booking') && (
+                                            <DropdownMenuItem onSelect={onConfirmBooking}>
+                                                <CheckCircle2 size={14} className="mr-2" />
+                                                {mode === 'booking' ? 'Confirm Sales Order' : 'Convert to Sales Order'}
+                                            </DropdownMenuItem>
+                                        )}
+
+                                        <DropdownMenuItem
+                                            onSelect={() => toast.info('Receive Payment feature coming soon!')}
+                                        >
+                                            <Wallet size={14} className="mr-2" />
+                                            Receive Payment
+                                        </DropdownMenuItem>
+
+                                        <DropdownMenuSeparator />
+
+                                        <DropdownMenuItem className="text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-900/20">
+                                            <Trash2 size={14} className="mr-2" />
+                                            Archive Quote
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
                     </div>
@@ -2325,8 +2344,8 @@ export default function QuoteEditorTable({
                                     { key: 'DYNAMIC', label: dynamicTabLabel, count: 0 },
                                     { key: 'FINANCE', label: 'FINANCE', count: 0 },
                                     {
-                                        key: 'TRANSACTIONS',
-                                        label: 'TRANSACTIONS',
+                                        key: 'HISTORY',
+                                        label: 'HISTORY',
                                         count: relatedQuotes.length + bookings.length + payments.length,
                                     },
                                     { key: 'TASKS', label: 'TASKS', count: localTasks.length },
@@ -6638,7 +6657,7 @@ export default function QuoteEditorTable({
                             );
                         })()}
 
-                    {activeTab === 'TRANSACTIONS' && (
+                    {activeTab === 'HISTORY' && (
                         <div className={cn(isPhone ? 'p-0' : 'p-6')}>
                             <div
                                 className={cn(

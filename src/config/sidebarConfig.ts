@@ -35,6 +35,7 @@ import {
     Languages,
     Bookmark,
     MessageCircle,
+    BookOpen,
 } from 'lucide-react';
 import { TenantType } from '@/lib/tenant/tenantContext';
 
@@ -165,6 +166,21 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/receipts',
                 icon: CreditCard,
                 color: 'text-emerald-500',
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedRoles: [
+                    'OWNER',
+                    'ADMIN',
+                    'SUPER_ADMIN',
+                    'MARKETPLACE_ADMIN',
+                    'DEALERSHIP_ADMIN',
+                    'DEALERSHIP_STAFF',
+                ],
+            },
+            {
+                title: 'Books',
+                href: '/books',
+                icon: BookOpen,
+                color: 'text-violet-500',
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
                 allowedRoles: [
                     'OWNER',

@@ -655,7 +655,7 @@ export async function getBookingsForMember(memberId: string) {
     const { data, error } = await supabase
         .from('crm_bookings')
         .select('*')
-        .eq('member_id', memberId)
+        .eq('user_id', memberId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
@@ -970,12 +970,7 @@ export async function getBookings(tenantId?: string) {
     const supabase = await createClient();
     let query = supabase
         .from('crm_bookings')
-        .select(
-            `
-        *,
-        quotes:crm_quotes (commercials, leads:crm_leads!quotes_lead_id_fkey(customer_name))
-    `
-        )
+        .select('*, member:id_members!user_id(full_name)')
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
@@ -985,25 +980,59 @@ export async function getBookings(tenantId?: string) {
 
     const { data, error } = await query;
     if (error) {
-        console.error('getBookings Error:', error);
-        return [];
+        console.error('[getBookings] Error:', error);
+        // Fallback: try without join if the FK fails
+        const fallback = await supabase
+            .from('crm_bookings')
+            .select('*')
+            .eq('is_deleted', false)
+            .eq(tenantId ? 'tenant_id' : 'is_deleted', tenantId || false)
+            .order('created_at', { ascending: false });
+
+        if (fallback.error || !fallback.data) return [];
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return fallback.data.map((b: any) => {
+            const v = b.vehicle_details || {};
+            const c = b.customer_details || {};
+            return {
+                id: b.id,
+                displayId: b.display_id || `SO-${b.id.slice(0, 4).toUpperCase()}`,
+                quoteId: b.quote_id,
+                quoteDisplayId: b.quote_id ? `QT-${b.quote_id.slice(0, 4).toUpperCase()}` : '',
+                customer: c.full_name || c.name || c.customer_name || 'N/A',
+                brand: v.brand || 'N/A',
+                model: v.model || 'N/A',
+                variant: v.variant || 'N/A',
+                price: b.grand_total || 0,
+                status: b.status || 'BOOKED',
+                date: b.created_at ? b.created_at.split('T')[0] : '',
+                currentStage: b.current_stage,
+            };
+        });
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return data.map((b: any) => ({
-        id: b.id,
-        displayId: `SO-${b.id.slice(0, 4).toUpperCase()}`,
-        quoteId: b.quote_id,
-        quoteDisplayId: `QT-${b.quote_id?.slice(0, 4).toUpperCase()}`,
-        customer: b.quotes?.leads?.customer_name || 'N/A',
-        brand: b.vehicle_details?.brand || 'N/A',
-        model: b.vehicle_details?.model || 'N/A',
-        variant: b.vehicle_details?.variant || 'N/A',
-        price: b.vehicle_details?.commercial_snapshot?.grand_total || 0,
-        status: b.status,
-        date: b.created_at.split('T')[0],
-        currentStage: b.current_stage,
-    }));
+    return (data || []).map((b: any) => {
+        const v = b.vehicle_details || {};
+        const c = b.customer_details || {};
+        const memberName = b.member?.full_name;
+
+        return {
+            id: b.id,
+            displayId: b.display_id || `SO-${b.id.slice(0, 4).toUpperCase()}`,
+            quoteId: b.quote_id,
+            quoteDisplayId: b.quote_id ? `QT-${b.quote_id.slice(0, 4).toUpperCase()}` : '',
+            customer: memberName || c.full_name || c.name || c.customer_name || 'N/A',
+            brand: v.brand || 'N/A',
+            model: v.model || 'N/A',
+            variant: v.variant || 'N/A',
+            price: b.grand_total || 0,
+            status: b.status || 'BOOKED',
+            date: b.created_at ? b.created_at.split('T')[0] : '',
+            currentStage: b.current_stage,
+        };
+    });
 }
 
 export async function getBookingForLead(leadId: string) {
@@ -1040,31 +1069,41 @@ export async function getBookingById(bookingId: string) {
 }
 
 export async function createBookingFromQuote(quoteId: string) {
-    const { data: bookingId, error: rpcError } = await (adminClient as any).rpc('create_booking_from_quote', {
-        quote_id: quoteId,
-    });
+    try {
+        const { data: bookingId, error: rpcError } = await (adminClient as any).rpc('create_booking_from_quote', {
+            quote_id: quoteId,
+        });
 
-    if (rpcError) {
-        console.error('Create Booking Error:', rpcError);
-        return { success: false, message: rpcError.message };
+        if (rpcError) {
+            console.error('[createBookingFromQuote] RPC Error:', rpcError);
+            return { success: false, message: rpcError.message };
+        }
+
+        if (!bookingId) {
+            return { success: false, message: 'Booking creation failed: No ID returned' };
+        }
+
+        const bookingIdValue = bookingId as string;
+        const { data: booking, error: bookingError } = await adminClient
+            .from('crm_bookings')
+            .select('*')
+            .eq('id', bookingIdValue)
+            .eq('is_deleted', false)
+            .single();
+
+        if (bookingError) {
+            console.error('[createBookingFromQuote] Fetch Booking Error:', bookingError);
+            return { success: false, message: bookingError.message };
+        }
+
+        revalidatePath('/app/[slug]/sales-orders');
+        revalidatePath('/profile');
+
+        return { success: true, data: booking };
+    } catch (err: any) {
+        console.error('[createBookingFromQuote] CRITICAL CRASH:', err);
+        return { success: false, message: `Server Error: ${err.message || String(err)}` };
     }
-
-    const bookingIdValue = bookingId as string;
-    const { data: booking, error: bookingError } = await adminClient
-        .from('crm_bookings')
-        .select('*')
-        .eq('id', bookingIdValue)
-        .eq('is_deleted', false)
-        .single();
-
-    if (bookingError) {
-        console.error('Fetch Booking Error:', bookingError);
-        return { success: false, message: bookingError.message };
-    }
-
-    revalidatePath('/app/[slug]/sales-orders');
-    revalidatePath('/profile');
-    return { success: true, data: booking };
 }
 
 export async function confirmSalesOrder(bookingId: string): Promise<{ success: boolean; message?: string }> {
