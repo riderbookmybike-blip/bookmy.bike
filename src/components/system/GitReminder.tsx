@@ -63,7 +63,17 @@ export const GitReminder: React.FC = () => {
         setHasAlarmed(true);
     }, [isMuted, hasAlarmed]);
 
-    if (!isDev || !status || !isVisible) return null;
+    // Hide on phone-sized viewports (≤480px) — dev tool is desktop-only
+    const [isNarrow, setIsNarrow] = useState(false);
+    useEffect(() => {
+        const mq = window.matchMedia('(max-width: 480px)');
+        setIsNarrow(mq.matches);
+        const handler = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, []);
+
+    if (!isDev || !status || !isVisible || isNarrow) return null;
 
     const { uncommitted, unpushed, lastCommitTime } = status;
     const hasChanges = uncommitted > 0;

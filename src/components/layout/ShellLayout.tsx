@@ -153,36 +153,8 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
     // --- ADMIN / ENTERPRISE LAYOUT ---
 
-    // GATE: If CRM_MOBILE_ENABLED is OFF and device is phone/tablet → block CRM entirely
-    if (breakpointHydrated && !isMobileEnabled && isMobileDevice) {
-        content = (
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6">
-                <div className="text-center space-y-4 max-w-xs">
-                    <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
-                        <svg
-                            className="w-7 h-7 text-slate-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={1.5}
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"
-                            />
-                        </svg>
-                    </div>
-                    <h2 className="text-sm font-black text-slate-900 dark:text-white">Desktop Required</h2>
-                    <p className="text-[11px] text-slate-500 dark:text-zinc-500 leading-relaxed">
-                        The CRM workspace is optimized for desktop browsers. Please switch to a laptop or desktop for
-                        the best experience.
-                    </p>
-                </div>
-            </div>
-        );
-        return <FavoritesProvider>{content}</FavoritesProvider>;
-    }
+    // Mobile CRM: responsive views handle phone/tablet layout via Phase 0–2.
+    // No gate needed — MobileViewBanner shows a dismissible "best on desktop" hint instead.
 
     // Responsive padding: phone=p-3, tablet=p-5, desktop=p-6/p-8
     const mainPadding = isPhone ? 'p-3' : isTablet ? 'p-5' : 'p-6 md:p-8';
