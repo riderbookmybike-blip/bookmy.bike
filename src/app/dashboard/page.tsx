@@ -2,20 +2,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTenant } from '@/lib/tenant/tenantContext';
-import DealerDashboard from '@/components/dashboard/DealerDashboard';
-import BankDashboard from '@/components/dashboard/BankDashboard';
-import AdminDashboard from '@/components/dashboard/AdminDashboard';
+import DealerInstrumentCluster from '@/components/dashboard/DealerInstrumentCluster';
+import BankInstrumentCluster from '@/components/dashboard/BankInstrumentCluster';
+import AdminInstrumentCluster from '@/components/dashboard/AdminInstrumentCluster';
 import UserDashboard from '@/components/dashboard/UserDashboard';
 import DynamicDashboard from '@/components/dashboard/DynamicDashboard';
 import { DashboardConfig } from '@/modules/core/types';
 
 // MAIN PAGE SHELL
 export default function DashboardPage() {
-    const {
-        tenantType,
-        tenantName,
-        activeRole
-    } = useTenant();
+    const { tenantType, tenantName, activeRole } = useTenant();
 
     const [dynamicConfig, setDynamicConfig] = useState<DashboardConfig | null>(null);
     const [loadingConfig, setLoadingConfig] = useState(true);
@@ -34,7 +30,7 @@ export default function DashboardPage() {
                     setDynamicConfig(null);
                 }
             } catch (e) {
-                console.error("Failed to load dynamic dashboard", e);
+                console.error('Failed to load dynamic dashboard', e);
             } finally {
                 setLoadingConfig(false);
             }
@@ -68,7 +64,9 @@ export default function DashboardPage() {
                     </div>
                 </div>
                 <div className="space-y-2 text-center">
-                    <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Access Denied</h1>
+                    <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                        Access Denied
+                    </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400 font-bold max-w-xs mx-auto">
                         You don&apos;t have an active membership for this dealership.
                     </p>
@@ -90,13 +88,15 @@ export default function DashboardPage() {
                     ) : (
                         /* Fallback to legacy hardcoded dashboards */
                         <>
-                            {tenantType === 'DEALER' && activeRole !== 'BMB_USER' && <DealerDashboard />}
-                            {tenantType === 'BANK' && activeRole !== 'BMB_USER' && <BankDashboard />}
-                            {(tenantType === 'MARKETPLACE') && (
-                                (activeRole && ['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF'].includes(activeRole))
-                                    ? <AdminDashboard />
-                                    : <UserDashboard />
-                            )}
+                            {tenantType === 'DEALER' && activeRole !== 'BMB_USER' && <DealerInstrumentCluster />}
+                            {tenantType === 'BANK' && activeRole !== 'BMB_USER' && <BankInstrumentCluster />}
+                            {tenantType === 'MARKETPLACE' &&
+                                (activeRole &&
+                                ['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF'].includes(activeRole) ? (
+                                    <AdminInstrumentCluster />
+                                ) : (
+                                    <UserDashboard />
+                                ))}
                         </>
                     )}
                 </>
