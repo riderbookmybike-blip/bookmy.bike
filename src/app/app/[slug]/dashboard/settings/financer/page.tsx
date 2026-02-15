@@ -1,37 +1,58 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Landmark, Building2, Zap, TrendingUp, ShieldCheck, List } from 'lucide-react';
+import { Landmark, Building2, Zap, TrendingUp, ShieldCheck, List, Loader2, Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import ListPanel from '@/components/templates/ListPanel';
 import { useParams } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
+import { getDealerFinancers, toggleDealerFinancer } from '@/actions/finance-partners';
+import FinancerAccessModal from '@/components/finance/FinancerAccessModal';
 
 export default function FinancerSettingsPage() {
     const params = useParams();
     const slug = params?.slug as string | undefined;
-    const { tenantType } = useTenant();
+    const { tenantType, tenantId } = useTenant();
     const [banks, setBanks] = useState<any[]>([]);
+    const [linkedIds, setLinkedIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const [toggling, setToggling] = useState<string | null>(null);
+
+    // Access Modal State
+    const [accessModal, setAccessModal] = useState<{ open: boolean; financeId: string; name: string }>({
+        open: false,
+        financeId: '',
+        name: '',
+    });
+
+    const fetchData = async () => {
+        setLoading(true);
+        const supabase = createClient();
+
+        const [banksRes, linksRes] = await Promise.all([
+            supabase.from('id_tenants').select('*').eq('type', 'BANK').order('name', { ascending: true }),
+            tenantId ? getDealerFinancers(tenantId) : Promise.resolve({ success: true, financerIds: [] }),
+        ]);
+
+        if (banksRes.data) setBanks(banksRes.data);
+        if (linksRes.success) setLinkedIds(linksRes.financerIds || []);
+
+        setLoading(false);
+    };
 
     useEffect(() => {
-        const fetchBanks = async () => {
-            setLoading(true);
-            const supabase = createClient();
-            const { data, error } = await supabase
-                .from('id_tenants')
-                .select('*')
-                .eq('type', 'BANK')
-                .order('name', { ascending: true });
+        fetchData();
+    }, [tenantId]);
 
-            if (error) {
-                console.error('Error fetching banks:', error);
-            }
-            setBanks(data || []);
-            setLoading(false);
-        };
-        fetchBanks();
-    }, []);
+    const handleToggleLink = async (financeId: string, currentStatus: boolean) => {
+        if (!tenantId) return;
+        setToggling(financeId);
+        const res = await toggleDealerFinancer(tenantId, financeId, !currentStatus);
+        if (res.success) {
+            setLinkedIds(prev => (!currentStatus ? [...prev, financeId] : prev.filter(id => id !== financeId)));
+        }
+        setToggling(null);
+    };
 
     const columns = useMemo(
         () => [
@@ -44,10 +65,67 @@ export default function FinancerSettingsPage() {
             },
             { key: 'displayId', header: 'Partner ID', type: 'id' as const, width: '140px' },
             { key: 'product', header: 'Product', type: 'text' as const, width: '180px' },
-            { key: 'schemesCount', header: 'Schemes', type: 'text' as const, width: '120px' },
-            { key: 'status', header: 'Status', type: 'badge' as const, align: 'center' as const, width: '120px' },
+            {
+                key: 'isLinked',
+                header: 'Marketplace Link',
+                width: '180px',
+                render: (item: any) => {
+                    const isLinked = linkedIds.includes(item.id);
+                    const isToggling = toggling === item.id;
+                    return (
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    handleToggleLink(item.id, isLinked);
+                                }}
+                                disabled={isToggling}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                                    isLinked ? 'bg-blue-600' : 'bg-slate-200 dark:bg-white/10'
+                                }`}
+                            >
+                                <span
+                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                        isLinked ? 'translate-x-5' : 'translate-x-0'
+                                    }`}
+                                />
+                                {isToggling && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <Loader2 size={10} className="animate-spin text-blue-400" />
+                                    </div>
+                                )}
+                            </button>
+                            <span
+                                className={`text-[10px] font-black uppercase tracking-widest ${isLinked ? 'text-blue-600' : 'text-slate-400'}`}
+                            >
+                                {isLinked ? 'Linked' : 'Offline'}
+                            </span>
+                        </div>
+                    );
+                },
+            },
+            {
+                key: 'access',
+                header: 'Staff Access',
+                width: '160px',
+                render: (item: any) => {
+                    const isLinked = linkedIds.includes(item.id);
+                    if (!isLinked) return null;
+                    return (
+                        <button
+                            onClick={e => {
+                                e.stopPropagation();
+                                setAccessModal({ open: true, financeId: item.id, name: item.name });
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-slate-200 dark:border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:text-blue-600 transition-all"
+                        >
+                            <Users size={12} /> Manage Access
+                        </button>
+                    );
+                },
+            },
         ],
-        []
+        [linkedIds, toggling]
     );
 
     const data = useMemo(
@@ -59,7 +137,6 @@ export default function FinancerSettingsPage() {
                     displayId: p.display_id || (p.id || '').slice(0, 8).toUpperCase(),
                     product: 'Two Wheeler Loan',
                     schemesCount: `${schemesCount} Items`,
-                    status: 'ACTIVE',
                 };
             }),
         [banks]
@@ -81,8 +158,8 @@ export default function FinancerSettingsPage() {
             {[
                 { label: 'Total Partners', value: data.length, icon: Building2, color: 'text-blue-500' },
                 {
-                    label: 'Active Schemes',
-                    value: data.reduce((acc, p) => acc + ((p as any).schemesCount ? 1 : 0), 0),
+                    label: 'Linked Partners',
+                    value: linkedIds.length,
                     icon: Zap,
                     color: 'text-emerald-500',
                 },
@@ -115,10 +192,9 @@ export default function FinancerSettingsPage() {
             <div className="flex items-center gap-3">
                 <Landmark className="text-emerald-600" />
                 <div>
-                    <h1 className="text-2xl font-black">Financer</h1>
-                    <p className="text-slate-500 text-sm">
-                        Dealer view of finance partners and schemes. (Read-only partner info; scheme controls coming
-                        next.)
+                    <h1 className="text-2xl font-black italic uppercase tracking-tighter">Financer Connectivity</h1>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
+                        Manage your dealership's finance partner links and cross-tenant staff permissions.
                     </p>
                 </div>
             </div>
@@ -138,6 +214,14 @@ export default function FinancerSettingsPage() {
                 basePath={basePath}
                 actionLabel="" // hide action
                 onActionClick={undefined}
+            />
+
+            <FinancerAccessModal
+                isOpen={accessModal.open}
+                onClose={() => setAccessModal({ ...accessModal, open: false })}
+                dealerId={tenantId || ''}
+                financeId={accessModal.financeId}
+                financeName={accessModal.name}
             />
         </div>
     );

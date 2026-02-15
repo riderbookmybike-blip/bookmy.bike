@@ -87,6 +87,15 @@ export default function TeamTab({
     const [dealerLoading, setDealerLoading] = useState(false);
     const [selectedDealerIds, setSelectedDealerIds] = useState<string[]>([]);
 
+    // Seed dealer selections when editing an existing member so choices persist on save
+    useEffect(() => {
+        if (selectedMember?.serviceability?.dealerIds) {
+            setSelectedDealerIds(selectedMember.serviceability.dealerIds);
+        } else {
+            setSelectedDealerIds([]);
+        }
+    }, [selectedMember]);
+
     useEffect(() => {
         const fetchDealers = async () => {
             setDealerLoading(true);

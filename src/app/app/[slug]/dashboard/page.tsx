@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import AdminDashboard from '@/components/dashboard/AdminDashboard';
-import DealerDashboard from '@/components/dashboard/DealerDashboard';
-
 import { getAuthUser } from '@/lib/auth/resolver';
+import AriaDashboard from '@/components/dashboard/aria/AriaDashboard';
+import { getDealerDashboardKpis, getPlatformDashboardKpis } from '@/actions/dashboardKpis';
+import { getRecentEvents } from '@/actions/analytics';
 
 export default async function TenantDashboard(props: { params: Promise<{ slug: string }> }) {
     const params = await props.params;
@@ -17,10 +17,9 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
         redirect(`/login?next=/app/${slug}/dashboard`);
     }
 
-    // 1. Fetch all memberships for the user via secure RPC
+    // 1. Fetch all memberships
     const { data: rawMembershipsData } = await supabase.rpc('get_user_memberships', { p_user_id: user.id });
 
-    // Identify if we got an array (new JSONB approach) or direct data
     let allMemberships = (Array.isArray(rawMembershipsData) ? rawMembershipsData : []).map((m: any) => ({
         ...m,
         tenants: {
@@ -62,24 +61,14 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
 
     if (!effectiveMembership) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <h1 className="text-2xl font-bold mb-4">403 ACCESS DENIED</h1>
-                    <p className="mb-4">You are authenticated, but you do not have permission to access this portal.</p>
-
-                    <div className="mt-8 p-4 bg-slate-50 rounded-lg text-xs text-slate-400 text-left max-w-md mx-auto font-mono">
-                        <p>User Context: {user.email}</p>
-                        <p>Requested Slug: {slug}</p>
-                    </div>
-
-                    <div className="mt-8">
-                        <a
-                            href="/login"
-                            className="px-6 py-3 bg-brand-primary text-slate-900 rounded-lg text-sm font-black uppercase tracking-wider shadow-lg shadow-brand-primary/20"
-                        >
-                            Switch Account // Login
-                        </a>
-                    </div>
+            <div className="flex items-center justify-center min-h-screen bg-slate-50">
+                <div className="text-center p-12 bg-white rounded-[2rem] shadow-xl">
+                    <h1 className="text-2xl font-black text-slate-900 mb-4 tracking-tighter italic">
+                        403_ACCESS_DENIED
+                    </h1>
+                    <p className="text-slate-400 mb-4 max-w-sm">
+                        Node authentication successful, but authorization is missing for this sector.
+                    </p>
                 </div>
             </div>
         );
@@ -97,9 +86,29 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
     };
     const roleLabel = roleMap[effectiveMembership.role] || effectiveMembership.role;
 
-    if (slug === 'aums') {
-        return <AdminDashboard />;
+    // Resolve Persona and Fetch Live Data
+    let initialPersona: 'AUMS' | 'DEALERSHIP' | 'FINANCER' = 'DEALERSHIP';
+    let kpis = null;
+
+    if (slug === 'aums' || tenant.type === 'MARKETPLACE') {
+        initialPersona = 'AUMS';
+        kpis = await getPlatformDashboardKpis();
+    } else if (tenant.type === 'BANK') {
+        initialPersona = 'FINANCER';
+        kpis = await getDealerDashboardKpis(tenant.id);
+    } else {
+        kpis = await getDealerDashboardKpis(tenant.id);
     }
 
-    return <DealerDashboard tenant={tenant} role={effectiveMembership.role} roleLabel={roleLabel} />;
+    const recentEvents = await getRecentEvents(10);
+
+    return (
+        <AriaDashboard
+            initialPersona={initialPersona}
+            tenantName={tenant.name || 'Command Node'}
+            roleLabel={roleLabel}
+            kpis={kpis}
+            recentEvents={recentEvents}
+        />
+    );
 }

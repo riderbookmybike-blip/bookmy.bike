@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import {
     Users,
     FileText,
@@ -20,26 +21,26 @@ import {
 
 export const KpiCard = ({ title, value, sub, trend = 'neutral', icon: Icon }: any) => {
     const isUp = trend === 'up';
-    const accentColor = isUp ? 'emerald' : trend === 'down' ? 'rose' : 'indigo';
+    const accentColor = '#FFD700';
 
     return (
-        <div
-            className={`
-            relative overflow-hidden p-6 rounded-[2.5rem] transition-all duration-500 group cursor-default active:scale-95
-            bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/5
-            hover:shadow-2xl ${isUp ? 'hover:shadow-emerald-500/10' : 'hover:shadow-indigo-500/10'}
-            ${isUp ? 'neon-border-emerald' : 'neon-border-indigo'}
-        `}
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className={`tft-glass-panel rounded-[2rem] p-8 group relative overflow-hidden transition-all duration-500 
+            hover:shadow-2xl hover:shadow-[#FFD700]/10
+            neon-border-brand border border-[#FFD700]/10`}
         >
             {/* Speed-line Background Effect */}
             <div className="absolute inset-0 opacity-10 dark:opacity-20 pointer-events-none">
-                <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/10 blur-[80px] rounded-full" />
+                <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#FFD700]/20 via-transparent to-transparent" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#FFD700]/10 blur-[80px] rounded-full" />
             </div>
 
             {/* Tachometer / Gauge Decorative SVG */}
             <div className="absolute -right-6 -bottom-6 w-32 h-32 opacity-[0.03] dark:opacity-[0.08] group-hover:opacity-20 transition-all duration-700 -rotate-12 group-hover:rotate-0 group-hover:scale-125">
-                <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-current text-indigo-500">
+                <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-current text-[#FFD700]">
                     <path d="M 20 80 A 40 40 0 1 1 80 80" strokeWidth="8" strokeLinecap="round" />
                     <path
                         d="M 20 80 A 40 40 0 0 1 30 70"
@@ -65,8 +66,8 @@ export const KpiCard = ({ title, value, sub, trend = 'neutral', icon: Icon }: an
                     <div
                         className={`
                         p-3 rounded-2xl transition-all duration-500 border border-slate-100 dark:border-white/5 shadow-inner
-                        ${isUp ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600' : 'bg-slate-50 dark:bg-slate-900 text-indigo-600'}
-                        group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white
+                        ${isUp ? 'bg-[#FFD700]/10 text-[#FFD700]' : 'bg-slate-50 dark:bg-slate-900 text-[#FFD700]'}
+                        group-hover:scale-110 group-hover:bg-[#FFD700] group-hover:text-black
                     `}
                     >
                         <Icon size={20} strokeWidth={2.5} />
@@ -94,7 +95,7 @@ export const KpiCard = ({ title, value, sub, trend = 'neutral', icon: Icon }: an
 
                 <div className="space-y-1.5">
                     <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em] flex items-center gap-2">
-                        <span className={`w-1 h-3 rounded-full ${isUp ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
+                        <span className={`w-1 h-3 rounded-full bg-[#FFD700]`} />
                         {title}
                     </h3>
                     <div className="flex items-baseline gap-1">
@@ -103,18 +104,18 @@ export const KpiCard = ({ title, value, sub, trend = 'neutral', icon: Icon }: an
                         </p>
                     </div>
                     <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] pt-3 flex items-center gap-2">
-                        <Activity size={10} className="text-indigo-500" />
+                        <Activity size={10} className="text-[#FFD700]" />
                         {sub}
                     </p>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 };
 
 export const FunnelWidget = () => (
     <div className="bg-white dark:bg-slate-900/40 p-8 rounded-[32px] border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden relative group">
-        <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-indigo-500/5 dark:bg-indigo-500/10 blur-3xl -z-0 group-hover:scale-110 transition-transform duration-1000" />
+        <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-[#FFD700]/5 dark:bg-[#FFD700]/10 blur-3xl -z-0 group-hover:scale-110 transition-transform duration-1000" />
         <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 relative z-10">
             Sales Funnel // Throughput
         </h3>
@@ -123,17 +124,17 @@ export const FunnelWidget = () => (
             <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 dark:bg-slate-700 -z-10 transform -translate-y-1/2"></div>
 
             {[
-                { label: 'Quotes', val: '142', color: 'bg-indigo-500' },
-                { label: 'Orders', val: '86', color: 'bg-violet-500' },
-                { label: 'Bookings', val: '64', color: 'bg-purple-500' },
-                { label: 'Delivered', val: '41', color: 'bg-emerald-500' },
+                { label: 'Quotes', val: '142', color: 'bg-[#FFD700]/40' },
+                { label: 'Orders', val: '86', color: 'bg-[#FFD700]/60' },
+                { label: 'Bookings', val: '64', color: 'bg-[#FFD700]/80' },
+                { label: 'Delivered', val: '41', color: 'bg-[#FFD700]' },
             ].map((step, idx) => (
                 <div
                     key={idx}
                     className="flex flex-col items-center bg-white dark:bg-[#0b1224] px-3 transition-transform hover:scale-110 duration-300"
                 >
                     <div
-                        className={`w-14 h-14 rounded-2xl ${step.color} text-white flex items-center justify-center text-sm font-black shadow-lg mb-3 font-mono transform -rotate-3 hover:rotate-0 transition-transform`}
+                        className={`w-14 h-14 rounded-2xl ${step.color} text-black flex items-center justify-center text-sm font-black shadow-lg mb-3 font-mono transform -rotate-3 hover:rotate-0 transition-transform`}
                     >
                         {step.val}
                     </div>
@@ -150,15 +151,15 @@ export const PaymentsWidget = () => (
     <div className="bg-white dark:bg-slate-900/40 p-8 rounded-[32px] border border-slate-200 dark:border-white/5 shadow-sm group">
         <div className="flex justify-between items-center mb-8">
             <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Payments Pulse</h3>
-            <div className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-inner border border-slate-100 dark:border-white/5">
+            <div className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl group-hover:bg-[#FFD700] group-hover:text-black transition-all duration-500 shadow-inner border border-slate-100 dark:border-white/5">
                 <Wallet size={16} strokeWidth={2} />
             </div>
         </div>
         <div className="space-y-5">
             {[
-                { label: 'Collected Today', val: '₹ 12,45,000', color: 'bg-emerald-500' },
-                { label: 'Pending Invoices', val: '₹ 4,20,000', color: 'bg-amber-500' },
-                { label: 'Overdue > 7 Days', val: '₹ 1,15,000', color: 'bg-rose-500' },
+                { label: 'Collected Today', val: '₹ 12,45,000', color: 'bg-[#FFD700]' },
+                { label: 'Pending Invoices', val: '₹ 4,20,000', color: 'bg-[#FFD700]/60' },
+                { label: 'Overdue > 7 Days', val: '₹ 1,15,000', color: 'bg-[#FFD700]/30' },
             ].map((p, i) => (
                 <div
                     key={i}

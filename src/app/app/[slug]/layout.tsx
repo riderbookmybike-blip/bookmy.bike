@@ -98,6 +98,32 @@ export default async function TenantDashboardLayout({
         memberships.push(...fallback);
     }
 
+    // 2.5 CROSS-TENANT ACCESS: Check for Finance Partner staff granted CRM access to this dealer
+    const { data: crossMemberships } = await supabase
+        .from('dealer_finance_user_access')
+        .select(
+            `
+            user_id,
+            dealer_tenant_id,
+            id_tenants:dealer_tenant_id (
+                id, name, slug, type, config
+            )
+        `
+        )
+        .eq('user_id', user.id)
+        .eq('crm_access', true);
+
+    if (crossMemberships && crossMemberships.length > 0) {
+        const mappedCross = crossMemberships.map((m: any) => ({
+            user_id: m.user_id,
+            tenant_id: m.dealer_tenant_id,
+            role: 'BANK_STAFF', // Using BANK_STAFF role for financer personnel
+            status: 'ACTIVE',
+            tenants: m.id_tenants as Tenant,
+        }));
+        memberships.push(...mappedCross);
+    }
+
     let matched = memberships.find((m: LocalMembership) => {
         const tenantSlug = (m.tenants?.slug || m.tenant_slug || '').toLowerCase();
         const mStatus = (m.status || 'ACTIVE').toUpperCase(); // Default to ACTIVE if field missing

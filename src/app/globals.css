@@ -175,69 +175,67 @@
         @apply w-full max-w-[1440px] mx-auto px-6;
     }
 
-    /* --- MOTO-GRIT UTILITIES --- */
-    .carbon-pattern {
-        background:
-            linear-gradient(27deg, #151515 5px, transparent 5px) 0 5px,
-            linear-gradient(207deg, #151515 5px, transparent 5px) 10px 0px,
-            linear-gradient(27deg, #222 5px, transparent 5px) 0px 10px,
-            linear-gradient(207deg, #222 5px, transparent 5px) 10px 5px,
-            linear-gradient(90deg, #1b1b1b 10px, transparent 10px),
-            linear-gradient(
-                #1d1d1d 25%,
-                #1a1a1a 25%,
-                #1a1a1a 50%,
-                transparent 50%,
-                transparent 75%,
-                #242424 75%,
-                #242424
-            );
-        background-color: #131313;
+    /* --- TFT SYNERGY: DIGITAL INSTRUMENT CLUSTER --- */
+    :root {
+        --tft-bg: #0a0a0a;
+        --tft-glass: rgba(15, 15, 15, 0.85);
+        --tft-orange: #ffd700;
+        --tft-cyan: #ffd700;
+        --tft-warning: #ffd700;
+        --tft-critical: #ffd700;
+        --tft-success: #ffd700;
+        --tft-grid: rgba(255, 215, 0, 0.03);
+    }
+
+    .tft-viewport {
+        background: var(--tft-bg);
+        min-height: 100vh;
+        color: white;
+        overflow: hidden;
+    }
+
+    .tft-cluster-frame {
+        @apply relative rounded-[32px] overflow-hidden border-[12px] border-[#1a1a1a];
+        background: radial-gradient(circle at center, #151515 0%, #080808 100%);
+        box-shadow:
+            0 50px 100px -20px rgba(0, 0, 0, 0.8),
+            inset 0 2px 10px rgba(255, 255, 255, 0.05);
+    }
+
+    .tft-glass-panel {
+        @apply bg-[#0f0f0f]/80 backdrop-blur-2xl border border-white/5;
+        box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .tft-lcd-grid {
+        background-image:
+            linear-gradient(var(--tft-grid) 1px, transparent 1px),
+            linear-gradient(90deg, var(--tft-grid) 1px, transparent 1px);
         background-size: 20px 20px;
     }
 
-    .neon-border-indigo {
+    .tft-indicator-glow {
+        filter: drop-shadow(0 0 8px currentColor);
+    }
+
+    .tft-gauge-arc {
+        stroke-dasharray: 1000;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tft-number {
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.05em;
+    }
+
+    .tft-beveled {
+        /* Arbitrary shadow values need underscores to replace spaces and comma pads */
+        @apply border-white/5;
         box-shadow:
-            0 0 10px rgba(99, 102, 241, 0.2),
-            inset 0 0 5px rgba(99, 102, 241, 0.1);
-        border-color: rgba(99, 102, 241, 0.4);
-    }
-
-    .neon-border-amber {
-        box-shadow:
-            0 0 10px rgba(245, 158, 11, 0.2),
-            inset 0 0 5px rgba(245, 158, 11, 0.1);
-        border-color: rgba(245, 158, 11, 0.4);
-    }
-
-    .racing-italic {
-        font-style: italic;
-        transform: skewX(-5deg);
-        display: inline-block;
-    }
-
-    .moto-gradient-dark {
-        background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
-    }
-
-    .ignite-pulse {
-        box-shadow: 0 0 0 0 rgba(244, 176, 0, 0.4);
-        animation: ignite 2s infinite;
-    }
-
-    @keyframes ignite {
-        0% {
-            transform: scale(0.98);
-            box-shadow: 0 0 0 0 rgba(244, 176, 0, 0.7);
-        }
-        70% {
-            transform: scale(1);
-            box-shadow: 0 0 0 10px rgba(244, 176, 0, 0);
-        }
-        100% {
-            transform: scale(0.98);
-            box-shadow: 0 0 0 0 rgba(244, 176, 0, 0);
-        }
+            inset 0 1px 1px rgba(255, 255, 255, 0.1),
+            0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
     }
 }
 

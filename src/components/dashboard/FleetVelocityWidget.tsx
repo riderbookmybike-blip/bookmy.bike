@@ -1,9 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, CheckCircle2 } from 'lucide-react';
 
 export const FleetVelocityWidget = () => {
@@ -28,14 +26,16 @@ export const FleetVelocityWidget = () => {
             <div className="flex items-center justify-between mb-10 shrink-0">
                 <div className="space-y-1">
                     <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 italic tracking-tighter">
-                        <TrendingUp size={20} className="text-indigo-600" />
+                        <TrendingUp size={20} className="text-[#FFD700]" />
                         FLEET VELOCITY
                     </h3>
-                    <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">Unit Throughput Analysis</p>
+                    <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">
+                        Unit Throughput Analysis
+                    </p>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
-                        <span className="w-2 h-2 rounded-full bg-indigo-600" /> Real-time
+                        <span className="w-2 h-2 rounded-full bg-[#FFD700]" /> Real-time
                     </div>
                     <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
                         <span className="w-2 h-2 rounded-full bg-slate-200 dark:bg-white/10" /> Projected
@@ -48,11 +48,16 @@ export const FleetVelocityWidget = () => {
                     <AreaChart data={fleetData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="gradientColor" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                <stop offset="5%" stopColor="#FFD700" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#FFD700" stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-white/5" />
+                        <CartesianGrid
+                            strokeDasharray="3 3"
+                            vertical={false}
+                            stroke="currentColor"
+                            className="text-slate-100 dark:text-white/5"
+                        />
                         <XAxis
                             dataKey="time"
                             axisLine={false}
@@ -62,22 +67,44 @@ export const FleetVelocityWidget = () => {
                         />
                         <YAxis hide />
                         <Tooltip
-                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}
+                            contentStyle={{
+                                backgroundColor: '#0f172a',
+                                borderColor: '#334155',
+                                borderRadius: '12px',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                            }}
                             itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
                             labelStyle={{ color: '#94a3b8', fontSize: '10px', fontWeight: 'bold', marginBottom: '4px' }}
                         />
-                        <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#gradientColor)" animationDuration={2000} />
-                        <Area type="monotone" dataKey="projection" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" fill="transparent" />
+                        <Area
+                            type="monotone"
+                            dataKey="value"
+                            stroke="#FFD700"
+                            strokeWidth={4}
+                            fillOpacity={1}
+                            fill="url(#gradientColor)"
+                            animationDuration={2000}
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="projection"
+                            stroke="#94a3b8"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            fill="transparent"
+                        />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
 
             <div className="mt-8 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2 text-emerald-500 text-xs font-black">
+                <div className="flex items-center gap-2 text-[#FFD700] text-xs font-black">
                     <CheckCircle2 size={14} />
                     Peak efficiency reached
                 </div>
-                <button className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline">View Report</button>
+                <button className="text-[10px] font-black text-[#FFD700] uppercase tracking-widest hover:underline">
+                    View Report
+                </button>
             </div>
         </div>
     );

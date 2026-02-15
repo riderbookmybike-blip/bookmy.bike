@@ -311,7 +311,7 @@ export const DealerPricelist = ({
 
                 <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 relative">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                        <div className="w-12 h-12 rounded-2xl bg-[#FFD700] flex items-center justify-center text-black shadow-lg shadow-[#FFD700]/20">
                             <Tag size={20} />
                         </div>
                         <div>
@@ -368,14 +368,14 @@ export const DealerPricelist = ({
                         <div className="relative group">
                             <Search
                                 size={14}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-400 transition-colors"
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#FFD700] transition-colors"
                             />
                             <input
                                 type="text"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 placeholder="Search inventory..."
-                                className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white pl-9 pr-4 py-2 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none w-48 transition-all hover:border-indigo-300"
+                                className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white pl-9 pr-4 py-2 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#FFD700]/20 outline-none w-48 transition-all hover:border-[#FFD700]/40"
                             />
                         </div>
 
@@ -430,7 +430,7 @@ export const DealerPricelist = ({
 
                         <button
                             onClick={() => setActiveForFiltered(true)}
-                            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all"
+                            className="px-3 py-2 bg-[#FFD700] hover:bg-[#FFD700]/90 text-black rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all"
                         >
                             Activate Filtered
                         </button>
@@ -445,14 +445,14 @@ export const DealerPricelist = ({
                             <button
                                 onClick={saveChanges}
                                 disabled={saving}
-                                className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-2 px-6 py-2 bg-[#FFD700] hover:bg-[#FFD700]/90 text-black rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-[#FFD700]/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                 Save Changes
                             </button>
                         ) : (
                             <div className="flex items-center gap-2 px-4 py-2 text-slate-400 text-xs font-bold uppercase tracking-wider bg-slate-100 dark:bg-white/5 rounded-xl">
-                                <CheckCircle2 size={14} className="text-emerald-500" />
+                                <CheckCircle2 size={14} className="text-[#FFD700]" />
                                 Synced
                             </div>
                         )}
@@ -570,9 +570,7 @@ export const DealerPricelist = ({
                                             <button
                                                 onClick={() => handleToggleActive(sku.id)}
                                                 className={`w-10 h-6 rounded-full flex items-center px-1 transition-colors ${
-                                                    sku.isActive
-                                                        ? 'bg-emerald-500/80'
-                                                        : 'bg-slate-200 dark:bg-slate-700'
+                                                    sku.isActive ? 'bg-[#FFD700]' : 'bg-slate-200 dark:bg-slate-700'
                                                 }`}
                                                 title={sku.isActive ? 'Active' : 'Inactive'}
                                             >
@@ -589,7 +587,7 @@ export const DealerPricelist = ({
                                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                         {sku.offerAmount !== 0 ? (
                                                             sku.offerAmount < 0 ? (
-                                                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                                                <div className="w-2 h-2 rounded-full bg-[#FFD700] animate-pulse" />
                                                             ) : (
                                                                 <div className="w-2 h-2 rounded-full bg-amber-500" />
                                                             )
@@ -604,8 +602,8 @@ export const DealerPricelist = ({
                                                         placeholder="Add Offer"
                                                         className={`block w-full pl-8 pr-3 py-2 text-center text-sm font-bold rounded-xl border-2 outline-none transition-all ${
                                                             sku.isDirty
-                                                                ? 'border-indigo-400 bg-indigo-50 focus:ring-4 focus:ring-indigo-100'
-                                                                : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 focus:border-indigo-500 focus:bg-white dark:focus:bg-black'
+                                                                ? 'border-[#FFD700] bg-[#FFD700]/5 focus:ring-4 focus:ring-[#FFD700]/10'
+                                                                : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 focus:border-[#FFD700] focus:bg-white dark:focus:bg-black'
                                                         } ${
                                                             sku.offerAmount < 0
                                                                 ? 'text-green-600'
@@ -636,12 +634,11 @@ export const DealerPricelist = ({
                                                         <span className="text-[9px] text-slate-300 font-bold">*</span>
                                                     )}
                                                 </div>
-
                                                 {sku.offerAmount !== 0 ? (
                                                     <span
                                                         className={`text-[9px] font-bold uppercase tracking-wider ${
                                                             sku.offerAmount < 0
-                                                                ? 'text-green-600 bg-green-50 dark:bg-green-500/10 px-1.5 py-0.5 rounded'
+                                                                ? 'text-[#FFD700] bg-[#FFD700]/10 px-1.5 py-0.5 rounded'
                                                                 : 'text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded'
                                                         }`}
                                                     >

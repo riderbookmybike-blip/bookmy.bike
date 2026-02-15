@@ -17,9 +17,9 @@ export default function DynamicDashboard({ config, className = '' }: DynamicDash
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 dark:border-white/5 pb-8">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-lg w-fit">
-                        <span className="w-1.1 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+                    <div className="flex items-center gap-2 px-2.5 py-1 bg-[#FFD700]/10 border border-[#FFD700]/20 rounded-lg w-fit">
+                        <span className="w-1.1 h-1.5 rounded-full bg-[#FFD700] animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-[#FFD700]">
                             {config.title}
                         </span>
                     </div>
@@ -39,7 +39,7 @@ export default function DynamicDashboard({ config, className = '' }: DynamicDash
 
             {/* Widgets Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 auto-rows-min">
-                {config.widgets.map((widgetConfig) => {
+                {config.widgets.map(widgetConfig => {
                     const WidgetComponent = getWidgetComponent(widgetConfig.type);
                     const { w, h, x, y } = widgetConfig.layout;
 
@@ -61,11 +61,7 @@ export default function DynamicDashboard({ config, className = '' }: DynamicDash
                     }
 
                     return (
-                        <div
-                            key={widgetConfig.id}
-                            className={`${colSpanClass}`}
-                            style={style}
-                        >
+                        <div key={widgetConfig.id} className={`${colSpanClass}`} style={style}>
                             <WidgetComponent {...resolvedProps} />
                         </div>
                     );

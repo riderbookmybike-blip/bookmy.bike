@@ -76,14 +76,14 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
             },
             {
-                title: 'Overview',
+                title: 'Dashboard',
                 href: '/dashboard',
                 icon: LayoutDashboard,
                 color: 'text-indigo-500',
                 allowedTenants: ['DEALER', 'BANK'],
             },
             {
-                title: 'Marketplace Dashboard',
+                title: 'Dashboard',
                 href: '/dashboard',
                 icon: LayoutDashboard,
                 color: 'text-indigo-500',
