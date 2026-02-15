@@ -41,6 +41,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';
 import { useDealerSession } from '@/hooks/useDealerSession';
 import { useTenant } from '@/lib/tenant/tenantContext';
+import { getDefaultAvatar, AVATAR_PRESETS } from '@/lib/avatars';
 
 interface ProfileMembership {
     role: string | null;
@@ -91,6 +92,7 @@ export function ProfileDropdown({
         stateCode?: string;
     } | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
     // Dealer Session Hook
     const { activeTenantId } = useDealerSession();
@@ -279,6 +281,30 @@ export function ProfileDropdown({
         }
     };
 
+    const handleAvatarSelect = async (presetUrl: string) => {
+        try {
+            setUploading(true);
+            if (!user) return;
+            const supabase = createClient();
+
+            const { error: updateError } = await supabase.auth.updateUser({
+                data: { avatar_url: presetUrl },
+            });
+            if (updateError) throw updateError;
+
+            await supabase.from('id_members').update({ avatar_url: presetUrl }).eq('id', user.id);
+
+            setUser(prev =>
+                prev ? { ...prev, user_metadata: { ...prev.user_metadata, avatar_url: presetUrl } } : null
+            );
+            setShowAvatarPicker(false);
+        } catch (error) {
+            console.error('Error setting avatar:', error);
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const getTenantIcon = (type: string) => {
         switch (type) {
             case 'SUPER_ADMIN':
@@ -380,11 +406,11 @@ export function ProfileDropdown({
                 className={`hidden lg:flex h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
             >
                 <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all">
-                    {user.user_metadata?.avatar_url ? (
-                        <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                        (displayName[0] || 'U').toUpperCase()
-                    )}
+                    <img
+                        src={user.user_metadata?.avatar_url || getDefaultAvatar(user.id, displayName)}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                    />
                 </div>
                 <div className="flex items-center gap-1.5 leading-none">
                     <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">
@@ -465,22 +491,19 @@ export function ProfileDropdown({
                                                 {/* Smaller Avatar */}
                                                 <div className="relative shrink-0 group/avatar">
                                                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-black text-xl font-black shadow-lg shadow-brand-primary/20 overflow-hidden relative z-10 ring-2 ring-white dark:ring-[#0F172A]">
-                                                        {user.user_metadata?.avatar_url ? (
-                                                            <img
-                                                                src={user.user_metadata.avatar_url}
-                                                                alt={user.user_metadata?.full_name}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        ) : (
-                                                            <span>
-                                                                {(
-                                                                    user.user_metadata?.full_name?.[0] ||
-                                                                    user.user_metadata?.name?.[0] ||
-                                                                    user.email?.[0] ||
-                                                                    'U'
-                                                                ).toUpperCase()}
-                                                            </span>
-                                                        )}
+                                                        <img
+                                                            src={
+                                                                user.user_metadata?.avatar_url ||
+                                                                getDefaultAvatar(
+                                                                    user.id,
+                                                                    user.user_metadata?.full_name ||
+                                                                        user.user_metadata?.name ||
+                                                                        user.email
+                                                                )
+                                                            }
+                                                            alt={user.user_metadata?.full_name || 'Profile'}
+                                                            className="w-full h-full object-cover"
+                                                        />
                                                     </div>
                                                     <button
                                                         onClick={() => fileInputRef.current?.click()}
@@ -521,6 +544,62 @@ export function ProfileDropdown({
                                                         </div>
                                                     )}
                                                 </div>
+                                            </motion.div>
+
+                                            {/* Avatar Picker */}
+                                            <motion.div variants={itemVariants}>
+                                                <button
+                                                    onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                                                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-[#F4B000]/30 transition-all group"
+                                                >
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 group-hover:text-[#F4B000] transition-colors">
+                                                        Change Avatar
+                                                    </span>
+                                                    <ChevronDown
+                                                        size={12}
+                                                        className={`text-slate-400 transition-transform duration-200 ${showAvatarPicker ? 'rotate-180' : ''}`}
+                                                    />
+                                                </button>
+                                                <AnimatePresence>
+                                                    {showAvatarPicker && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            transition={{ duration: 0.2 }}
+                                                            className="overflow-hidden"
+                                                        >
+                                                            <div className="flex gap-2 pt-3 pb-1 overflow-x-auto custom-scrollbar">
+                                                                {AVATAR_PRESETS.map(preset => (
+                                                                    <button
+                                                                        key={preset.id}
+                                                                        onClick={() => handleAvatarSelect(preset.url)}
+                                                                        disabled={uploading}
+                                                                        title={preset.label}
+                                                                        className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-all duration-200 hover:scale-110 ${
+                                                                            user.user_metadata?.avatar_url ===
+                                                                            preset.url
+                                                                                ? 'ring-[#F4B000] shadow-lg shadow-[#F4B000]/30'
+                                                                                : 'ring-transparent hover:ring-slate-300 dark:hover:ring-white/20'
+                                                                        } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                                                                    >
+                                                                        <img
+                                                                            src={preset.url}
+                                                                            alt={preset.label}
+                                                                            className="w-full h-full"
+                                                                        />
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => fileInputRef.current?.click()}
+                                                                className="w-full mt-2 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-[#F4B000] hover:bg-[#F4B000]/10 transition-all"
+                                                            >
+                                                                Upload Custom Photo
+                                                            </button>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
                                             </motion.div>
 
                                             {/* Unified Navigation - SOT for Mobile/Tablet */}

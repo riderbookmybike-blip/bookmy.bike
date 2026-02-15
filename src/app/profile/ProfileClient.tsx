@@ -45,6 +45,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import LoginSidebar from '@/components/auth/LoginSidebar';
+import { getDefaultAvatar } from '@/lib/avatars';
 
 interface ProfileClientProps {
     user: any;
@@ -276,15 +277,11 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                             <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 text-center sm:text-left">
                                 <div className="relative group">
                                     <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl md:text-5xl font-black text-white shadow-2xl shadow-indigo-500/20 ring-4 ring-white dark:ring-slate-900 overflow-hidden">
-                                        {avatarUrl ? (
-                                            <img
-                                                src={avatarUrl}
-                                                alt={displayName}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <span>{initials}</span>
-                                        )}
+                                        <img
+                                            src={avatarUrl || getDefaultAvatar(user?.id || 'anon', displayName)}
+                                            alt={displayName}
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
                                     <button className="absolute -bottom-2 -right-2 w-10 h-10 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 transition-colors">
                                         <Camera size={18} />
