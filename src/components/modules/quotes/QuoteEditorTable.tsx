@@ -377,6 +377,14 @@ interface QuoteEditorTableProps {
         is_reconciled?: boolean | null;
         reconciled_at?: string | null;
     } | null;
+    resolvedRoute?: {
+        strategy: string;
+        partnerId: string | null;
+        partnerName: string | null;
+        scheme: any | null;
+        allSchemes: any[];
+        reason: string;
+    } | null;
 }
 
 type QuoteChange = {
@@ -682,6 +690,7 @@ export default function QuoteEditorTable({
     booking = null,
     bookingFinanceApps = [],
     receipt = null,
+    resolvedRoute = null,
 }: QuoteEditorTableProps) {
     const [localPricing, setLocalPricing] = useState(quote.pricing);
     const [managerDiscountInput, setManagerDiscountInput] = useState(

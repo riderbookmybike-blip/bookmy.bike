@@ -3,7 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { generateDisplayId } from '@/lib/displayId';
-import { FinanceRoutingTable } from '@/types/bankPartner';
+import { FinanceRoutingTable, FinanceRoutingConfig, RoutingStrategy } from '@/types/bankPartner';
 
 export async function onboardBank(formData: { bankName: string; website: string; adminPhone: string; slug?: string }) {
     console.log('[OnboardBank] Starting onboarding for:', formData.bankName);
@@ -209,37 +209,61 @@ export async function getBankPartners() {
     }
 }
 
-export async function getFinanceRouting() {
+export async function getFinanceRouting(tenantId?: string) {
     try {
-        const { data, error } = await adminClient
-            .from('id_tenants')
-            .select('config')
-            .eq('type', 'AUMS')
-            .eq('status', 'ACTIVE')
-            .single();
+        let query = adminClient.from('id_tenants').select('config');
 
+        if (tenantId) {
+            query = query.eq('id', tenantId);
+        } else {
+            query = query.eq('type', 'AUMS').eq('status', 'ACTIVE');
+        }
+
+        const { data, error } = await query.single();
         if (error) throw error;
-        return { success: true, routing: (data.config as any)?.financeRouting as FinanceRoutingTable | undefined };
+
+        const config = (data.config as any) || {};
+        return {
+            success: true,
+            routing: config.financeRouting as FinanceRoutingTable | undefined,
+            strategy: (config.routingStrategy as RoutingStrategy) || 'MANUAL',
+        };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
 }
 
-export async function saveFinanceRouting(routing: FinanceRoutingTable) {
+export async function saveFinanceRouting(
+    routing: FinanceRoutingTable,
+    strategy: RoutingStrategy = 'MANUAL',
+    tenantId?: string
+) {
     try {
-        // Fetch AUMS Tenant ID dynamically
-        const { data: tenant, error: fetchError } = await adminClient
-            .from('id_tenants')
-            .select('id, config')
-            .eq('type', 'AUMS')
-            .eq('status', 'ACTIVE')
-            .single();
+        let tenant: { id: string; config: any };
 
-        if (fetchError) throw fetchError;
+        if (tenantId) {
+            const { data, error } = await adminClient
+                .from('id_tenants')
+                .select('id, config')
+                .eq('id', tenantId)
+                .single();
+            if (error) throw error;
+            tenant = data;
+        } else {
+            const { data, error } = await adminClient
+                .from('id_tenants')
+                .select('id, config')
+                .eq('type', 'AUMS')
+                .eq('status', 'ACTIVE')
+                .single();
+            if (error) throw error;
+            tenant = data;
+        }
 
         const newConfig = {
             ...((tenant.config as any) || {}),
             financeRouting: routing,
+            routingStrategy: strategy,
         };
 
         const { error: updateError } = await adminClient

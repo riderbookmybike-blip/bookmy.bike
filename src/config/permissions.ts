@@ -55,6 +55,7 @@ export type UserRole =
     | 'DEALERSHIP_ADMIN'
     | 'DEALERSHIP_STAFF'
     | 'BANK_STAFF'
+    | 'FINANCE'
     | 'BMB_USER'
     | 'SUPER_ADMIN'
     | 'MARKETPLACE_ADMIN';
@@ -173,6 +174,17 @@ export const PERMISSIONS: RolePermissions = {
         'catalog-vehicles': ['view'],
     },
     BANK_STAFF: {
+        dashboard: ['view'],
+        leads: ['view', 'create', 'edit'],
+        quotes: ['view', 'create', 'edit'],
+        'sales-orders': ['view', 'create', 'edit'],
+        insurance: ['view', 'create', 'edit'],
+        registration: ['view', 'create', 'edit'],
+        'finance-applications': ['view', 'approve'],
+        receipts: ['view', 'create'],
+        reports: ['view'],
+    },
+    FINANCE: {
         dashboard: ['view'],
         leads: ['view', 'create', 'edit'],
         quotes: ['view', 'create', 'edit'],

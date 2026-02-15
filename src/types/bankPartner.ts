@@ -193,6 +193,13 @@ export interface DayRouting {
 
 export type FinanceRoutingTable = Record<DayOfWeek, DayRouting>;
 
+export type RoutingStrategy = 'MANUAL' | 'CHEAPEST_FOR_CUSTOMER' | 'MOST_PROFITABLE';
+
+export interface FinanceRoutingConfig {
+    strategy: RoutingStrategy;
+    routing: FinanceRoutingTable;
+}
+
 // Mock Data
 export const MOCK_BANK_PARTNERS: BankPartner[] = [
     {

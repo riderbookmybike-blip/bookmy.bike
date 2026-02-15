@@ -115,6 +115,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -131,6 +132,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -147,6 +149,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -163,6 +166,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -179,6 +183,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -195,6 +200,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -211,6 +217,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -227,6 +234,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -243,6 +251,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -259,6 +268,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -275,6 +285,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -291,6 +302,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -307,6 +319,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
             {
@@ -323,6 +336,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                     'BANK_STAFF',
+                    'FINANCE',
                 ],
             },
         ],
@@ -463,6 +477,14 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 color: 'text-purple-600',
                 allowedTenants: ['DEALER'],
                 allowedRoles: ['OWNER', 'ADMIN', 'DEALERSHIP_ADMIN'],
+            },
+            {
+                title: 'Financer',
+                href: '/dashboard/settings/financer',
+                icon: Landmark,
+                color: 'text-emerald-600',
+                allowedTenants: ['DEALER'],
+                allowedRoles: ['OWNER', 'ADMIN', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF'],
             },
 
             {
@@ -610,8 +632,15 @@ const isItemAllowed = (item: SidebarItem, tenantType: TenantType, userRole?: str
         if (role === 'SUPER_ADMIN') roleVariants.push('SUPERADMIN', 'ADMIN');
         if (role === 'SUPERADMIN') roleVariants.push('SUPER_ADMIN', 'ADMIN');
         if (role === 'ADMIN') roleVariants.push('SUPER_ADMIN', 'SUPERADMIN');
+        if (role.startsWith('BANK')) roleVariants.push('BANK', 'BANK_STAFF', 'FINANCE', 'FINANCE_STAFF', 'FINANCIER');
 
         if (!item.allowedRoles.some(r => roleVariants.includes(r.toUpperCase()))) return false;
+    } else if (item.allowedRoles && !role) {
+        // No role info, deny
+        return false;
+    } else if (!item.allowedRoles) {
+        // If roles not specified and tenant matches, allow (esp. for BANK)
+        return true;
     }
 
     // 4. Fallback: If no restrictions are present, we assume it's NOT allowed for safety

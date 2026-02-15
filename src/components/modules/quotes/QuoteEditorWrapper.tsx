@@ -16,6 +16,7 @@ import {
     getReceiptsForEntity,
     createBookingFromQuote,
 } from '@/actions/crm';
+import { resolveFinanceRoute } from '@/actions/resolveFinanceRoute';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
 
@@ -42,6 +43,7 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
     const [payments, setPayments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [resolvedRoute, setResolvedRoute] = useState<any>(null);
     const params = useParams();
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
 
@@ -138,6 +140,19 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
             }
         } else {
             setError(result.error || 'Failed to load quote');
+        }
+
+        // Resolve finance routing for dealer quotes
+        if (result.success && result.data) {
+            const tenantId = (result.data as any).tenantId || (result.data as any).tenant_id;
+            if (tenantId) {
+                try {
+                    const route = await resolveFinanceRoute(tenantId);
+                    setResolvedRoute(route);
+                } catch (e) {
+                    console.warn('[QuoteEditor] Finance route resolution failed:', e);
+                }
+            }
         }
 
         setLoading(false);
@@ -317,6 +332,7 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
             onConfirmBooking={handleConfirmBooking}
             onRefresh={loadQuote}
             isEditable={quote.status === 'DRAFT' || quote.status === 'IN_REVIEW'}
+            resolvedRoute={resolvedRoute}
         />
     );
 }
