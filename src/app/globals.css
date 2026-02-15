@@ -174,6 +174,71 @@
     .page-container {
         @apply w-full max-w-[1440px] mx-auto px-6;
     }
+
+    /* --- MOTO-GRIT UTILITIES --- */
+    .carbon-pattern {
+        background:
+            linear-gradient(27deg, #151515 5px, transparent 5px) 0 5px,
+            linear-gradient(207deg, #151515 5px, transparent 5px) 10px 0px,
+            linear-gradient(27deg, #222 5px, transparent 5px) 0px 10px,
+            linear-gradient(207deg, #222 5px, transparent 5px) 10px 5px,
+            linear-gradient(90deg, #1b1b1b 10px, transparent 10px),
+            linear-gradient(
+                #1d1d1d 25%,
+                #1a1a1a 25%,
+                #1a1a1a 50%,
+                transparent 50%,
+                transparent 75%,
+                #242424 75%,
+                #242424
+            );
+        background-color: #131313;
+        background-size: 20px 20px;
+    }
+
+    .neon-border-indigo {
+        box-shadow:
+            0 0 10px rgba(99, 102, 241, 0.2),
+            inset 0 0 5px rgba(99, 102, 241, 0.1);
+        border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    .neon-border-amber {
+        box-shadow:
+            0 0 10px rgba(245, 158, 11, 0.2),
+            inset 0 0 5px rgba(245, 158, 11, 0.1);
+        border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    .racing-italic {
+        font-style: italic;
+        transform: skewX(-5deg);
+        display: inline-block;
+    }
+
+    .moto-gradient-dark {
+        background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+    }
+
+    .ignite-pulse {
+        box-shadow: 0 0 0 0 rgba(244, 176, 0, 0.4);
+        animation: ignite 2s infinite;
+    }
+
+    @keyframes ignite {
+        0% {
+            transform: scale(0.98);
+            box-shadow: 0 0 0 0 rgba(244, 176, 0, 0.7);
+        }
+        70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 10px rgba(244, 176, 0, 0);
+        }
+        100% {
+            transform: scale(0.98);
+            box-shadow: 0 0 0 0 rgba(244, 176, 0, 0);
+        }
+    }
 }
 
 /* Tailwind Theme Inline */
@@ -186,6 +251,7 @@
     /* Font Families */
     --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+    --font-racing: 'Bruno Ace SC', cursive;
 }
 
 /* =============================================

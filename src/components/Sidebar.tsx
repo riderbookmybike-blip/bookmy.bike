@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSidebarConfig } from '@/config/sidebarConfig';
-import { useTenant } from '@/lib/tenant/tenantContext';
+import { ChevronRight, ChevronDown, Pin, PinOff } from 'lucide-react';
 import { UserRole } from '@/config/permissions';
-import { Pin, PinOff, ChevronRight } from 'lucide-react';
+import { useTenant } from '@/lib/tenant/tenantContext';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { Logo } from '@/components/brand/Logo';
 import { can } from '@/lib/auth/rbac';
@@ -61,6 +61,30 @@ export default function Sidebar({
             }),
         }));
     }, [tenantType, role]);
+
+    // Helper: resolve href for tenant context
+    const resolveHref = useCallback(
+        (href: string) => {
+            const shouldPrefix =
+                tenantSlug &&
+                (href.startsWith('/dashboard') ||
+                    href.startsWith('/leads') ||
+                    href.startsWith('/members') ||
+                    href.startsWith('/customers') ||
+                    href.startsWith('/quotes') ||
+                    href.startsWith('/sales-orders') ||
+                    href.startsWith('/receipts') ||
+                    href.startsWith('/finance-applications') ||
+                    href.startsWith('/audit-logs') ||
+                    href.startsWith('/finance') ||
+                    href.startsWith('/superadmin') ||
+                    href.startsWith('/inventory') ||
+                    href.startsWith('/catalog') ||
+                    href.startsWith('/books'));
+            return shouldPrefix ? `/app/${tenantSlug}${href}` : href;
+        },
+        [tenantSlug]
+    );
 
     const iconPalette = [
         'text-emerald-500',
@@ -159,26 +183,7 @@ export default function Sidebar({
                                 <ul className="space-y-1">
                                     {section.items.map((item, itemIndex) => {
                                         // Rewrite URL for Tenant Context
-                                        let href = item.href;
-                                        const shouldPrefix =
-                                            tenantSlug &&
-                                            (href.startsWith('/dashboard') ||
-                                                href.startsWith('/leads') ||
-                                                href.startsWith('/members') ||
-                                                href.startsWith('/customers') ||
-                                                href.startsWith('/quotes') ||
-                                                href.startsWith('/sales-orders') ||
-                                                href.startsWith('/receipts') ||
-                                                href.startsWith('/finance-applications') ||
-                                                href.startsWith('/audit-logs') ||
-                                                href.startsWith('/finance') ||
-                                                href.startsWith('/superadmin') ||
-                                                href.startsWith('/inventory') ||
-                                                href.startsWith('/catalog'));
-                                        if (shouldPrefix) {
-                                            href = `/app/${tenantSlug}${href}`;
-                                        }
-
+                                        const href = resolveHref(item.href);
                                         const isActive = pathname === href;
                                         const Icon = item.icon;
                                         const iconColor = item.color || iconPalette[itemIndex % iconPalette.length];
@@ -188,15 +193,14 @@ export default function Sidebar({
                                                 <Link
                                                     href={href}
                                                     className={`
-                                                    relative flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300
-                                                    ${
-                                                        isActive
-                                                            ? 'text-brand-primary'
-                                                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-                                                    }
-                                                `}
+                                            relative flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300
+                                            ${
+                                                isActive
+                                                    ? 'text-brand-primary'
+                                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                                            }
+                                        `}
                                                 >
-                                                    {/* Active Background Pill (Sliding Motion) */}
                                                     {isActive && (
                                                         <motion.div
                                                             layoutId="active-pill"
@@ -204,8 +208,6 @@ export default function Sidebar({
                                                             transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                                                         />
                                                     )}
-
-                                                    {/* Active Accent Bar */}
                                                     {isActive && (
                                                         <motion.div
                                                             layoutId="active-bar"
@@ -213,13 +215,11 @@ export default function Sidebar({
                                                             transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                                                         />
                                                     )}
-
                                                     <div
                                                         className={`relative z-10 shrink-0 ${isActive ? 'text-brand-primary' : iconColor}`}
                                                     >
                                                         {Icon && <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />}
                                                     </div>
-
                                                     <AnimatePresence>
                                                         {isExpanded && (
                                                             <motion.span
@@ -232,8 +232,6 @@ export default function Sidebar({
                                                             </motion.span>
                                                         )}
                                                     </AnimatePresence>
-
-                                                    {/* Tooltip for Collapsed View */}
                                                     {!isExpanded && (
                                                         <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold rounded-lg shadow-xl opacity-0 invisible group-hover/item:opacity-100 group-hover/item:visible transition-all whitespace-nowrap z-[100]">
                                                             {item.title}
@@ -297,22 +295,7 @@ export default function Sidebar({
                                     </h3>
                                     <div className="space-y-1">
                                         {section.items.map((item, itemIndex) => {
-                                            let href = item.href;
-                                            const shouldPrefix =
-                                                tenantSlug &&
-                                                (href.startsWith('/dashboard') ||
-                                                    href.startsWith('/leads') ||
-                                                    href.startsWith('/customers') ||
-                                                    href.startsWith('/quotes') ||
-                                                    href.startsWith('/sales-orders') ||
-                                                    href.startsWith('/receipts') ||
-                                                    href.startsWith('/finance-applications') ||
-                                                    href.startsWith('/audit-logs') ||
-                                                    href.startsWith('/finance') ||
-                                                    href.startsWith('/superadmin'));
-                                            if (shouldPrefix) {
-                                                href = `/app/${tenantSlug}${href}`;
-                                            }
+                                            const href = resolveHref(item.href);
                                             const isActive = pathname === href;
                                             const iconColor = item.color || iconPalette[itemIndex % iconPalette.length];
                                             return (

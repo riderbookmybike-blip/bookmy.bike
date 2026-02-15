@@ -1,0 +1,203 @@
+
+> bookmy.bike@0.1.0 typecheck
+> tsc --noEmit
+
+src/actions/crm.ts(1127,14): error TS2345: Argument of type '(m: { tenant_id: string | null; }) => string | null' is not assignable to parameter of type '(value: SelectQueryError<"Invalid Relationships cannot infer result type"> | SelectQueryError<"Invalid RelationName cannot infer result type">, index: number, array: (SelectQueryError<...> | SelectQueryError<...>)[]) => string | null'.
+  Types of parameters 'm' and 'value' are incompatible.
+    Type 'SelectQueryError<"Invalid Relationships cannot infer result type"> | SelectQueryError<"Invalid RelationName cannot infer result type">' is not assignable to type '{ tenant_id: string | null; }'.
+      Property 'tenant_id' is missing in type '{ error: true; } & String' but required in type '{ tenant_id: string | null; }'.
+src/actions/crm.ts(1204,9): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/actions/crm.ts(1253,9): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/app/[slug]/dashboard/catalog/insurance/[id]/page.tsx(163,71): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { addons?: Json | undefined; created_at?: string | null | undefined; display_id?: string | null | undefined; effective_from?: string | null | undefined; gst_percentage?: number | null | undefined; ... 11 more ...; version?: number | ... 1 more ... | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ id: string; display_id: string | undefined; rule_name: string; state_code: string; insurer_name: string; vehicle_type: VehicleType; status: "ACTIVE" | "INACTIVE" | "PENDING"; ... 7 more ...; updated_at: string; }' is not assignable to parameter of type '{ addons?: Json | undefined; created_at?: string | null | undefined; display_id?: string | null | undefined; effective_from?: string | null | undefined; gst_percentage?: number | null | undefined; ... 11 more ...; version?: number | ... 1 more ... | undefined; }'.
+      Types of property 'addons' are incompatible.
+        Type 'FormulaComponent[]' is not assignable to type 'Json | undefined'.
+          Type 'FormulaComponent[]' is not assignable to type 'Json[]'.
+            Type 'FormulaComponent' is not assignable to type 'Json'.
+              Type 'FormulaComponent' is not assignable to type '{ [key: string]: Json | undefined; }'.
+                Index signature for type 'string' is missing in type 'FormulaComponent'.
+  Overload 2 of 2, '(values: { addons?: Json | undefined; created_at?: string | null | undefined; display_id?: string | null | undefined; effective_from?: string | null | undefined; gst_percentage?: number | null | undefined; ... 11 more ...; version?: number | ... 1 more ... | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ id: string; display_id: string | undefined; rule_name: string; state_code: string; insurer_name: string; vehicle_type: VehicleType; status: "ACTIVE" | "INACTIVE" | "PENDING"; ... 7 more ...; updated_at: string; }' is not assignable to parameter of type '{ addons?: Json | undefined; created_at?: string | null | undefined; display_id?: string | null | undefined; effective_from?: string | null | undefined; gst_percentage?: number | null | undefined; ... 11 more ...; version?: number | ... 1 more ... | undefined; }[]'.
+      Type '{ id: string; display_id: string | undefined; rule_name: string; state_code: string; insurer_name: string; vehicle_type: VehicleType; status: "ACTIVE" | "INACTIVE" | "PENDING"; ... 7 more ...; updated_at: string; }' is missing the following properties from type '{ addons?: Json | undefined; created_at?: string | null | undefined; display_id?: string | null | undefined; effective_from?: string | null | undefined; gst_percentage?: number | null | undefined; ... 11 more ...; version?: number | ... 1 more ... | undefined; }[]': length, pop, push, concat, and 35 more.
+src/app/app/[slug]/dashboard/catalog/registration/[id]/page.tsx(224,71): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { bh_tenure?: number | null | undefined; company_multiplier?: number | null | undefined; components?: Json | undefined; created_at?: string | null | undefined; display_id?: string | ... 1 more ... | undefined; ... 8 more ...; version?: number | ... 1 more ... | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ id: string; display_id: string | undefined; rule_name: string; state_code: string; vehicle_type: VehicleType; status: "ACTIVE" | "INACTIVE"; state_tenure: number; bh_tenure: number; company_multiplier: number; components: FormulaComponent[]; version: number; updated_at: string; }' is not assignable to parameter of type '{ bh_tenure?: number | null | undefined; company_multiplier?: number | null | undefined; components?: Json | undefined; created_at?: string | null | undefined; display_id?: string | null | undefined; ... 8 more ...; version?: number | ... 1 more ... | undefined; }'.
+      Types of property 'components' are incompatible.
+        Type 'FormulaComponent[]' is not assignable to type 'Json | undefined'.
+          Type 'FormulaComponent[]' is not assignable to type 'Json[]'.
+            Type 'FormulaComponent' is not assignable to type 'Json'.
+              Type 'FormulaComponent' is not assignable to type '{ [key: string]: Json | undefined; }'.
+                Index signature for type 'string' is missing in type 'FormulaComponent'.
+  Overload 2 of 2, '(values: { bh_tenure?: number | null | undefined; company_multiplier?: number | null | undefined; components?: Json | undefined; created_at?: string | null | undefined; display_id?: string | ... 1 more ... | undefined; ... 8 more ...; version?: number | ... 1 more ... | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ id: string; display_id: string | undefined; rule_name: string; state_code: string; vehicle_type: VehicleType; status: "ACTIVE" | "INACTIVE"; state_tenure: number; bh_tenure: number; company_multiplier: number; components: FormulaComponent[]; version: number; updated_at: string; }' is not assignable to parameter of type '{ bh_tenure?: number | null | undefined; company_multiplier?: number | null | undefined; components?: Json | undefined; created_at?: string | null | undefined; display_id?: string | null | undefined; ... 8 more ...; version?: number | ... 1 more ... | undefined; }[]'.
+      Type '{ id: string; display_id: string | undefined; rule_name: string; state_code: string; vehicle_type: VehicleType; status: "ACTIVE" | "INACTIVE"; state_tenure: number; bh_tenure: number; company_multiplier: number; components: FormulaComponent[]; version: number; updated_at: string; }' is missing the following properties from type '{ bh_tenure?: number | null | undefined; company_multiplier?: number | null | undefined; components?: Json | undefined; created_at?: string | null | undefined; display_id?: string | null | undefined; ... 8 more ...; version?: number | ... 1 more ... | undefined; }[]': length, pop, push, concat, and 35 more.
+src/app/app/[slug]/dashboard/catalog/registration/page.tsx(67,53): error TS2551: Property 'stateCode' does not exist on type '{ bh_tenure: number | null; company_multiplier: number | null; components: Json; created_at: string | null; display_id: string | null; id: string; registration_type: string | null; ... 6 more ...; version: number | null; }'. Did you mean 'state_code'?
+src/app/app/[slug]/dashboard/catalog/registration/page.tsx(68,51): error TS2551: Property 'ruleName' does not exist on type '{ bh_tenure: number | null; company_multiplier: number | null; components: Json; created_at: string | null; display_id: string | null; id: string; registration_type: string | null; ... 6 more ...; version: number | null; }'. Did you mean 'rule_name'?
+src/app/app/[slug]/dashboard/catalog/registration/page.tsx(73,22): error TS2339: Property 'filter' does not exist on type 'string | number | true | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'filter' does not exist on type 'string'.
+src/app/app/[slug]/dashboard/catalog/registration/page.tsx(78,28): error TS2339: Property 'forEach' does not exist on type 'string | number | true | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'forEach' does not exist on type 'string'.
+src/app/app/[slug]/dashboard/catalog/registration/page.tsx(116,50): error TS2551: Property 'displayId' does not exist on type '{ bh_tenure: number | null; company_multiplier: number | null; components: Json; created_at: string | null; display_id: string | null; id: string; registration_type: string | null; ... 6 more ...; version: number | null; }'. Did you mean 'display_id'?
+src/app/app/[slug]/dashboard/catalog/services/page.tsx(34,51): error TS2589: Type instantiation is excessively deep and possibly infinite.
+src/app/app/[slug]/dashboard/catalog/services/page.tsx(34,65): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"catalog_services"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"catalog_services"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/app/[slug]/dashboard/catalog/services/page.tsx(40,38): error TS2339: Property 'display_id' does not exist on type 'ResultOne'.
+src/app/app/[slug]/dashboard/oclub/page.tsx(29,45): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"Invalid Relationships cannot infer result type"> | SelectQueryError<"Invalid RelationName cannot infer result type">'.
+  Property 'id' does not exist on type 'SelectQueryError<"Invalid Relationships cannot infer result type">'.
+src/app/app/[slug]/dashboard/oclub/page.tsx(30,71): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"Invalid Relationships cannot infer result type"> | SelectQueryError<"Invalid RelationName cannot infer result type">'.
+  Property 'id' does not exist on type 'SelectQueryError<"Invalid Relationships cannot infer result type">'.
+src/app/app/[slug]/dashboard/oclub/page.tsx(32,73): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"Invalid Relationships cannot infer result type"> | SelectQueryError<"Invalid RelationName cannot infer result type">'.
+  Property 'id' does not exist on type 'SelectQueryError<"Invalid Relationships cannot infer result type">'.
+src/app/app/[slug]/dashboard/oclub/page.tsx(33,42): error TS2345: Argument of type '(SelectQueryError<"Invalid Relationships cannot infer result type"> | SelectQueryError<"Invalid RelationName cannot infer result type">)[] | undefined' is not assignable to parameter of type 'SetStateAction<any[]>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<any[]>'.
+src/app/app/[slug]/superadmin/service-area/page.tsx(700,31): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/app/[slug]/superadmin/service-area/page.tsx(711,31): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/dashboard/dealers/actions.ts(46,17): error TS2353: Object literal may only specify known properties, and 'email' does not exist in type '{ id: string; full_name: string; primary_phone: string; }'.
+src/app/dashboard/dealers/page.tsx(50,24): error TS2345: Argument of type '{ config: Json; created_at: string | null; display_id: string | null; email: string | null; favicon_url: string | null; id: string; location: string | null; logo_url: string | null; ... 6 more ...; type: string; }[]' is not assignable to parameter of type 'SetStateAction<Dealer[]>'.
+  Type '{ config: Json; created_at: string | null; display_id: string | null; email: string | null; favicon_url: string | null; id: string; location: string | null; logo_url: string | null; ... 6 more ...; type: string; }[]' is not assignable to type 'Dealer[]'.
+    Type '{ config: Json; created_at: string | null; display_id: string | null; email: string | null; favicon_url: string | null; id: string; location: string | null; logo_url: string | null; ... 6 more ...; type: string; }' is not assignable to type 'Dealer'.
+      Types of property 'status' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/app/dashboard/finance-partners/actions.ts(121,13): error TS2698: Spread types may only be created from object types.
+src/app/dashboard/finance-partners/actions.ts(165,13): error TS2698: Spread types may only be created from object types.
+src/app/dashboard/finance-partners/actions.ts(166,58): error TS2339: Property 'fullLogo' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'fullLogo' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(167,58): error TS2339: Property 'iconLogo' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'iconLogo' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(169,36): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(170,68): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(171,60): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(172,62): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(173,70): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(174,62): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(176,40): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(221,55): error TS2339: Property 'financeRouting' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'financeRouting' does not exist on type 'string'.
+src/app/dashboard/finance-partners/actions.ts(240,13): error TS2698: Spread types may only be created from object types.
+src/app/dashboard/finance-partners/actions.ts(326,13): error TS2698: Spread types may only be created from object types.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(65,48): error TS2339: Property 'fullLogo' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'fullLogo' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(66,48): error TS2339: Property 'iconLogo' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'iconLogo' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(68,41): error TS2339: Property 'admin' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'admin' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(71,42): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(72,47): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(72,81): error TS2339: Property 'website' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'website' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(73,52): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(74,52): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(75,48): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(76,52): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(77,48): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(78,48): error TS2339: Property 'overview' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'overview' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(80,45): error TS2339: Property 'locations' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'locations' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(81,40): error TS2339: Property 'team' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'team' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(82,43): error TS2339: Property 'schemes' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'schemes' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(83,49): error TS2339: Property 'chargesMaster' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'chargesMaster' does not exist on type 'string'.
+src/app/dashboard/finance-partners/BankFullDetail.tsx(84,46): error TS2339: Property 'management' does not exist on type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[]'.
+  Property 'management' does not exist on type 'string'.
+src/app/dashboard/finance-partners/tabs/utils/aprCalculator.ts(358,13): error TS2322: Type 'ChargeType' is not assignable to type '"PERCENTAGE" | "FIXED"'.
+  Type '"TABLE"' is not assignable to type '"PERCENTAGE" | "FIXED"'.
+src/app/dashboard/inventory/orders/components/CreatePOModal.tsx(50,43): error TS2589: Type instantiation is excessively deep and possibly infinite.
+src/app/dashboard/inventory/orders/components/CreatePOModal.tsx(51,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_requisition_items"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_requisition_items"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/orders/components/CreatePOModal.tsx(97,54): error TS2589: Type instantiation is excessively deep and possibly infinite.
+src/app/dashboard/inventory/orders/components/CreatePOModal.tsx(98,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_orders"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_orders"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/orders/components/CreatePOModal.tsx(121,60): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_order_items"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_order_items"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/orders/components/CreatePOModal.tsx(127,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_requisitions"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_requisitions"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/orders/page.tsx(74,25): error TS2589: Type instantiation is excessively deep and possibly infinite.
+src/app/dashboard/inventory/orders/page.tsx(75,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_orders"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_orders"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/orders/page.tsx(100,23): error TS2345: Argument of type 'ResultOne[]' is not assignable to parameter of type 'SetStateAction<PurchaseOrder[]>'.
+  Type 'ResultOne[]' is not assignable to type 'PurchaseOrder[]'.
+    Type 'ResultOne' is not assignable to type 'PurchaseOrder'.
+src/app/dashboard/inventory/requisitions/page.tsx(75,25): error TS2589: Type instantiation is excessively deep and possibly infinite.
+src/app/dashboard/inventory/requisitions/page.tsx(76,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_requisitions"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_requisitions"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/requisitions/page.tsx(104,29): error TS2345: Argument of type 'ResultOne[]' is not assignable to parameter of type 'SetStateAction<Requisition[]>'.
+  Type 'ResultOne[]' is not assignable to type 'Requisition[]'.
+    Type 'ResultOne' is not assignable to type 'Requisition'.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(75,43): error TS2589: Type instantiation is excessively deep and possibly infinite.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(76,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_orders"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_orders"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(114,38): error TS2589: Type instantiation is excessively deep and possibly infinite.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(115,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_requisitions"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_requisitions"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(125,15): error TS2339: Property 'items' does not exist on type 'ResultOne'.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(185,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"vehicle_inventory"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"vehicle_inventory"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(192,53): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(202,62): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"inventory_ledger"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"inventory_ledger"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(211,27): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_order_items"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_order_items"' is not assignable to parameter of type '"memberships" | "tenants"'.
+src/app/dashboard/inventory/stock/components/InwardStockModal.tsx(220,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"purchase_orders"' is not assignable to parameter of type '"analytics_sessions" | "id_members" | "cat_items" | "cat_brands" | "id_tenants" | "crm_bookings" | "crm_leads" | "crm_quotes" | "i18n_languages" | "i18n_source_strings" | ... 78 more ... | "sys_settings"'.
+  Overload 2 of 2, '(relation: "memberships" | "tenants"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { analytics_events: { Row: { created_at: string | null; event_name: string | null; event_type: string; id: string; metadata: Json; page_path: string | null; session_id: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 87 more ...; sys_settings: { ...; }; }; Views: { ...; }; Functions: { ...; }; Enums: { ...; }; CompositeTypes: {}; }, { ...; } | { ...; }, "memberships" | "tenants", [] | [...]>', gave the following error.
+    Argument of type '"purchase_orders"' is not assignable to parameter of type '"memberships" | "tenants"'.

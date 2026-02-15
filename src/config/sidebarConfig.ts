@@ -48,6 +48,7 @@ export interface SidebarItem {
     href: string;
     icon?: any;
     color?: string;
+    subGroup?: string; // Optional sub-section within a group
     allowedTenants?: TenantType[]; // Which tenants can see this?
     allowedRoles?: string[]; // Specific roles (e.g., 'SUPER_ADMIN')
     permissions?: PermissionAction[]; // Actions allowed in this module
@@ -105,7 +106,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Members',
                 href: '/members',
                 icon: UserCheck,
-                color: 'text-blue-400',
+                color: 'text-violet-500', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -122,7 +123,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Leads',
                 href: '/leads',
                 icon: Megaphone,
-                color: 'text-brand-gold',
+                color: 'text-amber-500', // Unique (Lead = Gold)
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -139,7 +140,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Quotes',
                 href: '/quotes',
                 icon: FileText,
-                color: 'text-blue-300',
+                color: 'text-blue-500', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -156,7 +157,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Sales Orders',
                 href: '/sales-orders?stage=BOOKING',
                 icon: ShoppingBag,
-                color: 'text-blue-600',
+                color: 'text-indigo-600', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -190,7 +191,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Books',
                 href: '/books',
                 icon: BookOpen,
-                color: 'text-violet-500',
+                color: 'text-fuchsia-500', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -207,7 +208,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Allotment',
                 href: '/sales-orders?stage=ALLOTMENT',
                 icon: Bookmark,
-                color: 'text-indigo-600',
+                color: 'text-purple-600', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -224,7 +225,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Pre-Delivery',
                 href: '/sales-orders?stage=PDI',
                 icon: ClipboardCheck,
-                color: 'text-amber-500',
+                color: 'text-orange-600', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -241,7 +242,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Insurance',
                 href: '/sales-orders?stage=INSURANCE',
                 icon: ShieldCheck,
-                color: 'text-purple-600',
+                color: 'text-cyan-600', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -258,7 +259,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Finance',
                 href: '/sales-orders?stage=FINANCE',
                 icon: Landmark,
-                color: 'text-emerald-500',
+                color: 'text-green-600', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -274,8 +275,8 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
             {
                 title: 'Registration',
                 href: '/sales-orders?stage=REGISTRATION',
-                icon: FileText,
-                color: 'text-amber-500',
+                icon: Receipt,
+                color: 'text-yellow-600', // Unique (distinct from Amber)
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -291,8 +292,8 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
             {
                 title: 'Compliance',
                 href: '/sales-orders?stage=COMPLIANCE',
-                icon: ShieldCheck,
-                color: 'text-emerald-600',
+                icon: Lock,
+                color: 'text-teal-600', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
@@ -309,7 +310,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 title: 'Delivery',
                 href: '/sales-orders?stage=DELIVERED',
                 icon: Truck,
-                color: 'text-purple-600',
+                color: 'text-rose-600', // Unique
                 allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
