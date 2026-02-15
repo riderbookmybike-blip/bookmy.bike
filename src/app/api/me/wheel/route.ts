@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { adminClient } from '@/lib/supabase/admin';
 import { WHEEL_REWARDS, type WheelReward } from '@/lib/rewards/wheel';
+import type { Json } from '@/types/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,13 +14,15 @@ type SpinRow = {
     reward_label: string | null;
     reward_value: number | null;
     reward_kind: string | null;
-    reward_payload: Record<string, unknown> | null;
+    reward_payload: Json | null;
     eligible_at: string | null;
     expires_at: string | null;
     spun_at: string | null;
 };
 
-const buildReward = (row: SpinRow) => {
+type RewardSource = Pick<SpinRow, 'reward_id' | 'reward_label' | 'reward_value' | 'reward_kind'>;
+
+const buildReward = (row: RewardSource) => {
     if (!row.reward_id || !row.reward_label) return null;
     return {
         id: row.reward_id,

@@ -15,7 +15,7 @@ import {
     Package,
     Users,
     Calendar,
-    Loader2
+    Loader2,
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { format } from 'date-fns';
@@ -39,10 +39,10 @@ interface RequisitionItem {
                     id: string;
                     name: string;
                     logo_svg: string;
-                }
-            }
-        }
-    }
+                };
+            };
+        };
+    };
 }
 
 interface Requisition {
@@ -72,9 +72,10 @@ export default function RequisitionsPage() {
     const fetchRequisitions = async () => {
         setLoading(true);
         try {
-            let query = supabase
+            let query = (supabase as any)
                 .from('purchase_requisitions')
-                .select(`
+                .select(
+                    `
                     *,
                     items:purchase_requisition_items (
                         *,
@@ -92,7 +93,8 @@ export default function RequisitionsPage() {
                             )
                         )
                     )
-                `)
+                `
+                )
                 .order('created_at', { ascending: false });
 
             if (statusFilter !== 'ALL') {
@@ -101,7 +103,7 @@ export default function RequisitionsPage() {
 
             const { data, error } = await query;
             if (error) throw error;
-            setRequisitions(data || []);
+            setRequisitions((data as any) || []);
         } catch (err) {
             console.error('Error fetching requisitions:', err);
         } finally {
@@ -116,9 +118,10 @@ export default function RequisitionsPage() {
 
         const customerMatch = req.customer_name?.toLowerCase().includes(query);
         const idMatch = req.id.toLowerCase().includes(query);
-        const vehicleMatch = req.items.some(item =>
-            item.vehicle_colors.vehicle_variants.vehicle_models.name.toLowerCase().includes(query) ||
-            item.vehicle_colors.vehicle_variants.name.toLowerCase().includes(query)
+        const vehicleMatch = req.items.some(
+            item =>
+                item.vehicle_colors.vehicle_variants.vehicle_models.name.toLowerCase().includes(query) ||
+                item.vehicle_colors.vehicle_variants.name.toLowerCase().includes(query)
         );
 
         return customerMatch || idMatch || vehicleMatch;
@@ -126,21 +129,31 @@ export default function RequisitionsPage() {
 
     const getStatusColor = (status: string) => {
         switch (status.toUpperCase()) {
-            case 'PENDING': return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20';
-            case 'APPROVED': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20';
-            case 'REJECTED': return 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20';
-            case 'CONVERTED': return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20';
-            default: return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10';
+            case 'PENDING':
+                return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20';
+            case 'APPROVED':
+                return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20';
+            case 'REJECTED':
+                return 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20';
+            case 'CONVERTED':
+                return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20';
+            default:
+                return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10';
         }
     };
 
     const getStatusIcon = (status: string) => {
         switch (status.toUpperCase()) {
-            case 'PENDING': return <Clock size={14} />;
-            case 'APPROVED': return <CheckCircle2 size={14} />;
-            case 'REJECTED': return <XCircle size={14} />;
-            case 'CONVERTED': return <ArrowRightCircle size={14} />;
-            default: return <Clock size={14} />;
+            case 'PENDING':
+                return <Clock size={14} />;
+            case 'APPROVED':
+                return <CheckCircle2 size={14} />;
+            case 'REJECTED':
+                return <XCircle size={14} />;
+            case 'CONVERTED':
+                return <ArrowRightCircle size={14} />;
+            default:
+                return <Clock size={14} />;
         }
     };
 
@@ -199,25 +212,29 @@ export default function RequisitionsPage() {
             {/* Filters Bar */}
             <div className="bg-white/50 dark:bg-slate-900/30 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-4 rounded-3xl flex flex-col md:flex-row items-center gap-4">
                 <div className="relative flex-1 group w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                    <Search
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+                        size={18}
+                    />
                     <input
                         type="text"
                         placeholder="SEARCH BY CUSTOMER OR REQUISITION ID..."
                         className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-12 pr-4 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all uppercase tracking-widest placeholder:text-slate-400/50"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={e => setSearchQuery(e.target.value)}
                     />
                 </div>
 
                 <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-none">
-                    {['ALL', 'PENDING', 'APPROVED', 'CONVERTED', 'REJECTED'].map((status) => (
+                    {['ALL', 'PENDING', 'APPROVED', 'CONVERTED', 'REJECTED'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border
-                                ${statusFilter === status
-                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent shadow-lg'
-                                    : 'bg-white dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'
+                                ${
+                                    statusFilter === status
+                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent shadow-lg'
+                                        : 'bg-white dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'
                                 }`}
                         >
                             {status}
@@ -231,7 +248,9 @@ export default function RequisitionsPage() {
                 {loading ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-4">
                         <Loader2 className="animate-spin text-indigo-500" size={40} />
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Fetching Demand Data...</span>
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">
+                            Fetching Demand Data...
+                        </span>
                     </div>
                 ) : requisitions.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-6 text-center px-6">
@@ -239,8 +258,12 @@ export default function RequisitionsPage() {
                             <Package size={40} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">No Requisitions Found</h3>
-                            <p className="text-xs font-bold text-slate-500 uppercase mt-2 max-w-xs">Raise a new requisition to start tracking vehicle demand from your sales team.</p>
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                No Requisitions Found
+                            </h3>
+                            <p className="text-xs font-bold text-slate-500 uppercase mt-2 max-w-xs">
+                                Raise a new requisition to start tracking vehicle demand from your sales team.
+                            </p>
                         </div>
                     </div>
                 ) : (
@@ -248,23 +271,42 @@ export default function RequisitionsPage() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Requisition Details</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Vehicle Requested</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Qty</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Requisition Details
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Customer
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Vehicle Requested
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+                                        Qty
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredRequisitions.map((req) => (
-                                    <tr key={req.id} className="group border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors">
+                                {filteredRequisitions.map(req => (
+                                    <tr
+                                        key={req.id}
+                                        className="group border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors"
+                                    >
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">REQ-{req.id.slice(0, 8).toUpperCase()}</span>
+                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                                    REQ-{req.id.slice(0, 8).toUpperCase()}
+                                                </span>
                                                 <div className="flex items-center gap-1.5 text-slate-400">
                                                     <Calendar size={12} />
-                                                    <span className="text-[10px] font-bold">{format(new Date(req.created_at), 'dd MMM yyyy, hh:mm a')}</span>
+                                                    <span className="text-[10px] font-bold">
+                                                        {format(new Date(req.created_at), 'dd MMM yyyy, hh:mm a')}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </td>
@@ -283,11 +325,16 @@ export default function RequisitionsPage() {
                                                 <div key={item.id} className="flex flex-col mb-2 last:mb-0">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">
-                                                            {item.vehicle_colors.vehicle_variants.vehicle_models.brands.name} {item.vehicle_colors.vehicle_variants.vehicle_models.name}
+                                                            {
+                                                                item.vehicle_colors.vehicle_variants.vehicle_models
+                                                                    .brands.name
+                                                            }{' '}
+                                                            {item.vehicle_colors.vehicle_variants.vehicle_models.name}
                                                         </span>
                                                     </div>
                                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                                                        {item.vehicle_colors.vehicle_variants.name} • {item.vehicle_colors.name}
+                                                        {item.vehicle_colors.vehicle_variants.name} •{' '}
+                                                        {item.vehicle_colors.name}
                                                     </span>
                                                 </div>
                                             ))}
@@ -298,7 +345,9 @@ export default function RequisitionsPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${getStatusColor(req.status)}`}>
+                                            <span
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${getStatusColor(req.status)}`}
+                                            >
                                                 {getStatusIcon(req.status)}
                                                 {req.status}
                                             </span>

@@ -67,6 +67,7 @@ interface TenantContextType {
     setIsSidebarExpanded: (expanded: boolean) => void;
     isReadOnly: boolean;
     status: TenantStatus;
+    isUnifiedContext: boolean;
 }
 
 const TenantContext = createContext<TenantContextType>({
@@ -88,6 +89,7 @@ const TenantContext = createContext<TenantContextType>({
     setIsSidebarExpanded: () => {},
     isReadOnly: false,
     status: 'ACTIVE',
+    isUnifiedContext: false,
 });
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
@@ -102,6 +104,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const [activeRole, setActiveRole] = useState<string | undefined>(undefined);
     const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
     const [memberships, setMembershipsState] = useState<Membership[]>([]);
+    const [isUnifiedContext, setIsUnifiedContext] = useState(false);
 
     const mapTenantType = (type?: string): TenantType => {
         switch (type) {
@@ -118,6 +121,13 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
     // Hydration Effect
     useEffect(() => {
+        const loadGlobalSettings = async () => {
+            const { getSystemSettings } = await import('@/actions/settings');
+            const data = await getSystemSettings();
+            setIsUnifiedContext(data.unified_marketplace_context);
+        };
+        loadGlobalSettings();
+
         if (typeof window !== 'undefined') {
             const tType = localStorage.getItem('tenant_type') as TenantType;
             if (tType) {
@@ -248,6 +258,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                 setIsSidebarExpanded,
                 isReadOnly,
                 status,
+                isUnifiedContext,
             }}
         >
             {children}

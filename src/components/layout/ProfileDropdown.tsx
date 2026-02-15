@@ -8,7 +8,19 @@ import {
     Building2,
     Store,
     Landmark,
-    User as UserIcon,
+    Linkedin,
+    ChevronRight,
+    Camera,
+    Zap,
+    Power,
+    Home as HomeIcon,
+    Bike,
+    Heart as HeartIcon,
+    ArrowRightLeft,
+    Box,
+    Globe,
+    LayoutDashboard,
+    User as LucideUser,
     Package,
     Heart,
     Bell,
@@ -22,29 +34,25 @@ import {
     Facebook,
     Twitter,
     Instagram,
-    Linkedin,
-    ChevronRight,
-    Camera,
-    Zap,
-    Power,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';
 import { useDealerSession } from '@/hooks/useDealerSession';
+import { useTenant } from '@/lib/tenant/tenantContext';
 
-interface Membership {
-    role: string;
-    tenant_id?: string;
+interface ProfileMembership {
+    role: string | null;
+    tenant_id: string | null;
     tenants: {
-        id?: string;
-        slug: string;
-        name: string;
-        type: string;
-        studio_id?: string;
-        district_name?: string;
-    };
+        id: string | null;
+        slug: string | null;
+        name: string | null;
+        type: string | null;
+        studio_id?: string | null;
+        district_name?: string | null;
+    } | null;
 }
 
 interface ProfileDropdownProps {
@@ -52,13 +60,28 @@ interface ProfileDropdownProps {
     scrolled: boolean;
     theme: string;
     tone?: 'light' | 'dark';
+    externalOpen?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }
 
-export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: ProfileDropdownProps) {
+export function ProfileDropdown({
+    onLoginClick,
+    scrolled,
+    theme,
+    tone,
+    externalOpen,
+    onOpenChange,
+}: ProfileDropdownProps) {
+    const { isUnifiedContext } = useTenant();
     const [user, setUser] = useState<User | null>(null);
-    const [memberships, setMemberships] = useState<Membership[]>([]);
-    const [activeTab, setActiveTab] = useState<'account' | 'workspace'>('account');
-    const [isOpen, setIsOpen] = useState(false);
+    const [memberships, setProfileMemberships] = useState<ProfileMembership[]>([]);
+    const [internalOpen, setInternalOpen] = useState(false);
+
+    const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+    const setIsOpen = (open: boolean) => {
+        if (onOpenChange) onOpenChange(open);
+        setInternalOpen(open);
+    };
     const [mounted, setMounted] = useState(false);
     const [location, setLocation] = useState<{
         area: string;
@@ -70,15 +93,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
     const [uploading, setUploading] = useState(false);
 
     // Dealer Session Hook
-    const {
-        isTeamMode,
-        activeTenantId,
-        studioId: activeStudioId,
-        tenantName: activeTenantName,
-        activateDealer,
-        switchToIndividual,
-        isLoaded: isSessionLoaded,
-    } = useDealerSession();
+    const { activeTenantId } = useDealerSession();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLButtonElement>(null); // Fixed: Ref is attached to a button
@@ -88,8 +103,8 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
     useEffect(() => {
         const supabase = createClient();
 
-        const loadMemberships = async (userId: string) => {
-            const { data: rawMemberships, error } = await supabase.rpc('get_user_memberships', {
+        const loadProfileMemberships = async (userId: string) => {
+            const { data: rawProfileMemberships, error } = await supabase.rpc('get_user_memberships', {
                 p_user_id: userId,
             });
 
@@ -102,7 +117,7 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                 return;
             }
 
-            const mapped = (Array.isArray(rawMemberships) ? rawMemberships : []).map((m: any) => ({
+            const mapped = (Array.isArray(rawProfileMemberships) ? rawProfileMemberships : []).map((m: any) => ({
                 role: m.role,
                 tenant_id: m.tenant_id,
                 tenants: {
@@ -111,18 +126,18 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                     name: m.tenant_name || '',
                     type: m.tenant_type || '',
                     studio_id: m.studio_id || null,
-                    district_name: m.district_name || null,
+                    district_name: m.district_name || undefined,
                 },
-            })) as unknown as Membership[];
+            })) as unknown as ProfileMembership[];
 
             if (mapped.length === 0) {
-                const { data: fallbackMemberships } = await supabase
+                const { data: fallbackProfileMemberships } = await supabase
                     .from('id_team')
                     .select('id, user_id, tenant_id, role, status, id_tenants!inner(id, name, slug, type, studio_id)')
                     .eq('user_id', userId)
                     .eq('status', 'ACTIVE');
 
-                const fallback = (fallbackMemberships || []).map((m: any) => {
+                const fallback = (fallbackProfileMemberships || []).map((m: any) => {
                     const t = Array.isArray(m.id_tenants) ? m.id_tenants[0] : m.id_tenants;
                     return {
                         role: m.role,
@@ -133,15 +148,15 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                             name: t?.name || '',
                             type: t?.type || '',
                             studio_id: t?.studio_id || null,
-                            district_name: null,
+                            district_name: undefined,
                         },
-                    } as Membership;
+                    } as ProfileMembership;
                 });
-                setMemberships(fallback);
+                setProfileMemberships(fallback);
                 return;
             }
 
-            setMemberships(mapped);
+            setProfileMemberships(mapped);
         };
 
         const fetchData = async () => {
@@ -151,10 +166,10 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
 
             if (user) {
                 setUser(user);
-                await loadMemberships(user.id);
+                await loadProfileMemberships(user.id);
             } else {
                 setUser(null);
-                setMemberships([]);
+                setProfileMemberships([]);
             }
         };
 
@@ -163,10 +178,10 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
         const { data } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session?.user) {
                 setUser(session.user);
-                loadMemberships(session.user.id);
+                loadProfileMemberships(session.user.id);
             } else {
                 setUser(null);
-                setMemberships([]);
+                setProfileMemberships([]);
             }
         });
 
@@ -298,10 +313,10 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
         return (
             <button
                 onClick={onLoginClick}
-                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 group ${triggerClass}`}
+                className={`hidden lg:flex w-10 h-10 rounded-full border items-center justify-center transition-all duration-300 group ${triggerClass}`}
                 title="Sign In"
             >
-                <UserIcon size={20} />
+                <LucideUser size={20} />
             </button>
         );
     }
@@ -362,15 +377,9 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 ref={dropdownRef}
-                className={`h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 flex items-center gap-3 group z-[101] ${triggerClass}`}
+                className={`hidden lg:flex h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
             >
-                <div
-                    className={`w-8 h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-900 dark:text-white font-black text-xs ring-2 transition-all ${
-                        scrolled || theme === 'dark'
-                            ? 'ring-white/20 group-hover:ring-transparent'
-                            : 'ring-slate-100 group-hover:ring-brand-primary/20'
-                    }`}
-                >
+                <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all">
                     {user.user_metadata?.avatar_url ? (
                         <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
@@ -384,11 +393,6 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                     <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap max-w-[150px] truncate">
                         {displayName}
                     </span>
-                    {isTeamMode && activeStudioId && (
-                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider">
-                            ⚡ {activeStudioId}
-                        </span>
-                    )}
                 </div>
             </button>
 
@@ -519,58 +523,67 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                 </div>
                                             </motion.div>
 
-                                            {/* Tabs Toggle */}
-                                            {memberships.length > 0 && (
-                                                <div className="flex p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5 mx-1">
-                                                    <button
-                                                        onClick={() => setActiveTab('account')}
-                                                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                                                            activeTab === 'account'
-                                                                ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
-                                                                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
-                                                        }`}
-                                                    >
-                                                        <UserIcon size={12} strokeWidth={3} />
-                                                        The O' Circle
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setActiveTab('workspace')}
-                                                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                                                            activeTab === 'workspace'
-                                                                ? 'bg-white dark:bg-brand-primary text-black shadow-md shadow-black/5 dark:shadow-none'
-                                                                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5'
-                                                        }`}
-                                                    >
-                                                        <Building2 size={12} strokeWidth={3} />
-                                                        My Workspace
-                                                    </button>
+                                            {/* Unified Navigation - SOT for Mobile/Tablet */}
+                                            <div className="lg:hidden space-y-3 pb-2 pt-1">
+                                                <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                                    Main Menu
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {[
+                                                        { label: 'Home', icon: HomeIcon, href: '/' },
+                                                        { label: 'Catalog', icon: Bike, href: '/catalog' },
+                                                        { label: 'Wishlist', icon: HeartIcon, href: '/wishlist' },
+                                                        { label: 'Compare', icon: ArrowRightLeft, href: '/compare' },
+                                                        { label: 'Zero', icon: Zap, href: '/zero' },
+                                                        {
+                                                            label: "O' Circle",
+                                                            icon: Globe,
+                                                            href: '#o-circle',
+                                                            isScroll: true,
+                                                        },
+                                                    ].map(nav => (
+                                                        <a
+                                                            key={nav.label}
+                                                            href={nav.href}
+                                                            onClick={e => {
+                                                                if (nav.isScroll) {
+                                                                    e.preventDefault();
+                                                                    setIsOpen(false);
+                                                                    const el = document.getElementById('o-circle');
+                                                                    el?.scrollIntoView({ behavior: 'smooth' });
+                                                                } else {
+                                                                    setIsOpen(false);
+                                                                }
+                                                            }}
+                                                            className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
+                                                        >
+                                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-brand-primary transition-colors shadow-sm">
+                                                                <nav.icon size={16} />
+                                                            </div>
+                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                {nav.label}
+                                                            </span>
+                                                        </a>
+                                                    ))}
                                                 </div>
-                                            )}
+                                            </div>
 
-                                            {/* Compact Quick Actions List */}
-                                            {activeTab === 'account' && (
-                                                <motion.div
-                                                    variants={itemVariants}
-                                                    initial="hidden"
-                                                    animate="visible"
-                                                    exit="hidden"
-                                                    className="space-y-4 pt-2"
-                                                >
-                                                    <div className="flex flex-col gap-1.5">
+                                            {/* Simplified Unified Navigation */}
+                                            <div className="space-y-6 pt-2">
+                                                {/* Account & Profile Section */}
+                                                <div className="space-y-3">
+                                                    <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                                                        <LucideUser size={10} strokeWidth={3} />
+                                                        Account Settings
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-2">
                                                         {[
                                                             {
-                                                                label: 'Profile Settings',
-                                                                icon: UserIcon,
+                                                                label: 'Settings',
+                                                                icon: LucideUser,
                                                                 href: '/profile',
                                                                 color: 'text-blue-500',
                                                                 bg: 'bg-blue-500/10',
-                                                            },
-                                                            {
-                                                                label: 'My Orders',
-                                                                icon: Package,
-                                                                href: '/orders',
-                                                                color: 'text-orange-500',
-                                                                bg: 'bg-orange-500/10',
                                                             },
                                                             {
                                                                 label: 'Wishlist',
@@ -580,7 +593,14 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                                 bg: 'bg-rose-500/10',
                                                             },
                                                             {
-                                                                label: 'Notifications',
+                                                                label: 'Orders',
+                                                                icon: Package,
+                                                                href: '/orders',
+                                                                color: 'text-orange-500',
+                                                                bg: 'bg-orange-500/10',
+                                                            },
+                                                            {
+                                                                label: 'Inbox',
                                                                 icon: Bell,
                                                                 href: '/notifications',
                                                                 color: 'text-purple-500',
@@ -590,178 +610,87 @@ export function ProfileDropdown({ onLoginClick, scrolled, theme, tone }: Profile
                                                             <a
                                                                 key={item.label}
                                                                 href={item.href}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="flex items-center gap-3 p-2.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group hover:shadow-md hover:shadow-brand-primary/5 dark:hover:bg-white/[0.06]"
+                                                                className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
                                                             >
                                                                 <div
                                                                     className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
                                                                 >
                                                                     <item.icon size={16} />
                                                                 </div>
-                                                                <div className="flex-1 flex items-center justify-between">
-                                                                    <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wider leading-tight">
-                                                                        {item.label}
-                                                                    </p>
-                                                                    <ChevronRight
-                                                                        size={12}
-                                                                        className="text-slate-300 group-hover:text-brand-primary transition-colors"
-                                                                    />
-                                                                </div>
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                    {item.label}
+                                                                </span>
                                                             </a>
                                                         ))}
                                                     </div>
-                                                </motion.div>
-                                            )}
+                                                </div>
 
-                                            {/* Compact Memberships */}
-                                            {activeTab === 'workspace' && (
-                                                <motion.div
-                                                    variants={itemVariants}
-                                                    initial="hidden"
-                                                    animate="visible"
-                                                    exit="hidden"
-                                                    className="space-y-2 pt-2"
-                                                >
-                                                    {memberships.length === 0 ? (
-                                                        <div className="p-8 text-center border-2 border-dashed border-slate-100 dark:border-white/5 rounded-2xl">
-                                                            <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-white/5 mx-auto flex items-center justify-center mb-3">
-                                                                <Building2
-                                                                    className="text-slate-300 dark:text-slate-600"
-                                                                    size={18}
-                                                                />
-                                                            </div>
-                                                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                                                                No Workspaces Found
-                                                            </p>
-                                                        </div>
-                                                    ) : (
+                                                {/* Workspaces Section */}
+                                                {memberships.length > 0 && (
+                                                    <div className="space-y-3">
+                                                        <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center justify-between">
+                                                            <span className="flex items-center gap-2">
+                                                                <Building2 size={10} strokeWidth={3} />
+                                                                My Workspaces
+                                                            </span>
+                                                        </p>
                                                         <div className="space-y-1.5">
-                                                            {/* Sort: Dealers first (alphabetically), then others (alphabetically) */}
                                                             {[...memberships]
+                                                                .filter(m => m.tenants)
                                                                 .sort((a, b) => {
-                                                                    const aIsDealer = a.tenants.type === 'DEALER';
-                                                                    const bIsDealer = b.tenants.type === 'DEALER';
+                                                                    const aIsDealer = a.tenants?.type === 'DEALER';
+                                                                    const bIsDealer = b.tenants?.type === 'DEALER';
                                                                     if (aIsDealer && !bIsDealer) return -1;
                                                                     if (!aIsDealer && bIsDealer) return 1;
-                                                                    return a.tenants.name.localeCompare(b.tenants.name);
+                                                                    return (a.tenants?.name || '').localeCompare(
+                                                                        b.tenants?.name || ''
+                                                                    );
                                                                 })
                                                                 .map(m => {
-                                                                    const isDealer = m.tenants.type === 'DEALER';
-                                                                    const isBank = m.tenants.type === 'BANK';
-                                                                    const isTeamTenant = isDealer || isBank;
-                                                                    const isActive =
-                                                                        isTeamMode && activeTenantId === m.tenant_id;
+                                                                    const t = m.tenants;
+                                                                    if (!t) return null;
+                                                                    const isActive = activeTenantId === t.id;
 
                                                                     return (
                                                                         <div
-                                                                            key={m.tenants.slug}
-                                                                            className={`flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-white/[0.03] border transition-all group hover:shadow-md relative overflow-hidden ${
+                                                                            key={t.id || t.slug || ''}
+                                                                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all group hover:shadow-md relative overflow-hidden ${
                                                                                 isActive
-                                                                                    ? 'border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-500/10'
-                                                                                    : 'border-slate-100 dark:border-white/5'
+                                                                                    ? 'bg-brand-primary/5 border-brand-primary/20 dark:bg-brand-primary/10'
+                                                                                    : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/5'
                                                                             }`}
                                                                         >
-                                                                            {/* Tenant Icon */}
-                                                                            <div
-                                                                                className={`w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center shrink-0 ${
-                                                                                    isActive
-                                                                                        ? 'text-emerald-500'
-                                                                                        : 'text-slate-400'
-                                                                                }`}
-                                                                            >
-                                                                                {getTenantIcon(m.tenants.type)}
+                                                                            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center shrink-0 text-slate-400">
+                                                                                {getTenantIcon(t.type || '')}
                                                                             </div>
-
-                                                                            {/* Info */}
                                                                             <div className="flex-1 min-w-0">
                                                                                 <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                                                                                    {m.tenants.name}
-                                                                                    {isDealer &&
-                                                                                        m.tenants.studio_id && (
-                                                                                            <span className="ml-1 text-brand-primary">
-                                                                                                ({m.tenants.studio_id})
-                                                                                            </span>
-                                                                                        )}
+                                                                                    {t.name}
+                                                                                    {isActive && !isUnifiedContext && (
+                                                                                        <span className="ml-2 text-[8px] px-1.5 py-0.5 rounded-full bg-brand-primary text-black font-black uppercase tracking-tighter">
+                                                                                            Active
+                                                                                        </span>
+                                                                                    )}
                                                                                 </h5>
                                                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                                                    <span className="px-1.5 py-px rounded bg-slate-100 dark:bg-white/10 text-[7px] font-bold text-slate-500 uppercase tracking-wider">
-                                                                                        {m.tenants.type.replace(
-                                                                                            '_',
-                                                                                            ' '
-                                                                                        )}
-                                                                                    </span>
-                                                                                    <span className="text-[8px] font-bold text-slate-300">
-                                                                                        •
-                                                                                    </span>
-                                                                                    <span className="text-[8px] font-black text-brand-primary uppercase tracking-widest">
-                                                                                        {getRoleLabel(m.role)}
+                                                                                    <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest">
+                                                                                        {getRoleLabel(m.role || '')}
                                                                                     </span>
                                                                                 </div>
                                                                             </div>
-
-                                                                            {/* Simple Pill Buttons */}
-                                                                            <div className="flex items-center gap-1.5 shrink-0">
-                                                                                {/* Green/Red Toggle for Dealers */}
-                                                                                {isTeamTenant && (
-                                                                                    <button
-                                                                                        onClick={e => {
-                                                                                            e.preventDefault();
-                                                                                            e.stopPropagation();
-                                                                                            if (isActive) {
-                                                                                                switchToIndividual();
-                                                                                            } else {
-                                                                                                activateDealer({
-                                                                                                    tenantId:
-                                                                                                        m.tenant_id!,
-                                                                                                    studioId:
-                                                                                                        m.tenants
-                                                                                                            .studio_id ||
-                                                                                                        null,
-                                                                                                    district:
-                                                                                                        m.tenants
-                                                                                                            .district_name ||
-                                                                                                        null,
-                                                                                                    tenantName:
-                                                                                                        m.tenants.name,
-                                                                                                });
-                                                                                            }
-                                                                                        }}
-                                                                                        className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-wider transition-all ${
-                                                                                            isActive
-                                                                                                ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                                                                                                : 'bg-rose-500 hover:bg-rose-600 text-white'
-                                                                                        }`}
-                                                                                        title={
-                                                                                            isActive
-                                                                                                ? 'Click to Deactivate'
-                                                                                                : 'Click to Activate'
-                                                                                        }
-                                                                                    >
-                                                                                        {isActive
-                                                                                            ? 'Active'
-                                                                                            : 'Inactive'}
-                                                                                    </button>
-                                                                                )}
-
-                                                                                {/* Dashboard Pill */}
-                                                                                <a
-                                                                                    href={`/app/${m.tenants.slug}/dashboard`}
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    className="px-2.5 py-1 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-[8px] font-black uppercase tracking-wider transition-all"
-                                                                                    title="Go to Dashboard"
-                                                                                >
-                                                                                    Dashboard
-                                                                                </a>
-                                                                            </div>
+                                                                            <a
+                                                                                href={`/app/${t.slug}/dashboard`}
+                                                                                className="px-3 py-1.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-black text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-black/10"
+                                                                            >
+                                                                                Open
+                                                                            </a>
                                                                         </div>
                                                                     );
                                                                 })}
                                                         </div>
-                                                    )}
-                                                </motion.div>
-                                            )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </motion.div>
                                     </div>
 

@@ -556,10 +556,10 @@ export default function ComparePage() {
         if (bikes.length === 0) return new Map<string, number>();
 
         const metrics = bikes.map(bike => bike.metrics || {});
-        const maxOf = (key: keyof CompareBike['metrics']) =>
-            Math.max(...metrics.map(m => (typeof m?.[key] === 'number' ? (m?.[key] as number) : 0)));
-        const minOf = (key: keyof CompareBike['metrics']) =>
-            Math.min(...metrics.map(m => (typeof m?.[key] === 'number' ? (m?.[key] as number) : 0)));
+        const maxOf = (key: keyof NonNullable<CompareBike['metrics']>) =>
+            Math.max(...metrics.map(m => (typeof (m as any)?.[key] === 'number' ? ((m as any)?.[key] as number) : 0)));
+        const minOf = (key: keyof NonNullable<CompareBike['metrics']>) =>
+            Math.min(...metrics.map(m => (typeof (m as any)?.[key] === 'number' ? ((m as any)?.[key] as number) : 0)));
 
         const normalize = (value: number | undefined, min: number, max: number, higherBetter: boolean) => {
             if (value === undefined || Number.isNaN(value)) return 0.5;

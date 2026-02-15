@@ -62,26 +62,30 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                     name: data.name,
                     status: data.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
                     identity: {
-                        fullLogo: data.config?.fullLogo,
-                        iconLogo: data.config?.iconLogo,
+                        fullLogo: (data.config as any)?.fullLogo,
+                        iconLogo: (data.config as any)?.iconLogo,
                     },
-                    admin: data.config?.admin,
+                    admin: (data.config as any)?.admin,
                     overview: {
                         description:
-                            data.config?.overview?.description || 'Financing partner on the BookMyBike platform.',
-                        website: data.config?.overview?.website || data.config?.website || 'https://bookmy.bike',
-                        supportEmail: data.config?.overview?.supportEmail,
-                        supportPhone: data.config?.overview?.supportPhone,
-                        whatsapp: data.config?.overview?.whatsapp,
-                        customerCare: data.config?.overview?.customerCare,
-                        helpline: data.config?.overview?.helpline,
-                        appLinks: data.config?.overview?.appLinks,
+                            (data.config as any)?.overview?.description ||
+                            'Financing partner on the BookMyBike platform.',
+                        website:
+                            (data.config as any)?.overview?.website ||
+                            (data.config as any)?.website ||
+                            'https://bookmy.bike',
+                        supportEmail: (data.config as any)?.overview?.supportEmail,
+                        supportPhone: (data.config as any)?.overview?.supportPhone,
+                        whatsapp: (data.config as any)?.overview?.whatsapp,
+                        customerCare: (data.config as any)?.overview?.customerCare,
+                        helpline: (data.config as any)?.overview?.helpline,
+                        appLinks: (data.config as any)?.overview?.appLinks,
                     },
-                    locations: data.config?.locations || [],
-                    team: data.config?.team || [],
-                    schemes: data.config?.schemes || [],
-                    chargesMaster: data.config?.chargesMaster || [],
-                    management: data.config?.management || { states: [], areas: [], dealerIds: [] },
+                    locations: (data.config as any)?.locations || [],
+                    team: (data.config as any)?.team || [],
+                    schemes: (data.config as any)?.schemes || [],
+                    chargesMaster: (data.config as any)?.chargesMaster || [],
+                    management: (data.config as any)?.management || { states: [], areas: [], dealerIds: [] },
                 };
                 setRealPartner(mapped);
             }

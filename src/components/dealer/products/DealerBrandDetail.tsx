@@ -22,8 +22,8 @@ export default function DealerBrandDetail({ brandName, onClose }: DealerBrandDet
     }
 
     // Filter products for this brand
-    const allProducts = [...MOCK_VEHICLES, ...MOCK_ACCESSORIES, ...MOCK_SERVICES];
-    const brandProducts = allProducts.filter(p => p.make === brandName);
+    // For brand-level management, we primarily look at vehicles
+    const brandProducts = MOCK_VEHICLES.filter(p => p.make === brandName);
 
     // Stats
     const models = new Set(brandProducts.map(p => p.model)).size;
@@ -38,18 +38,23 @@ export default function DealerBrandDetail({ brandName, onClose }: DealerBrandDet
                         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-md">
                             <h3 className="text-lg font-bold">Variants Auto-Enabled</h3>
                             <p className="opacity-90 mt-1">
-                                Enabling {brandName} automatically activates all {variants} variants from the Master Catalog.
+                                Enabling {brandName} automatically activates all {variants} variants from the Master
+                                Catalog.
                             </p>
                         </div>
 
                         {/* Stats Grid */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg">
-                                <span className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide">Total Models</span>
+                                <span className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide">
+                                    Total Models
+                                </span>
                                 <div className="text-2xl font-bold text-gray-900 dark:text-white">{models}</div>
                             </div>
                             <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg">
-                                <span className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide">Total Variants</span>
+                                <span className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide">
+                                    Total Variants
+                                </span>
                                 <div className="text-2xl font-bold text-gray-900 dark:text-white">{variants}</div>
                             </div>
                         </div>
@@ -58,7 +63,10 @@ export default function DealerBrandDetail({ brandName, onClose }: DealerBrandDet
                             <h4 className="font-bold text-gray-900 dark:text-white text-sm mb-2">Included Models</h4>
                             <div className="flex flex-wrap gap-2">
                                 {Array.from(new Set(brandProducts.map(p => p.model))).map(m => (
-                                    <span key={m} className="px-2 py-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded text-xs font-medium text-gray-700 dark:text-slate-300">
+                                    <span
+                                        key={m}
+                                        className="px-2 py-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded text-xs font-medium text-gray-700 dark:text-slate-300"
+                                    >
                                         {m}
                                     </span>
                                 ))}
@@ -67,7 +75,7 @@ export default function DealerBrandDetail({ brandName, onClose }: DealerBrandDet
                     </div>
                 );
             case 'Pricing Rules':
-                return <BrandPricingForm brandName={brandName} onSave={() => { }} />;
+                return <BrandPricingForm brandName={brandName} onSave={() => {}} />;
             case 'Variants':
                 return (
                     <div className="bg-white dark:bg-slate-900 border boundary-gray-200 dark:border-white/10 rounded-lg overflow-hidden">
@@ -84,7 +92,9 @@ export default function DealerBrandDetail({ brandName, onClose }: DealerBrandDet
                                     <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
                                         <td className="px-4 py-3">
                                             <div className="font-medium text-gray-900 dark:text-white">{p.model}</div>
-                                            <div className="text-xs text-gray-500 dark:text-slate-400">{p.variant} {p.color}</div>
+                                            <div className="text-xs text-gray-500 dark:text-slate-400">
+                                                {p.variant} {p.color}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3 font-mono text-xs text-gray-400 dark:text-slate-500">
                                             {p.sku}

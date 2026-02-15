@@ -31,11 +31,11 @@ export default function ServicesMasterPage() {
     React.useEffect(() => {
         const fetchServices = async () => {
             const supabase = createClient();
-            const { data: dbData, error } = await supabase.from('catalog_services').select('*').order('name');
+            const { data: dbData, error } = await (supabase as any).from('catalog_services').select('*').order('name');
 
             if (!error && dbData) {
                 setData(
-                    dbData.map(d => ({
+                    (dbData as any[]).map(d => ({
                         ...d,
                         displayId: d.display_id,
                     }))

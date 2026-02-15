@@ -89,7 +89,7 @@ function calculateFlatEMI(principal: number, annualRate: number, tenure: number)
 /**
  * Calculate APR using binary search (iterative solver)
  * This matches the calculation from SchemeEditor.tsx
- * 
+ *
  * APR = effective annual rate on net disbursal that results in the given EMI
  * netDisbursal = Gross Loan - Upfront Charges (what customer actually receives)
  */
@@ -105,15 +105,13 @@ function calculateAPRBinarySearch(netDisbursal: number, emi: number, tenure: num
         let monthlyRate = mid / 12;
 
         // Calculate present value of EMI stream at this rate
-        let pv = monthlyRate === 0
-            ? emi * tenure
-            : emi * (1 - Math.pow(1 + monthlyRate, -tenure)) / monthlyRate;
+        let pv = monthlyRate === 0 ? emi * tenure : (emi * (1 - Math.pow(1 + monthlyRate, -tenure))) / monthlyRate;
 
         // Adjust search bounds
         if (pv > netDisbursal) {
-            low = mid;  // Rate too low, PV too high
+            low = mid; // Rate too low, PV too high
         } else {
-            high = mid;  // Rate too high, PV too low
+            high = mid; // Rate too high, PV too low
         }
     }
 
@@ -124,19 +122,15 @@ function calculateAPRBinarySearch(netDisbursal: number, emi: number, tenure: num
 /**
  * Calculate IRR (Internal Rate of Return) for a loan using Newton-Raphson method
  * This calculates the true annual percentage rate (APR) for the loan.
- * 
+ *
  * Cash flow model (from borrower's perspective):
  * - Month 0: +grossLoan (amount borrowed/received)
  * - Months 1-N: -emi (monthly payments)
- * 
+ *
  * IRR makes NPV = 0:
  * grossLoan = Σ(emi / (1+r)^n) for n=1 to N
  */
-function calculateIRR(
-    grossLoan: number,
-    emi: number,
-    tenure: number
-): number {
+function calculateIRR(grossLoan: number, emi: number, tenure: number): number {
     // Helper function to calculate NPV at a given monthly rate
     const calculateNPV = (monthlyRate: number): number => {
         let npv = grossLoan; // Amount borrowed (inflow/positive)
@@ -206,11 +200,7 @@ function calculateIRR(
 /**
  * Calculate APR for a scheme with standardized parameters
  */
-export function calculateAPR(
-    scheme: BankScheme,
-    assetValue: number = 100000,
-    tenure: number = 36
-): APRCalculation {
+export function calculateAPR(scheme: BankScheme, assetValue: number = 100000, tenure: number = 36): APRCalculation {
     // 1. Calculate Initial Loan Potential
     // Respects scheme's Max LTV and Max Loan Amount
     const ltvLoan = assetValue * (scheme.maxLTV / 100);
@@ -248,7 +238,7 @@ export function calculateAPR(
 
         // Finalize metrics for this iteration
         grossLoan = currentLoan + tempFunded;
-        const downpayment = (assetValue - currentLoan) + tempUpfront;
+        const downpayment = assetValue - currentLoan + tempUpfront;
 
         return { upfrontCharges: tempUpfront, fundedCharges: tempFunded, grossLoan, downpayment };
     };
@@ -284,7 +274,7 @@ export function calculateAPR(
         // Hard clamp to ensure display is clean (in case of rounding noise)
         if (metrics.downpayment < 0) {
             // If still negative after iteration (rare), just force Loan such that DP=0
-            // Simplified: Loan = Asset + Upfront. 
+            // Simplified: Loan = Asset + Upfront.
             // We just set Display Downpayment to 0 and accept slight mathematical drift in Loan
         }
     }
@@ -321,10 +311,17 @@ export function calculateAPR(
     if (scheme.payoutType === 'PERCENTAGE') {
         let payoutBasis = loanAmount;
         switch (scheme.payoutBasis) {
-            case 'LOAN_AMOUNT': payoutBasis = loanAmount; break;
-            case 'GROSS_LOAN_AMOUNT': payoutBasis = finalGrossLoan; break;
-            case 'DISBURSAL_AMOUNT': payoutBasis = loanAmount - upfrontCharges; break;
-            default: payoutBasis = loanAmount;
+            case 'LOAN_AMOUNT':
+                payoutBasis = loanAmount;
+                break;
+            case 'GROSS_LOAN_AMOUNT':
+                payoutBasis = finalGrossLoan;
+                break;
+            case 'DISBURSAL_AMOUNT':
+                payoutBasis = loanAmount - upfrontCharges;
+                break;
+            default:
+                payoutBasis = loanAmount;
         }
         payoutValue = scheme.payout;
         totalPayoutAmount = (payoutBasis * scheme.payout) / 100;
@@ -335,15 +332,14 @@ export function calculateAPR(
 
     // 10. Calculate Net Margin (Dealer Earn - Dealer Subvention Cost)
     const subventionVal = scheme.subvention || 0;
-    const totalSubvention = scheme.subventionType === 'PERCENTAGE'
-        ? (finalGrossLoan * subventionVal / 100)
-        : subventionVal;
+    const totalSubvention =
+        scheme.subventionType === 'PERCENTAGE' ? (finalGrossLoan * subventionVal) / 100 : subventionVal;
 
     const netMargin = totalPayoutAmount - totalSubvention;
 
     // 11. Calculate Total Cost (Extra amount paid over Asset Value)
     // Total Paid (Downpayment + EMIs) - Asset Value
-    const totalPaid = downpayment + (emi * tenure);
+    const totalPaid = downpayment + emi * tenure;
     const totalCost = totalPaid - assetValue;
 
     return {
@@ -355,9 +351,9 @@ export function calculateAPR(
         fundedCharges: Math.round(fundedCharges),
         dealerPayout: {
             value: scheme.payoutType === 'PERCENTAGE' ? scheme.payout : Math.round(payoutValue),
-            type: scheme.payoutType,
+            type: (scheme.payoutType === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED') as 'PERCENTAGE' | 'FIXED',
             basis: scheme.payoutBasis,
-            amount: Math.round(totalPayoutAmount)
+            amount: Math.round(totalPayoutAmount),
         },
         netMargin: Math.round(netMargin),
         downpayment: Math.round(downpayment),
@@ -369,7 +365,7 @@ export function calculateAPR(
         apr: Math.round(apr * 100) / 100,
         isActive: scheme.isActive,
         tenure,
-        assetValue
+        assetValue,
     };
 }
 

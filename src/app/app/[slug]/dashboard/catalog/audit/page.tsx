@@ -112,7 +112,7 @@ function formatFullTime(iso: string): string {
 function ChangeDiff({ entry }: { entry: AuditLogEntry }) {
     if (entry.action === 'INSERT') {
         const fields = entry.new_data
-            ? Object.entries(entry.new_data)
+            ? Object.entries(entry.new_data as Record<string, any>)
                   .filter(([k]) => !['id', 'created_at', 'updated_at'].includes(k))
                   .slice(0, 12)
             : [];
@@ -131,7 +131,7 @@ function ChangeDiff({ entry }: { entry: AuditLogEntry }) {
 
     if (entry.action === 'DELETE') {
         const fields = entry.old_data
-            ? Object.entries(entry.old_data)
+            ? Object.entries(entry.old_data as Record<string, any>)
                   .filter(([k]) => !['id', 'created_at', 'updated_at'].includes(k))
                   .slice(0, 12)
             : [];
@@ -159,8 +159,8 @@ function ChangeDiff({ entry }: { entry: AuditLogEntry }) {
         <div className="mt-3 space-y-1.5">
             <div className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">Changes</div>
             {changedFields.map(field => {
-                const oldVal = entry.old_data?.[field];
-                const newVal = entry.new_data?.[field];
+                const oldVal = (entry.old_data as Record<string, any>)?.[field];
+                const newVal = (entry.new_data as Record<string, any>)?.[field];
                 return (
                     <div key={field} className="flex items-start gap-2 text-[10px]">
                         <span className="text-slate-400 font-semibold w-32 truncate flex-shrink-0">
@@ -354,11 +354,11 @@ export default function AuditLogPage() {
                                                         {config.label}
                                                     </span>
                                                     <span className="text-[9px] font-semibold text-slate-400 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">
-                                                        {TABLE_LABELS[log.table_name] || log.table_name}
+                                                        {TABLE_LABELS[log.entity_type] || log.entity_type}
                                                     </span>
                                                 </div>
                                                 <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-0.5 truncate">
-                                                    {log.record_name || log.record_id}
+                                                    {log.record_name || log.entity_id}
                                                 </div>
                                                 {log.action === 'UPDATE' && log.changed_fields && (
                                                     <div className="text-[9px] text-slate-400 mt-0.5">
@@ -372,14 +372,14 @@ export default function AuditLogPage() {
                                             <div className="flex-shrink-0 text-right">
                                                 <div
                                                     className="text-[10px] font-bold text-slate-500 dark:text-slate-400"
-                                                    title={formatFullTime(log.created_at)}
+                                                    title={formatFullTime(log.performed_at)}
                                                 >
-                                                    {formatTime(log.created_at)}
+                                                    {formatTime(log.performed_at)}
                                                 </div>
                                                 <div
-                                                    className={`text-[9px] font-semibold mt-0.5 ${log.actor_label === 'SYSTEM/SQL' ? 'text-purple-500' : 'text-blue-500'}`}
+                                                    className={`text-[9px] font-semibold mt-0.5 ${log.performed_by === '00000000-0000-0000-0000-000000000000' ? 'text-purple-500' : 'text-blue-500'}`}
                                                 >
-                                                    {log.actor_label === 'USER' ? '👤 User' : '⚙️ System'}
+                                                    {log.performed_by ? '👤 User' : '⚙️ System'}
                                                 </div>
                                             </div>
 
@@ -396,18 +396,19 @@ export default function AuditLogPage() {
                                                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 p-3">
                                                     <div className="flex items-center gap-4 text-[9px] text-slate-400 mb-2">
                                                         <span>
-                                                            <strong>ID:</strong> {log.record_id.substring(0, 8)}…
+                                                            <strong>ID:</strong> {log.entity_id.substring(0, 8)}…
                                                         </span>
                                                         <span>
-                                                            <strong>Table:</strong> {log.table_name}
+                                                            <strong>Table:</strong> {log.entity_type}
                                                         </span>
                                                         <span>
-                                                            <strong>Time:</strong> {formatFullTime(log.created_at)}
+                                                            <strong>Time:</strong> {formatFullTime(log.performed_at)}
                                                         </span>
-                                                        {log.actor_id && (
+                                                        {log.performed_by && (
                                                             <span>
                                                                 <strong>Actor:</strong>{' '}
-                                                                {log.actor_name || `${log.actor_id.substring(0, 8)}…`}
+                                                                {log.actor_name ||
+                                                                    `${log.performed_by.substring(0, 8)}…`}
                                                             </span>
                                                         )}
                                                     </div>

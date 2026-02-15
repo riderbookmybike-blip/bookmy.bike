@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle, Loader2, Briefcase, ChevronRight, Phone, User, MapPin } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
+import { useDealerSession } from '@/hooks/useDealerSession';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
 import { normalizePhone, formatPhone, isValidPhone } from '@/lib/utils/phoneUtils';
@@ -33,6 +34,7 @@ export function LeadCaptureModal({
     source = 'LEADS',
 }: LeadCaptureModalProps) {
     const { tenantId, userRole, memberships } = useTenant();
+    const { dealerId: sessionDealerId, locked: sessionLocked } = useDealerSession();
     const [step, setStep] = useState<0 | 1>(0); // 0: Phone entry, 1: Name/Pincode entry
     const [phone, setPhone] = useState('');
     const [name, setName] = useState('');
@@ -131,11 +133,12 @@ export function LeadCaptureModal({
                     customer_dob: existingUser.dob || undefined,
                     model: model,
                     owner_tenant_id: tenantId || undefined,
+                    selected_dealer_id: sessionDealerId || undefined,
                     source: 'PDP_QUICK_QUOTE',
                 });
 
-                if (leadResult.success && leadResult.leadId) {
-                    await handleCreateQuote(leadResult.leadId);
+                if (leadResult.success && (leadResult as any).leadId) {
+                    await handleCreateQuote((leadResult as any).leadId);
                 } else {
                     setError(leadResult.message || 'Failed to create lead. Please try again.');
                 }
@@ -178,12 +181,13 @@ export function LeadCaptureModal({
                 customer_pincode: pincode,
                 model: model,
                 owner_tenant_id: tenantId || undefined,
+                selected_dealer_id: sessionDealerId || undefined,
                 source: isStaff ? 'DEALER_REFERRAL' : 'WEBSITE_PDP',
             });
 
-            if (leadResult.success && leadResult.leadId) {
+            if (leadResult.success && (leadResult as any).leadId) {
                 // 2. Create Quote Linked to the Lead
-                await handleCreateQuote(leadResult.leadId);
+                await handleCreateQuote((leadResult as any).leadId);
             } else {
                 setError(leadResult.success === false ? 'Failed to save details' : 'System error');
             }
@@ -203,7 +207,7 @@ export function LeadCaptureModal({
 
         try {
             const result = await createQuoteAction({
-                tenant_id: tenantId,
+                tenant_id: sessionDealerId || tenantId || '',
                 lead_id: lId,
                 variant_id: variantId,
                 color_id: colorId,

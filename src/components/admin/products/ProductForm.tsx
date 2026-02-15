@@ -11,16 +11,16 @@ interface ProductFormProps {
 }
 
 export default function ProductForm({ type, initialData, onCancel }: ProductFormProps) {
-    const [formData, setFormData] = useState<Partial<ProductVariant>>({
+    const [formData, setFormData] = useState<any>({
         type: type,
-        status: 'ACTIVE',
+        status: 'ACTIVE' as VehicleStatus,
         make: '',
         model: '',
         variant: '',
         color: '',
         size: '',
         duration: '',
-        compatibility: { makes: [] }
+        compatibility: { makes: [] },
     });
 
     // Populate on Edit
@@ -39,14 +39,14 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
         return parts.filter(Boolean).join(' / ');
     }, [formData, type]);
 
-    const handleChange = (field: keyof ProductVariant, value: any) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+    const handleChange = (field: string, value: any) => {
+        setFormData((prev: any) => ({ ...prev, [field]: value }));
     };
 
     const handleCompatibilityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         // Simple mock for compatibility selection
         // In real app, this would be a multi-select component.
-        // For UI demo, allow typing or single select that appends? 
+        // For UI demo, allow typing or single select that appends?
         // Let's just use text area for "Makes" for now or a simple predefined list toggle.
         // Or better: Checkboxes for top makes.
     };
@@ -73,7 +73,7 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="e.g. Honda"
                             value={formData.make}
-                            onChange={(e) => handleChange('make', e.target.value)}
+                            onChange={e => handleChange('make', e.target.value)}
                         />
                     </div>
                     <div>
@@ -84,7 +84,7 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="e.g. Activa 6G"
                             value={formData.model}
-                            onChange={(e) => handleChange('model', e.target.value)}
+                            onChange={e => handleChange('model', e.target.value)}
                         />
                     </div>
                 </div>
@@ -98,7 +98,7 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="e.g. Standard / DLX"
                             value={formData.variant}
-                            onChange={(e) => handleChange('variant', e.target.value)}
+                            onChange={e => handleChange('variant', e.target.value)}
                         />
                     </div>
                     {/* Status */}
@@ -107,7 +107,7 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
                         <select
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none"
                             value={formData.status}
-                            onChange={(e) => handleChange('status', e.target.value)}
+                            onChange={e => handleChange('status', e.target.value)}
                         >
                             <option value="ACTIVE">Active</option>
                             <option value="DISCONTINUED">Discontinued</option>
@@ -133,10 +133,13 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="e.g. Imperial Red"
                                 value={formData.color || ''}
-                                onChange={(e) => handleChange('color', e.target.value)}
+                                onChange={e => handleChange('color', e.target.value)}
                             />
                             {/* Color Picker Mock */}
-                            <div className="w-10 h-10 rounded-lg border border-gray-200 bg-red-600 cursor-pointer" title="Pick Color Hex"></div>
+                            <div
+                                className="w-10 h-10 rounded-lg border border-gray-200 bg-red-600 cursor-pointer"
+                                title="Pick Color Hex"
+                            ></div>
                         </div>
                     </div>
                 )}
@@ -150,7 +153,7 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="e.g. L (58cm) or Universal"
                             value={formData.size || ''}
-                            onChange={(e) => handleChange('size', e.target.value)}
+                            onChange={e => handleChange('size', e.target.value)}
                         />
                     </div>
                 )}
@@ -164,7 +167,7 @@ export default function ProductForm({ type, initialData, onCancel }: ProductForm
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="e.g. 1 Year / 10,000 KM"
                             value={formData.duration || ''}
-                            onChange={(e) => handleChange('duration', e.target.value)}
+                            onChange={e => handleChange('duration', e.target.value)}
                         />
                     </div>
                 )}

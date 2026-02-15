@@ -580,7 +580,7 @@ export default function LoginSidebar({
             const { data: mData, error: mError } = await supabase
                 .from('memberships')
                 .select('*, tenants!inner(*)')
-                .eq('user_id', user?.id)
+                .eq('user_id', user!.id)
                 .eq('status', 'ACTIVE');
 
             if (mError) {

@@ -22,7 +22,7 @@ export async function lookupMemberByPhone(phone: string): Promise<{
 
         const { data: member, error } = await adminClient
             .from('id_members')
-            .select('id, full_name, primary_phone, email')
+            .select('id, full_name, primary_phone')
             .or(`primary_phone.eq.${rawPhone},primary_phone.eq.${formattedPhone},primary_phone.eq.+${formattedPhone}`)
             .order('created_at', { ascending: true })
             .limit(1)
@@ -43,8 +43,7 @@ export async function lookupMemberByPhone(phone: string): Promise<{
                 id: member.id,
                 full_name: member.full_name || 'Unknown',
                 primary_phone: member.primary_phone || '',
-                email: member.email || undefined
-            }
+            },
         };
     } catch (err: any) {
         console.error('[LookupMember] Fatal:', err);
@@ -63,7 +62,10 @@ export async function checkSlugAvailability(slug: string): Promise<{
         return { available: false };
     }
 
-    const normalizedSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/(^-|-$)/g, '');
+    const normalizedSlug = slug
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/(^-|-$)/g, '');
 
     const { data: existing } = await adminClient
         .from('id_tenants')
@@ -80,7 +82,7 @@ export async function checkSlugAvailability(slug: string): Promise<{
 
         return {
             available: false,
-            suggestion: `${normalizedSlug}-${(count || 0) + 1}`
+            suggestion: `${normalizedSlug}-${(count || 0) + 1}`,
         };
     }
 
@@ -89,7 +91,7 @@ export async function checkSlugAvailability(slug: string): Promise<{
 
 export async function onboardDealer(formData: {
     dealerName: string;
-    slug: string;  // Now accepts custom slug from form
+    slug: string; // Now accepts custom slug from form
     studioId?: string;
     pincode: string;
     memberId: string; // Requires verified member ID
@@ -98,7 +100,10 @@ export async function onboardDealer(formData: {
 
     try {
         // 1. Use the pre-validated slug from form (already checked for availability)
-        const slug = formData.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/(^-|-$)/g, '');
+        const slug = formData.slug
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, '-')
+            .replace(/(^-|-$)/g, '');
 
         if (!slug || slug.length < 2) {
             throw new Error('Invalid slug provided');
@@ -117,7 +122,7 @@ export async function onboardDealer(formData: {
                 status: 'ACTIVE',
                 studio_id: formData.studioId?.trim() || null,
                 config: {},
-                location: `Pincode: ${formData.pincode}`
+                location: `Pincode: ${formData.pincode}`,
             })
             .select()
             .single();
@@ -134,14 +139,12 @@ export async function onboardDealer(formData: {
         console.log('[OnboardDealer] Using verified member ID:', memberId);
 
         // 5. Link Member to Tenant in id_team
-        const { error: teamError } = await adminClient
-            .from('id_team')
-            .insert({
-                tenant_id: tenant.id,
-                user_id: memberId,
-                role: 'OWNER',
-                status: 'ACTIVE'
-            });
+        const { error: teamError } = await adminClient.from('id_team').insert({
+            tenant_id: tenant.id,
+            user_id: memberId,
+            role: 'OWNER',
+            status: 'ACTIVE',
+        });
 
         if (teamError) {
             console.error('[OnboardDealer] Team Error:', teamError);

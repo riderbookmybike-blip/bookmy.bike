@@ -18,7 +18,7 @@ import {
     ArrowDownToLine,
     ShieldCheck,
     Calendar,
-    User
+    User,
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { format } from 'date-fns';
@@ -38,17 +38,17 @@ interface InventoryItem {
                 name: string;
                 brands: {
                     name: string;
-                }
-            }
-        }
+                };
+            };
+        };
     };
     allocated_to?: {
         customer_name: string;
-    }
+    };
 }
 
 export default function StockPage() {
-    const supabase = createClient();
+    const supabase: any = createClient();
     const { tenantId } = useTenant();
     const [stock, setStock] = useState<InventoryItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -65,9 +65,10 @@ export default function StockPage() {
     const fetchStock = async () => {
         setLoading(true);
         try {
-            let query = supabase
+            let query = (supabase as any)
                 .from('vehicle_inventory')
-                .select(`
+                .select(
+                    `
                     *,
                     vehicle_colors (
                         name,
@@ -82,7 +83,8 @@ export default function StockPage() {
                     allocated_to:purchase_requisitions!allocated_to_requisition_id (
                         customer_name
                     )
-                `)
+                `
+                )
                 .order('created_at', { ascending: false });
 
             if (statusFilter !== 'ALL') {
@@ -91,7 +93,7 @@ export default function StockPage() {
 
             const { data, error } = await query;
             if (error) throw error;
-            setStock(data || []);
+            setStock((data as any) || []);
         } catch (err) {
             console.error('Error fetching stock:', err);
         } finally {
@@ -101,10 +103,14 @@ export default function StockPage() {
 
     const getStatusColor = (status: string) => {
         switch (status.toUpperCase()) {
-            case 'AVAILABLE': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20';
-            case 'BOOKED': return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20';
-            case 'SOLD': return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10';
-            default: return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10';
+            case 'AVAILABLE':
+                return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20';
+            case 'BOOKED':
+                return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20';
+            case 'SOLD':
+                return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10';
+            default:
+                return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10';
         }
     };
 
@@ -172,25 +178,30 @@ export default function StockPage() {
             {/* Filters */}
             <div className="bg-white/50 dark:bg-slate-900/30 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-4 rounded-3xl flex flex-col md:flex-row items-center gap-4">
                 <div className="relative flex-1 group w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500" size={18} />
+                    <Search
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500"
+                        size={18}
+                    />
                     <input
                         type="text"
                         placeholder="SEARCH BY CHASSIS, ENGINE, OR MODEL..."
                         className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-12 pr-4 text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest placeholder:text-slate-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={e => setSearchQuery(e.target.value)}
                     />
                 </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none w-full md:w-auto">
-                    {['ALL', 'AVAILABLE', 'BOOKED', 'SOLD'].map((status) => (
+                    {['ALL', 'AVAILABLE', 'BOOKED', 'SOLD'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border
-                                ${statusFilter === status
-                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
-                                    : 'bg-white dark:bg-slate-800/50 text-slate-500 border-slate-200 dark:border-white/5'}`}
+                                ${
+                                    statusFilter === status
+                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
+                                        : 'bg-white dark:bg-slate-800/50 text-slate-500 border-slate-200 dark:border-white/5'
+                                }`}
                         >
                             {status}
                         </button>
@@ -203,7 +214,9 @@ export default function StockPage() {
                 {loading ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-4">
                         <Loader2 className="animate-spin text-emerald-500" size={40} />
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Auditing Physical Assets...</span>
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">
+                            Auditing Physical Assets...
+                        </span>
                     </div>
                 ) : filteredStock.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-6 text-center px-6">
@@ -211,8 +224,12 @@ export default function StockPage() {
                             <Package size={40} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Zero Stock</h3>
-                            <p className="text-xs font-bold text-slate-500 uppercase mt-2">Inward vehicles from your Purchase Orders to see them here.</p>
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                Zero Stock
+                            </h3>
+                            <p className="text-xs font-bold text-slate-500 uppercase mt-2">
+                                Inward vehicles from your Purchase Orders to see them here.
+                            </p>
                         </div>
                     </div>
                 ) : (
@@ -220,47 +237,70 @@ export default function StockPage() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Asset Identifiers</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Vehicle Details</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Aquisition Date</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Asset Identifiers
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Vehicle Details
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Aquisition Date
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredStock.map((item) => (
-                                    <tr key={item.id} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors">
+                                {filteredStock.map(item => (
+                                    <tr
+                                        key={item.id}
+                                        className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors"
+                                    >
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
                                                     <Hash size={12} className="text-slate-400" />
-                                                    <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">C: {item.chassis_number}</span>
+                                                    <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                                        C: {item.chassis_number}
+                                                    </span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <ShieldCheck size={12} className="text-slate-400" />
-                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">E: {item.engine_number}</span>
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                                        E: {item.engine_number}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">
-                                                    {item.vehicle_colors.vehicle_variants.vehicle_models.brands.name} {item.vehicle_colors.vehicle_variants.vehicle_models.name}
+                                                    {item.vehicle_colors.vehicle_variants.vehicle_models.brands.name}{' '}
+                                                    {item.vehicle_colors.vehicle_variants.vehicle_models.name}
                                                 </span>
                                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                                                    {item.vehicle_colors.vehicle_variants.name} • {item.vehicle_colors.name}
+                                                    {item.vehicle_colors.vehicle_variants.name} •{' '}
+                                                    {item.vehicle_colors.name}
                                                 </span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-1.5 text-slate-400">
                                                 <Calendar size={12} />
-                                                <span className="text-[10px] font-bold uppercase tracking-widest">{format(new Date(item.created_at), 'dd MMM yyyy')}</span>
+                                                <span className="text-[10px] font-bold uppercase tracking-widest">
+                                                    {format(new Date(item.created_at), 'dd MMM yyyy')}
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
-                                                <span className={`px-3 py-1 bg-transparent rounded-full text-[10px] font-black border uppercase tracking-widest inline-flex w-fit ${getStatusColor(item.status)}`}>
+                                                <span
+                                                    className={`px-3 py-1 bg-transparent rounded-full text-[10px] font-black border uppercase tracking-widest inline-flex w-fit ${getStatusColor(item.status)}`}
+                                                >
                                                     {item.status}
                                                 </span>
                                                 {item.allocated_to?.customer_name && (

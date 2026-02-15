@@ -193,7 +193,7 @@ export async function generateStaticParams() {
             const make = (family.brand as any)?.name?.toLowerCase().replace(/\s+/g, '-') || 'unknown';
             const model = family.slug || family.name.toLowerCase().replace(/\s+/g, '-');
 
-            (family.variants as any[])?.forEach(variant => {
+            (family.variants as any)?.forEach((variant: any) => {
                 const variantSlug = variant.slug || variant.name.toLowerCase().replace(/\s+/g, '-');
                 params.push({
                     make,
@@ -861,6 +861,7 @@ export default async function Page({ params, searchParams }: Props) {
             video: null,
             priceOverride: null,
             dealerOffer: 0,
+            isPrimary: true,
         });
     }
 
@@ -1019,7 +1020,7 @@ export default async function Page({ params, searchParams }: Props) {
         name: `${product.make} ${product.model} ${product.variant}`.trim(),
         brand: product.make ? { '@type': 'Brand', name: product.make } : undefined,
         model: product.model || undefined,
-        color: product.color || undefined,
+        color: (product.colors as any)?.[0]?.name || undefined,
     };
 
     if (publishedPriceData?.ex_showroom_price) {

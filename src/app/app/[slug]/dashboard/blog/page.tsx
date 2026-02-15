@@ -5,16 +5,9 @@ import { createClient } from '@/lib/supabase/client';
 import { Plus, Search, MoreVertical, Edit2, Trash2, Eye, Calendar, User, Clock, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import type { Database } from '@/types/supabase';
 
-interface BlogPost {
-    id: string;
-    title: string;
-    slug: string;
-    is_published: boolean;
-    created_at: string;
-    author_name: string;
-    image_url: string;
-}
+type BlogPost = Database['public']['Tables']['blog_posts']['Row'];
 
 export default function BlogManagementPage() {
     const params = useParams();
@@ -29,7 +22,7 @@ export default function BlogManagementPage() {
         const { data, error } = await supabase.from('blog_posts').select('*').order('created_at', { ascending: false });
 
         if (!error && data) {
-            setPosts(data);
+            setPosts(data as BlogPost[]);
         }
         setLoading(false);
     };
@@ -134,7 +127,7 @@ export default function BlogManagementPage() {
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                                         <Calendar size={12} className="text-brand-primary" />
-                                        {new Date(post.created_at).toLocaleDateString()}
+                                        {post.created_at ? new Date(post.created_at).toLocaleDateString() : '—'}
                                     </div>
                                     <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                                         <User size={12} className="text-brand-primary" />
@@ -185,4 +178,3 @@ export default function BlogManagementPage() {
         </div>
     );
 }
-// @ts-nocheck

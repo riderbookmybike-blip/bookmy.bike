@@ -94,6 +94,72 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            blog_posts: {
+                Row: {
+                    id: string;
+                    slug: string;
+                    title: string;
+                    excerpt: string | null;
+                    content: string;
+                    author_id: string | null;
+                    author_name: string | null;
+                    image_url: string | null;
+                    tags: Json | null;
+                    read_time: string | null;
+                    is_published: boolean | null;
+                    published_at: string | null;
+                    created_at: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    id?: string;
+                    slug: string;
+                    title: string;
+                    excerpt?: string | null;
+                    content: string;
+                    author_id?: string | null;
+                    author_name?: string | null;
+                    image_url?: string | null;
+                    tags?: Json | null;
+                    read_time?: string | null;
+                    is_published?: boolean | null;
+                    published_at?: string | null;
+                    created_at?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    id?: string;
+                    slug?: string;
+                    title?: string;
+                    excerpt?: string | null;
+                    content?: string;
+                    author_id?: string | null;
+                    author_name?: string | null;
+                    image_url?: string | null;
+                    tags?: Json | null;
+                    read_time?: string | null;
+                    is_published?: boolean | null;
+                    published_at?: string | null;
+                    created_at?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'blog_posts_author_id_fkey';
+                        columns: ['author_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'blog_posts_author_id_fkey';
+                        columns: ['author_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'memberships';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             cat_assets: {
                 Row: {
                     created_at: string | null;
@@ -3765,6 +3831,42 @@ export type Database = {
                     },
                 ];
             };
+            id_tenant_reward_wheel_configs: {
+                Row: {
+                    tenant_id: string;
+                    rewards: Json;
+                    created_at: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    tenant_id: string;
+                    rewards?: Json;
+                    created_at?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    tenant_id?: string;
+                    rewards?: Json;
+                    created_at?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'id_tenant_reward_wheel_configs_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: true;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'id_tenant_reward_wheel_configs_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: true;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             id_team: {
                 Row: {
                     created_at: string | null;
@@ -4975,16 +5077,19 @@ export type Database = {
                 Row: {
                     default_owner_tenant_id: string | null;
                     id: string;
+                    unified_context_strict_mode: boolean | null;
                     updated_at: string | null;
                 };
                 Insert: {
                     default_owner_tenant_id?: string | null;
                     id?: string;
+                    unified_context_strict_mode?: boolean | null;
                     updated_at?: string | null;
                 };
                 Update: {
                     default_owner_tenant_id?: string | null;
                     id?: string;
+                    unified_context_strict_mode?: boolean | null;
                     updated_at?: string | null;
                 };
                 Relationships: [];

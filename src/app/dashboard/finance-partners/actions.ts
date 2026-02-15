@@ -118,7 +118,7 @@ export async function updateBankSchemes(bankId: string, schemes: any[]) {
 
         // 2. Update config with new schemes
         const newConfig = {
-            ...(tenant.config || {}),
+            ...((tenant.config as any) || {}),
             schemes,
         };
 
@@ -161,19 +161,20 @@ export async function updateBankIdentity(
 
         if (fetchError) throw fetchError;
 
+        const cfg = (tenant?.config as any) || {};
         const newConfig = {
-            ...(tenant.config || {}),
-            fullLogo: updates.fullLogo || tenant.config?.fullLogo,
-            iconLogo: updates.iconLogo || tenant.config?.iconLogo,
+            ...cfg,
+            fullLogo: updates.fullLogo || cfg.fullLogo,
+            iconLogo: updates.iconLogo || cfg.iconLogo,
             overview: {
-                ...(tenant.config?.overview || {}),
-                description: updates.description || tenant.config?.overview?.description,
-                website: updates.website || tenant.config?.overview?.website,
-                whatsapp: updates.whatsapp || tenant.config?.overview?.whatsapp,
-                customerCare: updates.customerCare || tenant.config?.overview?.customerCare,
-                helpline: updates.helpline || tenant.config?.overview?.helpline,
+                ...(cfg.overview || {}),
+                description: updates.description || cfg.overview?.description,
+                website: updates.website || cfg.overview?.website || cfg.website,
+                whatsapp: updates.whatsapp || cfg.overview?.whatsapp,
+                customerCare: updates.customerCare || cfg.overview?.customerCare,
+                helpline: updates.helpline || cfg.overview?.helpline,
                 appLinks: {
-                    ...(tenant.config?.overview?.appLinks || {}),
+                    ...(cfg.overview?.appLinks || {}),
                     ...(updates.appLinks || {}),
                 },
             },
@@ -218,7 +219,7 @@ export async function getFinanceRouting() {
             .single();
 
         if (error) throw error;
-        return { success: true, routing: data.config?.financeRouting as FinanceRoutingTable | undefined };
+        return { success: true, routing: (data.config as any)?.financeRouting as FinanceRoutingTable | undefined };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
@@ -237,7 +238,7 @@ export async function saveFinanceRouting(routing: FinanceRoutingTable) {
         if (fetchError) throw fetchError;
 
         const newConfig = {
-            ...(tenant.config || {}),
+            ...((tenant.config as any) || {}),
             financeRouting: routing,
         };
 
@@ -323,7 +324,7 @@ export async function updateBankChargesMaster(bankId: string, chargesMaster: any
         if (fetchError) throw fetchError;
 
         const newConfig = {
-            ...(tenant.config || {}),
+            ...((tenant.config as any) || {}),
             chargesMaster,
         };
 

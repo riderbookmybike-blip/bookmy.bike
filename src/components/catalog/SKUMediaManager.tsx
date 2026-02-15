@@ -25,7 +25,7 @@ import {
     Crop,
     Ruler,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
@@ -621,7 +621,7 @@ export default function SKUMediaManager({
                                             <motion.div
                                                 drag
                                                 dragMomentum={false}
-                                                onDrag={(e, info) => {
+                                                onDrag={(_, info: PanInfo) => {
                                                     setOffsetX(prev => prev + info.delta.x);
                                                     setOffsetY(prev => prev + info.delta.y);
                                                 }}

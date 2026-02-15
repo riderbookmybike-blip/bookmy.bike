@@ -13,17 +13,7 @@ const toTitleCase = (str: string) =>
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
-export type MemberProfile = {
-    member: any;
-    contacts: any[];
-    addresses: any[];
-    assets: any[];
-    events: any[];
-    payments: any[];
-    bookings: any[];
-    leads: any[];
-    quotes: any[];
-};
+// MemberProfile type removed as it was unused locally
 
 export type MemberCreateInput = {
     tenantId: string;

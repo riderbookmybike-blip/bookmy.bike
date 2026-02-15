@@ -7,6 +7,7 @@ import RoleGuard from '@/components/auth/RoleGuard';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter, useParams } from 'next/navigation';
 import { usePermission } from '@/hooks/usePermission';
+import type { Json } from '@/types/supabase';
 import { InsuranceRule } from '@/types/insurance';
 import { FormulaComponent } from '@/types/registration';
 import InsuranceOverview from '@/components/catalog/insurance/InsuranceOverview';
@@ -58,10 +59,10 @@ const mapFrontendToDb = (r: InsuranceRule) => ({
     status: r.status,
     idv_percentage: r.idvPercentage,
     gst_percentage: r.gstPercentage,
-    od_components: r.odComponents,
-    tp_components: r.tpComponents,
-    addons: r.addons,
-    tenure_config: r.tenureConfig || DEFAULT_TENURE_CONFIG,
+    od_components: r.odComponents as unknown as Json,
+    tp_components: r.tpComponents as unknown as Json,
+    addons: r.addons as unknown as Json,
+    tenure_config: (r.tenureConfig || DEFAULT_TENURE_CONFIG) as unknown as Json,
     version: r.version,
     updated_at: new Date().toISOString(),
 });
@@ -160,7 +161,7 @@ export default function InsuranceDetailPage() {
         const supabase = createClient();
         const dbPayload = mapFrontendToDb(rule);
 
-        const { error } = await supabase.from('cat_ins_rules').upsert(dbPayload);
+        const { error } = await supabase.from('cat_ins_rules').upsert(dbPayload as any);
 
         if (!error) {
             alert('Insurance Rule Saved Successfully to Database!');

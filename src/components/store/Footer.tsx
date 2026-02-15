@@ -6,13 +6,13 @@ import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper, ArrowRight } 
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 import { motion } from 'framer-motion';
-import { useI18n } from '@/components/providers/I18nProvider';
 import { SystemDebugger } from '@/components/debug/SystemDebugger';
 
 export const Footer = () => {
     const { brands } = useSystemBrandsLogic();
     const [activeSection, setActiveSection] = useState(0);
-    const { t } = useI18n();
+
+    const t = (text: string) => text;
 
     interface FooterLink {
         label: string;

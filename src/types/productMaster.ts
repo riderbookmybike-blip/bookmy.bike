@@ -9,7 +9,7 @@ export interface ProductVariant {
     slug: string;
     modelSlug: string;
     sku: string;
-    status: 'ACTIVE' | 'INACTIVE';
+    status: VehicleStatus;
     bodyType: 'MOTORCYCLE' | 'SCOOTER' | 'MOPED';
     fuelType: 'PETROL' | 'EV' | 'CNG';
     displacement?: number;
@@ -231,30 +231,49 @@ export const MOCK_SERVICES = [
     },
 ];
 
+export type ProductType = 'VEHICLE' | 'ACCESSORY' | 'SERVICE';
+export type VehicleStatus = 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED' | 'UPCOMING';
+
 export interface DealerBrandConfig {
+    id: string;
+    dealerId: string;
     brandName: string;
-    logoUrl: string;
     isActive: boolean;
-    margin: number;
+    defaultMarginType: 'FIXED' | 'PERCENTAGE';
+    defaultMarginValue: number;
+    lastUpdated: string;
+    logoUrl?: string;
 }
 
 export const MOCK_DEALER_BRANDS: DealerBrandConfig[] = [
     {
+        id: 'db-re',
+        dealerId: 'current',
         brandName: 'Royal Enfield',
         logoUrl: '/images/logos/royal-enfield.png',
         isActive: true,
-        margin: 12,
+        defaultMarginType: 'PERCENTAGE',
+        defaultMarginValue: 12,
+        lastUpdated: new Date().toISOString(),
     },
     {
+        id: 'db-honda',
+        dealerId: 'current',
         brandName: 'Honda',
         logoUrl: '/images/logos/honda.png',
         isActive: true,
-        margin: 10,
+        defaultMarginType: 'PERCENTAGE',
+        defaultMarginValue: 10,
+        lastUpdated: new Date().toISOString(),
     },
     {
+        id: 'db-tvs',
+        dealerId: 'current',
         brandName: 'TVS',
         logoUrl: '/images/logos/tvs.png',
         isActive: false,
-        margin: 8,
+        defaultMarginType: 'PERCENTAGE',
+        defaultMarginValue: 8,
+        lastUpdated: new Date().toISOString(),
     },
 ];

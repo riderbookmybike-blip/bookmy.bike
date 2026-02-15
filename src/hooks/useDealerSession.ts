@@ -1,116 +1,131 @@
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { getResolvedPricingContextAction } from '@/actions/pricingActions';
+import { useTenant } from '@/lib/tenant/tenantContext';
 
 export interface DealerSession {
-    mode: 'INDIVIDUAL' | 'TEAM';
-    activeTenantId: string | null;
+    dealerId: string | null;
     studioId: string | null;
-    district: string | null;
     tenantName: string | null;
+    district: string | null;
+    locked: boolean;
+    source: 'URL' | 'STORAGE' | 'PRIMARY' | 'DEFAULT' | 'NONE';
 }
 
-const STORAGE_KEY = 'bmb_active_tenant_id';
-const COOKIE_NAME = 'bmb_dealer_session';
-
-function getCookie(name: string): string | null {
-    if (typeof document === 'undefined') return null;
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : null;
-}
-
-function setCookie(name: string, value: string, days: number = 30) {
-    if (typeof document === 'undefined') return;
-    const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(value)}; path=/; expires=${expires}; SameSite=Lax`;
-}
-
-function deleteCookie(name: string) {
-    if (typeof document === 'undefined') return;
-    document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-}
+const STORAGE_KEY = 'bkmb_active_dealer_context_v2';
 
 const defaultSession: DealerSession = {
-    mode: 'INDIVIDUAL',
-    activeTenantId: null,
+    dealerId: null,
     studioId: null,
-    district: null,
     tenantName: null,
+    district: null,
+    locked: false,
+    source: 'NONE',
 };
 
 export function useDealerSession() {
+    const searchParams = useSearchParams();
+    const { isUnifiedContext } = useTenant();
     const [session, setSession] = useState<DealerSession>(defaultSession);
     const [isLoaded, setIsLoaded] = useState(false);
+    const resolutionStarted = useRef(false);
 
-    // Load session on mount
-    useEffect(() => {
+    const resolveSession = useCallback(async () => {
+        if (typeof window === 'undefined') return;
+
+        // 1. Check URL Parameters (Highest Priority)
+        const urlLeadId = searchParams?.get('lead_id');
+        const urlDealerId = searchParams?.get('dealer_id');
+        const urlStudio = searchParams?.get('studio');
+
+        // 2. Check Storage/Local Context
+        let storedContext: any = null;
         try {
-            // Try cookie first (source of truth)
-            const cookieValue = getCookie(COOKIE_NAME);
-            if (cookieValue) {
-                const parsed = JSON.parse(cookieValue);
-                setSession(parsed);
-                // Sync to localStorage as backup
-                localStorage.setItem(STORAGE_KEY, cookieValue);
-            } else {
-                // Fallback to localStorage
-                const localValue = localStorage.getItem(STORAGE_KEY);
-                if (localValue) {
-                    const parsed = JSON.parse(localValue);
-                    setSession(parsed);
-                    // Restore cookie
-                    setCookie(COOKIE_NAME, localValue);
-                }
-            }
+            const local = localStorage.getItem(STORAGE_KEY);
+            if (local) storedContext = JSON.parse(local);
         } catch (e) {
-            console.error('[useDealerSession] Error loading session:', e);
+            console.error('[useDealerSession] Error parsing storage:', e);
         }
-        setIsLoaded(true);
-    }, []);
 
-    // Activate a dealer session (TEAM mode)
-    const activateDealer = useCallback(
-        (tenant: { tenantId: string; studioId: string | null; district: string | null; tenantName: string }) => {
+        // 3. Check Location (Pincode/District)
+        let district: string | null = null;
+        const storedPincode = localStorage.getItem('bkmb_user_pincode');
+        if (storedPincode) {
+            try {
+                const parsed = JSON.parse(storedPincode);
+                district = parsed.district || parsed.taluka || parsed.city || null;
+            } catch {}
+        }
+
+        // 4. Call Server Action to resolve the "truth"
+        try {
+            const context = await getResolvedPricingContextAction({
+                leadId: urlLeadId,
+                dealerId: urlDealerId,
+                studio: urlStudio,
+                district: district,
+            });
+
             const newSession: DealerSession = {
-                mode: 'TEAM',
-                activeTenantId: tenant.tenantId,
-                studioId: tenant.studioId,
-                district: tenant.district,
-                tenantName: tenant.tenantName,
+                dealerId: context.dealerId,
+                studioId: null, // Resolution happens by dealerId now
+                tenantName: context.tenantName,
+                district: context.district,
+                locked: !!urlLeadId,
+                source:
+                    context.source === 'EXPLICIT'
+                        ? 'URL'
+                        : context.source.startsWith('PRIMARY')
+                          ? 'PRIMARY'
+                          : storedContext && !urlLeadId && !urlDealerId
+                            ? 'STORAGE'
+                            : 'DEFAULT',
             };
-            const serialized = JSON.stringify(newSession);
-            setCookie(COOKIE_NAME, serialized);
-            localStorage.setItem(STORAGE_KEY, serialized);
+
+            // 5. Persistence
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
             setSession(newSession);
-        },
-        []
-    );
-
-    // Switch to individual mode (clear session)
-    const switchToIndividual = useCallback(() => {
-        deleteCookie(COOKIE_NAME);
-        localStorage.removeItem(STORAGE_KEY);
-        setSession(defaultSession);
-    }, []);
-
-    // Toggle between modes
-    const toggleMode = useCallback(() => {
-        if (session.mode === 'TEAM') {
-            switchToIndividual();
+        } catch (error) {
+            console.error('[useDealerSession] Resolution failed:', error);
+            // Fallback to stored context if available
+            if (storedContext) {
+                setSession(storedContext);
+            }
+        } finally {
+            setIsLoaded(true);
         }
-        // Note: To go from INDIVIDUAL to TEAM, user must select a dealership
-    }, [session.mode, switchToIndividual]);
+    }, [searchParams]);
+
+    useEffect(() => {
+        if (resolutionStarted.current) return;
+        resolutionStarted.current = true;
+        resolveSession();
+    }, [resolveSession]);
+
+    // Manual setter if a dealer is explicitly selected from a list/prompt
+    const setDealerContext = useCallback((dealerId: string, district?: string) => {
+        const newSession: DealerSession = {
+            ...defaultSession,
+            dealerId,
+            district: district || null,
+            source: 'DEFAULT',
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+        setSession(newSession);
+    }, []);
 
     return {
         session,
-        isLoaded,
-        isTeamMode: session.mode === 'TEAM',
-        activeTenantId: session.activeTenantId,
-        studioId: session.studioId,
+        dealerId: session.dealerId,
+        locked: session.locked,
+        source: session.source,
         district: session.district,
+        isLoaded,
+        setDealerContext,
+        // Legacy shims to prevent immediate breaks
+        activeTenantId: session.dealerId,
+        studioId: session.studioId,
         tenantName: session.tenantName,
-        activateDealer,
-        switchToIndividual,
-        toggleMode,
+        isTeamMode: !isUnifiedContext && (session.locked || !!session.dealerId),
     };
 }

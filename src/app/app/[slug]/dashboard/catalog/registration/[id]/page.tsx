@@ -8,6 +8,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { usePermission } from '@/hooks/usePermission';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { RegistrationRule } from '@/types/registration';
+import type { Json } from '@/types/supabase';
 import RuleOverview from '@/components/catalog/registration/RuleOverview';
 import FormulaBuilder from '@/components/catalog/registration/FormulaBuilder';
 import PreviewCalculator from '@/components/catalog/registration/PreviewCalculator';
@@ -73,7 +74,7 @@ export default function RegistrationDetailPage() {
             state_tenure: rule.stateTenure,
             bh_tenure: rule.bhTenure,
             company_multiplier: rule.companyMultiplier,
-            components: rule.components,
+            components: rule.components as unknown as Json,
             version: rule.version,
             updated_at: new Date().toISOString(),
         };
@@ -221,7 +222,7 @@ export default function RegistrationDetailPage() {
         const supabase = createClient();
         const dbPayload = mapFrontendToDb(rule);
 
-        const { error } = await supabase.from('cat_reg_rules').upsert(dbPayload);
+        const { error } = await supabase.from('cat_reg_rules').upsert(dbPayload as any);
 
         if (!error) {
             await logClientAction(

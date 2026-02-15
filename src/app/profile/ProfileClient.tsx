@@ -66,18 +66,8 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
     const [originalMember, setOriginalMember] = useState(member || {});
     const [originalAddresses, setOriginalAddresses] = useState(addresses || []);
 
-    // Dealer Session Hook
-    const {
-        session,
-        isTeamMode,
-        activeTenantId,
-        studioId,
-        district,
-        tenantName,
-        activateDealer,
-        switchToIndividual,
-        isLoaded: isSessionLoaded,
-    } = useDealerSession();
+    // Dealer Session Hook (Placeholder for Phase 3 resolution)
+    const { activeTenantId } = useDealerSession();
 
     // Filter DEALER type memberships only
     const dealerMemberships = (memberships || []).filter(
@@ -167,7 +157,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
     };
 
     const handleUpdateField = (field: string, value: any) => {
-        setLocalMember(prev => ({ ...prev, [field]: value }));
+        setLocalMember((prev: any) => ({ ...prev, [field]: value }));
     };
 
     const displayName =
@@ -370,90 +360,27 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                                 Work<span className="text-orange-500">space</span>
                                             </h3>
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                Switch between Individual and Team modes
+                                                Select a workspace to access the dashboard
                                             </p>
                                         </div>
-
-                                        {/* Mode Toggle */}
-                                        <div className="flex items-center gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/10">
-                                            <button
-                                                onClick={switchToIndividual}
-                                                className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                                                    !isTeamMode
-                                                        ? 'bg-white text-slate-900 shadow-lg'
-                                                        : 'text-slate-400 hover:text-white'
-                                                }`}
-                                            >
-                                                <User size={14} />
-                                                Individual
-                                            </button>
-                                            <button
-                                                className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                                                    isTeamMode
-                                                        ? 'bg-orange-500 text-white shadow-lg'
-                                                        : 'text-slate-400 hover:text-white'
-                                                }`}
-                                                disabled={!isTeamMode && dealerMemberships.length === 0}
-                                            >
-                                                <Users size={14} />
-                                                Team
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Mode Description */}
-                                    <div className="mb-8 p-4 rounded-2xl bg-white/5 border border-white/10">
-                                        {isTeamMode ? (
-                                            <p className="text-sm text-slate-300">
-                                                <span className="text-orange-500 font-bold">Team Mode Active:</span> All
-                                                pricing, leads, and quotes will use{' '}
-                                                <span className="font-bold text-white">
-                                                    {tenantName} ({studioId})
-                                                </span>{' '}
-                                                context.
-                                            </p>
-                                        ) : (
-                                            <p className="text-sm text-slate-300">
-                                                <span className="text-indigo-400 font-bold">Individual Mode:</span>{' '}
-                                                You'll see market-best prices. Select a dealership below to switch to
-                                                Team mode.
-                                            </p>
-                                        )}
                                     </div>
 
                                     {/* Dealership Cards */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {dealerMemberships.map((m: any) => {
-                                            const isActive = isTeamMode && activeTenantId === m.tenant_id;
                                             return (
                                                 <div
                                                     key={m.id}
-                                                    className={`group p-6 rounded-3xl border transition-all ${
-                                                        isActive
-                                                            ? 'bg-orange-500/10 border-orange-500/30'
-                                                            : 'bg-white/5 border-white/10 hover:border-white/20'
-                                                    }`}
+                                                    className="group p-6 rounded-3xl border bg-white/5 border-white/10 hover:border-white/20 transition-all"
                                                 >
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-4">
-                                                            <div
-                                                                className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black ${
-                                                                    isActive
-                                                                        ? 'bg-orange-500 text-white'
-                                                                        : 'bg-white/10 text-white'
-                                                                }`}
-                                                            >
+                                                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black bg-white/10 text-white">
                                                                 {m.studio_id || m.tenant_name?.charAt(0) || '?'}
                                                             </div>
                                                             <div>
                                                                 <p className="text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
                                                                     {m.tenant_name}
-                                                                    {isActive && (
-                                                                        <Star
-                                                                            size={12}
-                                                                            className="text-orange-500 fill-orange-500"
-                                                                        />
-                                                                    )}
                                                                 </p>
                                                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                                                                     {m.studio_id && `${m.studio_id} • `}
@@ -463,21 +390,6 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                                         </div>
 
                                                         <div className="flex items-center gap-2">
-                                                            {!isActive && (
-                                                                <button
-                                                                    onClick={() =>
-                                                                        activateDealer({
-                                                                            tenantId: m.tenant_id,
-                                                                            studioId: m.studio_id || null,
-                                                                            district: m.district_name || null,
-                                                                            tenantName: m.tenant_name,
-                                                                        })
-                                                                    }
-                                                                    className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-[9px] font-black uppercase tracking-widest transition-all"
-                                                                >
-                                                                    Activate
-                                                                </button>
-                                                            )}
                                                             <a
                                                                 href={`/app/${m.tenant_slug}/dashboard`}
                                                                 className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all"

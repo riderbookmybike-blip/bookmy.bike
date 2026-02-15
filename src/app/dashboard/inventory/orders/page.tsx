@@ -16,7 +16,7 @@ import {
     Loader2,
     Building2,
     MapPin,
-    Hash
+    Hash,
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { format } from 'date-fns';
@@ -35,10 +35,10 @@ interface POItem {
                 name: string;
                 brands: {
                     name: string;
-                }
-            }
-        }
-    }
+                };
+            };
+        };
+    };
 }
 
 interface PurchaseOrder {
@@ -71,9 +71,10 @@ export default function OrdersPage() {
     const fetchOrders = async () => {
         setLoading(true);
         try {
-            let query = supabase
+            let query = (supabase as any)
                 .from('purchase_orders')
-                .select(`
+                .select(
+                    `
                     *,
                     items:purchase_order_items (
                         *,
@@ -88,7 +89,8 @@ export default function OrdersPage() {
                             )
                         )
                     )
-                `)
+                `
+                )
                 .order('created_at', { ascending: false });
 
             if (statusFilter !== 'ALL') {
@@ -97,7 +99,7 @@ export default function OrdersPage() {
 
             const { data, error } = await query;
             if (error) throw error;
-            setOrders(data || []);
+            setOrders((data as any) || []);
         } catch (err) {
             console.error('Error fetching orders:', err);
         } finally {
@@ -107,10 +109,14 @@ export default function OrdersPage() {
 
     const getStatusColor = (status: string) => {
         switch (status.toUpperCase()) {
-            case 'DRAFT': return 'bg-slate-100 text-slate-700 dark:bg-white/5 border-slate-200';
-            case 'ORDERED': return 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200';
-            case 'COMPLETED': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200';
-            default: return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200';
+            case 'DRAFT':
+                return 'bg-slate-100 text-slate-700 dark:bg-white/5 border-slate-200';
+            case 'ORDERED':
+                return 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200';
+            case 'COMPLETED':
+                return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200';
+            default:
+                return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200';
         }
     };
 
@@ -165,25 +171,30 @@ export default function OrdersPage() {
             {/* Filters */}
             <div className="bg-white/50 dark:bg-slate-900/30 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-4 rounded-3xl flex flex-col md:flex-row items-center gap-4">
                 <div className="relative flex-1 group w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500" size={18} />
+                    <Search
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500"
+                        size={18}
+                    />
                     <input
                         type="text"
                         placeholder="SEARCH BY PO NUMBER, VENDOR, OR DOCKET..."
                         className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-12 pr-4 text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest placeholder:text-slate-400/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={e => setSearchQuery(e.target.value)}
                     />
                 </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none w-full md:w-auto">
-                    {['ALL', 'DRAFT', 'ORDERED', 'COMPLETED'].map((status) => (
+                    {['ALL', 'DRAFT', 'ORDERED', 'COMPLETED'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border
-                                ${statusFilter === status
-                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
-                                    : 'bg-white dark:bg-slate-800/50 text-slate-500 border-slate-200 dark:border-white/5'}`}
+                                ${
+                                    statusFilter === status
+                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
+                                        : 'bg-white dark:bg-slate-800/50 text-slate-500 border-slate-200 dark:border-white/5'
+                                }`}
                         >
                             {status}
                         </button>
@@ -196,7 +207,9 @@ export default function OrdersPage() {
                 {loading ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-4">
                         <Loader2 className="animate-spin text-indigo-500" size={40} />
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Scanning Purchase Ledger...</span>
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">
+                            Scanning Purchase Ledger...
+                        </span>
                     </div>
                 ) : filteredOrders.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-6 text-center px-6">
@@ -204,8 +217,12 @@ export default function OrdersPage() {
                             <ShoppingBag size={40} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">No Purchase Orders</h3>
-                            <p className="text-xs font-bold text-slate-500 uppercase mt-2">Generate a PO to restock your inventory or fulfill requisitions.</p>
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                No Purchase Orders
+                            </h3>
+                            <p className="text-xs font-bold text-slate-500 uppercase mt-2">
+                                Generate a PO to restock your inventory or fulfill requisitions.
+                            </p>
                         </div>
                     </div>
                 ) : (
@@ -213,22 +230,39 @@ export default function OrdersPage() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Order Info</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Vendor & Logistics</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Items</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Order Info
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Vendor & Logistics
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Items
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredOrders.map((po) => (
-                                    <tr key={po.id} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors">
+                                {filteredOrders.map(po => (
+                                    <tr
+                                        key={po.id}
+                                        className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors"
+                                    >
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">{po.order_number}</span>
+                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                                    {po.order_number}
+                                                </span>
                                                 <div className="flex items-center gap-1.5 text-slate-400">
                                                     <Calendar size={12} />
-                                                    <span className="text-[10px] font-bold">{format(new Date(po.created_at), 'dd MMM yyyy')}</span>
+                                                    <span className="text-[10px] font-bold">
+                                                        {format(new Date(po.created_at), 'dd MMM yyyy')}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </td>
@@ -236,12 +270,16 @@ export default function OrdersPage() {
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex items-center gap-2">
                                                     <Building2 size={12} className="text-indigo-500" />
-                                                    <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{po.vendor_name || 'N/A'}</span>
+                                                    <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">
+                                                        {po.vendor_name || 'N/A'}
+                                                    </span>
                                                 </div>
                                                 {po.docket_number && (
                                                     <div className="flex items-center gap-2">
                                                         <Truck size={12} className="text-emerald-500" />
-                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">#{po.docket_number} • {po.transporter_name}</span>
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                                                            #{po.docket_number} • {po.transporter_name}
+                                                        </span>
                                                     </div>
                                                 )}
                                             </div>
@@ -257,7 +295,9 @@ export default function OrdersPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${getStatusColor(po.status)}`}>
+                                            <span
+                                                className={`px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${getStatusColor(po.status)}`}
+                                            >
                                                 {po.status}
                                             </span>
                                         </td>

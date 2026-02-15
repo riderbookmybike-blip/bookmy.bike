@@ -69,7 +69,7 @@ export function calculateDealerPrice(variantId: string, dealerId: string = 'curr
     if (modelName.includes('Classic')) baseCost = 180000;
 
     if (brandConfig && brandConfig.isActive) {
-        const margin = baseCost * ((brandConfig.margin || 0) / 100);
+        const margin = baseCost * ((brandConfig.defaultMarginValue || 0) / 100);
 
         return {
             basePrice: baseCost,

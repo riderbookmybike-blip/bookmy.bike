@@ -174,7 +174,7 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
                             <div className="space-y-6">
                                 <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed italic font-medium opacity-80 pl-1">
-                                    {partner.overview.description ||
+                                    {(partner.overview as any).description ||
                                         'Leading financial institution providing specialized credit solutions for the automotive sector, with a primary focus on two-wheeler personal loans and dealer inventory financing.'}
                                 </p>
 
@@ -189,7 +189,7 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
                                                     Website
                                                 </div>
                                                 <div className="text-xs text-blue-600 dark:text-blue-400 font-bold truncate max-w-[120px]">
-                                                    {partner.overview.website || 'N/A'}
+                                                    {(partner.overview as any).website || 'N/A'}
                                                 </div>
                                             </div>
                                         </div>
@@ -202,7 +202,7 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
                                                     WhatsApp
                                                 </div>
                                                 <div className="text-xs text-slate-700 dark:text-white font-bold">
-                                                    {partner.overview.whatsapp || 'N/A'}
+                                                    {(partner.overview as any).whatsapp || 'N/A'}
                                                 </div>
                                             </div>
                                         </div>
@@ -217,8 +217,8 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
                                                     Customer Care
                                                 </div>
                                                 <div className="text-xs text-slate-700 dark:text-white font-bold">
-                                                    {partner.overview.customerCare ||
-                                                        partner.overview.supportPhone ||
+                                                    {(partner.overview as any).customerCare ||
+                                                        (partner.overview as any).supportPhone ||
                                                         'N/A'}
                                                 </div>
                                             </div>
@@ -232,7 +232,7 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
                                                     Helpline
                                                 </div>
                                                 <div className="text-xs text-slate-700 dark:text-white font-bold">
-                                                    {partner.overview.helpline || '1800-XXX-XXXX'}
+                                                    {(partner.overview as any).helpline || '1800-XXX-XXXX'}
                                                 </div>
                                             </div>
                                         </div>
@@ -374,7 +374,7 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
                                         <ExternalLink size={12} className="text-slate-400 group-hover:text-blue-500" />
                                     </div>
                                     <div className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate group-hover:text-blue-400 transition-colors italic">
-                                        {partner.overview.appLinks?.android || 'Link not configured'}
+                                        {(partner.overview as any).appLinks?.android || 'Link not configured'}
                                     </div>
                                 </div>
                                 <div className="p-5 bg-slate-50 dark:bg-black/40 rounded-[24px] border border-slate-200 dark:border-white/5 hover:border-blue-500/30 transition-all cursor-pointer group">
@@ -385,7 +385,7 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
                                         <ExternalLink size={12} className="text-slate-400 group-hover:text-blue-500" />
                                     </div>
                                     <div className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate group-hover:text-blue-400 transition-colors italic">
-                                        {partner.overview.appLinks?.ios || 'Link not configured'}
+                                        {(partner.overview as any).appLinks?.ios || 'Link not configured'}
                                     </div>
                                 </div>
                             </div>

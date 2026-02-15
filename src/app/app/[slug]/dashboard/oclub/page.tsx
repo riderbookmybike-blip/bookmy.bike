@@ -25,12 +25,13 @@ export default function OClubDashboardPage() {
         if (!tenantId) return;
         const load = async () => {
             const sponsorRes = await getSponsorByTenant(tenantId);
-            if (!sponsorRes.success || !sponsorRes.sponsor) return;
-            setSponsorId(sponsorRes.sponsor.id);
-            const dash = await getSponsorDashboard(sponsorRes.sponsor.id);
+            if (!sponsorRes.success || !(sponsorRes.sponsor as any)?.id) return;
+            const sId = (sponsorRes.sponsor as any).id;
+            setSponsorId(sId);
+            const dash = await getSponsorDashboard(sId);
             if (dash.success) setSummary(dash.summary);
-            const req = await listSponsorRedemptions(sponsorRes.sponsor.id, 'PENDING_APPROVAL');
-            if (req.success) setRequests(req.requests);
+            const req = await listSponsorRedemptions(sId, 'PENDING_APPROVAL');
+            if (req.success && req.requests) setRequests(req.requests as any[]);
         };
         load();
     }, [tenantId]);

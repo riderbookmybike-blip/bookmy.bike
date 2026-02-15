@@ -8,6 +8,7 @@ export type PricingSource = 'EXPLICIT' | 'TEAM' | 'PRIMARY_DISTRICT' | 'PRIMARY_
 
 export interface PricingContext {
     dealerId: string | null;
+    tenantName: string | null;
     district: string | null;
     stateCode: string;
     source: PricingSource;
@@ -70,6 +71,11 @@ async function getDealerIdByStudioId(studioId: string) {
         .limit(1)
         .maybeSingle();
     return data?.id || null;
+}
+
+async function getTenantName(tenantId: string) {
+    const { data } = await (adminClient as any).from('id_tenants').select('name').eq('id', tenantId).maybeSingle();
+    return data?.name || null;
 }
 
 export async function resolvePricingContext({
@@ -144,6 +150,17 @@ export async function resolvePricingContext({
         }
     }
 
+    // Ensure stateCode is aligned to dealer location if a dealer is explicitly resolved
+    const applyDealerLocation = async (tenantId: string) => {
+        const loc = await getDealerLocation(tenantId);
+        if (loc?.state) {
+            stateCode = normalizeStateCode(loc.state, null);
+        }
+        if (!resolvedDistrict && loc?.district) {
+            resolvedDistrict = loc.district;
+        }
+    };
+
     // 2) Lead context (High Priority)
     // If leadId is present, the associated lead's tenant dictates pricing.
     // Precedence: selected_dealer_tenant_id > tenant_id
@@ -169,6 +186,7 @@ export async function resolvePricingContext({
                     await applyDealerLocation(leadTenantId);
                     return {
                         dealerId: leadTenantId,
+                        tenantName: await getTenantName(leadTenantId),
                         district: resolvedDistrict,
                         stateCode,
                         source: 'EXPLICIT', // Lead context acts as explicit authority
@@ -207,27 +225,7 @@ export async function resolvePricingContext({
         await applyDealerLocation(resolvedDealerId);
         return {
             dealerId: resolvedDealerId,
-            district: resolvedDistrict,
-            stateCode,
-            source: 'EXPLICIT',
-        };
-    }
-
-    // Ensure stateCode is aligned to dealer location if a dealer is explicitly resolved
-    const applyDealerLocation = async (tenantId: string) => {
-        const loc = await getDealerLocation(tenantId);
-        if (loc?.state) {
-            stateCode = normalizeStateCode(loc.state, null);
-        }
-        if (!resolvedDistrict && loc?.district) {
-            resolvedDistrict = loc.district;
-        }
-    };
-
-    if (resolvedDealerId) {
-        await applyDealerLocation(resolvedDealerId);
-        return {
-            dealerId: resolvedDealerId,
+            tenantName: await getTenantName(resolvedDealerId),
             district: resolvedDistrict,
             stateCode,
             source: 'EXPLICIT',
@@ -247,6 +245,7 @@ export async function resolvePricingContext({
         if (primaryDistrict?.tenant_id) {
             return {
                 dealerId: primaryDistrict.tenant_id,
+                tenantName: await getTenantName(primaryDistrict.tenant_id),
                 district: resolvedDistrict,
                 stateCode,
                 source: 'PRIMARY_DISTRICT',
@@ -264,6 +263,7 @@ export async function resolvePricingContext({
     if (primaryState?.tenant_id) {
         return {
             dealerId: primaryState.tenant_id,
+            tenantName: await getTenantName(primaryState.tenant_id),
             district: resolvedDistrict,
             stateCode,
             source: 'PRIMARY_STATE',
@@ -279,6 +279,7 @@ export async function resolvePricingContext({
     if (primaryCountry?.tenant_id) {
         return {
             dealerId: primaryCountry.tenant_id,
+            tenantName: await getTenantName(primaryCountry.tenant_id),
             district: resolvedDistrict,
             stateCode,
             source: 'PRIMARY_COUNTRY',
@@ -287,6 +288,7 @@ export async function resolvePricingContext({
 
     return {
         dealerId: null,
+        tenantName: null,
         district: resolvedDistrict,
         stateCode,
         source: 'NONE',

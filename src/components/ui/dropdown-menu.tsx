@@ -122,7 +122,7 @@ const DropdownMenuContent = ({
                         alignClass,
                         className
                     )}
-                    {...props}
+                    {...(props as any)}
                 >
                     {children}
                 </motion.div>

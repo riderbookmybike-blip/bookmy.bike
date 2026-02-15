@@ -50,7 +50,7 @@ export default async function ProfilePage() {
         <ProfileClient
             user={user}
             member={member}
-            memberships={rawMemberships || []}
+            memberships={(rawMemberships as unknown as any[]) || []}
             quotes={quotes || []}
             addresses={addresses || []}
         />

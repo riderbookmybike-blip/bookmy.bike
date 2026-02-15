@@ -13,7 +13,7 @@ import {
     ArrowRight,
     ShoppingBag,
     Package,
-    User
+    User,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -35,10 +35,10 @@ interface POItem {
             name: string;
             vehicle_models: {
                 name: string;
-                brands: { name: string; }
-            }
-        }
-    }
+                brands: { name: string };
+            };
+        };
+    };
 }
 
 interface UnitDetail {
@@ -72,9 +72,10 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
     const fetchActivePOs = async () => {
         setFetchingPOs(true);
         try {
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('purchase_orders')
-                .select(`
+                .select(
+                    `
                     *,
                     items:purchase_order_items (
                         *,
@@ -92,7 +93,8 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
                             )
                         )
                     )
-                `)
+                `
+                )
                 .in('status', ['ORDERED', 'PARTIALLY_RECEIVED'])
                 .order('created_at', { ascending: false });
 
@@ -111,24 +113,26 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
 
         // Fetch pending requisitions for these SKUs to allow allocation
         const skuIds = po.items.map((i: any) => i.sku_id);
-        const { data: reqs } = await supabase
+        const { data: reqs } = await (supabase as any)
             .from('purchase_requisitions')
-            .select(`
+            .select(
+                `
                 *,
                 items:purchase_requisition_items!inner(*)
-            `)
+            `
+            )
             .in('items.sku_id', skuIds)
             .eq('status', 'CONVERTED');
 
         const reqMap: Record<string, any[]> = {};
-        reqs?.forEach(r => {
+        (reqs as any[] | null)?.forEach(r => {
             r.items.forEach((item: any) => {
                 if (!reqMap[item.sku_id]) reqMap[item.sku_id] = [];
                 // Add one entry per quantity ordered
                 for (let i = 0; i < item.quantity; i++) {
                     reqMap[item.sku_id].push({
                         ...r,
-                        item_id: item.id
+                        item_id: item.id,
                     });
                 }
             });
@@ -144,7 +148,7 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
                     sku_id: item.sku_id,
                     chassis: '',
                     engine: '',
-                    requisition_id: ''
+                    requisition_id: '',
                 });
             }
         });
@@ -178,10 +182,10 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
                 chassis_number: u.chassis,
                 engine_number: u.engine,
                 status: u.requisition_id ? 'BOOKED' : 'AVAILABLE',
-                allocated_to_requisition_id: u.requisition_id || null
+                allocated_to_requisition_id: u.requisition_id || null,
             }));
 
-            const { data: insertedItems, error: invErr } = await supabase
+            const { data: insertedItems, error: invErr } = await (supabase as any)
                 .from('vehicle_inventory')
                 .insert(inventoryEntries)
                 .select();
@@ -189,17 +193,17 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
             if (invErr) throw invErr;
 
             // 2. Create Ledger Entries
-            const ledgerEntries = insertedItems.map(item => ({
+            const ledgerEntries = (insertedItems as any[]).map(item => ({
                 inventory_id: item.id,
                 transaction_type: 'INWARD',
                 from_status: null,
                 to_status: 'AVAILABLE',
                 reference_id: selectedPO.id,
                 reference_type: 'PURCHASE_ORDER',
-                notes: `Inwarded from PO ${selectedPO.order_number}`
+                notes: `Inwarded from PO ${selectedPO.order_number}`,
             }));
 
-            const { error: ledgerErr } = await supabase.from('inventory_ledger').insert(ledgerEntries);
+            const { error: ledgerErr } = await (supabase as any).from('inventory_ledger').insert(ledgerEntries);
             if (ledgerErr) throw ledgerErr;
 
             // 3. Update PO Items received_qty
@@ -207,7 +211,7 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
                 const inwardedForThisSKU = unitDetails.filter(u => u.sku_id === item.sku_id).length;
                 const newQty = (item.received_qty || 0) + inwardedForThisSKU;
 
-                const { error: poItemErr } = await supabase
+                const { error: poItemErr } = await (supabase as any)
                     .from('purchase_order_items')
                     .update({ received_qty: newQty })
                     .eq('id', item.id);
@@ -216,7 +220,7 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
             }
 
             // 4. Update PO Status to COMPLETED
-            const { error: poStatusErr } = await supabase
+            const { error: poStatusErr } = await (supabase as any)
                 .from('purchase_orders')
                 .update({ status: 'COMPLETED' })
                 .eq('id', selectedPO.id);
@@ -236,7 +240,10 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />
+            <div
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300"
+                onClick={onClose}
+            />
 
             <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-white/5 flex flex-col max-h-[90vh]">
                 {/* Header */}
@@ -246,11 +253,18 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
                             <ArrowRight size={24} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight italic">Goods Received Note (GRN)</h2>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Record physical asset identification</p>
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight italic">
+                                Goods Received Note (GRN)
+                            </h2>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                Record physical asset identification
+                            </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors text-slate-500">
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors text-slate-500"
+                    >
                         <X size={20} />
                     </button>
                 </div>
@@ -266,33 +280,47 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
                             {fetchingPOs ? (
                                 <div className="py-20 flex flex-col items-center gap-4">
                                     <Loader2 className="animate-spin text-emerald-500" />
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Scanning Active POs...</span>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Scanning Active POs...
+                                    </span>
                                 </div>
                             ) : activePOs.length === 0 ? (
                                 <div className="py-20 text-center border-2 border-dashed border-slate-100 dark:border-white/5 rounded-3xl">
-                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No Active Orders found to inward.</p>
+                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">
+                                        No Active Orders found to inward.
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {activePOs.map((po) => (
+                                    {activePOs.map(po => (
                                         <button
                                             key={po.id}
                                             onClick={() => handlePOSelect(po)}
                                             className="p-6 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-3xl hover:border-emerald-500 hover:bg-emerald-500/5 transition-all text-left group"
                                         >
                                             <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">#{po.order_number}</span>
-                                                <span className="text-[10px] font-black text-emerald-500 uppercase">{po.status}</span>
+                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                                    #{po.order_number}
+                                                </span>
+                                                <span className="text-[10px] font-black text-emerald-500 uppercase">
+                                                    {po.status}
+                                                </span>
                                             </div>
                                             <div className="flex items-center gap-2 text-slate-500 mb-4">
                                                 <Building2 size={12} />
-                                                <span className="text-[10px] font-bold uppercase">{po.vendor_name}</span>
+                                                <span className="text-[10px] font-bold uppercase">
+                                                    {po.vendor_name}
+                                                </span>
                                             </div>
                                             <div className="pt-4 border-t border-slate-200 dark:border-white/5 flex items-center justify-between">
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                    {po.items.reduce((sum: number, i: any) => sum + i.ordered_qty, 0)} Units to inward
+                                                    {po.items.reduce((sum: number, i: any) => sum + i.ordered_qty, 0)}{' '}
+                                                    Units to inward
                                                 </span>
-                                                <ArrowRight className="text-slate-300 group-hover:text-emerald-500 transition-all" size={16} />
+                                                <ArrowRight
+                                                    className="text-slate-300 group-hover:text-emerald-500 transition-all"
+                                                    size={16}
+                                                />
                                             </div>
                                         </button>
                                     ))}
@@ -306,21 +334,31 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
                                     <Hash size={16} className="text-emerald-500" />
                                     Record Unit Identifiers
                                 </h3>
-                                <button onClick={() => setStep(1)} className="text-[10px] font-black text-indigo-500 uppercase hover:underline">Change PO</button>
+                                <button
+                                    onClick={() => setStep(1)}
+                                    className="text-[10px] font-black text-indigo-500 uppercase hover:underline"
+                                >
+                                    Change PO
+                                </button>
                             </div>
 
                             <div className="space-y-4">
                                 {unitDetails.map((unit, idx) => {
                                     const sku = selectedPO.items.find((i: any) => i.sku_id === unit.sku_id);
                                     return (
-                                        <div key={idx} className="p-6 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl space-y-4">
+                                        <div
+                                            key={idx}
+                                            className="p-6 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl space-y-4"
+                                        >
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight italic">
-                                                        UNIT #{idx + 1} • {sku?.vehicle_colors.vehicle_variants.vehicle_models.name}
+                                                        UNIT #{idx + 1} •{' '}
+                                                        {sku?.vehicle_colors.vehicle_variants.vehicle_models.name}
                                                     </h4>
                                                     <p className="text-[10px] font-bold text-slate-500 uppercase">
-                                                        {sku?.vehicle_colors.vehicle_variants.name} • {sku?.vehicle_colors.name}
+                                                        {sku?.vehicle_colors.vehicle_variants.name} •{' '}
+                                                        {sku?.vehicle_colors.name}
                                                     </p>
                                                 </div>
                                                 <Package className="text-slate-200" size={20} />
@@ -328,28 +366,42 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="space-y-1.5">
-                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3">Chassis Number</label>
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3">
+                                                        Chassis Number
+                                                    </label>
                                                     <div className="relative">
-                                                        <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                                                        <Hash
+                                                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                                                            size={14}
+                                                        />
                                                         <input
                                                             type="text"
                                                             placeholder="EX: MBH230..."
                                                             className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-10 pr-4 text-xs font-black focus:outline-none focus:ring-2 focus:ring-emerald-500/20 uppercase tracking-widest"
                                                             value={unit.chassis}
-                                                            onChange={(e) => updateUnitDetail(idx, 'chassis', e.target.value)}
+                                                            onChange={e =>
+                                                                updateUnitDetail(idx, 'chassis', e.target.value)
+                                                            }
                                                         />
                                                     </div>
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3">Engine Number</label>
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3">
+                                                        Engine Number
+                                                    </label>
                                                     <div className="relative">
-                                                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                                                        <ShieldCheck
+                                                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                                                            size={14}
+                                                        />
                                                         <input
                                                             type="text"
                                                             placeholder="EX: EN761..."
                                                             className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-10 pr-4 text-xs font-black focus:outline-none focus:ring-2 focus:ring-emerald-500/20 uppercase tracking-widest"
                                                             value={unit.engine}
-                                                            onChange={(e) => updateUnitDetail(idx, 'engine', e.target.value)}
+                                                            onChange={e =>
+                                                                updateUnitDetail(idx, 'engine', e.target.value)
+                                                            }
                                                         />
                                                     </div>
                                                 </div>
@@ -357,17 +409,21 @@ export default function InwardStockModal({ isOpen, onClose, onSuccess, tenantId 
 
                                             <div className="pt-2">
                                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3 flex items-center gap-1.5">
-                                                    <User size={10} className="text-amber-500" /> Allocate to Customer (Optional)
+                                                    <User size={10} className="text-amber-500" /> Allocate to Customer
+                                                    (Optional)
                                                 </label>
                                                 <select
                                                     className="w-full mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 rounded-2xl py-3 px-4 text-[10px] font-black focus:outline-none focus:ring-2 focus:ring-amber-500/20 uppercase tracking-widest"
                                                     value={unit.requisition_id}
-                                                    onChange={(e) => updateUnitDetail(idx, 'requisition_id', e.target.value)}
+                                                    onChange={e =>
+                                                        updateUnitDetail(idx, 'requisition_id', e.target.value)
+                                                    }
                                                 >
                                                     <option value="">Generic Stock (Available for anyone)</option>
                                                     {(skuRequisitions[unit.sku_id] || []).map((req, ridx) => (
                                                         <option key={`${req.id}-${ridx}`} value={req.id}>
-                                                            {req.customer_name || 'Unnamed Customer'} (REQ-{req.id.slice(0, 5)})
+                                                            {req.customer_name || 'Unnamed Customer'} (REQ-
+                                                            {req.id.slice(0, 5)})
                                                         </option>
                                                     ))}
                                                 </select>

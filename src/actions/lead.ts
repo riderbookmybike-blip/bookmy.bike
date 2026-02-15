@@ -5,6 +5,7 @@ import { adminClient } from '@/lib/supabase/admin';
 import { createOrLinkMember } from '@/actions/members';
 import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
 import { headers } from 'next/headers';
+import { validateFinanceLeadDealer } from '@/lib/crm/contextHardening';
 
 // --- Validation Key ---
 const leadSchema = z.object({
@@ -87,13 +88,29 @@ export async function submitLead(formData: FormData) {
     try {
         // 4. Determine Tenant (MARKETPLACE OWNER from DB)
         // using Service Role Client (adminClient) because Public (Anon) user cannot read app_settings/tenants securely via RLS
-        const { data: settings } = await adminClient.from('sys_settings').select('default_owner_tenant_id').single();
+        const { data: settings } = await adminClient
+            .from('sys_settings')
+            .select('default_owner_tenant_id, unified_context_strict_mode')
+            .single();
 
         const ownerTenantId = settings?.default_owner_tenant_id;
+        const isStrict = settings?.unified_context_strict_mode !== false;
 
         if (!ownerTenantId) {
             console.error('CRITICAL: Default Owner Tenant ID missing in app_settings');
             return { success: false, message: 'System error. Please contact support.' };
+        }
+
+        // Hardening: Enforce dealer selection for finance simulation
+        const hardeningValidation = validateFinanceLeadDealer(
+            rawData.utm?.utm_source ?? undefined,
+            rawData.selectedDealerId ?? undefined,
+            {
+                unified_context_strict_mode: isStrict,
+            }
+        );
+        if (!hardeningValidation.success) {
+            return hardeningValidation;
         }
 
         const cleanPhone = toAppStorageFormat(data.phone);

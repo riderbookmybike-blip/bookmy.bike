@@ -24,8 +24,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatDisplayId } from '@/utils/displayId';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
-interface MemberProfile {
-    member: any;
+export interface MemberProfile {
+    member: {
+        id: string;
+        display_id: string | null;
+        full_name: string | null;
+        primary_phone: string | null;
+        primary_email: string | null;
+        tenant_id: string | null;
+        studio_id?: string | null;
+        member_status: string;
+        created_at: string | null;
+        updated_at: string | null;
+        [key: string]: any;
+    };
     contacts: any[];
     addresses: any[];
     assets: any[];
@@ -34,7 +46,11 @@ interface MemberProfile {
     bookings: any[];
     leads: any[];
     quotes: any[];
-    wallet?: any;
+    wallet?: {
+        balance?: number;
+        oclub_points_total?: number;
+        [key: string]: any;
+    };
     oclubLedger?: any[];
 }
 
@@ -60,6 +76,115 @@ const formatAddressLines = (lines: Array<string | null | undefined>) => {
 function cn(...inputs: any[]) {
     return inputs.filter(Boolean).join(' ');
 }
+
+const TransactionSection = ({
+    title,
+    count,
+    expanded,
+    onToggle,
+    children,
+}: {
+    title: string;
+    count: number;
+    expanded: boolean;
+    onToggle: () => void;
+    children: React.ReactNode;
+}) => (
+    <div className="border-b border-slate-100 dark:border-white/5 last:border-b-0">
+        <div
+            className={cn(
+                'flex items-center justify-between px-6 py-2.5 transition-colors',
+                expanded
+                    ? 'bg-slate-50 dark:bg-white/[0.04] border-b border-slate-100 dark:border-white/5'
+                    : 'hover:bg-slate-50/50 dark:hover:bg-white/[0.02]'
+            )}
+        >
+            <button onClick={onToggle} className="flex items-center gap-3">
+                <div className={cn('transition-transform duration-200', expanded ? 'rotate-90' : 'rotate-0')}>
+                    <ChevronRight size={14} className="text-slate-400 group-hover:text-slate-600" />
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                        {title}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-[8px] font-black text-slate-500">
+                        {count}
+                    </span>
+                </div>
+            </button>
+            <div className="flex items-center gap-4">
+                <button className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5 px-4 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors">
+                    <Plus size={10} /> New
+                </button>
+            </div>
+        </div>
+        <AnimatePresence>
+            {expanded && (
+                <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                >
+                    <div className="px-4 pb-4 pt-4">{children}</div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    </div>
+);
+
+const PhoneSection = ({
+    title,
+    defaultOpen = false,
+    count,
+    children,
+}: {
+    title: string;
+    defaultOpen?: boolean;
+    count?: number;
+    children: React.ReactNode;
+}) => {
+    const [open, setOpen] = useState(defaultOpen);
+    return (
+        <div className="border-b border-slate-100 dark:border-white/5">
+            <button
+                onClick={() => setOpen(!open)}
+                className="w-full flex items-center justify-between px-4 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
+            >
+                <div className="flex items-center gap-2">
+                    <ChevronRight
+                        size={14}
+                        className={cn('text-slate-400 transition-transform duration-200', open && 'rotate-90')}
+                    />
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-slate-200">
+                        {title}
+                    </span>
+                    {count !== undefined && count > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-[8px] font-black text-indigo-600">
+                            {count}
+                        </span>
+                    )}
+                </div>
+                <ChevronDown
+                    size={14}
+                    className={cn('text-slate-300 transition-transform duration-200', open && 'rotate-180')}
+                />
+            </button>
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="px-4 pb-4">{children}</div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
 
 export default function MemberEditorTable({ profile }: { profile: MemberProfile }) {
     const { device } = useBreakpoint();
@@ -269,115 +394,6 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
             </div>
         );
     }
-
-    const TransactionSection = ({
-        title,
-        count,
-        expanded,
-        onToggle,
-        children,
-    }: {
-        title: string;
-        count: number;
-        expanded: boolean;
-        onToggle: () => void;
-        children: React.ReactNode;
-    }) => (
-        <div className="border-b border-slate-100 dark:border-white/5 last:border-b-0">
-            <div
-                className={cn(
-                    'flex items-center justify-between px-6 py-2.5 transition-colors',
-                    expanded
-                        ? 'bg-slate-50 dark:bg-white/[0.04] border-b border-slate-100 dark:border-white/5'
-                        : 'hover:bg-slate-50/50 dark:hover:bg-white/[0.02]'
-                )}
-            >
-                <button onClick={onToggle} className="flex items-center gap-3">
-                    <div className={cn('transition-transform duration-200', expanded ? 'rotate-90' : 'rotate-0')}>
-                        <ChevronRight size={14} className="text-slate-400 group-hover:text-slate-600" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
-                            {title}
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-[8px] font-black text-slate-500">
-                            {count}
-                        </span>
-                    </div>
-                </button>
-                <div className="flex items-center gap-4">
-                    <button className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5 px-4 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors">
-                        <Plus size={10} /> New
-                    </button>
-                </div>
-            </div>
-            <AnimatePresence>
-                {expanded && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                    >
-                        <div className="px-4 pb-4 pt-4">{children}</div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-
-    const PhoneSection = ({
-        title,
-        defaultOpen = false,
-        count,
-        children,
-    }: {
-        title: string;
-        defaultOpen?: boolean;
-        count?: number;
-        children: React.ReactNode;
-    }) => {
-        const [open, setOpen] = useState(defaultOpen);
-        return (
-            <div className="border-b border-slate-100 dark:border-white/5">
-                <button
-                    onClick={() => setOpen(!open)}
-                    className="w-full flex items-center justify-between px-4 py-3 active:bg-slate-50 dark:active:bg-white/5 transition-colors"
-                >
-                    <div className="flex items-center gap-2">
-                        <ChevronRight
-                            size={14}
-                            className={cn('text-slate-400 transition-transform duration-200', open && 'rotate-90')}
-                        />
-                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-slate-200">
-                            {title}
-                        </span>
-                        {count !== undefined && count > 0 && (
-                            <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-[8px] font-black text-indigo-600">
-                                {count}
-                            </span>
-                        )}
-                    </div>
-                    <ChevronDown
-                        size={14}
-                        className={cn('text-slate-300 transition-transform duration-200', open && 'rotate-180')}
-                    />
-                </button>
-                <AnimatePresence>
-                    {open && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
-                        >
-                            <div className="px-4 pb-4">{children}</div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        );
-    };
 
     if (isPhone) {
         const memberName = profile.member?.full_name || 'Member';

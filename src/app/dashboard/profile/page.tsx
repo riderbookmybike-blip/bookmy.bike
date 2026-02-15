@@ -59,7 +59,8 @@ export default function ProfilePage() {
                     role: profile.role || 'USER',
                     email: authUser.email || '-',
                     phone: profile.phone || '-',
-                    dealership: profile.tenants?.name || 'Unknown Organization',
+                    dealership:
+                        (profile.tenants as any)?.[0]?.name || (profile.tenants as any)?.name || 'Unknown Organization',
                     location: 'Mumbai, India', // Default for now
                 });
             } catch (error) {

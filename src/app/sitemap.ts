@@ -43,7 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         });
 
         // Add each Variant page
-        (family.variants as any[])?.forEach(variant => {
+        (family.variants as any)?.forEach((variant: any) => {
             const variantSlug = variant.slug || variant.name.toLowerCase().replace(/\s+/g, '-');
             productRoutes.push({
                 url: `${baseUrl}/store/${brandSlug}/${modelSlug}/${variantSlug}`,

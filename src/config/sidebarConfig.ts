@@ -106,7 +106,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/members',
                 icon: UserCheck,
                 color: 'text-blue-400',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -114,6 +114,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -121,7 +122,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/leads',
                 icon: Megaphone,
                 color: 'text-brand-gold',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -129,6 +130,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -136,7 +138,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/quotes',
                 icon: FileText,
                 color: 'text-blue-300',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -144,6 +146,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -151,7 +154,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/sales-orders?stage=BOOKING',
                 icon: ShoppingBag,
                 color: 'text-blue-600',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -159,6 +162,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -166,7 +170,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/receipts',
                 icon: CreditCard,
                 color: 'text-emerald-500',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -174,6 +178,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -181,7 +186,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/books',
                 icon: BookOpen,
                 color: 'text-violet-500',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -189,6 +194,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -196,7 +202,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/sales-orders?stage=ALLOTMENT',
                 icon: Bookmark,
                 color: 'text-indigo-600',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -204,6 +210,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -211,7 +218,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/sales-orders?stage=PDI',
                 icon: ClipboardCheck,
                 color: 'text-amber-500',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -219,6 +226,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -226,7 +234,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/sales-orders?stage=INSURANCE',
                 icon: ShieldCheck,
                 color: 'text-purple-600',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -234,6 +242,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -241,7 +250,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/sales-orders?stage=FINANCE',
                 icon: Landmark,
                 color: 'text-emerald-500',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -249,6 +258,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -256,7 +266,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/sales-orders?stage=REGISTRATION',
                 icon: FileText,
                 color: 'text-amber-500',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -264,6 +274,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -271,7 +282,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/sales-orders?stage=COMPLIANCE',
                 icon: ShieldCheck,
                 color: 'text-emerald-600',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -279,6 +290,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -286,7 +298,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/sales-orders?stage=DELIVERED',
                 icon: Truck,
                 color: 'text-purple-600',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -294,6 +306,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
             {
@@ -301,7 +314,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/sales-orders?stage=FEEDBACK',
                 icon: MessageCircle,
                 color: 'text-sky-500',
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',
@@ -309,6 +322,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'MARKETPLACE_ADMIN',
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
+                    'BANK_STAFF',
                 ],
             },
         ],

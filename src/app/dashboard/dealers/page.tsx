@@ -11,7 +11,7 @@ import {
     Zap,
     TrendingUp,
     LayoutGrid,
-    ListFilter
+    ListFilter,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import OnboardDealerModal from '@/components/dealers/OnboardDealerModal';
@@ -47,7 +47,7 @@ export default function DealersPage() {
             .order('name', { ascending: true });
 
         if (data) {
-            setDealers(data);
+            setDealers(data as any);
         }
         if (error) {
             console.error('Error fetching dealers:', error);
@@ -59,9 +59,10 @@ export default function DealersPage() {
         fetchDealers();
     }, []);
 
-    const filteredDealers = dealers.filter(dealer =>
-        dealer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        dealer.location?.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredDealers = dealers.filter(
+        dealer =>
+            dealer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            dealer.location?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const activeCount = filteredDealers.filter(d => d.status === 'ACTIVE').length;
@@ -77,14 +78,17 @@ export default function DealersPage() {
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 px-3 py-1 bg-white/50 dark:bg-white/10 backdrop-blur-md border border-white/20 rounded-full w-fit shadow-sm">
                             <Building2 size={12} className="text-indigo-600 dark:text-indigo-400" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-200">Platform Management</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-200">
+                                Platform Management
+                            </span>
                         </div>
                         <div>
                             <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">
                                 Dealership <span className="text-indigo-600 dark:text-indigo-400">Network</span>
                             </h1>
                             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-2 max-w-lg leading-relaxed">
-                                Orchestrate the entire BookMyBike dealer ecosystem. Monitor performance, manage inventory, and configure offer strategies per node.
+                                Orchestrate the entire BookMyBike dealer ecosystem. Monitor performance, manage
+                                inventory, and configure offer strategies per node.
                             </p>
                         </div>
                     </div>
@@ -101,11 +105,7 @@ export default function DealersPage() {
                 </div>
             </div>
 
-            <OnboardDealerModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onSuccess={fetchDealers}
-            />
+            <OnboardDealerModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchDealers} />
 
             {/* Stats & Search Bar */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -121,7 +121,7 @@ export default function DealersPage() {
                             placeholder="Search nodes by name, ID or location..."
                             className="w-full bg-transparent border-none px-4 py-2 text-sm font-medium focus:ring-0 outline-none placeholder:text-slate-400 text-slate-900 dark:text-white"
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={e => setSearchQuery(e.target.value)}
                         />
                         <div className="pr-1.5">
                             <button className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl text-slate-400 transition-colors">
@@ -140,13 +140,7 @@ export default function DealersPage() {
                         trend="+12%"
                         color="indigo"
                     />
-                    <StatCard
-                        label="Active Network"
-                        value={activeCount}
-                        icon={Zap}
-                        trend="Stable"
-                        color="emerald"
-                    />
+                    <StatCard label="Active Network" value={activeCount} icon={Zap} trend="Stable" color="emerald" />
                 </div>
             </div>
 
@@ -161,8 +155,12 @@ export default function DealersPage() {
                 </div>
             ) : filteredDealers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredDealers.map((dealer) => (
-                        <Link href={`/app/${slug}/dashboard/dealers/${dealer.id}`} key={dealer.id} className="block h-full">
+                    {filteredDealers.map(dealer => (
+                        <Link
+                            href={`/app/${slug}/dashboard/dealers/${dealer.id}`}
+                            key={dealer.id}
+                            className="block h-full"
+                        >
                             <DealerCard dealer={dealer} />
                         </Link>
                     ))}
@@ -184,7 +182,9 @@ export default function DealersPage() {
 
 const StatCard = ({ label, value, icon: Icon, trend, color }: any) => (
     <div className="flex-1 bg-white dark:bg-slate-900/50 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-sm relative overflow-hidden group">
-        <div className={`absolute right-0 top-0 w-24 h-24 bg-${color}-500/5 rounded-full blur-2xl -mr-8 -mt-8 transition-opacity`} />
+        <div
+            className={`absolute right-0 top-0 w-24 h-24 bg-${color}-500/5 rounded-full blur-2xl -mr-8 -mt-8 transition-opacity`}
+        />
         <div>
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</div>
             <div className="text-2xl font-black text-slate-900 dark:text-white group-hover:scale-105 transition-transform origin-left">
@@ -208,9 +208,14 @@ const DealerCard = ({ dealer }: { dealer: Dealer }) => {
             <div className="relative space-y-6">
                 <div className="flex justify-between items-start">
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 flex items-center justify-center border border-slate-100 dark:border-white/10 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                        <Building2 size={28} className="text-slate-400 group-hover:text-indigo-600 transition-colors duration-300" />
+                        <Building2
+                            size={28}
+                            className="text-slate-400 group-hover:text-indigo-600 transition-colors duration-300"
+                        />
                     </div>
-                    <div className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${dealer.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/10' : 'bg-rose-500/10 text-rose-600 border-rose-500/10'}`}>
+                    <div
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${dealer.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/10' : 'bg-rose-500/10 text-rose-600 border-rose-500/10'}`}
+                    >
                         {dealer.status || 'ACTIVE'}
                     </div>
                 </div>
@@ -227,14 +232,18 @@ const DealerCard = ({ dealer }: { dealer: Dealer }) => {
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Inventory</div>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                            Inventory
+                        </div>
                         <div className="flex items-center gap-1.5">
                             <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                             <span className="text-sm font-bold text-slate-900 dark:text-white">124</span>
                         </div>
                     </div>
                     <div className="p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Revenue</div>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                            Revenue
+                        </div>
                         <div className="flex items-center gap-1.5">
                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                             <span className="text-sm font-bold text-slate-900 dark:text-white">₹14.2 L</span>
@@ -246,7 +255,10 @@ const DealerCard = ({ dealer }: { dealer: Dealer }) => {
             <div className="mt-8 flex items-center justify-between relative pt-6 border-t border-slate-100 dark:border-white/5">
                 <div className="flex -space-x-3 hover:space-x-1 transition-all">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden shadow-sm">
+                        <div
+                            key={i}
+                            className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden shadow-sm"
+                        >
                             <Users size={12} className="text-slate-400" />
                         </div>
                     ))}

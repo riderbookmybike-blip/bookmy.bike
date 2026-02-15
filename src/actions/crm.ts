@@ -2,6 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { adminClient } from '@/lib/supabase/admin';
+import {
+    validateFinanceLeadDealer,
+    validateQuoteDealerContext,
+    validateBookingDealerContext,
+    validateDealerAuthorization,
+} from '@/lib/crm/contextHardening';
 import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
 import { serverLog } from '@/lib/debug/logger';
@@ -329,6 +335,7 @@ export async function createLeadAction(data: {
     interest_model?: string;
     model?: string;
     owner_tenant_id?: string;
+    selected_dealer_id?: string;
     source?: string;
 }) {
     const interestModel = data.interest_model || data.model || 'GENERAL_ENQUIRY';
@@ -354,17 +361,33 @@ export async function createLeadAction(data: {
     try {
         // Handle owner_tenant_id fallback
         let effectiveOwnerId = data.owner_tenant_id;
-        if (!effectiveOwnerId) {
-            const { data: settings } = await (adminClient
-                .from('sys_settings' as any)
-                .select('default_owner_tenant_id')
-                .single() as any);
-            effectiveOwnerId = settings?.default_owner_tenant_id;
+        let isStrict = true; // Default to strict
+
+        const { data: settings } = await (adminClient
+            .from('sys_settings' as any)
+            .select('default_owner_tenant_id, unified_context_strict_mode')
+            .single() as any);
+
+        if (settings) {
+            if (!effectiveOwnerId) {
+                effectiveOwnerId = settings.default_owner_tenant_id;
+            }
+            if (settings.unified_context_strict_mode === false) {
+                isStrict = false;
+            }
         }
 
         if (!effectiveOwnerId) {
             console.error('[DEBUG] No owner tenant identified');
             return { success: false, message: 'No owner tenant identified for lead creation' };
+        }
+
+        // Hardening: Enforce dealer selection for finance simulation
+        const validation = validateFinanceLeadDealer(data.source, data.selected_dealer_id, {
+            unified_context_strict_mode: isStrict,
+        });
+        if (!validation.success) {
+            return validation;
         }
 
         let customerId: string;
@@ -515,6 +538,7 @@ export async function createLeadAction(data: {
                 interest_text: interestModel,
                 interest_variant: data.model === 'GENERAL_ENQUIRY' ? null : null,
                 owner_tenant_id: effectiveOwnerId,
+                selected_dealer_tenant_id: data.selected_dealer_id || null,
                 status: status,
                 is_serviceable: isServiceable,
                 source: data.source || 'WALKIN',
@@ -686,6 +710,9 @@ export async function createQuoteAction(data: {
         };
     }
     const supabase = await createClient();
+    const { data: settings } = await supabase.from('sys_settings').select('unified_context_strict_mode').single();
+    const isStrict = settings?.unified_context_strict_mode !== false; // Active by default
+
     const createdBy = user?.id;
     // Prefer explicit member_id or lead-linked customer_id (avoid using staff auth IDs)
     let memberId: string | null = data.member_id || null;
@@ -731,11 +758,20 @@ export async function createQuoteAction(data: {
     if (data.lead_id) {
         const { data: lead } = await supabase
             .from('crm_leads')
-            .select('customer_id, referred_by_id')
+            .select('customer_id, referred_by_id, selected_dealer_tenant_id')
             .eq('is_deleted', false)
             .eq('id', data.lead_id)
             .maybeSingle();
+
         if (lead) {
+            // Hardening: Enforce dealer context matching
+            const contextValidation = await validateQuoteDealerContext(supabase, data.lead_id!, data.tenant_id, {
+                unified_context_strict_mode: isStrict,
+            });
+            if (!contextValidation.success) {
+                return contextValidation;
+            }
+
             // Only use lead's customer_id if we don't already have a member_id
             if (!memberId && lead.customer_id) {
                 memberId = lead.customer_id;
@@ -1069,6 +1105,36 @@ export async function getBookingById(bookingId: string) {
 }
 
 export async function createBookingFromQuote(quoteId: string) {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
+    const supabase = await createClient();
+
+    // Fetch strict mode setting
+    const { data: settings } = await (adminClient
+        .from('sys_settings' as any)
+        .select('unified_context_strict_mode')
+        .single() as any);
+    const isStrict = settings?.unified_context_strict_mode !== false;
+
+    // Fetch authorized tenants for the user
+    const { data: userMemberships } = await supabase
+        .from('memberships' as any)
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('status', 'ACTIVE');
+    const authorizedTenantIds = ((userMemberships as any[]) ?? [])
+        .map((m: { tenant_id: string | null }) => m.tenant_id)
+        .filter((id): id is string => Boolean(id));
+
+    // Hardening: Enforce dealer context for booking creation
+    const contextValidation = await validateBookingDealerContext(supabase, quoteId, authorizedTenantIds, {
+        unified_context_strict_mode: isStrict,
+    });
+    if (!contextValidation.success) {
+        return contextValidation;
+    }
+
     try {
         const { data: bookingId, error: rpcError } = await (adminClient as any).rpc('create_booking_from_quote', {
             quote_id: quoteId,
@@ -1107,7 +1173,34 @@ export async function createBookingFromQuote(quoteId: string) {
 }
 
 export async function confirmSalesOrder(bookingId: string): Promise<{ success: boolean; message?: string }> {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
     const supabase = await createClient();
+
+    // Fetch strict mode setting
+    const { data: settings } = await (adminClient
+        .from('sys_settings' as any)
+        .select('unified_context_strict_mode')
+        .single() as any);
+    const isStrict = settings?.unified_context_strict_mode !== false;
+
+    // Fetch booking to verify tenant
+    const { data: booking } = await supabase.from('crm_bookings').select('tenant_id').eq('id', bookingId).single();
+
+    if (!booking) return { success: false, message: 'Booking not found' };
+
+    // Hardening: Verify authorization for this dealer
+    if (!booking.tenant_id) {
+        return { success: false, message: 'Booking tenant missing' };
+    }
+    const authValidation = await validateDealerAuthorization(supabase, user.id, booking.tenant_id, {
+        unified_context_strict_mode: isStrict,
+    });
+    if (!authValidation.success) {
+        return authValidation;
+    }
+
     const { error } = await supabase
         .from('crm_bookings')
         .update({ status: 'CONFIRMED', updated_at: new Date().toISOString() })
@@ -1125,7 +1218,34 @@ export async function confirmSalesOrder(bookingId: string): Promise<{ success: b
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateBookingStage(id: string, stage: string, statusUpdates: Record<string, any>) {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
     const supabase = await createClient();
+
+    // Fetch strict mode setting
+    const { data: settings } = await (adminClient
+        .from('sys_settings' as any)
+        .select('unified_context_strict_mode')
+        .single() as any);
+    const isStrict = settings?.unified_context_strict_mode !== false;
+
+    // Fetch booking to verify tenant
+    const { data: booking } = await supabase.from('crm_bookings').select('tenant_id').eq('id', id).single();
+
+    if (!booking) return { success: false, message: 'Booking not found' };
+
+    // Hardening: Verify authorization for this dealer
+    if (!booking.tenant_id) {
+        return { success: false, message: 'Booking tenant missing' };
+    }
+    const authValidation = await validateDealerAuthorization(supabase, user.id, booking.tenant_id, {
+        unified_context_strict_mode: isStrict,
+    });
+    if (!authValidation.success) {
+        return authValidation;
+    }
+
     const { error } = await supabase
         .from('crm_bookings')
         .update({

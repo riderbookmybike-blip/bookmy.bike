@@ -10,6 +10,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { createQuoteAction } from '@/actions/crm';
 import { toast } from 'sonner';
 import { useSystemDealerContext } from '@/hooks/useSystemDealerContext';
+import { useDealerSession } from '@/hooks/useDealerSession';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
 
 import { InsuranceRule } from '@/types/insurance';
@@ -77,6 +78,7 @@ export default function ProductClient({
     const [leadContext, setLeadContext] = useState<{ id: string; name: string } | null>(null);
     const [isTeamMember, setIsTeamMember] = useState(false);
     const { availableCoins, isLoggedIn } = useOClubWallet();
+    const { dealerId: sessionDealerId } = useDealerSession();
 
     // Authority: Determine if team member is gated (Marketplace without lead context)
     const isGated = isTeamMember && !leadIdFromUrl;
@@ -445,7 +447,7 @@ export default function ProductClient({
             const commercials = buildCommercials();
 
             const result: any = await createQuoteAction({
-                tenant_id: product.tenant_id, // Ensure tenant_id is available
+                tenant_id: sessionDealerId || product.tenant_id || '', // Ensure tenant_id is available
                 lead_id: leadContext.id,
                 variant_id: product.id,
                 color_id: colorSkuId,
@@ -505,21 +507,24 @@ export default function ProductClient({
                         phoneForLead = digits.length >= 10 ? digits.slice(-10) : user.phone;
                     }
 
+                    if (!member) return;
+
                     const leadResult = await createLeadAction({
-                        customer_name: member.full_name,
+                        customer_name: member.full_name || 'Unknown',
                         customer_phone: phoneForLead,
-                        customer_pincode: member.pincode || member.aadhaar_pincode || undefined,
+                        customer_pincode: (member.pincode || member.aadhaar_pincode || undefined) as string | undefined,
                         customer_id: user.id, // Pass logged-in user's ID directly!
-                        model: product.model,
-                        owner_tenant_id: product.tenant_id,
+                        model: product.model || '',
+                        owner_tenant_id: (product.tenant_id || undefined) as string | undefined,
+                        selected_dealer_id: (sessionDealerId || undefined) as string | undefined,
                         source: 'PDP_QUICK_QUOTE',
                     });
 
-                    if (leadResult.success && leadResult.leadId) {
+                    if (leadResult.success && (leadResult as any).leadId) {
                         const commercials = buildCommercials();
                         const quoteResult: any = await createQuoteAction({
-                            tenant_id: product.tenant_id,
-                            lead_id: leadResult.leadId,
+                            tenant_id: sessionDealerId || product.tenant_id || '',
+                            lead_id: (leadResult as any).leadId,
                             variant_id: product.id,
                             color_id: colorSkuId,
                             commercials,

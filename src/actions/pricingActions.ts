@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { resolvePricingContext } from '@/lib/server/pricingContext';
 
 /**
  * Fetches the district name for a given Indian pincode.
@@ -46,4 +47,18 @@ export async function getDealerPriceAction(itemId: string, stateCode?: string): 
     }
 
     return 85000; // Final hardcoded fallback if everything fails
+}
+
+/**
+ * Server Action to resolve the dealer context based on URL params and location.
+ * Used by the client-side useDealerSession hook for deterministic resolution.
+ */
+export async function getResolvedPricingContextAction(params: {
+    leadId?: string | null;
+    dealerId?: string | null;
+    district?: string | null;
+    state?: string | null;
+    studio?: string | null;
+}) {
+    return await resolvePricingContext(params);
 }
