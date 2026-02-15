@@ -196,11 +196,11 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
     const handleConfirmBooking = async () => {
         const result = await createBookingFromQuote(quoteId);
 
-        if (result.success && result.data?.id) {
+        if (result.success && (result as any).data?.id) {
             toast.success('Sales order created');
             onRefresh?.();
             if (slug) {
-                window.location.href = `/app/${slug}/sales-orders/${result.data.id}?stage=BOOKING`;
+                window.location.href = `/app/${slug}/sales-orders/${(result as any).data.id}?stage=BOOKING`;
             }
         } else {
             toast.error(result.message || 'Failed to create sales order');

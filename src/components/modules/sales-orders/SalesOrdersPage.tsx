@@ -174,7 +174,9 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
         setSelectedOrderId(orderId);
         if (slug) {
             const stageQuery = stageParam ? `?stage=${stageParam}` : '';
-            router.push(`/app/${slug}/sales-orders/${orderId}${stageQuery}`);
+            // If the user is in a specific stage view, we might want to redirect them to that specific stage page
+            // For now, default to the overview page, but layout.tsx will handle the context.
+            router.push(`/app/${slug}/sales-orders/${orderId}`);
         }
     };
 
@@ -198,7 +200,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
 
     if (!selectedOrderId) {
         return (
-            <div className="h-full bg-slate-50 dark:bg-[#0b0d10] -m-6 md:-m-8">
+            <div className="h-full bg-slate-50 dark:bg-[#0b0d10]">
                 <ModuleLanding
                     title={stageTitle}
                     subtitle={stageSubtitle}
@@ -415,7 +417,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
     }
 
     return (
-        <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans -m-6 md:-m-8">
+        <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans">
             <MasterListDetailLayout
                 mode="list-detail"
                 listPosition="left"
