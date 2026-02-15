@@ -53,19 +53,19 @@ export async function getDealerDashboardKpis(tenantId: string): Promise<Dashboar
             .eq('tenant_id', tenantId)
             .in('status', ['DRAFT', 'IN_REVIEW', 'SENT']),
         // Bookings (sales orders with stage BOOKING or later)
-        adminClient.from('crm_sales_orders').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-        adminClient.from('crm_sales_orders').select('total_amount').eq('tenant_id', tenantId),
+        adminClient.from('crm_bookings').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        adminClient.from('crm_bookings').select('grand_total').eq('tenant_id', tenantId),
         // Deliveries
         adminClient
-            .from('crm_sales_orders')
+            .from('crm_bookings')
             .select('*', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
-            .eq('stage', 'DELIVERED'),
+            .eq('operational_stage', 'DELIVERED'),
         adminClient
-            .from('crm_sales_orders')
+            .from('crm_bookings')
             .select('*', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
-            .eq('stage', 'PDI'),
+            .eq('operational_stage', 'PDI'),
         // Receipts
         adminClient.from('crm_receipts').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
         adminClient
@@ -73,23 +73,23 @@ export async function getDealerDashboardKpis(tenantId: string): Promise<Dashboar
             .select('*', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
             .gte('created_at', today),
-        // Insurance
+        // Insurance (Using COMPLIANCE as the operational stage for insurance tracking)
         adminClient
-            .from('crm_sales_orders')
+            .from('crm_bookings')
             .select('*', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
-            .eq('stage', 'INSURANCE'),
+            .eq('operational_stage', 'COMPLIANCE'),
         adminClient
-            .from('crm_sales_orders')
+            .from('crm_bookings')
             .select('*', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
-            .eq('stage', 'INSURANCE')
+            .eq('operational_stage', 'COMPLIANCE')
             .neq('status', 'COMPLETED'),
     ]);
 
-    // Calculate booking value from total_amount
+    // Calculate booking value from grand_total
     const totalBookingValue = (bookingsValue.data || []).reduce(
-        (sum: number, row: any) => sum + (row.total_amount || 0),
+        (sum: number, row: any) => sum + (row.grand_total || 0),
         0
     );
 
@@ -133,17 +133,24 @@ export async function getPlatformDashboardKpis(): Promise<PlatformKpis> {
             .from('crm_quotes')
             .select('*', { count: 'exact', head: true })
             .in('status', ['DRAFT', 'IN_REVIEW', 'SENT']),
-        adminClient.from('crm_sales_orders').select('*', { count: 'exact', head: true }),
-        adminClient.from('crm_sales_orders').select('total_amount'),
-        adminClient.from('crm_sales_orders').select('*', { count: 'exact', head: true }).eq('stage', 'DELIVERED'),
-        adminClient.from('crm_sales_orders').select('*', { count: 'exact', head: true }).eq('stage', 'PDI'),
+        adminClient.from('crm_bookings').select('*', { count: 'exact', head: true }),
+        adminClient.from('crm_bookings').select('grand_total'),
+        adminClient
+            .from('crm_bookings')
+            .select('*', { count: 'exact', head: true })
+            .eq('operational_stage', 'DELIVERED'),
+        adminClient.from('crm_bookings').select('*', { count: 'exact', head: true }).eq('operational_stage', 'PDI'),
         adminClient.from('crm_receipts').select('*', { count: 'exact', head: true }),
         adminClient.from('crm_receipts').select('*', { count: 'exact', head: true }).gte('created_at', today),
-        adminClient.from('crm_sales_orders').select('*', { count: 'exact', head: true }).eq('stage', 'INSURANCE'),
+        // Insurance (Using COMPLIANCE as the operational stage for insurance tracking)
         adminClient
-            .from('crm_sales_orders')
+            .from('crm_bookings')
             .select('*', { count: 'exact', head: true })
-            .eq('stage', 'INSURANCE')
+            .eq('operational_stage', 'COMPLIANCE'),
+        adminClient
+            .from('crm_bookings')
+            .select('*', { count: 'exact', head: true })
+            .eq('operational_stage', 'COMPLIANCE')
             .neq('status', 'COMPLETED'),
         adminClient
             .from('id_tenants')
@@ -159,7 +166,7 @@ export async function getPlatformDashboardKpis(): Promise<PlatformKpis> {
     ]);
 
     const totalBookingValue = (bookingsValue.data || []).reduce(
-        (sum: number, row: any) => sum + (row.total_amount || 0),
+        (sum: number, row: any) => sum + (row.grand_total || 0),
         0
     );
 
