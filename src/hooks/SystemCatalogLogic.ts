@@ -185,7 +185,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                     setUserDistrict(cachedLocation.district);
                 }
 
-                const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
+                const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG !== 'false';
 
                 const getRawCatalogLinear = async () => {
                     const { data, error } = await supabase.from('cat_skus_linear').select('*').eq('status', 'ACTIVE');

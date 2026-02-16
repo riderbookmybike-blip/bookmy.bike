@@ -207,7 +207,7 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     const stateCode = pricingContext.stateCode;
 
     // 2. Parallel Fetch - SOT Phase 3: Rules removed, pricing from JSON
-    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
+    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG !== 'false';
 
     const [rawCatalog, offerData] = await Promise.all([
         withCache(
@@ -234,7 +234,7 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     if (!rawCatalog) return [];
 
     // 3. Reconstruct if using linear
-    const rawData = (useLinear ? reconstructHierarchy(rawCatalog, stateCode) : rawCatalog) as any[];
+    const rawData = (useLinear ? reconstructHierarchy(rawCatalog as any[], stateCode) : rawCatalog) as any[];
 
     // Location coordinates for distance calc (optional)
     let userLat: number | null = null;
@@ -317,7 +317,7 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
 
     // Runtime pricing provenance debug (helps trace which table fed the catalog)
     try {
-        const firstFamily = mappedCatalog?.[0];
+        const firstFamily = mappedCatalog?.[0] as any;
         const firstVariant = firstFamily?.children?.[0];
         const firstSku = firstVariant?.skus?.[0] || firstVariant?.colors?.[0]?.skus?.[0];
         const firstPrice = firstSku?.prices?.[0];
