@@ -111,13 +111,15 @@ async function getRawCatalogFromLinear() {
     return data;
 }
 
-function reconstructHierarchy(rows: any[]): any[] {
+function reconstructHierarchy(rows: any[], stateCode: string = 'MH'): any[] {
     const productGroups = new Map<string, any>();
 
     if (!rows || rows.length === 0) {
         console.warn('[CatalogLinearFetch] reconstructHierarchy received 0 rows');
         return [];
     }
+
+    const stateKey = `price_${stateCode.toLowerCase()}`;
 
     for (const row of rows) {
         if (!productGroups.has(row.product_json.id)) {
@@ -142,18 +144,18 @@ function reconstructHierarchy(rows: any[]): any[] {
         }
 
         // Reconstruct SKU/UNIT structure
-        // Prefer price_mh (cached MH pricing) over unit_json.prices
-        const priceMh = row.price_mh;
-        const prices = priceMh
+        // Prefer price_XX (cached state pricing) over unit_json.prices
+        const statePrice = row[stateKey] || row.price_mh; // Fallback to MH if specific state missing
+        const prices = statePrice
             ? [
                   {
-                      ex_showroom_price: Number(priceMh.ex_showroom) || 0,
-                      rto_total: Number(priceMh.rto_total) || 0,
-                      insurance_total: Number(priceMh.insurance_total) || 0,
-                      rto: priceMh.rto || null,
-                      insurance: priceMh.insurance || null,
-                      on_road_price: Number(priceMh.on_road_price) || 0,
-                      state_code: 'MH',
+                      ex_showroom_price: Number(statePrice.ex_showroom) || 0,
+                      rto_total: Number(statePrice.rto_total) || 0,
+                      insurance_total: Number(statePrice.insurance_total) || 0,
+                      rto: statePrice.rto || null,
+                      insurance: statePrice.insurance || null,
+                      on_road_price: Number(statePrice.on_road_price) || 0,
+                      state_code: stateCode,
                       district: 'ALL',
                       is_active: true,
                       published_at: null,
@@ -232,7 +234,7 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     if (!rawCatalog) return [];
 
     // 3. Reconstruct if using linear
-    const rawData = (useLinear ? reconstructHierarchy(rawCatalog) : rawCatalog) as any[];
+    const rawData = (useLinear ? reconstructHierarchy(rawCatalog, stateCode) : rawCatalog) as any[];
 
     // Location coordinates for distance calc (optional)
     let userLat: number | null = null;

@@ -26,7 +26,7 @@ const STATE_MAP: Record<string, string> = {
     RAJASTHAN: 'RJ',
 };
 
-const normalizeStateCode = (state?: string | null, stateCode?: string | null) => {
+export const normalizeStateCode = (state?: string | null, stateCode?: string | null) => {
     if (stateCode) return stateCode;
     if (!state) return 'MH';
     const key = state.toUpperCase();

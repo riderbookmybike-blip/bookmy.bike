@@ -193,8 +193,10 @@ export function useSystemCatalogLogic(leadId?: string) {
                     return data;
                 };
 
-                const reconstructHierarchy = (rows: any[]): any[] => {
+                const reconstructHierarchy = (rows: any[], targetStateCode: string): any[] => {
                     const productGroups = new Map<string, any>();
+                    const targetStateKey = `price_${targetStateCode.toLowerCase()}`;
+
                     for (const row of rows) {
                         if (!productGroups.has(row.product_json.id)) {
                             productGroups.set(row.product_json.id, {
@@ -209,7 +211,25 @@ export function useSystemCatalogLogic(leadId?: string) {
                             variant = { ...row.variant_json, skus: [], colors: [] };
                             product.children.push(variant);
                         }
-                        const prices = row.unit_json.prices || [];
+
+                        // Prefer price_XX cached column over unit_json prices
+                        const statePrice = row[targetStateKey] || row.price_mh;
+                        const prices = statePrice
+                            ? [
+                                  {
+                                      ex_showroom_price: Number(statePrice.ex_showroom) || 0,
+                                      rto_total: Number(statePrice.rto_total) || 0,
+                                      insurance_total: Number(statePrice.insurance_total) || 0,
+                                      rto: statePrice.rto || null,
+                                      insurance: statePrice.insurance || null,
+                                      on_road_price: Number(statePrice.on_road_price) || 0,
+                                      state_code: targetStateCode,
+                                      district: 'ALL',
+                                      is_active: true,
+                                  },
+                              ]
+                            : row.unit_json.prices || [];
+
                         const effectiveUnitId = prices[0]?.vehicle_color_id || row.unit_json.id || row.id;
 
                         const skuData = {
@@ -393,7 +413,8 @@ export function useSystemCatalogLogic(leadId?: string) {
 
                 if (useLinear) {
                     linearRawRows = (await getRawCatalogLinear()) || [];
-                    catalogData = reconstructHierarchy(linearRawRows);
+                    // We will reconstruct this after dealer resolution
+                    catalogData = linearRawRows;
                 } else {
                     const { data: legacyData, error: dbError } = await supabase
                         .from('cat_items')
@@ -551,6 +572,56 @@ export function useSystemCatalogLogic(leadId?: string) {
                     }
                 }
 
+                // Fallback 1: Primary dealer for the state (district = ALL)
+                if (!resolvedDealerId) {
+                    const { data: primaryState } = await supabase
+                        .from('id_primary_dealer_districts')
+                        .select('tenant_id')
+                        .eq('state_code', resolvedStateCode)
+                        .eq('district', 'ALL')
+                        .eq('is_active', true)
+                        .maybeSingle();
+                    if (primaryState?.tenant_id) {
+                        resolvedDealerId = primaryState.tenant_id;
+                    }
+                }
+
+                // Fallback 2: Primary dealer for the country (state = ALL, district = ALL)
+                if (!resolvedDealerId) {
+                    const { data: primaryCountry } = await supabase
+                        .from('id_primary_dealer_districts')
+                        .select('tenant_id')
+                        .eq('state_code', 'ALL')
+                        .eq('district', 'ALL')
+                        .eq('is_active', true)
+                        .maybeSingle();
+                    if (primaryCountry?.tenant_id) {
+                        resolvedDealerId = primaryCountry.tenant_id;
+                    }
+                }
+
+                // Align resolvedStateCode to Dealer Location if found
+                if (resolvedDealerId) {
+                    const { data: dealerLoc } = await supabase
+                        .from('id_locations')
+                        .select('state')
+                        .eq('tenant_id', resolvedDealerId)
+                        .eq('is_active', true)
+                        .order('type', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (dealerLoc?.state) {
+                        // Very basic normalization for the client side
+                        const stateName = dealerLoc.state.toUpperCase();
+                        const stateMap: Record<string, string> = { MAHARASHTRA: 'MH', KARNATAKA: 'KA', DELHI: 'DL' };
+                        const matchedCode = stateMap[stateName] || stateName.substring(0, 2);
+                        if (matchedCode !== resolvedStateCode) {
+                            resolvedStateCode = matchedCode;
+                        }
+                    }
+                }
+
                 const hasValidDealer = Boolean(resolvedDealerId && isValidUuid(resolvedDealerId));
 
                 if (resolvedStateCode && hasValidDealer && !disableOffersRef.current) {
@@ -622,6 +693,10 @@ export function useSystemCatalogLogic(leadId?: string) {
                 }
 
                 if (catalogData) {
+                    // Reconstruct hierarchy now that resolvedStateCode is final
+                    if (useLinear) {
+                        catalogData = reconstructHierarchy(linearRawRows, resolvedStateCode);
+                    }
                     // Get User Location from LocalStorage for Client Side Distance Calc
                     const userLat: number | null = cachedLocation.lat;
                     const userLng: number | null = cachedLocation.lng;
@@ -647,14 +722,20 @@ export function useSystemCatalogLogic(leadId?: string) {
                         if (primarySkuIds.length > 0) {
                             // Published SOT: Read directly from cat_skus_linear JSONB
                             const priceCol = `price_${(resolvedStateCode || 'MH').toLowerCase()}`;
+
+                            // Safe Select: If state is not MH, we need to be careful as price_ka etc might not exist yet
+                            const selectStr =
+                                resolvedStateCode === 'MH' ? 'unit_json, price_mh' : 'unit_json, price_mh, *';
+
                             const { data: linearRows } = await supabase
                                 .from('cat_skus_linear')
-                                .select(`unit_json, ${priceCol}`)
+                                .select(selectStr)
                                 .eq('status', 'ACTIVE');
 
                             const pricingMap = new Map<string, any>();
                             (linearRows || []).forEach((row: any) => {
-                                const pm = row[priceCol];
+                                // Try state column, fallback to price_mh
+                                const pm = row[priceCol] || row.price_mh;
                                 const unitId = row.unit_json?.id;
                                 if (unitId && pm && primarySkuIds.includes(unitId)) {
                                     pricingMap.set(unitId, {
