@@ -3,15 +3,20 @@
  *
  * Each product type has its own vocabulary for the catalog levels:
  * - VEHICLE:   Brand → Model → Variant → Colour
- * - ACCESSORY: Brand → Product → Variant → Style
+ * - ACCESSORY: Brand → Product → Variant → Sub-Variant (colours OR fitments)
  * - SERVICE:   Brand → Service → Plan → Tier
  *
  * The database table names remain generic (cat_models, cat_variants_*, cat_skus),
  * but the UI displays the correct label based on product_type.
+ *
+ * SKU Matrix is universal: Variant × Unit = SKU
+ * - Vehicle:   Disc SmartXonnect × Starlight Blue = SKU
+ * - Accessory: Half Face × Blue = SKU  (or Standard × Activa = SKU)
+ * - Service:   Gold Plan × 2 Years = SKU
  */
 export const HIERARCHY_LABELS = {
     VEHICLE: { model: 'Model', variant: 'Variant', sku: 'Colour' },
-    ACCESSORY: { model: 'Product', variant: 'Variant', sku: 'Style' },
+    ACCESSORY: { model: 'Product', variant: 'Variant', sku: 'Sub-Variant' },
     SERVICE: { model: 'Service', variant: 'Plan', sku: 'Tier' },
 } as const;
 
@@ -28,7 +33,7 @@ export function getHierarchyLabels(productType: string | null | undefined) {
 
 /**
  * Category metadata for the Studio entry points.
- * Replaces the old generic CategoryStep with 3 clear entry points.
+ * Used in BrandStep (merged category selector) and Products listing page.
  */
 export const CATEGORY_CONFIG = {
     VEHICLE: {
