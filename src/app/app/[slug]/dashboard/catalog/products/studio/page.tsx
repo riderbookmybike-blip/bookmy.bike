@@ -26,9 +26,9 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import { toast } from 'sonner';
 import AddBrandModal from '@/components/catalog/AddBrandModal';
 import { CatalogItem } from '@/types/store';
+import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 
 // Modular Step Components
-import CategoryStep from './steps/CategoryStep';
 import BrandStep from './steps/BrandStep';
 import ProductStep from './steps/ProductStep';
 import VariantStep from './steps/VariantStep';
@@ -37,16 +37,19 @@ import MatrixStep from './steps/MatrixStep';
 import ReviewStep from './steps/ReviewStep';
 import PublishStep from './steps/PublishStep';
 
-const STEPS = [
-    { id: 'brand', title: 'Brand', icon: Landmark, color: 'text-blue-500' },
-    { id: 'category', title: 'Type', icon: Box, color: 'text-orange-500' },
-    { id: 'model', title: 'Product', icon: Box, color: 'text-purple-500' },
-    { id: 'variants', title: 'Variants', icon: Layers, color: 'text-indigo-500' },
-    { id: 'colors', title: 'Units', icon: Palette, color: 'text-pink-500' },
-    { id: 'sku', title: 'SKU', icon: Grid3X3, color: 'text-emerald-500' },
-    { id: 'review', title: 'Review', icon: FileCheck, color: 'text-slate-500' },
-    { id: 'publish', title: 'Publish', icon: Rocket, color: 'text-orange-500' },
-];
+// Steps now dynamically label based on selected category
+const getSteps = (category: string | null) => {
+    const labels = getHierarchyLabels(category);
+    return [
+        { id: 'brand', title: 'Brand & Type', icon: Landmark, color: 'text-blue-500' },
+        { id: 'model', title: labels.model, icon: Box, color: 'text-purple-500' },
+        { id: 'variants', title: labels.variant + 's', icon: Layers, color: 'text-indigo-500' },
+        { id: 'colors', title: labels.sku + 's', icon: Palette, color: 'text-pink-500' },
+        { id: 'sku', title: 'SKU Matrix', icon: Grid3X3, color: 'text-emerald-500' },
+        { id: 'review', title: 'Review', icon: FileCheck, color: 'text-slate-500' },
+        { id: 'publish', title: 'Publish', icon: Rocket, color: 'text-orange-500' },
+    ];
+};
 
 export default function UnifiedStudioPage() {
     const router = useRouter();
@@ -59,14 +62,19 @@ export default function UnifiedStudioPage() {
         }
     }, [tenantType, tenantSlug, router]);
 
+    // Selection State (must be declared before STEPS derivation)
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(searchParams.get('category') || 'VEHICLE');
+
     const stepParam = searchParams.get('step');
+    const STEPS = getSteps(selectedCategory);
     const initialStep = stepParam ? STEPS.findIndex(s => s.id === stepParam) : 0;
     const [currentStep, setCurrentStep] = useState(initialStep >= 0 ? initialStep : 0);
 
     // Sync step + context to URL
     const updateStepUrl = (step: number) => {
+        const steps = getSteps(selectedCategory);
         const params = new URLSearchParams(searchParams.toString());
-        params.set('step', STEPS[step].id);
+        params.set('step', steps[step].id);
 
         if (brand?.id) params.set('brandId', brand.id);
         else params.delete('brandId');
@@ -87,8 +95,6 @@ export default function UnifiedStudioPage() {
 
     // Global Data
     const [brands, setBrands] = useState<any[]>([]);
-    // Selection State
-    const [selectedCategory, setSelectedCategory] = useState<string | null>('VEHICLE');
     const [brand, setBrand] = useState<any>(null);
 
     // Data State
@@ -240,8 +246,8 @@ export default function UnifiedStudioPage() {
 
     // Reset when Step Back changes high level context
     useEffect(() => {
-        if (currentStep < 2) {
-            // Brand or Category Step
+        if (currentStep < 1) {
+            // Brand Step — clear model selection
             setFamilyData(null);
         }
     }, [currentStep]);
@@ -378,17 +384,18 @@ export default function UnifiedStudioPage() {
             }
 
             // Handle Deep Linking to specific step
+            const currentSteps = getSteps(categoryParam || selectedCategory);
             if (stepParam) {
-                const stepIndex = STEPS.findIndex(s => s.id === stepParam);
+                const stepIndex = currentSteps.findIndex(s => s.id === stepParam);
                 if (stepIndex >= 0) {
                     setCurrentStep(stepIndex);
                 }
             } else {
-                if (skuId) setCurrentStep(STEPS.findIndex(s => s.id === 'sku'));
-                else if (unitId) setCurrentStep(STEPS.findIndex(s => s.id === 'colors'));
-                else if (variantId) setCurrentStep(STEPS.findIndex(s => s.id === 'variants'));
-                else if (productItem) setCurrentStep(STEPS.findIndex(s => s.id === 'model'));
-                else if (brandId) setCurrentStep(STEPS.findIndex(s => s.id === 'category'));
+                if (skuId) setCurrentStep(currentSteps.findIndex(s => s.id === 'sku'));
+                else if (unitId) setCurrentStep(currentSteps.findIndex(s => s.id === 'colors'));
+                else if (variantId) setCurrentStep(currentSteps.findIndex(s => s.id === 'variants'));
+                else if (productItem) setCurrentStep(currentSteps.findIndex(s => s.id === 'model'));
+                else if (brandId) setCurrentStep(0);
             }
         } finally {
             setIsLoading(false);
@@ -452,7 +459,7 @@ export default function UnifiedStudioPage() {
                                 </span>
                                 <div className="flex items-center gap-2 mt-1">
                                     <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter leading-none">
-                                        Product Studio
+                                        Catalog Studio
                                     </h1>
 
                                     {/* Context Breadcrumb */}
@@ -483,7 +490,7 @@ export default function UnifiedStudioPage() {
 
                 {/* Stepper Row - Full Width Grid */}
                 <div className="w-full border-t border-slate-100 dark:border-white/5 pt-6">
-                    <nav className="grid grid-cols-4 md:grid-cols-8 gap-3 w-full">
+                    <nav className="grid grid-cols-4 md:grid-cols-7 gap-3 w-full">
                         {STEPS.map((step, idx) => {
                             const Icon = step.icon;
                             const isActive = currentStep === idx;
@@ -540,8 +547,12 @@ export default function UnifiedStudioPage() {
                             brands={brands}
                             stats={brandStats}
                             selectedBrand={brand?.id ?? null}
+                            selectedCategory={selectedCategory}
                             onSelectBrand={(id: string) => {
                                 setBrand(brands.find(b => b.id === id));
+                            }}
+                            onSelectCategory={(cat: string) => {
+                                setSelectedCategory(cat);
                             }}
                             onCreateBrand={() => {
                                 setEditingBrand(null);
@@ -553,15 +564,7 @@ export default function UnifiedStudioPage() {
                             }}
                         />
                     )}
-                    {currentStep === 1 && (
-                        <CategoryStep
-                            selectedCategory={selectedCategory}
-                            onSelectCategory={(id: string) => {
-                                setSelectedCategory(id);
-                            }}
-                        />
-                    )}
-                    {currentStep === 2 && brand && (
+                    {currentStep === 1 && brand && (
                         <ProductStep
                             brand={brand}
                             category={selectedCategory}
@@ -590,7 +593,7 @@ export default function UnifiedStudioPage() {
                             onDelete={async (id: string) => {
                                 if (
                                     confirm(
-                                        'Are you sure you want to delete this Product? This will delete all associated Variants, Units, and SKUs.'
+                                        `Are you sure you want to delete this ${getHierarchyLabels(selectedCategory).model}? This will delete all associated ${getHierarchyLabels(selectedCategory).variant}s and ${getHierarchyLabels(selectedCategory).sku}s.`
                                     )
                                 ) {
                                     const supabase = createClient();
@@ -599,14 +602,14 @@ export default function UnifiedStudioPage() {
                                         setCatalogItems(prev => prev.filter(item => item.id !== id));
                                         if (familyData?.id === id) setFamilyData(null);
                                     } else {
-                                        alert('Failed to delete family');
+                                        alert('Failed to delete');
                                     }
                                 }
                             }}
                             tenantId={tenantId}
                         />
                     )}
-                    {currentStep === 3 && familyData && (
+                    {currentStep === 2 && familyData && (
                         <VariantStep
                             family={familyData}
                             existingVariants={variants}
@@ -614,7 +617,7 @@ export default function UnifiedStudioPage() {
                             tenantId={tenantId}
                         />
                     )}
-                    {currentStep === 4 && familyData && (
+                    {currentStep === 3 && familyData && (
                         <UnitStep
                             family={familyData}
                             variants={variants}
@@ -633,7 +636,7 @@ export default function UnifiedStudioPage() {
                             }}
                         />
                     )}
-                    {currentStep === 5 && familyData && (
+                    {currentStep === 4 && familyData && (
                         <MatrixStep
                             family={familyData}
                             variants={variants}
@@ -643,7 +646,7 @@ export default function UnifiedStudioPage() {
                             onUpdate={setSkus}
                         />
                     )}
-                    {currentStep === 6 && (
+                    {currentStep === 5 && (
                         <ReviewStep
                             brand={brand}
                             family={familyData}
@@ -654,7 +657,7 @@ export default function UnifiedStudioPage() {
                             onUpdate={setSkus}
                         />
                     )}
-                    {currentStep === 7 && <PublishStep onFinish={handleNext} />}
+                    {currentStep === 6 && <PublishStep onFinish={handleNext} />}
                 </div>
             </main>
 
@@ -680,9 +683,8 @@ export default function UnifiedStudioPage() {
                         <button
                             onClick={handleNext}
                             disabled={
-                                (currentStep === 0 && !brand) ||
-                                (currentStep === 1 && !selectedCategory) ||
-                                (currentStep === 2 && !familyData)
+                                (currentStep === 0 && (!brand || !selectedCategory)) ||
+                                (currentStep === 1 && !familyData)
                             }
                             className="flex items-center gap-3 px-8 py-3 bg-slate-900 text-white rounded-[1.25rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
                         >

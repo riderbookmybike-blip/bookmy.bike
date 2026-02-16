@@ -16,6 +16,9 @@ import {
     Youtube,
     ChevronLeft,
     ChevronRight,
+    Bike,
+    ShieldCheck,
+    Wrench,
 } from 'lucide-react';
 import { CatalogItem } from '@/types/store';
 import CopyableId from '@/components/ui/CopyableId';
@@ -535,15 +538,39 @@ export default function UnifiedCatalogPage() {
                             />
                         </div>
 
-                        {/* Actions (Right) */}
-                        <div className="flex items-center gap-4 shrink-0">
-                            <div className="h-10 w-[1px] bg-slate-200 dark:bg-white/10 hidden xl:block mx-2" />
+                        {/* Actions (Right) — 3 Entry Points */}
+                        <div className="flex items-center gap-3 shrink-0">
+                            <div className="h-10 w-[1px] bg-slate-200 dark:bg-white/10 hidden xl:block mx-1" />
 
                             <button
-                                onClick={() => router.push(`/app/${tenantSlug}/dashboard/catalog/products/studio`)}
-                                className="w-12 h-12 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center"
+                                onClick={() =>
+                                    router.push(
+                                        `/app/${tenantSlug}/dashboard/catalog/products/studio?category=VEHICLE&step=brand`
+                                    )
+                                }
+                                className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
                             >
-                                <Plus size={24} />
+                                <Bike size={16} /> Vehicle
+                            </button>
+                            <button
+                                onClick={() =>
+                                    router.push(
+                                        `/app/${tenantSlug}/dashboard/catalog/products/studio?category=ACCESSORY&step=brand`
+                                    )
+                                }
+                                className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all hover:scale-105"
+                            >
+                                <ShieldCheck size={16} /> Accessory
+                            </button>
+                            <button
+                                onClick={() =>
+                                    router.push(
+                                        `/app/${tenantSlug}/dashboard/catalog/products/studio?category=SERVICE&step=brand`
+                                    )
+                                }
+                                className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all hover:scale-105"
+                            >
+                                <Wrench size={16} /> Service
                             </button>
                         </div>
                     </div>
