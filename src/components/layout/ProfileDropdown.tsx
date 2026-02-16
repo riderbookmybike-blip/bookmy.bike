@@ -334,24 +334,12 @@ export function ProfileDropdown({
         ? 'border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
         : 'border-slate-200/80 text-slate-900 hover:bg-slate-100 hover:border-slate-200 dark:border-white/10 dark:text-white dark:hover:bg-white/10';
 
-    // Trigger Button Logic matches original
-    if (!user) {
-        return (
-            <button
-                onClick={onLoginClick}
-                className={`hidden lg:flex w-10 h-10 rounded-full border items-center justify-center transition-all duration-300 group ${triggerClass}`}
-                title="Sign In"
-            >
-                <LucideUser size={20} />
-            </button>
-        );
-    }
-
-    const displayName =
-        user.user_metadata?.full_name?.split(' ')[0] ||
-        user.user_metadata?.name?.split(' ')[0] ||
-        user.email?.split('@')[0] ||
-        'User';
+    const displayName = user
+        ? user.user_metadata?.full_name?.split(' ')[0] ||
+          user.user_metadata?.name?.split(' ')[0] ||
+          user.email?.split('@')[0] ||
+          'User'
+        : 'Guest';
 
     /** Animation Variants borrowed from LoginSidebar */
     const overlayVariants = {
@@ -400,27 +388,37 @@ export function ProfileDropdown({
 
     return (
         <>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                ref={dropdownRef}
-                className={`hidden lg:flex h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
-            >
-                <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all">
-                    <img
-                        src={user.user_metadata?.avatar_url || getDefaultAvatar(user.id, displayName)}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                    />
-                </div>
-                <div className="flex items-center gap-1.5 leading-none">
-                    <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">
-                        HI,
-                    </span>
-                    <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap max-w-[150px] truncate">
-                        {displayName}
-                    </span>
-                </div>
-            </button>
+            {user ? (
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    ref={dropdownRef}
+                    className={`hidden lg:flex h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
+                >
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all">
+                        <img
+                            src={user.user_metadata?.avatar_url || getDefaultAvatar(user.id, displayName)}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
+                    <div className="flex items-center gap-1.5 leading-none">
+                        <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">
+                            HI,
+                        </span>
+                        <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap max-w-[150px] truncate">
+                            {displayName}
+                        </span>
+                    </div>
+                </button>
+            ) : (
+                <button
+                    onClick={onLoginClick}
+                    className={`hidden lg:flex w-10 h-10 rounded-full border items-center justify-center transition-all duration-300 group ${triggerClass}`}
+                    title="Sign In"
+                >
+                    <LucideUser size={20} />
+                </button>
+            )}
 
             {/* Full Screen Sidebar Portal */}
             {mounted &&
@@ -479,128 +477,162 @@ export function ProfileDropdown({
                                             animate="visible"
                                             className="space-y-4"
                                         >
-                                            {/* COMPACT USER CARD */}
-                                            <motion.div
-                                                variants={itemVariants}
-                                                className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl border border-slate-100 dark:border-white/5 flex items-center gap-4 relative overflow-hidden group"
-                                            >
-                                                <div className="absolute top-0 right-0 p-4 opacity-30">
-                                                    <div className="w-24 h-24 bg-brand-primary/20 rounded-full blur-2xl absolute -top-5 -right-5 pointer-events-none" />
-                                                </div>
+                                            {/* USER/GUEST CARD */}
+                                            {user ? (
+                                                <motion.div
+                                                    variants={itemVariants}
+                                                    className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl border border-slate-100 dark:border-white/5 flex items-center gap-4 relative overflow-hidden group"
+                                                >
+                                                    <div className="absolute top-0 right-0 p-4 opacity-30">
+                                                        <div className="w-24 h-24 bg-brand-primary/20 rounded-full blur-2xl absolute -top-5 -right-5 pointer-events-none" />
+                                                    </div>
 
-                                                {/* Smaller Avatar */}
-                                                <div className="relative shrink-0 group/avatar">
-                                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-black text-xl font-black shadow-lg shadow-brand-primary/20 overflow-hidden relative z-10 ring-2 ring-white dark:ring-[#0F172A]">
-                                                        <img
-                                                            src={
-                                                                user.user_metadata?.avatar_url ||
-                                                                getDefaultAvatar(
-                                                                    user.id,
-                                                                    user.user_metadata?.full_name ||
-                                                                        user.user_metadata?.name ||
-                                                                        user.email
-                                                                )
-                                                            }
-                                                            alt={user.user_metadata?.full_name || 'Profile'}
-                                                            className="w-full h-full object-cover"
+                                                    {/* Smaller Avatar */}
+                                                    <div className="relative shrink-0 group/avatar">
+                                                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-black text-xl font-black shadow-lg shadow-brand-primary/20 overflow-hidden relative z-10 ring-2 ring-white dark:ring-[#0F172A]">
+                                                            <img
+                                                                src={
+                                                                    user.user_metadata?.avatar_url ||
+                                                                    getDefaultAvatar(
+                                                                        user.id,
+                                                                        user.user_metadata?.full_name ||
+                                                                            user.user_metadata?.name ||
+                                                                            user.email
+                                                                    )
+                                                                }
+                                                                alt={user.user_metadata?.full_name || 'Profile'}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className="absolute bottom-0 right-0 w-6 h-6 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform z-20 border-2 border-white dark:border-[#0F172A]"
+                                                            title="Change Photo"
+                                                        >
+                                                            {uploading ? (
+                                                                <div className="w-2 h-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                            ) : (
+                                                                <Camera size={10} />
+                                                            )}
+                                                        </button>
+                                                        <input
+                                                            type="file"
+                                                            ref={fileInputRef}
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={handleAvatarUpload}
                                                         />
                                                     </div>
-                                                    <button
-                                                        onClick={() => fileInputRef.current?.click()}
-                                                        className="absolute bottom-0 right-0 w-6 h-6 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform z-20 border-2 border-white dark:border-[#0F172A]"
-                                                        title="Change Photo"
-                                                    >
-                                                        {uploading ? (
-                                                            <div className="w-2 h-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                        ) : (
-                                                            <Camera size={10} />
-                                                        )}
-                                                    </button>
-                                                    <input
-                                                        type="file"
-                                                        ref={fileInputRef}
-                                                        className="hidden"
-                                                        accept="image/*"
-                                                        onChange={handleAvatarUpload}
-                                                    />
-                                                </div>
 
-                                                <div className="relative z-10 min-w-0 flex-1">
-                                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight truncate">
-                                                        {user.user_metadata?.full_name || 'BookMyBike User'}
-                                                    </h3>
-                                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 tracking-wide uppercase truncate">
-                                                        {user.email}
-                                                    </p>
-                                                    {location && (
-                                                        <div className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-blue-500/10 text-[9px] font-black uppercase tracking-[0.05em] text-blue-600 dark:text-blue-400">
-                                                            <MapPin size={10} className="fill-blue-500/20" />
-                                                            {location.district || location.taluka}{' '}
-                                                            {location.stateCode
-                                                                ? `(${location.stateCode})`
-                                                                : location.state
-                                                                  ? `(${location.state})`
-                                                                  : ''}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </motion.div>
-
-                                            {/* Avatar Picker */}
-                                            <motion.div variants={itemVariants}>
-                                                <button
-                                                    onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                                                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-[#F4B000]/30 transition-all group"
-                                                >
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 group-hover:text-[#F4B000] transition-colors">
-                                                        Change Avatar
-                                                    </span>
-                                                    <ChevronDown
-                                                        size={12}
-                                                        className={`text-slate-400 transition-transform duration-200 ${showAvatarPicker ? 'rotate-180' : ''}`}
-                                                    />
-                                                </button>
-                                                <AnimatePresence>
-                                                    {showAvatarPicker && (
-                                                        <motion.div
-                                                            initial={{ height: 0, opacity: 0 }}
-                                                            animate={{ height: 'auto', opacity: 1 }}
-                                                            exit={{ height: 0, opacity: 0 }}
-                                                            transition={{ duration: 0.2 }}
-                                                            className="overflow-hidden"
-                                                        >
-                                                            <div className="flex gap-2 pt-3 pb-1 overflow-x-auto custom-scrollbar">
-                                                                {AVATAR_PRESETS.map(preset => (
-                                                                    <button
-                                                                        key={preset.id}
-                                                                        onClick={() => handleAvatarSelect(preset.url)}
-                                                                        disabled={uploading}
-                                                                        title={preset.label}
-                                                                        className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-all duration-200 hover:scale-110 ${
-                                                                            user.user_metadata?.avatar_url ===
-                                                                            preset.url
-                                                                                ? 'ring-[#F4B000] shadow-lg shadow-[#F4B000]/30'
-                                                                                : 'ring-transparent hover:ring-slate-300 dark:hover:ring-white/20'
-                                                                        } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-                                                                    >
-                                                                        <img
-                                                                            src={preset.url}
-                                                                            alt={preset.label}
-                                                                            className="w-full h-full"
-                                                                        />
-                                                                    </button>
-                                                                ))}
+                                                    <div className="relative z-10 min-w-0 flex-1">
+                                                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight truncate">
+                                                            {user.user_metadata?.full_name || 'BookMyBike User'}
+                                                        </h3>
+                                                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 tracking-wide uppercase truncate">
+                                                            {user.email}
+                                                        </p>
+                                                        {location && (
+                                                            <div className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-blue-500/10 text-[9px] font-black uppercase tracking-[0.05em] text-blue-600 dark:text-blue-400">
+                                                                <MapPin size={10} className="fill-blue-500/20" />
+                                                                {location.district || location.taluka}{' '}
+                                                                {location.stateCode
+                                                                    ? `(${location.stateCode})`
+                                                                    : location.state
+                                                                      ? `(${location.state})`
+                                                                      : ''}
                                                             </div>
-                                                            <button
-                                                                onClick={() => fileInputRef.current?.click()}
-                                                                className="w-full mt-2 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-[#F4B000] hover:bg-[#F4B000]/10 transition-all"
+                                                        )}
+                                                    </div>
+                                                </motion.div>
+                                            ) : (
+                                                <motion.div
+                                                    variants={itemVariants}
+                                                    className="bg-slate-900 dark:bg-black p-6 rounded-[2rem] border border-white/10 dark:border-white/5 flex flex-col items-center gap-4 text-center relative overflow-hidden group shadow-xl"
+                                                >
+                                                    <div className="absolute top-[-50px] left-[-50px] w-32 h-32 bg-brand-primary/20 rounded-full blur-[40px] pointer-events-none" />
+                                                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-brand-primary">
+                                                        <LucideUser size={32} />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <h3 className="text-lg font-black text-white uppercase tracking-tight">
+                                                            Welcome to BookMyBike
+                                                        </h3>
+                                                        <p className="text-xs text-slate-400 font-medium px-4">
+                                                            Sign in to manage your bookings, wishlist, and exclusive
+                                                            offers.
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setIsOpen(false);
+                                                            onLoginClick();
+                                                        }}
+                                                        className="w-full mt-2 py-4 rounded-2xl bg-brand-primary text-black text-xs font-black uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-brand-primary/20"
+                                                    >
+                                                        Sign In Now
+                                                    </button>
+                                                </motion.div>
+                                            )}
+
+                                            {/* Avatar Picker (Only for logged in users) */}
+                                            {user && (
+                                                <motion.div variants={itemVariants}>
+                                                    <button
+                                                        onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                                                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-[#F4B000]/30 transition-all group"
+                                                    >
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 group-hover:text-[#F4B000] transition-colors">
+                                                            Change Avatar
+                                                        </span>
+                                                        <ChevronDown
+                                                            size={12}
+                                                            className={`text-slate-400 transition-transform duration-200 ${showAvatarPicker ? 'rotate-180' : ''}`}
+                                                        />
+                                                    </button>
+                                                    <AnimatePresence>
+                                                        {showAvatarPicker && (
+                                                            <motion.div
+                                                                initial={{ height: 0, opacity: 0 }}
+                                                                animate={{ height: 'auto', opacity: 1 }}
+                                                                exit={{ height: 0, opacity: 0 }}
+                                                                transition={{ duration: 0.2 }}
+                                                                className="overflow-hidden"
                                                             >
-                                                                Upload Custom Photo
-                                                            </button>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </motion.div>
+                                                                <div className="flex gap-2 pt-3 pb-1 overflow-x-auto custom-scrollbar">
+                                                                    {AVATAR_PRESETS.map(preset => (
+                                                                        <button
+                                                                            key={preset.id}
+                                                                            onClick={() =>
+                                                                                handleAvatarSelect(preset.url)
+                                                                            }
+                                                                            disabled={uploading}
+                                                                            title={preset.label}
+                                                                            className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-all duration-200 hover:scale-110 ${
+                                                                                user.user_metadata?.avatar_url ===
+                                                                                preset.url
+                                                                                    ? 'ring-[#F4B000] shadow-lg shadow-[#F4B000]/30'
+                                                                                    : 'ring-transparent hover:ring-slate-300 dark:hover:ring-white/20'
+                                                                            } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                                                                        >
+                                                                            <img
+                                                                                src={preset.url}
+                                                                                alt={preset.label}
+                                                                                className="w-full h-full"
+                                                                            />
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => fileInputRef.current?.click()}
+                                                                    className="w-full mt-2 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-[#F4B000] hover:bg-[#F4B000]/10 transition-all"
+                                                                >
+                                                                    Upload Custom Photo
+                                                                </button>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </motion.div>
+                                            )}
 
                                             {/* Unified Navigation - SOT for Mobile/Tablet */}
                                             <div className="lg:hidden space-y-3 pb-2 pt-1">
@@ -785,13 +817,15 @@ export function ProfileDropdown({
                                                 <HelpCircle size={14} />
                                                 Help
                                             </a>
-                                            <button
-                                                onClick={handleLogout}
-                                                className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-rose-500 text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 hover:shadow-rose-500/30 hover:-translate-y-0.5"
-                                            >
-                                                <LogOut size={14} />
-                                                Sign Out
-                                            </button>
+                                            {user && (
+                                                <button
+                                                    onClick={handleLogout}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-rose-500 text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 hover:shadow-rose-500/30 hover:-translate-y-0.5"
+                                                >
+                                                    <LogOut size={14} />
+                                                    Sign Out
+                                                </button>
+                                            )}
                                         </div>
 
                                         <div className="flex justify-center gap-5 mt-4">

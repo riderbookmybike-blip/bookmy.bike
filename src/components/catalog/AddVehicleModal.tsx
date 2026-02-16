@@ -32,9 +32,12 @@ export default function AddVehicleModal({ isOpen, onClose, onSuccess }: AddVehic
                     </div>
 
                     <div className="space-y-4">
-                        <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">Initiate New SKU</h2>
+                        <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                            Initiate New SKU
+                        </h2>
                         <p className="text-slate-500 font-bold uppercase tracking-widest text-xs max-w-md mx-auto leading-relaxed">
-                            You are about to enter the <span className="text-blue-600">Vehicle Studio</span> environment to create a high-fidelity hierarchical catalog entry.
+                            You are about to enter the <span className="text-blue-600">Vehicle Studio</span> environment
+                            to create a high-fidelity hierarchical catalog entry.
                         </p>
                     </div>
 
@@ -47,7 +50,11 @@ export default function AddVehicleModal({ isOpen, onClose, onSuccess }: AddVehic
                         </button>
                         <button
                             onClick={() => {
-                                router.push(tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/vehicles/studio` : '/dashboard/catalog/vehicles/studio');
+                                router.push(
+                                    tenantSlug
+                                        ? `/app/${tenantSlug}/dashboard/catalog/products/studio`
+                                        : '/dashboard/catalog/products/studio'
+                                );
                                 onClose();
                             }}
                             className="flex-[2] px-8 py-5 rounded-[2rem] bg-blue-600 text-white font-black uppercase tracking-widest text-[11px] hover:scale-105 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-3 italic"
