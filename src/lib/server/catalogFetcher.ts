@@ -207,7 +207,7 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     const stateCode = pricingContext.stateCode;
 
     // 2. Parallel Fetch - SOT Phase 3: Rules removed, pricing from JSON
-    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG !== 'false';
+    const useLinear = true;
 
     const [rawCatalog, offerData] = await Promise.all([
         withCache(
