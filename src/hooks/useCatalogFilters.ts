@@ -88,10 +88,13 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setSelectedMakes(prev => {
             if (prev.length === 0) return availableMakes;
 
-            const prevUpper = prev.map(m => m.toUpperCase());
-            const defaultUpper = brands.map(m => m.toUpperCase());
+            const prevSet = new Set(prev.map(m => m.toUpperCase()));
+            const defaultSet = new Set(brands.map(m => m.toUpperCase()));
+
+            // If prev matches default brands or is identical to currently available makes, update it
             const isDefault =
-                prevUpper.length === defaultUpper.length && defaultUpper.every(m => prevUpper.includes(m));
+                (prev.length === brands.length && brands.every(m => prevSet.has(m.toUpperCase()))) ||
+                (prev.length === availableMakes.length && availableMakes.every(m => prevSet.has(m.toUpperCase())));
 
             return isDefault ? availableMakes : prev;
         });
@@ -122,7 +125,9 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
         const isAllMakesSelected =
             selectedMakes.length === 0 ||
-            (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
+            (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase()))) ||
+            (brands.length > 0 && brands.every(m => selectedMakeSet.has(m.toUpperCase())));
+
         if (isAllMakesSelected) {
             params.delete('brand');
         } else {

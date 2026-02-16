@@ -31,7 +31,7 @@ async function backfill() {
     }
 
     // 3. Fetch all active prices
-    const { data: prices, error: pricesError } = await adminClient
+    const { data: prices, error: pricesError } = await (adminClient as any)
         .from('cat_price_state')
         .select('*')
         .eq('is_active', true);
@@ -44,7 +44,7 @@ async function backfill() {
     const itemsMap = new Map(allItems.map(i => [i.id, i]));
     const brandsMap = new Map(brands.map(b => [b.id, b]));
     const pricesMap = new Map();
-    prices.forEach(p => {
+    (prices || []).forEach((p: any) => {
         if (!pricesMap.has(p.vehicle_color_id)) pricesMap.set(p.vehicle_color_id, []);
         pricesMap.get(p.vehicle_color_id).push(p);
     });

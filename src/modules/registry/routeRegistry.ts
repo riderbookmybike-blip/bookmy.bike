@@ -20,6 +20,7 @@ import {
     Settings,
     History,
     Tags,
+    BookOpen,
 } from 'lucide-react';
 
 export const ROUTE_REGISTRY: Record<string, RegisteredRoute> = {
@@ -47,6 +48,7 @@ export const ROUTE_REGISTRY: Record<string, RegisteredRoute> = {
     'leads-main': { path: '/leads', label: 'Leads & Enquiries', icon: Users },
     'members-main': { path: '/members', label: 'Members', icon: UserCheck },
     'quotes-main': { path: '/quotes', label: 'Quotes', icon: FileText },
+    'books-main': { path: '/books', label: 'Books', icon: BookOpen },
     'sales-orders': { path: '/sales-orders', label: 'Sales Orders', icon: ShoppingCart },
 
     // --- ADMIN ---

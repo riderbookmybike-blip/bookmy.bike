@@ -73,6 +73,7 @@ async function anchorOrphans() {
             }
             brandItem = newBrand;
         }
+        if (!brandItem) continue;
 
         // 3. Ensure TYPE item exists under BRAND
         let { data: typeItem } = await supabase
@@ -105,11 +106,13 @@ async function anchorOrphans() {
             typeItem = newType;
 
             // Link Brand -> Type in hierarchy
+            if (!typeItem) continue;
             await supabase.from('cat_item_hierarchy').upsert({
                 parent_id: brandItem.id,
                 child_id: typeItem.id,
             });
         }
+        if (!typeItem) continue;
 
         // 4. Link TYPE -> PRODUCT in hierarchy
         console.log(`  Linking Product ${prod.id} -> Type ${typeItem.id}`);

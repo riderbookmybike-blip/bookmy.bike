@@ -5,9 +5,15 @@ import { createClient } from '@/lib/supabase/client';
 import { Plus, Search, MoreVertical, Edit2, Trash2, Eye, Calendar, User, Clock, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { Database } from '@/types/supabase';
-
-type BlogPost = Database['public']['Tables']['blog_posts']['Row'];
+type BlogPost = {
+    id: string;
+    title: string;
+    author_name?: string | null;
+    image_url?: string | null;
+    is_published?: boolean | null;
+    created_at?: string | null;
+    excerpt?: string | null;
+};
 
 export default function BlogManagementPage() {
     const params = useParams();
@@ -19,7 +25,10 @@ export default function BlogManagementPage() {
     const fetchPosts = async () => {
         setLoading(true);
         const supabase = createClient();
-        const { data, error } = await supabase.from('blog_posts').select('*').order('created_at', { ascending: false });
+        const { data, error } = await (supabase as any)
+            .from('blog_posts')
+            .select('*')
+            .order('created_at', { ascending: false });
 
         if (!error && data) {
             setPosts(data as BlogPost[]);

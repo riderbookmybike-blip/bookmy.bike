@@ -9,6 +9,7 @@ import MasterListDetailLayout from '@/components/templates/MasterListDetailLayou
 import StatsHeader from '@/components/modules/shared/StatsHeader';
 import ModuleLanding from '@/components/modules/shared/ModuleLanding';
 import LeadEditorWrapper from '@/components/modules/leads/LeadEditorWrapper';
+import LeadForm from '@/components/modules/leads/LeadForm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useCrmMobile } from '@/hooks/useCrmMobile';
 import {
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
+import { createLeadAction } from '@/actions/crm';
 
 export interface LeadRow {
     id: string;
@@ -50,6 +52,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
     const [searchQuery, setSearchQuery] = useState('');
     const [view, setView] = useState<'grid' | 'list'>('list');
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
 
     const fetchLeads = useCallback(async () => {
         if (!tenantId) return;
@@ -141,6 +144,38 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         if (!isCompact && slug) router.push(`/app/${slug}/leads`);
     };
 
+    const handleCreateLead = async (formData: {
+        customerName: string;
+        phone: string;
+        pincode: string;
+        model?: string;
+        dob?: string;
+    }) => {
+        if (!tenantId) {
+            toast.error('Tenant context missing. Please refresh.');
+            return;
+        }
+
+        const result = await createLeadAction({
+            customer_name: formData.customerName,
+            customer_phone: formData.phone,
+            customer_pincode: formData.pincode,
+            customer_dob: formData.dob,
+            model: formData.model,
+            source: 'CRM_MANUAL',
+            owner_tenant_id: tenantId,
+        });
+
+        if (!result?.success || !('leadId' in result) || !result.leadId) {
+            throw new Error(result?.message || 'Failed to create lead');
+        }
+
+        toast.success('duplicate' in result && result.duplicate ? 'Existing lead opened' : 'Lead created successfully');
+        setIsLeadFormOpen(false);
+        await fetchLeads();
+        handleOpenLead(result.leadId);
+    };
+
     // Responsive negative margin: phone=-m-3 (matches ShellLayout p-3), tablet=-m-5, desktop=-m-6 md:-m-8
     const negativeMargin = isPhone ? '' : device === 'tablet' ? '-m-5' : '-m-6 md:-m-8';
 
@@ -153,7 +188,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                 <ModuleLanding
                     title="Leads"
                     subtitle="Pipeline Intelligence"
-                    onNew={() => toast.info('Create Lead from CRM flow')}
+                    onNew={() => setIsLeadFormOpen(true)}
                     searchPlaceholder="Search Leads Index..."
                     onSearch={setSearchQuery}
                     statsContent={<StatsHeader stats={stats} device={device} />}
@@ -319,6 +354,11 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                         </div>
                     )}
                 </ModuleLanding>
+                <LeadForm
+                    isOpen={isLeadFormOpen}
+                    onClose={() => setIsLeadFormOpen(false)}
+                    onSubmit={handleCreateLead}
+                />
             </div>
         );
     }

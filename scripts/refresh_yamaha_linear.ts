@@ -58,7 +58,7 @@ async function refreshYamaha() {
     }
 
     // 5. Fetch all active prices for these units
-    const { data: prices, error: pricesError } = await adminClient
+    const { data: prices, error: pricesError } = await (adminClient as any)
         .from('cat_price_state')
         .select('*')
         .eq('is_active', true);
@@ -76,7 +76,7 @@ async function refreshYamaha() {
 
     const itemsMap = new Map(allItems.map(i => [i.id, i]));
     const pricesMap = new Map();
-    prices.forEach(p => {
+    (prices || []).forEach((p: any) => {
         if (!pricesMap.has(p.vehicle_color_id)) pricesMap.set(p.vehicle_color_id, []);
         pricesMap.get(p.vehicle_color_id).push(p);
     });
@@ -135,19 +135,31 @@ async function refreshYamaha() {
             price_base: basePrice,
             status: leaf.status === 'DRAFT' ? 'INACTIVE' : (leaf.status as any),
             image_url: leaf.image_url || unit?.image_url || variant?.image_url || product.image_url,
-            gallery_urls: (
-                leaf.gallery_urls ||
-                unit?.gallery_urls ||
-                variant?.gallery_urls ||
-                product.gallery_urls ||
-                []
+            gallery_urls: (Array.isArray(leaf.gallery_urls)
+                ? leaf.gallery_urls
+                : Array.isArray(unit?.gallery_urls)
+                  ? unit.gallery_urls
+                  : Array.isArray(variant?.gallery_urls)
+                    ? variant.gallery_urls
+                    : Array.isArray(product.gallery_urls)
+                      ? product.gallery_urls
+                      : []
             ).slice(0, 20),
             assets_json: assetsMap.get(leaf.id) || [],
             brand_json: brand,
             product_json: product,
             variant_json: effectiveVariant,
             unit_json: effectiveUnit,
-            specs: leaf.specs || unit?.specs || variant?.specs || product.specs || {},
+            specs:
+                leaf.specs && typeof leaf.specs === 'object'
+                    ? leaf.specs
+                    : unit?.specs && typeof unit.specs === 'object'
+                      ? unit.specs
+                      : variant?.specs && typeof variant.specs === 'object'
+                        ? variant.specs
+                        : product.specs && typeof product.specs === 'object'
+                          ? product.specs
+                          : {},
             checksum_md5: '',
         };
 
@@ -167,9 +179,9 @@ async function refreshYamaha() {
     console.log(`📝 Prepared ${linearRows.length} rows for insertion.`);
 
     if (linearRows.length > 0) {
-        const { error: insertError } = await adminClient
+        const { error: insertError } = await (adminClient as any)
             .from('cat_skus_linear')
-            .upsert(linearRows, { onConflict: 'sku_code' });
+            .upsert(linearRows as any[], { onConflict: 'sku_code' });
 
         if (insertError) {
             console.error('❌ Insert Error:', insertError);

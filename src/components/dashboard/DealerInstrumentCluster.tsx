@@ -23,8 +23,10 @@ import { TFTIndicator, TFTIndicatorBank } from './TFTIndicator';
 import { InventoryTable } from './InventoryTable';
 
 export default function DealerInstrumentCluster() {
-    const { tenant } = useTenant();
-    const { kpis, loading: kpiLoading } = useDashboardKpis(tenant?.id);
+    const { tenantName, tenantId } = useTenant();
+    const { kpis, loading: kpiLoading } = useDashboardKpis(tenantId);
+    const conversionPct =
+        (kpis?.leads.total || 0) > 0 ? ((kpis?.bookings.total || 0) / (kpis?.leads.total || 1)) * 100 : 0;
 
     // ── TFT MAPPING ──────────────────────────────────────────────
 
@@ -56,7 +58,7 @@ export default function DealerInstrumentCluster() {
     }
 
     return (
-        <TFTCluster title={tenant?.name || 'DEALERSHIP PANEL'} status="TFT_MODE_ACTIVE">
+        <TFTCluster title={tenantName || 'DEALERSHIP PANEL'} status="TFT_MODE_ACTIVE">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 {/* ── CENTRAL INSTRUMENTATION ─────────────────────── */}
                 <div className="lg:col-span-8 space-y-10">
@@ -78,7 +80,7 @@ export default function DealerInstrumentCluster() {
                             />
                             <div className="mt-6 flex flex-col items-center">
                                 <span className="text-[10px] font-black text-[#FFD700] uppercase tracking-[0.4em] bg-[#FFD700]/10 px-4 py-1.5 rounded-full border border-[#FFD700]/20 animate-pulse">
-                                    THROTTLE: {(Number(kpis?.leads.conversion || 0) / 10).toFixed(1)}x
+                                    THROTTLE: {(conversionPct / 10).toFixed(1)}x
                                 </span>
                             </div>
                         </div>
@@ -98,7 +100,7 @@ export default function DealerInstrumentCluster() {
                             <div className="tft-glass-panel rounded-3xl p-8 flex-1 flex flex-col justify-center">
                                 <TFTGauge
                                     type="bar"
-                                    value={Number(kpis?.leads.conversion || 0)}
+                                    value={Number(conversionPct)}
                                     max={100}
                                     label="DELIVERY SUCCESS"
                                     unit="%"

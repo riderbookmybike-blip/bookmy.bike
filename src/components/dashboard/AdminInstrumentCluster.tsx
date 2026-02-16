@@ -134,7 +134,7 @@ export default function AdminInstrumentCluster() {
                                         <div className="tft-glass-panel rounded-3xl p-8 flex-1 flex flex-col justify-center">
                                             <TFTGauge
                                                 type="bar"
-                                                value={kpis?.tenants.active || 0}
+                                                value={kpis?.activeDealers || 0}
                                                 max={50}
                                                 label="ACTIVE TENANTS"
                                                 unit="LOAD"

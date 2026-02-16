@@ -137,6 +137,7 @@ function reconstructHierarchy(rows: any[], stateCode: string = 'MH'): any[] {
         if (!variant) {
             variant = {
                 ...row.variant_json,
+                type: 'VARIANT',
                 skus: [],
                 colors: [],
             };
@@ -262,7 +263,9 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     // 3.1 Dealer-only filter
     const activeOffers = offerData || [];
     const activeVehicleColorIds = new Set(activeOffers.map((offer: any) => offer.vehicle_color_id));
-    const hasEligibility = Boolean(dealerId) && activeVehicleColorIds.size > 0;
+    // Keep full catalog visible even when dealer offers are partial/missing.
+    // Offer data is used for pricing deltas only.
+    const hasEligibility = false;
 
     const collectVariantSkus = (variant: any) => {
         const directSkus = Array.isArray(variant?.skus) ? variant.skus : [];

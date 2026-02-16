@@ -62,7 +62,7 @@ async function verifyParity() {
                 .filter((p: any) => parseFloat(p) > 0);
             const basePrice =
                 prices.length > 0
-                    ? Math.min(...prices.map(p => parseFloat(p)))
+                    ? Math.min(...prices.map((p: any) => parseFloat(p)))
                     : node.price_base || family.price_base || 0;
 
             if (node.id === '8a8ada7e-13eb-4a85-af61-792fc2707d3e') {

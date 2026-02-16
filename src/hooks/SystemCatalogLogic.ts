@@ -202,13 +202,26 @@ export function useSystemCatalogLogic(leadId?: string) {
                             productGroups.set(row.product_json.id, {
                                 ...row.product_json,
                                 brand: row.brand_json,
+                                specs: row.specs || {}, // Merge specs from SKU level to family for catalog fallback
                                 children: [],
                             });
                         }
                         const product = productGroups.get(row.product_json.id);
+
+                        // Ensure product has specs even if it was created from a row that had none (unlikely but safe)
+                        if (!product.specs || Object.keys(product.specs).length === 0) {
+                            product.specs = row.specs || {};
+                        }
+
                         let variant = product.children.find((c: any) => c.id === row.variant_json.id);
                         if (!variant) {
-                            variant = { ...row.variant_json, skus: [], colors: [] };
+                            variant = {
+                                ...row.variant_json,
+                                type: 'VARIANT',
+                                specs: row.specs || {}, // Merge specs to variant level
+                                skus: [],
+                                colors: [],
+                            };
                             product.children.push(variant);
                         }
 
@@ -701,7 +714,9 @@ export function useSystemCatalogLogic(leadId?: string) {
                     const userLat: number | null = cachedLocation.lat;
                     const userLng: number | null = cachedLocation.lng;
 
-                    const hasEligibility = Boolean(hasValidDealer && (offerData as any[])?.length > 0);
+                    // Do not gate catalog visibility by dealer-offer coverage.
+                    // Offers affect pricing deltas, not whether a model card appears.
+                    const hasEligibility = false;
 
                     const mappedItems = mapCatalogItems(catalogData, ruleData || [], insuranceRuleData || [], {
                         stateCode: resolvedStateCode,

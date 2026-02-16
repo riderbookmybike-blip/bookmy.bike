@@ -49,7 +49,7 @@ const normalizeRewards = (value: unknown): WheelReward[] | null => {
 
 const resolveRewards = async (tenantId?: string | null) => {
     if (!tenantId) return null;
-    const { data, error } = await adminClient
+    const { data, error } = await (adminClient as any)
         .from('id_tenant_reward_wheel_configs')
         .select('rewards')
         .eq('tenant_id', tenantId)

@@ -38,7 +38,7 @@ export interface CatalogItemDB {
     price_base: number;
     brand_id: string;
     brand: { name: string; logo_svg?: string };
-    category?: string;
+    category?: { bodyType?: string } | string;
     children?: {
         id: string;
         type: string;
@@ -115,6 +115,16 @@ interface MapOptions {
     requireEligibility?: boolean;
 }
 
+function parseBooleanFlag(value: any): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return normalized === 'true' || normalized === '1' || normalized === 'yes';
+    }
+    return false;
+}
+
 export function mapCatalogItems(
     rawData: CatalogItemDB[],
     ruleData: any[],
@@ -133,10 +143,29 @@ export function mapCatalogItems(
     const insuranceRule: any = insuranceRuleData?.[0];
 
     return rawData.flatMap((family: CatalogItemDB) => {
-        const category = family.category || 'VEHICLE';
-        let bodyType: any = 'MOTORCYCLE';
-        if (category === 'ACCESSORY') bodyType = 'ACCESSORY';
-        if (category === 'SERVICE') bodyType = 'SERVICE';
+        const categoryData = family.category;
+        let bodyType: string = 'MOTORCYCLE';
+
+        if (typeof categoryData === 'object' && categoryData?.bodyType) {
+            bodyType = categoryData.bodyType.toUpperCase();
+        } else if (typeof categoryData === 'string') {
+            if (categoryData === 'ACCESSORY') bodyType = 'ACCESSORY';
+            else if (categoryData === 'SERVICE') bodyType = 'SERVICE';
+            else bodyType = categoryData.toUpperCase();
+        } else {
+            // Fallback for missing bodyType
+            const nameLower = family.name.toLowerCase();
+            if (
+                nameLower.includes('activa') ||
+                nameLower.includes('jupiter') ||
+                nameLower.includes('access') ||
+                nameLower.includes('scooter')
+            ) {
+                bodyType = 'SCOOTER';
+            } else if (nameLower.includes('xl 100') || nameLower.includes('moped')) {
+                bodyType = 'MOPED';
+            }
+        }
 
         const familyChildren = family.children || [];
         const variantChildren = familyChildren.filter(c => c.type === 'VARIANT');
@@ -197,9 +226,14 @@ export function mapCatalogItems(
 
                 // Only fallback to product-level SKUs when rendering the PRODUCT card (no variants with SKUs).
                 if (activeSkus.length === 0 && variantItem.id === family.id && Array.isArray(familyChildren)) {
-                    const familySkus = familyChildren.flatMap(c =>
-                        c.type === 'SKU' ? [{ ...c, price_base: c.price_base ?? 0 }] : c.skus || []
-                    );
+                    const familySkus = familyChildren.flatMap(c => {
+                        if (c.type === 'SKU') return [{ ...c, price_base: c.price_base ?? 0 }];
+                        const directSkus = c.skus || [];
+                        const colorSkus = Array.isArray(c.colors)
+                            ? c.colors.flatMap((color: any) => (Array.isArray(color?.skus) ? color.skus : []))
+                            : [];
+                        return [...directSkus, ...colorSkus];
+                    });
                     const familyActive = familySkus.filter(isSkuActive);
                     const familyEligible = requireEligibility
                         ? familyActive.filter(sku => hasActivePrice(sku) && hasOfferForSku(sku.id))
@@ -498,7 +532,7 @@ export function mapCatalogItems(
                                         sku.image_url ||
                                         sku.specs?.primary_image,
                                     zoomFactor: Number(primaryAsset?.zoom_factor || sku.zoom_factor || 1.0),
-                                    isFlipped: Boolean(primaryAsset?.is_flipped || sku.is_flipped || false),
+                                    isFlipped: parseBooleanFlag(primaryAsset?.is_flipped ?? sku.is_flipped),
                                     offsetX: Number(primaryAsset?.offset_x || sku.offset_x || 0),
                                     offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0),
                                     finish: (
@@ -536,7 +570,7 @@ export function mapCatalogItems(
                                             sku.image_url ||
                                             sku.specs?.primary_image,
                                         zoomFactor: Number(primaryAsset?.zoom_factor || sku.zoom_factor || 1.0),
-                                        isFlipped: Boolean(primaryAsset?.is_flipped || sku.is_flipped || false),
+                                        isFlipped: parseBooleanFlag(primaryAsset?.is_flipped ?? sku.is_flipped),
                                         offsetX: Number(primaryAsset?.offset_x || sku.offset_x || 0),
                                         offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0),
                                         finish: (sku.specs?.Finish || sku.specs?.finish)?.toUpperCase(),
@@ -571,7 +605,7 @@ export function mapCatalogItems(
                             assets.find(a => a.type === 'IMAGE' && a.is_primary) ||
                             assets.find(a => a.type === 'IMAGE');
 
-                        return Boolean(primaryAsset?.is_flipped || targetSku?.is_flipped || false);
+                        return parseBooleanFlag(primaryAsset?.is_flipped ?? targetSku?.is_flipped);
                     })(),
                     offsetX: (() => {
                         const targetSku = eligibleSkus.find((s: any) => s.is_primary) || eligibleSkus[0];

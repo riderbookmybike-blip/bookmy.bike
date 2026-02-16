@@ -71,6 +71,7 @@ export default async function TenantDashboardLayout({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const memberships: LocalMembership[] = (Array.isArray(rawMemberships) ? rawMemberships : []).map((m: any) => ({
         ...m,
+        id: m.id || `${m.user_id || user.id}:${m.tenant_id}:${m.role || 'MEMBER'}`,
         tenants: {
             id: m.tenant_id,
             name: m.tenant_name || '',
@@ -115,6 +116,7 @@ export default async function TenantDashboardLayout({
 
     if (crossMemberships && crossMemberships.length > 0) {
         const mappedCross = crossMemberships.map((m: any) => ({
+            id: `cross:${m.user_id}:${m.dealer_tenant_id}`,
             user_id: m.user_id,
             tenant_id: m.dealer_tenant_id,
             role: 'BANK_STAFF', // Using BANK_STAFF role for financer personnel

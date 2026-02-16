@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { KpiCard } from '@/components/dashboard/DashboardWidgets';
 import { KPIItem } from '@/components/layout/KPIBar';
-import { publishPrices } from '@/actions/publishPrices';
+import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
 import { savePrices } from '@/actions/savePrices';
 
 interface SKUPriceRow {
@@ -196,7 +196,9 @@ export default function PricingPage() {
             const priceColumn = `price_${activeStateCode.toLowerCase()}`;
 
             const [linearRes, offerRes, stockRes] = await Promise.all([
-                supabase.from('cat_skus_linear').select(`unit_json, ${priceColumn}`).eq('status', 'ACTIVE'),
+                // Do not filter by status here; pricing JSON can exist on non-ACTIVE linear rows too.
+                // Filtering caused calculated RTO/Insurance to appear "not saved" in ledger.
+                supabase.from('cat_skus_linear').select(`id, unit_json, ex_showroom_mh, ${priceColumn}`),
                 tenantSlug !== 'aums'
                     ? supabase
                           .from('cat_price_dealer')
@@ -233,11 +235,13 @@ export default function PricingPage() {
                 }
             >();
             (linearData || []).forEach((row: any) => {
-                const priceMh = row[priceColumn];
-                const unitId = row.unit_json?.id;
-                if (!unitId || !priceMh) return;
-                priceMap.set(unitId, {
-                    price: Number(priceMh.ex_showroom) || 0,
+                const priceMh = row[priceColumn] || {};
+                const skuId = row.id;
+                if (!skuId) return;
+                const exShowroomFromColumn =
+                    activeStateCode.toUpperCase() === 'MH' ? Number(row.ex_showroom_mh || 0) : 0;
+                priceMap.set(skuId, {
+                    price: exShowroomFromColumn > 0 ? exShowroomFromColumn : Number(priceMh.ex_showroom) || 0,
                     rto: Number(priceMh.rto_total) || 0,
                     rto_data: priceMh.rto,
                     insurance: Number(priceMh.insurance_total) || 0,
@@ -299,7 +303,7 @@ export default function PricingPage() {
                 const stateInclusion = pricingRule?.inclusion_type || sku.inclusion_type || 'OPTIONAL';
                 const localIsActive = activeMap.has(sku.id) ? activeMap.get(sku.id) : false;
 
-                const basePrice = sku.price_base || family?.price_base || 0;
+                const basePrice = 0;
                 const brandDelta = brandDeltaMap.get(brand?.id) || 0;
 
                 const priceRecord = priceMap.get(sku.id);
@@ -319,10 +323,7 @@ export default function PricingPage() {
                     else displayState = 'Draft'; // Default for DRAFT or null
                 }
 
-                const finalPrice =
-                    statePrice !== undefined
-                        ? statePrice
-                        : Math.round(Number(basePrice) * (1 + Number(brandDelta) / 100));
+                const finalPrice = statePrice !== undefined ? statePrice : 0;
 
                 const finalInclusionType = stateInclusion as 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
 
@@ -481,16 +482,34 @@ export default function PricingPage() {
         const isAums = tenantSlug === 'aums';
 
         if (isAums) {
-            const pricePayload = skus.map(s => ({
-                vehicle_color_id: s.id,
-                state_code: activeStateCode,
-                district: 'ALL',
-                ex_showroom_price: s.exShowroom,
-                is_active: true,
-                is_popular: s.isPopular || false,
-                // Include publish_stage if it was modified
-                ...(s.publishStage !== s.originalPublishStage && { publish_stage: s.publishStage }),
-            }));
+            // Safety: save only rows that actually changed; prevents accidental zero-overwrite on untouched rows.
+            const changedPriceRows = skus.filter(
+                s =>
+                    s.exShowroom !== s.originalExShowroom ||
+                    s.isPopular !== s.originalIsPopular ||
+                    s.publishStage !== s.originalPublishStage
+            );
+
+            const pricePayload = changedPriceRows
+                .map(s => {
+                    const exShowroomSafe =
+                        Number(s.exShowroom) > 0
+                            ? Number(s.exShowroom)
+                            : Number(s.originalExShowroom) > 0
+                              ? Number(s.originalExShowroom)
+                              : 0;
+
+                    return {
+                        vehicle_color_id: s.id,
+                        state_code: activeStateCode,
+                        district: 'ALL',
+                        ex_showroom_price: exShowroomSafe,
+                        is_active: true,
+                        is_popular: s.isPopular || false,
+                        ...(s.publishStage !== s.originalPublishStage && { publish_stage: s.publishStage }),
+                    };
+                })
+                .filter(row => row.ex_showroom_price > 0);
 
             const modifiedStatusSkus = skus.filter(s => s.status !== s.originalStatus);
             const statusPayload = modifiedStatusSkus.map(sku => ({
@@ -604,7 +623,10 @@ export default function PricingPage() {
 
         setIsPublishing(true);
         try {
-            const result = await publishPrices(vehicleSkuIds, activeStateCode);
+            const calcInputs = skus
+                .filter(s => selectedIds.includes(s.id) && s.exShowroom > 0)
+                .map(s => ({ skuId: s.id, exShowroom: s.exShowroom }));
+            const result = await calculatePricingBySkuIds(calcInputs, activeStateCode);
 
             if (result.success) {
                 const publishedIds = result.results

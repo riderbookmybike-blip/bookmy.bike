@@ -21,6 +21,98 @@ interface StatusPayload {
     status: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH';
 }
 
+async function ensureLinearRowForSku(
+    skuId: string,
+    seedExShowroom?: number
+): Promise<{ success: boolean; error?: string }> {
+    const { data: sku, error: skuError } = await adminClient
+        .from('cat_items')
+        .select('id, name, slug, specs, price_base, type, parent_id, brand_id')
+        .eq('id', skuId)
+        .maybeSingle();
+
+    if (skuError) return { success: false, error: skuError.message };
+    if (!sku) return { success: false, error: `SKU not found: ${skuId}` };
+
+    const chain: any[] = [sku];
+    let cursor: any = sku;
+    for (let i = 0; i < 5; i++) {
+        if (!cursor?.parent_id) break;
+        const { data: parent } = await adminClient
+            .from('cat_items')
+            .select('id, name, slug, specs, type, parent_id, category, brand_id')
+            .eq('id', cursor.parent_id)
+            .maybeSingle();
+        if (!parent) break;
+        chain.push(parent);
+        cursor = parent;
+    }
+
+    const variant = chain.find(n => n?.type === 'VARIANT') || sku;
+    const product = chain.find(n => n?.type === 'PRODUCT') || variant || sku;
+    const typeName = String(product?.category || 'VEHICLE').toUpperCase();
+    const brandId = chain.find(n => n?.brand_id)?.brand_id;
+    if (!brandId) return { success: false, error: `Brand not found for SKU ${skuId}` };
+
+    const { data: brand } = await adminClient
+        .from('cat_brands')
+        .select('id, name, slug')
+        .eq('id', brandId)
+        .maybeSingle();
+
+    if (!brand) return { success: false, error: `Brand not found for SKU ${skuId}` };
+
+    const insertPayload = {
+        id: (sku as any).id,
+        brand_id: (brand as any).id,
+        brand_name: (brand as any).name || '',
+        brand_json: { id: (brand as any).id, name: (brand as any).name || '', slug: (brand as any).slug || '' },
+        product_name: (product as any).name || '',
+        product_json: {
+            id: (product as any).id,
+            name: (product as any).name || '',
+            slug: (product as any).slug || '',
+            specs: (product as any).specs || {},
+        },
+        variant_name: (variant as any).name || '',
+        variant_json: {
+            id: (variant as any).id,
+            name: (variant as any).name || '',
+            slug: (variant as any).slug || '',
+            specs: (variant as any).specs || {},
+        },
+        // Canonical: unit_json keeps sellable SKU identity.
+        unit_name: (sku as any).name || '',
+        unit_json: {
+            id: (sku as any).id,
+            name: (sku as any).name || '',
+            slug: (sku as any).slug || '',
+            specs: (sku as any).specs || {},
+        },
+        type_name: typeName,
+        sku_code: (sku as any).slug || (sku as any).id,
+        specs: (sku as any).specs || {},
+        // Strict mode: no fallback to cat_items.price_base chain.
+        price_base: Number(seedExShowroom) > 0 ? Number(seedExShowroom) : 0,
+        checksum_md5: `seed-${(sku as any).id}`,
+        status: 'ACTIVE',
+    };
+
+    const { error: upsertError } = await (adminClient as any).from('cat_skus_linear').upsert(insertPayload, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
+    });
+
+    if (upsertError) {
+        // If conflict on logical key occurs, log specifically
+        if (upsertError.code === '23505') {
+            console.error('[ensureLinearRowForSku] Logical key conflict for SKU:', skuId, upsertError.message);
+        }
+        return { success: false, error: upsertError.message };
+    }
+    return { success: true };
+}
+
 export async function savePrices(
     prices: PricePayload[],
     statusUpdates: StatusPayload[]
@@ -43,12 +135,74 @@ export async function savePrices(
                         ? p.publish_stage.trim().toUpperCase()
                         : 'DRAFT';
 
-                // 1. PRIMARY SOT: Read existing price_mh, merge ex_showroom, write back
-                const { data: existingRow } = await (adminClient as any)
+                // Canonical lookup by SKU ID (cat_skus_linear.id)
+                // Backward-compatible fallback to UNIT ID (cat_skus_linear.unit_json.id).
+                let existingRow: any = null;
+                const bySkuRead = await (adminClient as any)
                     .from('cat_skus_linear')
-                    .select(priceColumn)
-                    .eq('unit_json->>id', p.vehicle_color_id)
-                    .single();
+                    .select(`id, ${priceColumn}`)
+                    .eq('id', p.vehicle_color_id)
+                    .maybeSingle();
+
+                if (bySkuRead.error && bySkuRead.error.code !== 'PGRST116') {
+                    console.error('[savePrices] cat_skus_linear read-by-sku error:', bySkuRead.error);
+                    return { success: false, error: bySkuRead.error.message };
+                }
+                existingRow = bySkuRead.data;
+
+                if (!existingRow) {
+                    const { data: skuMeta, error: skuMetaError } = await adminClient
+                        .from('cat_items')
+                        .select('parent_id')
+                        .eq('id', p.vehicle_color_id)
+                        .maybeSingle();
+                    if (skuMetaError) {
+                        console.error('[savePrices] cat_items sku->unit lookup error:', skuMetaError);
+                        return { success: false, error: skuMetaError.message };
+                    }
+                    const unitId = (skuMeta as any)?.parent_id;
+                    if (unitId) {
+                        const byUnitRead = await (adminClient as any)
+                            .from('cat_skus_linear')
+                            .select(`id, ${priceColumn}`)
+                            .eq('unit_json->>id', unitId)
+                            .maybeSingle();
+                        if (byUnitRead.error && byUnitRead.error.code !== 'PGRST116') {
+                            console.error('[savePrices] cat_skus_linear read-by-unit error:', byUnitRead.error);
+                            return { success: false, error: byUnitRead.error.message };
+                        }
+                        existingRow = byUnitRead.data;
+                    }
+                }
+
+                if (!existingRow) {
+                    const ensure = await ensureLinearRowForSku(p.vehicle_color_id, p.ex_showroom_price);
+                    if (!ensure.success) {
+                        console.error(
+                            '[savePrices] ensureLinearRowForSku failed for:',
+                            p.vehicle_color_id,
+                            ensure.error
+                        );
+                        return {
+                            success: false,
+                            error: ensure.error || `Pricing row not found for SKU ${p.vehicle_color_id}`,
+                        };
+                    }
+
+                    const createdRead = await (adminClient as any)
+                        .from('cat_skus_linear')
+                        .select(`id, ${priceColumn}`)
+                        .eq('id', p.vehicle_color_id)
+                        .maybeSingle();
+
+                    if (createdRead.error && createdRead.error.code !== 'PGRST116') {
+                        return { success: false, error: createdRead.error.message };
+                    }
+                    existingRow = createdRead.data;
+                    if (!existingRow) {
+                        return { success: false, error: `Pricing row bootstrap failed for SKU ${p.vehicle_color_id}` };
+                    }
+                }
 
                 const existingPrice = existingRow?.[priceColumn] || {};
                 const mergedPrice = {
@@ -58,10 +212,15 @@ export async function savePrices(
                     ...(p.is_popular !== undefined && { is_popular: p.is_popular }),
                 };
 
+                const updatePayload: Record<string, any> = { [priceColumn]: mergedPrice };
+                if (p.state_code.toUpperCase() === 'MH') {
+                    updatePayload.ex_showroom_mh = p.ex_showroom_price;
+                }
+
                 const { error: linearError } = await (adminClient as any)
                     .from('cat_skus_linear')
-                    .update({ [priceColumn]: mergedPrice })
-                    .eq('unit_json->>id', p.vehicle_color_id);
+                    .update(updatePayload)
+                    .eq('id', existingRow.id);
 
                 if (linearError) {
                     console.error('[savePrices] cat_skus_linear update error:', linearError);

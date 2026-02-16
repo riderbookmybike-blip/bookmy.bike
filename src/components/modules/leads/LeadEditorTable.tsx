@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDisplayId } from '@/utils/displayId';
+import { toast } from 'sonner';
 
 interface LeadProfile {
     lead: any;
@@ -60,7 +61,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const { tenantSlug } = useTenant();
 
     const [activeTab, setActiveTab] = useState<
-        'LEAD' | 'QUOTES' | 'BOOKINGS' | 'TRANSACTIONS' | 'TASKS' | 'NOTES' | 'DOCUMENTS' | 'TIMELINE'
+        'LEAD' | 'FINANCE' | 'TRANSACTIONS' | 'MEMBER' | 'DOCUMENTS' | 'TASKS' | 'NOTES' | 'TIMELINE' | 'OCLUB'
     >('LEAD');
     const [groups, setGroups] = useState({
         transactionQuotes: true,
@@ -75,13 +76,14 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const tabs = useMemo(
         () => [
             { key: 'LEAD', label: 'LEAD', count: 0 },
-            { key: 'QUOTES', label: 'QUOTES', count: quoteCount },
-            { key: 'BOOKINGS', label: 'BOOKINGS', count: bookingCount },
-            { key: 'TRANSACTIONS', label: 'TRANSACTIONS', count: quoteCount + bookingCount + receiptCount },
-            { key: 'TASKS', label: 'TASKS', count: 0 },
-            { key: 'NOTES', label: 'NOTES', count: 0 },
+            { key: 'FINANCE', label: 'FINANCE', count: quoteCount },
+            { key: 'TRANSACTIONS', label: 'TRANSACTION', count: quoteCount + bookingCount + receiptCount },
+            { key: 'MEMBER', label: 'MEMBER', count: 0 },
             { key: 'DOCUMENTS', label: 'DOCUMENTS', count: 0 },
+            { key: 'TASKS', label: 'TASK', count: 0 },
+            { key: 'NOTES', label: 'NOTES', count: 0 },
             { key: 'TIMELINE', label: 'TIMELINE', count: 0 },
+            { key: 'OCLUB', label: 'O CLUB', count: 0 },
         ],
         [quoteCount, bookingCount, receiptCount]
     );
@@ -143,6 +145,14 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     );
 
     const lead = profile.lead || {};
+    const handleGenerateQuote = () => {
+        if (!lead?.id) {
+            toast.error('Lead context missing. Please refresh and try again.');
+            return;
+        }
+        window.location.href = `/store/catalog?leadId=${encodeURIComponent(lead.id)}`;
+    };
+
     const intentBadge =
         lead.intentScore === 'HOT'
             ? 'bg-rose-500/10 text-rose-600'
@@ -524,7 +534,10 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             <button className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors">
                                 Edit
                             </button>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
+                            <button
+                                onClick={handleGenerateQuote}
+                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                            >
                                 Generate Quote <ChevronDown size={14} />
                             </button>
                             <button className="p-2 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 hover:text-indigo-600 transition-colors">
@@ -542,7 +555,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     'mx-4 mt-4'
                 )}
             >
-                <div className={cn('text-[9px] font-black uppercase tracking-widest w-full', 'grid grid-cols-8')}>
+                <div className={cn('text-[9px] font-black uppercase tracking-widest w-full', 'grid grid-cols-9')}>
                     {tabs.map((tab, idx) => (
                         <button
                             key={tab.key}
@@ -550,7 +563,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             className={cn(
                                 'py-3 text-center transition-all relative whitespace-nowrap',
                                 'w-full',
-                                idx < 7 ? 'border-r border-slate-100 dark:border-white/10' : '',
+                                idx < 8 ? 'border-r border-slate-100 dark:border-white/10' : '',
                                 activeTab === tab.key
                                     ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                                     : 'bg-transparent text-slate-400 hover:text-slate-600 hover:bg-white/30 dark:hover:bg-white/10'
@@ -724,10 +737,15 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     </div>
                 )}
 
-                {activeTab === 'QUOTES' && (
+                {activeTab === 'FINANCE' && (
                     <div className="p-6">
                         <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] overflow-hidden">
-                            <TransactionSection title="Quotes" count={quoteCount} expanded={true} onToggle={() => null}>
+                            <TransactionSection
+                                title="Finance / Quotes"
+                                count={quoteCount}
+                                expanded={true}
+                                onToggle={() => null}
+                            >
                                 <div className="w-full overflow-x-auto">
                                     <table className="w-full min-w-[700px] text-left border-collapse">
                                         <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
@@ -793,83 +811,46 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     </div>
                 )}
 
-                {activeTab === 'BOOKINGS' && (
+                {activeTab === 'MEMBER' && (
                     <div className="p-6">
-                        <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] overflow-hidden">
-                            <TransactionSection
-                                title="Sales Orders"
-                                count={bookingCount}
-                                expanded={true}
-                                onToggle={() => null}
-                            >
-                                <div className="w-full overflow-x-auto">
-                                    <table className="w-full min-w-[600px] text-left border-collapse">
-                                        <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
-                                            <tr className="border-b border-slate-100 dark:border-white/5">
-                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Date
-                                                </th>
-                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Sales Order
-                                                </th>
-                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Status
-                                                </th>
-                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Amount
-                                                </th>
-                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
-                                                    Actions
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(profile.bookings || []).map((booking: any) => (
-                                                <tr
-                                                    key={booking.id}
-                                                    className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group"
-                                                >
-                                                    <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
-                                                        {formatDate(booking.created_at)}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                        {formatDisplayId(booking.display_id || booking.id)}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 text-[8px] font-black uppercase tracking-widest">
-                                                            {booking.status || 'BOOKED'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 text-[10px] font-black text-slate-900 dark:text-white">
-                                                        {formatMoney(booking.booking_amount_received || 0)}
-                                                    </td>
-                                                    <td className="py-3 text-right">
-                                                        <button
-                                                            onClick={() =>
-                                                                slug &&
-                                                                router.push(`/app/${slug}/sales-orders/${booking.id}`)
-                                                            }
-                                                            className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            Manage
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {(profile.bookings || []).length === 0 && (
-                                                <tr>
-                                                    <td
-                                                        colSpan={5}
-                                                        className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
-                                                    >
-                                                        No sales orders found
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                        <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
+                                Member Profile
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 rounded-xl p-4">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                        Name
+                                    </div>
+                                    <div className="text-sm font-black text-slate-900 dark:text-white">
+                                        {lead.customerName || '—'}
+                                    </div>
                                 </div>
-                            </TransactionSection>
+                                <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 rounded-xl p-4">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                        Phone
+                                    </div>
+                                    <div className="text-sm font-black text-slate-900 dark:text-white">
+                                        {lead.phone || '—'}
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 rounded-xl p-4">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                        Pincode
+                                    </div>
+                                    <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                        {lead.pincode || '—'}
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 rounded-xl p-4">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                        Member ID
+                                    </div>
+                                    <div className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">
+                                        {lead.customerId || 'Not linked'}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1129,6 +1110,12 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                         <div className="divide-y divide-slate-100 dark:divide-white/5">
                             <div className="px-6 py-6 text-xs text-slate-400">No timeline events.</div>
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'OCLUB' && (
+                    <div className="mx-4 mt-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
+                        O Club module coming soon.
                     </div>
                 )}
             </div>

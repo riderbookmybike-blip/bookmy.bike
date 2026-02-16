@@ -332,7 +332,7 @@ export default async function Page({ params, searchParams }: Props) {
         const normalizedModel = resolvedParams.model.replace(/-/g, ' ');
         const normalizedVariant = resolvedParams.variant.replace(/-/g, ' ');
 
-        const { data: linearRow, error: linearError } = await supabase
+        const { data: linearRow, error: linearError } = await (supabase as any)
             .from('cat_skus_linear')
             .select(
                 'id, sku_code, brand_name, product_name, variant_name, unit_name, brand_json, product_json, variant_json, unit_json'
@@ -343,17 +343,18 @@ export default async function Page({ params, searchParams }: Props) {
             .maybeSingle();
 
         if (linearRow) {
+            const row = linearRow as any;
             resolvedVariant = {
-                id: linearRow.variant_json?.id || linearRow.id,
-                name: linearRow.variant_name,
-                slug: linearRow.variant_name?.toLowerCase().replace(/\s+/g, '-'),
-                price_base: linearRow.unit_json?.price_base || 0,
-                specs: linearRow.variant_json?.specs || {},
-                parent_id: linearRow.product_json?.id,
-                brand: { name: linearRow.brand_name, slug: linearRow.brand_name?.toLowerCase().replace(/\s+/g, '-') },
+                id: row.variant_json?.id || row.id,
+                name: row.variant_name,
+                slug: row.variant_name?.toLowerCase().replace(/\s+/g, '-'),
+                price_base: row.unit_json?.price_base || 0,
+                specs: row.variant_json?.specs || {},
+                parent_id: row.product_json?.id,
+                brand: { name: row.brand_name, slug: row.brand_name?.toLowerCase().replace(/\s+/g, '-') },
                 parent: {
-                    name: linearRow.product_name,
-                    slug: linearRow.product_name?.toLowerCase().replace(/\s+/g, '-'),
+                    name: row.product_name,
+                    slug: row.product_name?.toLowerCase().replace(/\s+/g, '-'),
                 } as any,
             } as any;
         } else {
@@ -475,19 +476,19 @@ export default async function Page({ params, searchParams }: Props) {
     const priceCol = `price_${stateCode.toLowerCase()}`;
 
     if (skuIds.length > 0) {
-        const { data: linearRows } = await supabase
+        const { data: linearRows } = await (supabase as any)
             .from('cat_skus_linear')
             .select(`unit_json, ${priceCol}`)
             .eq('status', 'ACTIVE');
 
         // Find the first SKU with valid pricing data
-        const matchingRow = (linearRows || []).find((row: any) => {
+        const matchingRow = ((linearRows || []) as any[]).find((row: any) => {
             const unitId = row.unit_json?.id;
             const pm = row[priceCol];
             return unitId && skuIds.includes(unitId) && pm && Number(pm.rto_total) > 0;
         });
         const fallbackRow = !matchingRow
-            ? (linearRows || []).find((row: any) => {
+            ? ((linearRows || []) as any[]).find((row: any) => {
                   const unitId = row.unit_json?.id;
                   return unitId && skuIds.includes(unitId) && row[priceCol];
               })
@@ -512,7 +513,7 @@ export default async function Page({ params, searchParams }: Props) {
             };
             console.info('[PDP Pricing Debug]', {
                 stateCode,
-                district: resolvedLocation?.district || 'ALL',
+                district: pricingContext.district || 'ALL',
                 priceSource: `cat_skus_linear.${priceCol}`,
                 matchType: matchingRow ? 'strict_rto_positive' : 'fallback_any_price',
                 skuMatched: priceRow.unit_json?.id || 'NONE',

@@ -1532,25 +1532,6 @@ export async function getQuotePdpUrl(quoteId: string) {
 
         return { success: true, url: `/app/${brand?.slug}/${model.slug}/${variant.slug}/quote` };
     }
-
-    // 5. Construct URL (canonical short slug)
-    const brandSlug = brand.slug;
-    const modelSlug = model.slug;
-    const rawVariantSlug = variant.slug;
-    let cleanVariantSlug = rawVariantSlug;
-
-    if (rawVariantSlug?.startsWith(`${brandSlug}-${modelSlug}-`)) {
-        cleanVariantSlug = rawVariantSlug.replace(`${brandSlug}-${modelSlug}-`, '');
-    } else if (rawVariantSlug?.startsWith(`${modelSlug}-`)) {
-        cleanVariantSlug = rawVariantSlug.replace(`${modelSlug}-`, '');
-    } else if (rawVariantSlug?.startsWith(`${brandSlug}-`)) {
-        cleanVariantSlug = rawVariantSlug.replace(`${brandSlug}-`, '');
-    }
-
-    if (!cleanVariantSlug) cleanVariantSlug = rawVariantSlug;
-
-    const url = `/store/${brandSlug}/${modelSlug}/${cleanVariantSlug}?quoteId=${quoteId}&leadId=${quote.lead_id}`;
-    return { success: true, url };
 }
 
 // --- QUOTE EDITOR DASHBOARD ACTIONS ---
@@ -4399,6 +4380,80 @@ export async function getBankSchemes(bankId: string) {
     }
 }
 
+// --- ACCOUNTING ---
+
+export async function getBankAccounts(tenantId?: string) {
+    const supabase = await createClient();
+    let query = supabase.from('id_bank_accounts').select('*').order('is_primary', { ascending: false });
+
+    if (tenantId) {
+        query = query.eq('tenant_id', tenantId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+        console.error('getBankAccounts Error:', error);
+        return [];
+    }
+    return data || [];
+}
+
+export async function getAccountingData(tenantId: string) {
+    const supabase = await createClient();
+
+    // 1. Fetch Receipts (Inflow)
+    const { data: receipts, error: receiptsError } = await supabase
+        .from('crm_receipts' as any)
+        .select('*, member:id_members(full_name)')
+        .eq('tenant_id', tenantId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+
+    // 2. Fetch Payments (Outflow) - Using any cast as crm_payments might not be in types yet
+    const { data: payments, error: paymentsError } = await supabase
+        .from('crm_payments' as any)
+        .select('*, member:id_members(full_name)')
+        .eq('tenant_id', tenantId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+
+    if (receiptsError || paymentsError) {
+        console.error('getAccountingData Error:', receiptsError || paymentsError);
+    }
+
+    // 3. Map to unified transaction format
+    const transactions = [
+        ...(receipts || []).map((r: any) => ({
+            id: r.id,
+            type: 'INFLOW',
+            amount: r.amount,
+            method: r.method,
+            status: r.status,
+            date: r.created_at,
+            displayId: r.display_id,
+            description: `Payment from ${r.member?.full_name || 'Customer'}`,
+            entityId: r.lead_id || r.member_id,
+        })),
+        ...(payments || []).map((p: any) => ({
+            id: p.id,
+            type: 'OUTFLOW',
+            amount: p.amount,
+            method: p.method,
+            status: p.status,
+            date: p.created_at,
+            displayId: p.display_id,
+            description: p.provider_data?.description || `Payment to ${p.member?.full_name || 'Vendor'}`,
+            entityId: p.lead_id || p.member_id,
+        })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return {
+        transactions,
+        receiptsCount: receipts?.length || 0,
+        paymentsCount: payments?.length || 0,
+    };
+}
+
 /**
  * Fetches dealership info for the PDF quote.
  */
@@ -4571,7 +4626,7 @@ export async function getAlternativeRecommendations(variantId: string) {
     const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
 
     if (useLinear) {
-        const { data: currentLinear } = await adminClient
+        const { data: currentLinear } = await (adminClient as any)
             .from('cat_skus_linear')
             .select('product_id, price_base')
             .eq('variant_id', variantId)
@@ -4583,7 +4638,7 @@ export async function getAlternativeRecommendations(variantId: string) {
             const minPrice = basePrice * 0.8;
             const maxPrice = basePrice * 1.2;
 
-            const { data: alternatives } = await adminClient
+            const { data: alternatives } = await (adminClient as any)
                 .from('cat_skus_linear')
                 .select('variant_id, variant_name, brand_name, price_base, image_url')
                 .eq('product_id', currentLinear.product_id)
@@ -4595,7 +4650,7 @@ export async function getAlternativeRecommendations(variantId: string) {
             if (alternatives && alternatives.length > 0) {
                 // Return unique variants (cat_skus_linear has SKU rows, so we take the first of each variant)
                 const uniqueVariants = new Map();
-                alternatives.forEach(a => {
+                alternatives.forEach((a: any) => {
                     if (!uniqueVariants.has(a.variant_id)) {
                         uniqueVariants.set(a.variant_id, {
                             id: a.variant_id,

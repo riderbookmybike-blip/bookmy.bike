@@ -1500,7 +1500,7 @@ export async function getExtractorInfo(): Promise<{
 export async function getIngestionIgnoreRules(params: { brandId: string }) {
     const { brandId } = params;
     const supabase = await createServerClient();
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
         .from('cat_ingestion_ignore_rules')
         .select('id, pattern_type, pattern_value, active')
         .eq('brand_id', brandId)
@@ -1524,7 +1524,7 @@ export async function saveIngestionIgnoreRule(params: {
         throw new Error('Cannot ignore by type: category is missing.');
     }
     const supabase = await createServerClient();
-    const { data: existing, error: lookupError } = await supabase
+    const { data: existing, error: lookupError } = await (supabase as any)
         .from('cat_ingestion_ignore_rules')
         .select('id')
         .eq('brand_id', brandId)
@@ -1539,7 +1539,7 @@ export async function saveIngestionIgnoreRule(params: {
     }
 
     if (existing?.id) {
-        const { error: updateError } = await supabase
+        const { error: updateError } = await (supabase as any)
             .from('cat_ingestion_ignore_rules')
             .update({
                 tenant_id: tenantId || null,
@@ -1553,7 +1553,7 @@ export async function saveIngestionIgnoreRule(params: {
         return { success: true };
     }
 
-    const { error: insertError } = await supabase.from('cat_ingestion_ignore_rules').insert({
+    const { error: insertError } = await (supabase as any).from('cat_ingestion_ignore_rules').insert({
         brand_id: brandId,
         tenant_id: tenantId || null,
         pattern_type: patternType,
@@ -1571,7 +1571,10 @@ export async function saveIngestionIgnoreRule(params: {
 export async function deactivateIngestionIgnoreRule(params: { ruleId: string }) {
     const { ruleId } = params;
     const supabase = await createServerClient();
-    const { error } = await supabase.from('cat_ingestion_ignore_rules').update({ active: false }).eq('id', ruleId);
+    const { error } = await (supabase as any)
+        .from('cat_ingestion_ignore_rules')
+        .update({ active: false })
+        .eq('id', ruleId);
 
     if (error) {
         console.error('Failed to deactivate ingestion ignore rule:', error);
