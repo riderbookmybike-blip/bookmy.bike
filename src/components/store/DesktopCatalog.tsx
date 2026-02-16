@@ -700,7 +700,7 @@ export const DesktopCatalog = ({
 
     const colorOptions = useMemo(() => {
         if (!smartModel || !smartVariant) return [];
-        const map = new Map<string, { name: string; hex?: string; count: number }>();
+        const map = new Map<string, { name: string; hex?: string; finish?: string; count: number }>();
         results
             .filter(
                 v => normalize(v.model) === normalize(smartModel) && normalize(v.variant) === normalize(smartVariant)
@@ -712,7 +712,7 @@ export const DesktopCatalog = ({
                     if (existing) {
                         existing.count += 1;
                     } else {
-                        map.set(key, { name: c.name, hex: c.hexCode, count: 1 });
+                        map.set(key, { name: c.name, hex: c.hexCode, finish: c.finish, count: 1 });
                     }
                 });
             });
@@ -890,8 +890,15 @@ export const DesktopCatalog = ({
                                                                     : ''
                                                             }`}
                                                             style={{ background: c.hex || '#999' }}
-                                                            title={c.name}
-                                                        />
+                                                            title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
+                                                        >
+                                                            {c.finish?.toUpperCase() === 'GLOSSY' && (
+                                                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                            )}
+                                                            {c.finish?.toUpperCase() === 'MATTE' && (
+                                                                <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                                                            )}
+                                                        </button>
                                                     ))}
                                                     {smartColor && (
                                                         <button

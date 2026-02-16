@@ -11,10 +11,13 @@
  * 2. Link downloaded assets to cat_assets with sha256.
  * 3. Provide dry-run mode for QA.
  * 4. Field-level merge with "never overwrite" protection.
+ * 5. Dual-write to cat_skus_linear (Phase 1).
  */
 
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { segregateSpecs, generateSlug } from './catalogUtils';
+import crypto from 'crypto';
+import { validateCatalogRow } from '@/lib/validation/catalogSpecs';
+import { normalizeSpecsForLinear, segregateSpecs, generateSlug } from './catalogUtils';
 import type { Provenance, ExtractedModel, ExtractedVariant, ExtractedColor } from './scraperAction';
 import {
     downloadBatch,
@@ -382,6 +385,16 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
         }
     }
 
+    // ─── Phase 1 Dual-Write: Post-Sync Refresh ────────────────────────────
+    if (result.success && !dryRun) {
+        try {
+            await refreshLinearCatalogForBrand(supabase, plan.brand_id);
+        } catch (e: any) {
+            result.errors.push(`Linear Catalog Sync Error: ${e.message}`);
+            // Note: We don't fail the whole sync yet, but we log the error.
+        }
+    }
+
     if (result.errors.length > 0) result.success = false;
     return result;
 }
@@ -639,4 +652,176 @@ export async function linkAssets(params: {
         }
     }
     return { linked, errors };
+}
+
+/**
+ * Phase 1 Dual-Write Helper: Re-flattens a brand's SKUs into cat_skus_linear.
+ */
+export async function refreshLinearCatalogForBrand(supabase: any, brandId: string) {
+    const { data: allItems, error: itemsError } = await supabase.from('cat_items').select('*').eq('brand_id', brandId);
+
+    if (itemsError) throw itemsError;
+
+    const { data: brand, error: brandError } = await supabase.from('cat_brands').select('*').eq('id', brandId).single();
+
+    if (brandError) throw brandError;
+
+    const { data: prices, error: pricesError } = await supabase
+        .from('cat_price_state')
+        .select('*')
+        .eq('is_active', true);
+
+    if (pricesError) throw pricesError;
+
+    const { data: assets, error: assetsError } = await supabase.from('cat_assets').select('*');
+
+    if (assetsError) throw assetsError;
+
+    const itemsMap = new Map(allItems.map((i: any) => [i.id, i]));
+    const pricesMap = new Map();
+    prices.forEach((p: any) => {
+        if (!pricesMap.has(p.vehicle_color_id)) pricesMap.set(p.vehicle_color_id, []);
+        pricesMap.get(p.vehicle_color_id).push(p);
+    });
+
+    const assetsMap = new Map();
+    assets.forEach((a: any) => {
+        if (!assetsMap.has(a.item_id)) assetsMap.set(a.item_id, []);
+        assetsMap.get(a.item_id).push(a);
+    });
+
+    const leafNodes = allItems.filter((i: any) => i.type === 'SKU' || i.type === 'UNIT');
+
+    const linearRows = [];
+
+    for (const leaf of leafNodes as any[]) {
+        let current: any = leaf;
+        let unit: any = null;
+        let variant: any = null;
+        let product: any = null;
+
+        // Traverse upwards to find parents
+        let pId = current.parent_id;
+        while (pId) {
+            const parent: any = itemsMap.get(pId);
+            if (!parent) break;
+
+            if (parent.type === 'UNIT') unit = parent;
+            else if (parent.type === 'VARIANT') variant = parent;
+            else if (parent.type === 'PRODUCT') product = parent;
+
+            pId = parent.parent_id;
+        }
+
+        if (!product) continue;
+
+        const effectiveVariant = variant || product;
+        const effectiveUnit = { ...(unit || leaf) };
+
+        // Attach prices
+        const unitPrices = pricesMap.get(leaf.id) || [];
+        (effectiveUnit as any).prices = unitPrices;
+
+        const allRegionalPrices = unitPrices
+            .map((p: any) => parseFloat(p.ex_showroom_price))
+            .filter((p: number) => p > 0);
+        const basePrice = allRegionalPrices.length > 0 ? Math.min(...allRegionalPrices) : leaf.price_base || 0;
+
+        const galleryUrls = (
+            leaf.gallery_urls ||
+            unit?.gallery_urls ||
+            variant?.gallery_urls ||
+            product.gallery_urls ||
+            []
+        ).slice(0, 20);
+
+        // Merge specs hierarchically: Product -> Variant -> Unit -> Leaf
+        const rawSpecs = {
+            ...(product as any).specs,
+            ...(effectiveVariant as any).specs,
+            ...(unit as any)?.specs,
+            ...(leaf as any).specs,
+        };
+        const normalizedSpecs = normalizeSpecsForLinear(rawSpecs);
+
+        const row = {
+            sku_code:
+                leaf.sku_code ||
+                (leaf.type === 'SKU' ? `SKU-${leaf.id.substring(0, 8)}` : `UNIT-${leaf.id.substring(0, 8)}`),
+            brand_id: brandId,
+            brand_name: brand.name,
+            type_name: (product as any).category || 'VEHICLE',
+            product_name: product.name,
+            variant_name: effectiveVariant.name,
+            unit_name: effectiveUnit.name,
+            price_base: basePrice,
+            status: leaf.status === 'DRAFT' ? 'INACTIVE' : (leaf.status as any),
+            image_url: leaf.image_url || unit?.image_url || variant?.image_url || product.image_url,
+            gallery_urls: galleryUrls,
+            assets_json: assetsMap.get(leaf.id) || [],
+            specs: normalizedSpecs,
+            brand_json: brand,
+            product_json: product,
+            variant_json: effectiveVariant,
+            unit_json: effectiveUnit,
+            checksum_md5: '',
+            // Populate price_mh cache from MH active prices
+            price_mh: (() => {
+                const mhPrice = unitPrices.find((p: any) => p.state_code === 'MH' && p.is_active);
+                if (!mhPrice) return null;
+                return {
+                    ex_showroom: Number(mhPrice.ex_showroom_price) || 0,
+                    gst_rate: Number(mhPrice.gst_rate) || 0,
+                    hsn_code: mhPrice.hsn_code || '',
+                    rto_total: Number(mhPrice.rto_total) || 0,
+                    rto: mhPrice.rto || null,
+                    insurance_total: Number(mhPrice.insurance_total) || 0,
+                    insurance: mhPrice.insurance || null,
+                    on_road_price: Number(mhPrice.on_road_price) || 0,
+                    is_popular: mhPrice.is_popular || false,
+                };
+            })(),
+        };
+
+        // Enforce allowed spec keys/units and gallery cap at app-layer; DB CHECK will also enforce
+        try {
+            validateCatalogRow({
+                sku_code: row.sku_code,
+                brand_name: row.brand_name,
+                type_name: row.type_name,
+                product_name: row.product_name,
+                variant_name: row.variant_name,
+                unit_name: row.unit_name,
+                price_base: row.price_base,
+                status: row.status,
+                specs: normalizedSpecs,
+                gallery: row.gallery_urls?.map((url: string) => ({ url })),
+            });
+        } catch (e: any) {
+            console.error('Spec/gallery validation failed for', row.sku_code, e?.message);
+            throw new Error(`Validation failed for ${row.sku_code}: ${e?.message}`);
+        }
+
+        row.specs = normalizedSpecs;
+
+        const canonicalState = JSON.stringify({
+            brand: row.brand_json,
+            product: row.product_json,
+            variant: row.variant_json,
+            unit: row.unit_json,
+            price: row.price_base,
+            assets: row.assets_json,
+        });
+        row.checksum_md5 = crypto.createHash('md5').update(canonicalState).digest('hex');
+
+        linearRows.push(row);
+    }
+
+    if (linearRows.length > 0) {
+        const { error: upsertError } = await supabase
+            .from('cat_skus_linear')
+            .upsert(linearRows, { onConflict: 'sku_code' });
+
+        if (upsertError) throw upsertError;
+    }
 }

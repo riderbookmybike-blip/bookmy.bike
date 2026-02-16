@@ -303,13 +303,12 @@ export default async function Page({ params, searchParams }: Props) {
     console.log('PDP Debug: Pricing Context:', pricingContext);
 
     // 2. Fetch Variant from Unified Catalog
-    // We fetch by slug and ensure it's a VARIANT type
-    // Construct potential slugs to search for
+    // Slug convention: variant slug = "{product-slug}-{variant-name}"
+    // e.g., "fascino-125-fi-hybrid-disc"
+    // The [model] URL param IS the product slug, so we can construct directly.
     const possibleSlugs = [
-        resolvedParams.variant, // "drum"
-        `${resolvedParams.model}-${resolvedParams.variant}`, // "jupiter-drum"
-        `${resolvedParams.make}-${resolvedParams.model}-${resolvedParams.variant}`, // "tvs-jupiter-drum"
-        `${resolvedParams.make}-${resolvedParams.model}-${resolvedParams.variant}`.toLowerCase(), // Ensure lower case
+        `${resolvedParams.model}-${resolvedParams.variant}`, // "fascino-125-fi-hybrid-disc" (primary)
+        resolvedParams.variant, // "disc" (simple fallback)
     ];
 
     const { data: variantItem, error } = await supabase
@@ -325,8 +324,45 @@ export default async function Page({ params, searchParams }: Props) {
         .eq('type', 'VARIANT')
         .maybeSingle();
 
-    if (!variantItem || error) {
-        console.error('PDP Fetch Error:', error);
+    let resolvedVariant = variantItem as unknown as CatalogItem | null;
+    let fetchError: any = error;
+
+    if (!resolvedVariant) {
+        // Fallback: try linear catalog by names (make/model/variant)
+        const normalizedModel = resolvedParams.model.replace(/-/g, ' ');
+        const normalizedVariant = resolvedParams.variant.replace(/-/g, ' ');
+
+        const { data: linearRow, error: linearError } = await supabase
+            .from('cat_skus_linear')
+            .select(
+                'id, sku_code, brand_name, product_name, variant_name, unit_name, brand_json, product_json, variant_json, unit_json'
+            )
+            .ilike('product_name', normalizedModel)
+            .ilike('variant_name', normalizedVariant)
+            .limit(1)
+            .maybeSingle();
+
+        if (linearRow) {
+            resolvedVariant = {
+                id: linearRow.variant_json?.id || linearRow.id,
+                name: linearRow.variant_name,
+                slug: linearRow.variant_name?.toLowerCase().replace(/\s+/g, '-'),
+                price_base: linearRow.unit_json?.price_base || 0,
+                specs: linearRow.variant_json?.specs || {},
+                parent_id: linearRow.product_json?.id,
+                brand: { name: linearRow.brand_name, slug: linearRow.brand_name?.toLowerCase().replace(/\s+/g, '-') },
+                parent: {
+                    name: linearRow.product_name,
+                    slug: linearRow.product_name?.toLowerCase().replace(/\s+/g, '-'),
+                } as any,
+            } as any;
+        } else {
+            fetchError = linearError || error || { message: 'No matching variant in cat_items or cat_skus_linear' };
+        }
+    }
+
+    if (!resolvedVariant) {
+        console.error('PDP Fetch Error:', fetchError);
         return (
             <div className="min-h-screen flex items-center justify-center bg-black bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black text-white p-20 text-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
@@ -351,7 +387,9 @@ export default async function Page({ params, searchParams }: Props) {
                         PRODUCT <span className="text-red-500">NOT FOUND</span>
                     </h1>
                     <p className="text-slate-400 uppercase tracking-widest font-bold text-xs leading-relaxed">
-                        {error ? error.message : 'The requested configuration is currently unavailable in our catalog.'}
+                        {fetchError
+                            ? fetchError.message
+                            : 'The requested configuration is currently unavailable in our catalog.'}
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
                         <a
@@ -384,17 +422,11 @@ export default async function Page({ params, searchParams }: Props) {
     const makeSlug = (item.brand as any)?.slug || slugify(item.brand?.name || resolvedParams.make || '');
     const modelSlug = item.parent?.slug || slugify(item.parent?.name || resolvedParams.model || '');
     const rawVariantSlug = item.slug || slugify(item.name || resolvedParams.variant || '');
-    let cleanVariantSlug = rawVariantSlug;
-
-    if (rawVariantSlug?.startsWith(`${makeSlug}-${modelSlug}-`)) {
-        cleanVariantSlug = rawVariantSlug.replace(`${makeSlug}-${modelSlug}-`, '');
-    } else if (rawVariantSlug?.startsWith(`${modelSlug}-`)) {
-        cleanVariantSlug = rawVariantSlug.replace(`${modelSlug}-`, '');
-    } else if (rawVariantSlug?.startsWith(`${makeSlug}-`)) {
-        cleanVariantSlug = rawVariantSlug.replace(`${makeSlug}-`, '');
-    }
-
-    if (!cleanVariantSlug) cleanVariantSlug = rawVariantSlug;
+    // Strip model prefix from variant slug to get just the variant portion
+    // e.g., "fascino-125-fi-hybrid-disc" → "disc"
+    const cleanVariantSlug = rawVariantSlug.startsWith(`${modelSlug}-`)
+        ? rawVariantSlug.slice(modelSlug.length + 1)
+        : rawVariantSlug;
 
     const canonicalPath = `/store/${makeSlug}/${modelSlug}/${cleanVariantSlug}`;
     const currentPath = `/store/${resolvedParams.make}/${resolvedParams.model}/${resolvedParams.variant}`;

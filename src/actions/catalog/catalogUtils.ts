@@ -121,9 +121,60 @@ export function getCategoryForField(field: string): string {
     return 'General';
 }
 
-export function generateSlug(brandSlug: string, name: string): string {
-    return `${brandSlug}-${name}`
+/**
+ * Step-down structural keys into the strict { value, unit } format required by cat_skus_linear.
+ */
+export function normalizeSpecsForLinear(rawSpecs: Record<string, any>): Record<string, any> {
+    const specs: Record<string, any> = {};
+
+    const mapping: Record<string, { key: string; unit: string }> = {
+        engine_cc: { key: 'cc', unit: 'cc' },
+        max_power: { key: 'power_bhp', unit: 'bhp' },
+        max_torque: { key: 'torque_nm', unit: 'nm' },
+        range_per_charge: { key: 'range_km', unit: 'km' },
+        battery_capacity: { key: 'battery_kwh', unit: 'kWh' },
+        kerb_weight: { key: 'kerb_weight_kg', unit: 'kg' },
+    };
+
+    for (const [legacyKey, config] of Object.entries(mapping)) {
+        const val = rawSpecs[legacyKey];
+        if (val !== undefined && val !== null) {
+            const numeric = typeof val === 'number' ? val : parseFloat(val.toString());
+            if (!isNaN(numeric)) {
+                specs[config.key] = { value: numeric, unit: config.unit };
+            }
+        }
+    }
+
+    if (rawSpecs.transmission_type) {
+        specs.transmission = rawSpecs.transmission_type;
+    }
+
+    // Infer finish if it's a color SKU/Unit
+    const hasHex = rawSpecs.hex_primary || rawSpecs.hex_code;
+    if (hasHex) {
+        specs.finish = normalizeFinish(rawSpecs.Color || rawSpecs.color || '', rawSpecs);
+    }
+
+    return specs;
+}
+
+/**
+ * Infer finish (Glossy/Matte) from name or specs.
+ */
+export function normalizeFinish(name: string, rawSpecs: Record<string, any> = {}): 'GLOSSY' | 'MATTE' {
+    const combined = `${name} ${rawSpecs.Finish || ''} ${rawSpecs.finish || ''}`.toUpperCase();
+    if (combined.includes('MATTE') || combined.includes('MATT')) return 'MATTE';
+    if (combined.includes('GLOSS')) return 'GLOSSY';
+    return 'GLOSSY'; // Default to GLOSSY per user preference for rich aesthetics
+}
+
+export function generateSlug(_brandSlug: string, name: string): string {
+    // NOTE: Brand prefix is NOT included in the slug.
+    // The brand is already a separate URL segment: /store/[make]/[slug]
+    return name
         .toLowerCase()
+        .replace(/\+/g, 'plus')
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '');

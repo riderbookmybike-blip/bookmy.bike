@@ -29,52 +29,88 @@ export async function getProductBySlug(
         `${decodedModel}-${decodedVariant}`,
     ];
 
-    // First, find the family (model) by brand and model slug
-    const { data: familyData, error: familyError } = await supabase
-        .from('cat_items')
-        .select(
-            `
-            id, type, name, slug, specs, price_base, brand_id, category,
-            brand:cat_brands(name, logo_svg),
-            children:cat_items!parent_id(
-                id,
-                type,
-                name,
-                slug,
-                specs,
-                price_base,
-                category,
-                parent:cat_items!parent_id(name, slug),
-                position,
-                skus:cat_items!parent_id(
+    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
+    let familyData: any = null;
+
+    if (useLinear) {
+        // Fetch from linear catalog
+        const { data: linearRows, error: linearError } = await supabase
+            .from('cat_skus_linear')
+            .select('*')
+            .eq('product_json->>slug', decodedModel)
+            .eq('status', 'ACTIVE');
+
+        if (linearError || !linearRows || linearRows.length === 0) {
+            console.error('[getProductBySlug] Linear lookup failed:', linearError);
+            return null;
+        }
+
+        // Reconstruct hierarchy for the specific variant match
+        familyData = {
+            ...(linearRows[0].product_json as any),
+            brand: linearRows[0].brand_json,
+            children: linearRows.map(row => ({
+                ...(row.variant_json as any),
+                skus: [
+                    {
+                        ...(row.unit_json as any),
+                        prices: (row.unit_json as any)?.prices || [],
+                        image_url: row.image_url,
+                        gallery_urls: (row as any).gallery_urls || [],
+                        assets: (row as any).assets_json || [],
+                    },
+                ],
+            })),
+        };
+    } else {
+        // Legacy fetch
+        const { data, error } = await supabase
+            .from('cat_items')
+            .select(
+                `
+                id, type, name, slug, specs, price_base, brand_id, category,
+                brand:cat_brands(name, logo_svg),
+                children:cat_items!parent_id(
                     id,
                     type,
-                    status,
+                    name,
+                    slug,
+                    specs,
                     price_base,
                     category,
-                    specs,
-                    is_primary,
-                    image_url,
-                    gallery_urls,
-                    video_url,
-                    zoom_factor,
-                    is_flipped,
-                    offset_x,
-                    assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                    prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                    parent:cat_items!parent_id(name, slug),
+                    position,
+                    skus:cat_items!parent_id(
+                        id,
+                        type,
+                        status,
+                        price_base,
+                        category,
+                        specs,
+                        is_primary,
+                        image_url,
+                        gallery_urls,
+                        video_url,
+                        zoom_factor,
+                        is_flipped,
+                        offset_x,
+                        assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
+                        prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                    )
                 )
+            `
             )
-        `
-        )
-        .eq('type', 'PRODUCT')
-        .eq('status', 'ACTIVE')
-        .eq('slug', decodedModel)
-        .eq('category', 'VEHICLE')
-        .single();
+            .eq('type', 'PRODUCT')
+            .eq('status', 'ACTIVE')
+            .eq('slug', decodedModel)
+            .eq('category', 'VEHICLE')
+            .single();
 
-    if (familyError || !familyData) {
-        console.error('[getProductBySlug] Family not found:', familyError);
-        return null;
+        if (error || !data) {
+            console.error('[getProductBySlug] Family not found:', error);
+            return null;
+        }
+        familyData = data;
     }
 
     // Find the specific variant within the family
@@ -132,14 +168,13 @@ export async function getProductBySlug(
         children: matchedVariant ? [matchedVariant] : variants.length > 0 ? [variants[0]] : [],
     };
 
-    // Use the existing mapper to transform the data
-    const mappedItems = mapCatalogItems([filteredFamily], ruleData || [], insuranceRuleData || [], {
-        stateCode,
-        userLat: null,
-        userLng: null,
-        userDistrict,
-        offers: offerData || [],
-    });
+    // SOT Phase 3: Pass empty arrays for rules - pricing comes from JSON columns
+    const mappedItems = mapCatalogItems(
+        [filteredFamily] as any[], // Cast filteredFamily to any[]
+        [], // ruleData deprecated
+        [], // insuranceRuleData deprecated
+        { stateCode, userLat: null, userLng: null, userDistrict, offers: offerData || [], requireEligibility: false }
+    );
 
     if (mappedItems.length === 0) {
         console.error('[getProductBySlug] Mapping returned no items');

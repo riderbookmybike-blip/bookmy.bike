@@ -299,18 +299,28 @@ export async function getCustomerHistory(customerId: string) {
 
 export async function getCatalogModels() {
     const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('cat_items')
-        .select('name')
-        .eq('type', 'PRODUCT')
-        .eq('status', 'ACTIVE');
+    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
 
-    if (error) {
-        console.error('Error fetching catalog models:', error);
-        return [];
+    if (useLinear) {
+        const { data, error } = await supabase.from('cat_skus_linear').select('product_name').eq('status', 'ACTIVE');
+        if (error) {
+            console.error('Error fetching catalog models from linear:', error);
+            return [];
+        }
+        return [...new Set(data.map(i => i.product_name))];
+    } else {
+        const { data, error } = await supabase
+            .from('cat_items')
+            .select('name')
+            .eq('type', 'PRODUCT')
+            .eq('status', 'ACTIVE');
+
+        if (error) {
+            console.error('Error fetching catalog models:', error);
+            return [];
+        }
+        return data.map(i => i.name);
     }
-
-    return data.map(i => i.name);
 }
 
 // Helper to format text as Title Case
@@ -1471,40 +1481,56 @@ export async function getQuotePdpUrl(quoteId: string) {
         return { success: false, error: 'Quote or Variant not found' };
     }
 
-    // 2. Fetch Variant Item (cat_items) to get slug and parent_id (Model)
-    const { data: variant, error: variantError } = await supabase
-        .from('cat_items')
-        .select('slug, parent_id')
-        .eq('id', quote.variant_id)
-        .single();
+    // 2. Resolve Slugs
+    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
 
-    if (variantError || !variant || !variant.parent_id) {
-        console.error('getQuotePdpUrl Error: Variant not found', variantError);
-        return { success: false, error: 'Variant not found in catalog' };
-    }
+    if (useLinear) {
+        const { data: linearRow, error: linearError } = await supabase
+            .from('cat_skus_linear')
+            .select('brand_json, product_json, variant_json')
+            .eq('variant_id', quote.variant_id)
+            .limit(1)
+            .maybeSingle();
 
-    // 3. Fetch Model Item (cat_items) to get slug and brand_id
-    const { data: model, error: modelError } = await supabase
-        .from('cat_items')
-        .select('slug, brand_id')
-        .eq('id', variant.parent_id)
-        .single();
+        if (linearError || !linearRow) {
+            console.error('getQuotePdpUrl Linear Error:', linearError);
+            return { success: false, error: 'Product data not found in linear catalog' };
+        }
 
-    if (modelError || !model || !model.brand_id) {
-        console.error('getQuotePdpUrl Error: Model not found', modelError);
-        return { success: false, error: 'Model not found in catalog' };
-    }
+        const brandSlug = (linearRow.brand_json as any).slug;
+        const modelSlug = (linearRow.product_json as any).slug;
+        const variantSlug = (linearRow.variant_json as any).slug;
 
-    // 4. Fetch Brand (cat_brands) to get slug
-    const { data: brand, error: brandError } = await supabase
-        .from('cat_brands')
-        .select('slug')
-        .eq('id', model.brand_id)
-        .single();
+        if (!brandSlug || !modelSlug || !variantSlug) {
+            return { success: false, error: 'Incomplete slugs in linear catalog' };
+        }
 
-    if (brandError || !brand) {
-        console.error('getQuotePdpUrl Error: Brand not found', brandError);
-        return { success: false, error: 'Brand not found in catalog' };
+        return { success: true, url: `/app/${brandSlug}/${modelSlug}/${variantSlug}/quote` };
+    } else {
+        // Legacy fallback
+        const { data: variant, error: variantError } = await supabase
+            .from('cat_items')
+            .select('slug, parent_id')
+            .eq('id', quote.variant_id)
+            .single();
+
+        if (variantError || !variant || !variant.parent_id) {
+            return { success: false, error: 'Variant not found' };
+        }
+
+        const { data: model, error: modelError } = await supabase
+            .from('cat_items')
+            .select('slug, brand_id')
+            .eq('id', variant.parent_id)
+            .single();
+
+        if (modelError || !model || !model.brand_id) {
+            return { success: false, error: 'Model not found' };
+        }
+
+        const { data: brand } = await supabase.from('cat_brands').select('slug').eq('id', model.brand_id).single();
+
+        return { success: true, url: `/app/${brand?.slug}/${model.slug}/${variant.slug}/quote` };
     }
 
     // 5. Construct URL (canonical short slug)
@@ -3521,6 +3547,24 @@ export async function getQuoteByDisplayId(
         const resolved = { brand: '', model: '', variant: '' };
         if (!skuId) return resolved;
 
+        const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
+
+        if (useLinear) {
+            const { data: linearRow } = await supabase
+                .from('cat_skus_linear')
+                .select('brand_name, product_name, variant_name')
+                .eq('variant_id', skuId) // variant_id matches SKU id in linear table for single-unit SKUs
+                .limit(1)
+                .maybeSingle();
+
+            if (linearRow) {
+                resolved.brand = linearRow.brand_name;
+                resolved.model = linearRow.product_name;
+                resolved.variant = linearRow.variant_name;
+                return resolved;
+            }
+        }
+
         const { data: sku } = await supabase
             .from('cat_items')
             .select('id, name, parent_id, type')
@@ -3582,60 +3626,84 @@ export async function getQuoteByDisplayId(
 
     const itemId = (quote.color_id || quote.variant_id) as string | null;
     if ((!resolvedImageUrl || Object.keys(vehicleSpecs).length === 0 || !itemHex) && itemId) {
-        const { data: item } = await supabase
-            .from('cat_items')
-            .select('image_url, specs, type, parent_id')
-            .eq('id', itemId)
-            .maybeSingle();
+        const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
 
-        if (item) {
-            if (!resolvedImageUrl && item.image_url) {
-                resolvedImageUrl = item.image_url;
+        if (useLinear) {
+            const { data: linearRow } = await supabase
+                .from('cat_skus_linear')
+                .select('image_url, product_json, variant_json, unit_json')
+                .eq('variant_id', itemId)
+                .limit(1)
+                .maybeSingle();
+
+            if (linearRow) {
+                if (!resolvedImageUrl && linearRow.image_url) {
+                    resolvedImageUrl = linearRow.image_url;
+                }
+                vehicleSpecs = {
+                    ...((linearRow.product_json as any)?.specs || {}),
+                    ...((linearRow.variant_json as any)?.specs || {}),
+                    ...((linearRow.unit_json as any)?.specs || {}),
+                };
             }
-            if (item.specs) {
-                // Merge DB specs as source of truth (SKU/Variant/Model)
-                let modelSpecs: any = {};
-                let variantSpecs: any = {};
-                let skuSpecs: any = item.specs || {};
+        }
 
-                if (item.type === 'SKU' && item.parent_id) {
-                    const { data: variantItem } = await supabase
-                        .from('cat_items')
-                        .select('specs, parent_id')
-                        .eq('id', item.parent_id)
-                        .maybeSingle();
-                    if (variantItem?.specs) variantSpecs = variantItem.specs;
+        if (!resolvedImageUrl || Object.keys(vehicleSpecs).length === 0) {
+            const { data: item } = await supabase
+                .from('cat_items')
+                .select('image_url, specs, type, parent_id')
+                .eq('id', itemId)
+                .maybeSingle();
 
-                    if (variantItem?.parent_id) {
+            if (item) {
+                if (!resolvedImageUrl && item.image_url) {
+                    resolvedImageUrl = item.image_url;
+                }
+                if (item.specs) {
+                    // Merge DB specs as source of truth (SKU/Variant/Model)
+                    let modelSpecs: any = {};
+                    let variantSpecs: any = {};
+                    let skuSpecs: any = item.specs || {};
+
+                    if (item.type === 'SKU' && item.parent_id) {
+                        const { data: variantItem } = await supabase
+                            .from('cat_items')
+                            .select('specs, parent_id')
+                            .eq('id', item.parent_id)
+                            .maybeSingle();
+                        if (variantItem?.specs) variantSpecs = variantItem.specs;
+
+                        if (variantItem?.parent_id) {
+                            const { data: modelItem } = await supabase
+                                .from('cat_items')
+                                .select('specs')
+                                .eq('id', variantItem.parent_id)
+                                .maybeSingle();
+                            if (modelItem?.specs) modelSpecs = modelItem.specs;
+                        }
+                    } else if (item.type === 'VARIANT' && item.parent_id) {
                         const { data: modelItem } = await supabase
                             .from('cat_items')
                             .select('specs')
-                            .eq('id', variantItem.parent_id)
+                            .eq('id', item.parent_id)
                             .maybeSingle();
                         if (modelItem?.specs) modelSpecs = modelItem.specs;
                     }
-                } else if (item.type === 'VARIANT' && item.parent_id) {
-                    const { data: modelItem } = await supabase
-                        .from('cat_items')
-                        .select('specs')
-                        .eq('id', item.parent_id)
-                        .maybeSingle();
-                    if (modelItem?.specs) modelSpecs = modelItem.specs;
-                }
 
-                vehicleSpecs = { ...vehicleSpecs, ...modelSpecs, ...variantSpecs, ...skuSpecs };
+                    vehicleSpecs = { ...vehicleSpecs, ...modelSpecs, ...variantSpecs, ...skuSpecs };
 
-                if (!itemHex) {
-                    const s = vehicleSpecs as any;
-                    // Check all variants of hex fields in TVS/AUMS data
-                    itemHex =
-                        resolveHex(s?.color_hex) ||
-                        resolveHex(s?.colorHex) ||
-                        resolveHex(s?.hex_primary) ||
-                        resolveHex(s?.hex_code) ||
-                        resolveHex(s?.hexCode) ||
-                        resolveHex(s?.ColorHexCode) ||
-                        resolveHex(s?.fields?.ColorHexCode);
+                    if (!itemHex) {
+                        const s = vehicleSpecs as any;
+                        // Check all variants of hex fields in TVS/AUMS data
+                        itemHex =
+                            resolveHex(s?.color_hex) ||
+                            resolveHex(s?.colorHex) ||
+                            resolveHex(s?.hex_primary) ||
+                            resolveHex(s?.hex_code) ||
+                            resolveHex(s?.hexCode) ||
+                            resolveHex(s?.ColorHexCode) ||
+                            resolveHex(s?.fields?.ColorHexCode);
+                    }
                 }
             }
         }
@@ -4486,7 +4554,51 @@ export async function getAlternativeRecommendations(variantId: string) {
         });
     }
 
-    // 2. Fallback: Get current variant's parent (FAMILY) and price
+    // 2. Fallback: Get alternative variants from linear catalog if enabled
+    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
+
+    if (useLinear) {
+        const { data: currentLinear } = await adminClient
+            .from('cat_skus_linear')
+            .select('product_id, price_base')
+            .eq('variant_id', variantId)
+            .limit(1)
+            .maybeSingle();
+
+        if (currentLinear && currentLinear.product_id) {
+            const basePrice = Number(currentLinear.price_base) || 0;
+            const minPrice = basePrice * 0.8;
+            const maxPrice = basePrice * 1.2;
+
+            const { data: alternatives } = await adminClient
+                .from('cat_skus_linear')
+                .select('variant_id, variant_name, brand_name, price_base, image_url')
+                .eq('product_id', currentLinear.product_id)
+                .neq('variant_id', variantId)
+                .gte('price_base', minPrice)
+                .lte('price_base', maxPrice)
+                .limit(3);
+
+            if (alternatives && alternatives.length > 0) {
+                // Return unique variants (cat_skus_linear has SKU rows, so we take the first of each variant)
+                const uniqueVariants = new Map();
+                alternatives.forEach(a => {
+                    if (!uniqueVariants.has(a.variant_id)) {
+                        uniqueVariants.set(a.variant_id, {
+                            id: a.variant_id,
+                            name: a.variant_name,
+                            brand: a.brand_name,
+                            price: Number(a.price_base),
+                            image: a.image_url,
+                        });
+                    }
+                });
+                return Array.from(uniqueVariants.values());
+            }
+        }
+    }
+
+    // 3. Fallback: Get current variant's parent (FAMILY) and price (Legacy)
     const { data: current, error: currentError } = await adminClient
         .from('cat_items')
         .select('parent_id, price_base, brand_id')
@@ -4498,7 +4610,7 @@ export async function getAlternativeRecommendations(variantId: string) {
         return [];
     }
 
-    // 3. Fallback: Fetch up to 3 sibling variants from the same FAMILY within ±20% price
+    // 4. Fallback: Fetch up to 3 sibling variants from the same FAMILY within ±20% price (Legacy)
     const basePrice = Number(current.price_base) || 0;
     const minPrice = basePrice * 0.8;
     const maxPrice = basePrice * 1.2;

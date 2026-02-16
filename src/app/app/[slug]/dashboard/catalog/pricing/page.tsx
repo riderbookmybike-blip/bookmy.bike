@@ -356,7 +356,10 @@ export default function PricingPage() {
                     variant: variant?.name || '',
                     color:
                         sku.specs?.color ||
-                        (variant?.name ? sku.name.replace(new RegExp(`^${variant.name}\\s*`, 'i'), '') : sku.name),
+                        unit?.name ||
+                        (variant?.name
+                            ? sku.name.replace(new RegExp(`^.*${variant.name}\\s*[-–]?\\s*`, 'i'), '')
+                            : sku.name),
                     engineCc: parseInt(sku.specs?.engine_cc || family?.specs?.engine_cc || '0'),
                     suitableFor: sku.specs?.suitable_for || '',
                     exShowroom: finalPrice,
@@ -783,16 +786,16 @@ export default function PricingPage() {
                   : `₹${totalValue.toLocaleString()}`;
 
         return (
-            <div className="max-w-[1600px] mx-auto space-y-12 mb-12">
+            <div className="max-w-full mx-auto space-y-4 mb-4">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 text-left">
-                    <div className="space-y-2 text-left">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-left">
+                    <div className="space-y-1 text-left">
                         <div className="flex items-center gap-3">
-                            <span className="px-3 py-1 bg-emerald-100 text-[10px] font-black text-emerald-600 uppercase tracking-widest rounded-full">
+                            <span className="px-2 py-0.5 bg-emerald-100 text-[8px] font-black text-emerald-600 uppercase tracking-widest rounded-full">
                                 {selectedCategory === 'ACCESSORY' ? 'Product Catalog' : 'Regulatory Ledger'}
                             </span>
                         </div>
-                        <h1 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                        <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
                             {selectedCategory === 'ACCESSORY' ? (
                                 <>
                                     Accessory <span className="text-emerald-600">Pricing</span>
@@ -817,33 +820,33 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {/* KPI Grid - Expanded to 6 items to match Studio */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
+                {/* KPI Grid - Compacted */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3">
                     {/* Brands/SKUs (Indigo) */}
                     <div
                         onClick={() => toggleQuickFilter('inventory')}
-                        className={`p-6 rounded-[2rem] bg-white dark:bg-slate-900 border shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                        className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
                             quickFilter === 'inventory'
-                                ? 'border-indigo-400 ring-2 ring-indigo-300/50'
+                                ? 'border-indigo-400 ring-1 ring-indigo-300/50'
                                 : 'border-slate-200 dark:border-white/10'
                         }`}
                     >
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Package size={64} className="text-indigo-600" />
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Package size={32} className="text-indigo-600" />
                         </div>
-                        <div className="flex items-center gap-2 mb-2 text-left">
-                            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-                                <Package size={20} className="fill-current" />
+                        <div className="flex items-center gap-2 mb-1 text-left">
+                            <div className="p-1 px-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                                <Package size={14} className="fill-current" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                                 Inventory
                             </span>
                         </div>
                         <div className="text-left">
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : tableSummary.count}
                             </div>
-                            <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">
+                            <div className="text-[8px] font-bold text-indigo-600 uppercase tracking-widest mt-0.5">
                                 Filtered SKUs
                             </div>
                         </div>
@@ -852,28 +855,28 @@ export default function PricingPage() {
                     {/* Live SKUs (Emerald) */}
                     <div
                         onClick={() => toggleQuickFilter('market_ready')}
-                        className={`p-6 rounded-[2rem] bg-white dark:bg-slate-900 border shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                        className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
                             quickFilter === 'market_ready'
-                                ? 'border-emerald-400 ring-2 ring-emerald-300/50'
+                                ? 'border-emerald-400 ring-1 ring-emerald-300/50'
                                 : 'border-slate-200 dark:border-white/10'
                         }`}
                     >
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <TrendingUp size={64} className="text-emerald-600" />
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <TrendingUp size={32} className="text-emerald-600" />
                         </div>
-                        <div className="flex items-center gap-2 mb-2 text-left">
-                            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                                <TrendingUp size={20} className="fill-current" />
+                        <div className="flex items-center gap-2 mb-1 text-left">
+                            <div className="p-1 px-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                                <TrendingUp size={14} className="fill-current" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                                 Market Ready
                             </span>
                         </div>
                         <div className="text-left">
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : liveSkus}
                             </div>
-                            <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">
+                            <div className="text-[8px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">
                                 Active Status
                             </div>
                         </div>
@@ -882,28 +885,28 @@ export default function PricingPage() {
                     {/* Draft/New (Amber) */}
                     <div
                         onClick={() => toggleQuickFilter('pipeline')}
-                        className={`p-6 rounded-[2rem] bg-white dark:bg-slate-900 border shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                        className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
                             quickFilter === 'pipeline'
-                                ? 'border-amber-400 ring-2 ring-amber-300/50'
+                                ? 'border-amber-400 ring-1 ring-amber-300/50'
                                 : 'border-slate-200 dark:border-white/10'
                         }`}
                     >
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Zap size={64} className="text-amber-600" />
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Zap size={32} className="text-amber-600" />
                         </div>
-                        <div className="flex items-center gap-2 mb-2 text-left">
-                            <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-                                <Zap size={20} className="fill-current" />
+                        <div className="flex items-center gap-2 mb-1 text-left">
+                            <div className="p-1 px-1.5 rounded-lg bg-amber-50 text-amber-600">
+                                <Zap size={14} className="fill-current" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                                 Pipeline
                             </span>
                         </div>
                         <div className="text-left">
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : draftSkus}
                             </div>
-                            <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-1">
+                            <div className="text-[8px] font-bold text-amber-600 uppercase tracking-widest mt-0.5">
                                 Pending Sync
                             </div>
                         </div>
@@ -912,76 +915,76 @@ export default function PricingPage() {
                     {/* Missing Price (Rose) */}
                     <div
                         onClick={() => toggleQuickFilter('critical')}
-                        className={`p-6 rounded-[2rem] bg-white dark:bg-slate-900 border shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                        className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
                             quickFilter === 'critical'
-                                ? 'border-rose-400 ring-2 ring-rose-300/50'
+                                ? 'border-rose-400 ring-1 ring-rose-300/50'
                                 : 'border-slate-200 dark:border-white/10'
                         }`}
                     >
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Target size={64} className="text-rose-600" />
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Target size={32} className="text-rose-600" />
                         </div>
-                        <div className="flex items-center gap-2 mb-2 text-left">
-                            <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
-                                <Target size={20} />
+                        <div className="flex items-center gap-2 mb-1 text-left">
+                            <div className="p-1 px-1.5 rounded-lg bg-rose-50 text-rose-600">
+                                <Target size={14} />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                                 Critical Fix
                             </span>
                         </div>
                         <div className="text-left">
                             <div
-                                className={`text-4xl font-black uppercase italic tracking-tighter ${missingPrices > 0 ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}
+                                className={`text-2xl font-black uppercase italic tracking-tighter ${missingPrices > 0 ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}
                             >
                                 {loading ? '-' : missingPrices}
                             </div>
-                            <div className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mt-1">
+                            <div className="text-[8px] font-bold text-rose-600 uppercase tracking-widest mt-0.5">
                                 Zero Price SKU
                             </div>
                         </div>
                     </div>
 
-                    {/* Inventory Value (Blue) - REPLACED Unsaved Data */}
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Sparkles size={64} className="text-blue-600" />
+                    {/* Inventory Value (Blue) */}
+                    <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left">
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Sparkles size={32} className="text-blue-600" />
                         </div>
-                        <div className="flex items-center gap-2 mb-2 text-left">
-                            <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                                <Sparkles size={20} />
+                        <div className="flex items-center gap-2 mb-1 text-left">
+                            <div className="p-1 px-1.5 rounded-lg bg-blue-50 text-blue-600">
+                                <Sparkles size={14} />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                                 Inventory Value
                             </span>
                         </div>
                         <div className="text-left">
-                            <div className="text-3xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter overflow-hidden text-ellipsis whitespace-nowrap">
+                            <div className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter overflow-hidden text-ellipsis whitespace-nowrap">
                                 {loading ? '-' : formattedValue}
                             </div>
-                            <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">
+                            <div className="text-[8px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">
                                 Sum Ex-Showroom
                             </div>
                         </div>
                     </div>
 
                     {/* Market (Slate) */}
-                    <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-100/50 dark:shadow-none flex flex-col justify-between h-40 group hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden text-left">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Landmark size={64} className="text-slate-400" />
+                    <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left">
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Landmark size={32} className="text-slate-400" />
                         </div>
-                        <div className="flex items-center gap-2 mb-2 text-left">
-                            <div className="p-2 rounded-xl bg-slate-100 text-slate-500">
-                                <Landmark size={20} />
+                        <div className="flex items-center gap-2 mb-1 text-left">
+                            <div className="p-1 px-1.5 rounded-lg bg-slate-100 text-slate-500">
+                                <Landmark size={14} />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                                 Current Market
                             </span>
                         </div>
                         <div className="text-left">
-                            <div className="text-4xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                                 {loading ? '-' : activeRuleObj?.stateCode || '--'}
                             </div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                            <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
                                 {activeRuleObj?.ruleName || 'Unknown Region'}
                             </div>
                         </div>
@@ -992,11 +995,11 @@ export default function PricingPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8 lg:p-12 overflow-auto transition-colors duration-500">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 lg:p-6 overflow-auto transition-colors duration-500">
             {renderHeader()}
 
-            <div className="max-w-[1600px] mx-auto">
-                <div className="bg-white dark:bg-slate-900/50 rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-2xl shadow-slate-100/50 dark:shadow-none overflow-hidden min-h-[600px] relative">
+            <div className="w-full">
+                <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/5 shadow-xl overflow-hidden min-h-[600px] relative">
                     {loading ? (
                         <div className="flex h-[600px] items-center justify-center">
                             <div className="flex flex-col items-center gap-4 text-left">

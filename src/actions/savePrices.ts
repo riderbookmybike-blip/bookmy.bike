@@ -34,6 +34,8 @@ export async function savePrices(
 
         // Upsert prices using adminClient (bypasses RLS)
         if (prices.length > 0) {
+            const allowedStages = new Set(['DRAFT', 'UNDER_REVIEW', 'PUBLISHED', 'LIVE', 'INACTIVE']);
+
             const priceRecords = prices.map(p => ({
                 vehicle_color_id: p.vehicle_color_id,
                 state_code: p.state_code,
@@ -47,7 +49,10 @@ export async function savePrices(
                 insurance: null,
                 rto_total: null,
                 insurance_total: null,
-                ...(p.publish_stage && { publish_stage: p.publish_stage }),
+                publish_stage:
+                    p.publish_stage && allowedStages.has(p.publish_stage.trim().toUpperCase())
+                        ? p.publish_stage.trim().toUpperCase()
+                        : 'DRAFT',
                 ...(p.is_popular !== undefined && { is_popular: p.is_popular }),
                 updated_at: new Date().toISOString(),
             }));
@@ -59,6 +64,29 @@ export async function savePrices(
             if (priceError) {
                 console.error('[savePrices] Price upsert error:', priceError);
                 return { success: false, error: priceError.message };
+            }
+
+            // Dual-write: sync price_mh cache in cat_skus_linear for MH prices
+            const mhPrices = prices.filter(p => p.state_code === 'MH');
+            if (mhPrices.length > 0) {
+                for (const p of mhPrices) {
+                    const priceMhPayload = {
+                        ex_showroom: p.ex_showroom_price,
+                        gst_rate: 0, // Will be set properly on publish
+                        hsn_code: '',
+                        rto_total: 0,
+                        rto: null,
+                        insurance_total: 0,
+                        insurance: null,
+                        on_road_price: 0,
+                        is_popular: p.is_popular ?? false,
+                    };
+                    // Match: cat_price_state.vehicle_color_id == cat_skus_linear.unit_json.id
+                    await (adminClient as any)
+                        .from('cat_skus_linear')
+                        .update({ price_mh: priceMhPayload })
+                        .eq('unit_json->>id', p.vehicle_color_id);
+                }
             }
 
             // Push Invalidation: Trigger revalidation for each unique district

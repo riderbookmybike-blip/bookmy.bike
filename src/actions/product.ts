@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { ProductVariant, VehicleSpecifications } from '@/types/productMaster';
+import { calculateParity, logCatalogDrift } from '@/lib/utils/driftLogger';
 
 // Helper to format text as Title Case
 function toTitleCase(str: string): string {
@@ -17,11 +18,15 @@ function toTitleCase(str: string): string {
 }
 
 export async function getAllProducts(): Promise<{ products: ProductVariant[]; error?: string }> {
-    const supabase = await createClient();
+    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
 
     try {
+        if (useLinear) {
+            return await getAllProductsFromLinear();
+        }
+
+        const supabase = await createClient();
         // Fetch Families + Children (Variants) + Grandchildren (SKUs)
-        // Using the same query structure as useCatalog.ts to ensure data consistency
         const { data, error } = await supabase
             .from('cat_items')
             .select(
@@ -42,30 +47,18 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[]; er
 
         if (error) {
             console.error('Error fetching catalog products:', error);
-            // Return empty list instead of failing hard, or let caller handle
             return { products: [], error: 'Failed to fetch catalog' };
         }
 
-        if (!data) {
-            return { products: [] };
-        }
+        if (!data) return { products: [] };
 
-        // Flatten the hierarchical structure into a linear list of ProductVariants
-        // This makes it compatible with the QuoteProductSelector which expects a flat list
         const products: ProductVariant[] = (data as any[]).flatMap((family: any) => {
             const familyChildren = family.children || [];
-
-            // We want to list "Variants" as the selectable items.
-            // If a family has variants, list them.
-            // If not (e.g. simple accessory), list the family itself or its specific SKUs.
-
             const variants = familyChildren.filter((c: any) => c.type === 'VARIANT');
             const displayNodes = variants.length > 0 ? variants : familyChildren.length > 0 ? familyChildren : [family];
 
             return displayNodes.map((node: any) => {
                 const isFamilyNode = node.id === family.id;
-
-                // Normalizing Casing
                 const rawMake = family.brand?.name || 'Unknown';
                 const rawModel = family.name;
                 const rawVariant = isFamilyNode ? family.name : node.name;
@@ -73,21 +66,14 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[]; er
                 const makeName = toTitleCase(rawMake);
                 const modelName = toTitleCase(rawModel);
                 const variantName = toTitleCase(rawVariant);
-
                 const displayName = `${makeName} ${modelName} ${variantName !== modelName ? variantName : ''}`.trim();
 
-                // Determine SKUs for this node to find price/image
-                // If node is a variant, its SKUs are children.
-                // If node is family (fallback), its SKUs might be direct children or deeper.
                 const nodeSkus = node.skus || [];
-
-                // Price logic: use lowest SKU price or node base price
                 const prices = nodeSkus
                     .flatMap((s: any) => s.prices?.map((p: any) => p.ex_showroom_price) || s.price_base)
                     .filter((p: any) => p > 0);
                 const basePrice = prices.length > 0 ? Math.min(...prices) : node.price_base || family.price_base || 0;
 
-                // Image logic: Primary SKU > First SKU > Variant Spec > Family Spec
                 const primarySku = nodeSkus.find((s: any) => s.is_primary) || nodeSkus[0];
                 const imageUrl =
                     primarySku?.image_url ||
@@ -95,20 +81,15 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[]; er
                     node.specs?.image_url ||
                     family.specs?.image_url;
 
-                // Specs merging
                 const specs = { ...family.specs, ...node.specs };
-
-                // Generate a robust SKU code string if one doesn't exist
                 const slugPart = node.slug || family.slug || 'unknown';
                 const skuCode = `SKU-${slugPart}`.toUpperCase();
 
-                // Determine Product Type based on Template Category
                 const itemCategory = family.category || 'VEHICLE';
                 let type: 'VEHICLE' | 'ACCESSORY' | 'SERVICE' = 'VEHICLE';
                 if (itemCategory === 'ACCESSORY') type = 'ACCESSORY';
                 if (itemCategory === 'SERVICE') type = 'SERVICE';
 
-                // Determine Category/BodyType
                 const bodyType = specs.body_type || (itemCategory === 'VEHICLE' ? 'MOTORCYCLE' : itemCategory);
 
                 return {
@@ -121,7 +102,7 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[]; er
                     fuelType: specs.fuel_type || 'PETROL',
                     displacement: specs.engine_cc || 0,
                     powerUnit: 'CC',
-                    segment: 'COMMUTER', // Default or derive from specs
+                    segment: 'COMMUTER',
                     displayName: displayName,
                     slug: node.slug || family.slug,
                     modelSlug: family.slug,
@@ -130,7 +111,7 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[]; er
                     status: 'ACTIVE',
                     price: {
                         exShowroom: basePrice,
-                        onRoad: 0, // Client-side calculation would require RTO rules
+                        onRoad: 0,
                     },
                     districtPrices: nodeSkus
                         .flatMap(
@@ -167,4 +148,101 @@ export async function getAllProducts(): Promise<{ products: ProductVariant[]; er
         console.error('Unexpected error fetching catalog:', err);
         return { products: [], error: 'An unexpected error occurred' };
     }
+}
+
+/**
+ * Phase 2: Shadow Fetch from Linear Catalog
+ */
+async function getAllProductsFromLinear(): Promise<{ products: ProductVariant[] }> {
+    const supabase = await createClient();
+
+    // Fetch all active SKUs. We don't join anything here.
+    const { data: skus, error } = await supabase.from('cat_skus_linear').select('*').eq('status', 'ACTIVE');
+
+    if (error || !skus) return { products: [] };
+
+    // Group SKUs by (brand_id + product_name + variant_name) to reconstruct ProductVariant
+    const groups = new Map<string, any[]>();
+    for (const sku of skus) {
+        const key = `${sku.brand_id}-${sku.product_name}-${sku.variant_name}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(sku);
+    }
+
+    const products: ProductVariant[] = Array.from(groups.values()).map(groupSkus => {
+        const first = groupSkus[0];
+        const brand = first.brand_json;
+        const product = first.product_json;
+        const variant = first.variant_json;
+
+        // Use the same Title Case helper if needed, or assume pre-normalized
+        const makeName = brand.name;
+        const modelName = product.name;
+        const variantName = variant.name;
+        const displayName = `${makeName} ${modelName} ${variantName !== modelName ? variantName : ''}`.trim();
+
+        const skuCode = `SKU-${first.variant_json.slug || first.product_json.slug || 'unknown'}`.toUpperCase();
+
+        const prices = groupSkus
+            .flatMap(s => s.unit_json.prices?.map((p: any) => p.ex_showroom_price) || [s.price_base])
+            .filter(p => p > 0);
+        const basePrice = prices.length > 0 ? Math.min(...prices) : first.price_base;
+
+        return {
+            id: variant.id, // We use Variant ID as the primary key for the selector
+            type: (first.type_name === 'VEHICLE' ? 'VEHICLE' : first.type_name) as any,
+            make: makeName,
+            model: modelName,
+            variant: variantName,
+            bodyType: (
+                product.specs?.body_type || (first.type_name === 'VEHICLE' ? 'MOTORCYCLE' : first.type_name)
+            ).toUpperCase() as any,
+            fuelType: (product.specs?.fuel_type || 'PETROL').toUpperCase() as any,
+            displacement: parseFloat(product.specs?.engine_cc || '0'),
+            powerUnit: 'CC',
+            segment: 'COMMUTER',
+            rating: 0,
+            displayName,
+            slug: variant.slug || product.slug,
+            modelSlug: product.slug,
+            label: `${makeName} / ${modelName} / ${variantName}`,
+            sku: skuCode,
+            status: 'ACTIVE',
+            price: {
+                exShowroom: basePrice,
+                onRoad: 0,
+            },
+            districtPrices: groupSkus
+                .flatMap(s =>
+                    (s.unit_json.prices || []).map((p: any) => ({
+                        district: p.district,
+                        exShowroom: parseFloat(p.ex_showroom_price),
+                    }))
+                )
+                .filter(p => p.exShowroom > 0),
+            availableColors: groupSkus.map(s => ({
+                id: s.id, // Using linear table ID/SKU node ID? Legacy uses SKU node ID.
+                name: s.unit_json.specs?.Color || s.unit_json.specs?.Colour || s.unit_json.name || 'Standard',
+                hexCode: s.unit_json.specs?.hex_primary || '#CCCCCC',
+                imageUrl: s.image_url,
+            })),
+            imageUrl: first.image_url,
+            specifications: {
+                engine: {
+                    displacement: product.specs?.engine_cc ? `${product.specs.engine_cc} cc` : undefined,
+                    maxPower: product.specs?.max_power,
+                    maxTorque: product.specs?.max_torque,
+                },
+                transmission: {
+                    type: product.specs?.transmission_type,
+                },
+                dimensions: {
+                    fuelCapacity: product.specs?.fuel_capacity || variant.specs?.fuel_capacity,
+                },
+                features: {},
+            } as any,
+        };
+    });
+
+    return { products };
 }

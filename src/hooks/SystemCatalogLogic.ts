@@ -185,6 +185,56 @@ export function useSystemCatalogLogic(leadId?: string) {
                     setUserDistrict(cachedLocation.district);
                 }
 
+                const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
+
+                const getRawCatalogLinear = async () => {
+                    const { data, error } = await supabase.from('cat_skus_linear').select('*').eq('status', 'ACTIVE');
+                    if (error) throw error;
+                    return data;
+                };
+
+                const reconstructHierarchy = (rows: any[]): any[] => {
+                    const productGroups = new Map<string, any>();
+                    for (const row of rows) {
+                        if (!productGroups.has(row.product_json.id)) {
+                            productGroups.set(row.product_json.id, {
+                                ...row.product_json,
+                                brand: row.brand_json,
+                                children: [],
+                            });
+                        }
+                        const product = productGroups.get(row.product_json.id);
+                        let variant = product.children.find((c: any) => c.id === row.variant_json.id);
+                        if (!variant) {
+                            variant = { ...row.variant_json, skus: [], colors: [] };
+                            product.children.push(variant);
+                        }
+                        const prices = row.unit_json.prices || [];
+                        const effectiveUnitId = prices[0]?.vehicle_color_id || row.unit_json.id || row.id;
+
+                        const skuData = {
+                            ...row.unit_json,
+                            id: effectiveUnitId,
+                            prices: prices,
+                            image_url: row.image_url,
+                            gallery_urls: row.gallery_urls || [],
+                            assets: row.assets_json || [],
+                        };
+                        if (
+                            row.unit_json.type === 'COLOR_DEF' ||
+                            (row.unit_json.specs &&
+                                (row.unit_json.specs.hex_primary ||
+                                    row.unit_json.specs.hex_code ||
+                                    row.unit_json.specs.Color))
+                        ) {
+                            variant.colors.push({ ...skuData, skus: [skuData] });
+                        } else {
+                            variant.skus.push(skuData);
+                        }
+                    }
+                    return Array.from(productGroups.values());
+                };
+
                 // ---------------------------------------------------------
                 // 🚀 PERFORMANCE LAYER: Materialized Summary (Read Model)
                 // ---------------------------------------------------------
@@ -338,32 +388,55 @@ export function useSystemCatalogLogic(leadId?: string) {
 
                 // ---------------------------------------------------------
                 // 🐢 SLOW PATH: Fallback to RPC/Deep Query
-                // ---------------------------------------------------------
+                let catalogData: any[] = [];
+                let linearRawRows: any[] = [];
 
-                // Fetch Families + Children (Variants) + Grandchildren (SKUs)
-                const { data, error: dbError } = await supabase
-                    .from('cat_items')
-                    .select(
-                        `
-                        id, type, name, slug, specs, price_base, brand_id, category,
-                        brand:cat_brands(name, logo_svg),
-                        children:cat_items!parent_id(
-                            id,
-                            type,
-                            name,
-                            slug,
-                            specs,
-                            price_base,
-                            category,
-                            parent:cat_items!parent_id(name, slug),
-                            position,
-                            colors:cat_items!parent_id(
+                if (useLinear) {
+                    linearRawRows = (await getRawCatalogLinear()) || [];
+                    catalogData = reconstructHierarchy(linearRawRows);
+                } else {
+                    const { data: legacyData, error: dbError } = await supabase
+                        .from('cat_items')
+                        .select(
+                            `
+                            id, type, name, slug, specs, price_base, brand_id, category,
+                            brand:cat_brands(name, logo_svg),
+                            children:cat_items!parent_id(
                                 id,
                                 type,
                                 name,
                                 slug,
                                 specs,
+                                price_base,
+                                category,
+                                parent:cat_items!parent_id(name, slug),
                                 position,
+                                colors:cat_items!parent_id(
+                                    id,
+                                    type,
+                                    name,
+                                    slug,
+                                    specs,
+                                    position,
+                                    skus:cat_items!parent_id(
+                                        id,
+                                        type,
+                                        status,
+                                        price_base,
+                                        category,
+                                        specs,
+                                        is_primary,
+                                        image_url,
+                                        gallery_urls,
+                                        video_url,
+                                        zoom_factor,
+                                        is_flipped,
+                                        offset_x,
+                                        offset_y,
+                                        assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
+                                        prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                                    )
+                                ),
                                 skus:cat_items!parent_id(
                                     id,
                                     type,
@@ -382,35 +455,15 @@ export function useSystemCatalogLogic(leadId?: string) {
                                     assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
                                     prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
                                 )
-                            ),
-                            skus:cat_items!parent_id(
-                                id,
-                                type,
-                                status,
-                                price_base,
-                                category,
-                                specs,
-                                is_primary,
-                                image_url,
-                                gallery_urls,
-                                video_url,
-                                zoom_factor,
-                                is_flipped,
-                                offset_x,
-                                offset_y,
-                                assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
                             )
+                        `
                         )
-                    `
-                    )
-                    .eq('type', 'PRODUCT')
-                    .eq('status', 'ACTIVE')
-                    .eq('category', 'VEHICLE');
+                        .eq('type', 'PRODUCT')
+                        .eq('status', 'ACTIVE')
+                        .eq('category', 'VEHICLE');
 
-                if (dbError) {
-                    console.error('Database error fetching catalog:', JSON.stringify(dbError, null, 2));
-                    throw dbError;
+                    if (dbError) throw dbError;
+                    catalogData = legacyData || [];
                 }
 
                 const { data: ruleData } = await supabase
@@ -570,14 +623,14 @@ export function useSystemCatalogLogic(leadId?: string) {
                     }
                 }
 
-                if (data) {
+                if (catalogData) {
                     // Get User Location from LocalStorage for Client Side Distance Calc
                     const userLat: number | null = cachedLocation.lat;
                     const userLng: number | null = cachedLocation.lng;
 
                     const hasEligibility = Boolean(hasValidDealer && (offerData as any[])?.length > 0);
 
-                    const mappedItems = mapCatalogItems(data as any[], ruleData || [], insuranceRuleData || [], {
+                    const mappedItems = mapCatalogItems(catalogData, ruleData || [], insuranceRuleData || [], {
                         stateCode: resolvedStateCode,
                         userLat,
                         userLng,
@@ -668,15 +721,19 @@ export function useSystemCatalogLogic(leadId?: string) {
                         marketOffersCount: (offerData as any[])?.length || 0,
                     });
 
-                    const { count: skuTotal, error: skuError } = await supabase
-                        .from('cat_items')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('type', 'SKU')
-                        .eq('status', 'ACTIVE');
-                    if (skuError) {
-                        console.error('Database error fetching sku count:', JSON.stringify(skuError, null, 2));
+                    if (useLinear) {
+                        setSkuCount(linearRawRows.length);
                     } else {
-                        setSkuCount(skuTotal || 0);
+                        const { count: skuTotal, error: skuError } = await supabase
+                            .from('cat_items')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('type', 'SKU')
+                            .eq('status', 'ACTIVE');
+                        if (skuError) {
+                            console.error('Database error fetching sku count:', JSON.stringify(skuError, null, 2));
+                        } else {
+                            setSkuCount(skuTotal || 0);
+                        }
                     }
                 } else {
                     setItems([]);

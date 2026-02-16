@@ -94,71 +94,29 @@ export type Database = {
                 };
                 Relationships: [];
             };
-            blog_posts: {
+            audit_logs: {
                 Row: {
-                    id: string;
-                    slug: string;
-                    title: string;
-                    excerpt: string | null;
-                    content: string;
-                    author_id: string | null;
-                    author_name: string | null;
-                    image_url: string | null;
-                    tags: Json | null;
-                    read_time: string | null;
-                    is_published: boolean | null;
-                    published_at: string | null;
+                    action: string | null;
                     created_at: string | null;
-                    updated_at: string | null;
+                    id: string;
+                    metadata: Json | null;
+                    user_id: string | null;
                 };
                 Insert: {
-                    id?: string;
-                    slug: string;
-                    title: string;
-                    excerpt?: string | null;
-                    content: string;
-                    author_id?: string | null;
-                    author_name?: string | null;
-                    image_url?: string | null;
-                    tags?: Json | null;
-                    read_time?: string | null;
-                    is_published?: boolean | null;
-                    published_at?: string | null;
+                    action?: string | null;
                     created_at?: string | null;
-                    updated_at?: string | null;
+                    id?: string;
+                    metadata?: Json | null;
+                    user_id?: string | null;
                 };
                 Update: {
-                    id?: string;
-                    slug?: string;
-                    title?: string;
-                    excerpt?: string | null;
-                    content?: string;
-                    author_id?: string | null;
-                    author_name?: string | null;
-                    image_url?: string | null;
-                    tags?: Json | null;
-                    read_time?: string | null;
-                    is_published?: boolean | null;
-                    published_at?: string | null;
+                    action?: string | null;
                     created_at?: string | null;
-                    updated_at?: string | null;
+                    id?: string;
+                    metadata?: Json | null;
+                    user_id?: string | null;
                 };
-                Relationships: [
-                    {
-                        foreignKeyName: 'blog_posts_author_id_fkey';
-                        columns: ['author_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_members';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'blog_posts_author_id_fkey';
-                        columns: ['author_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'memberships';
-                        referencedColumns: ['id'];
-                    },
-                ];
+                Relationships: [];
             };
             cat_assets: {
                 Row: {
@@ -303,58 +261,6 @@ export type Database = {
                 };
                 Relationships: [];
             };
-            cat_ingestion_ignore_rules: {
-                Row: {
-                    active: boolean;
-                    brand_id: string;
-                    created_at: string | null;
-                    id: string;
-                    pattern_type: string;
-                    pattern_value: string;
-                    tenant_id: string | null;
-                };
-                Insert: {
-                    active?: boolean;
-                    brand_id: string;
-                    created_at?: string | null;
-                    id?: string;
-                    pattern_type: string;
-                    pattern_value: string;
-                    tenant_id?: string | null;
-                };
-                Update: {
-                    active?: boolean;
-                    brand_id?: string;
-                    created_at?: string | null;
-                    id?: string;
-                    pattern_type?: string;
-                    pattern_value?: string;
-                    tenant_id?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'cat_ingestion_ignore_rules_brand_id_fkey';
-                        columns: ['brand_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_brands';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'cat_ingestion_ignore_rules_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'cat_ingestion_ignore_rules_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
             cat_ins_rules: {
                 Row: {
                     addons: Json;
@@ -474,6 +380,21 @@ export type Database = {
                     },
                 ];
             };
+            cat_item_hierarchy_archive: {
+                Row: {
+                    child_id: string | null;
+                    parent_id: string | null;
+                };
+                Insert: {
+                    child_id?: string | null;
+                    parent_id?: string | null;
+                };
+                Update: {
+                    child_id?: string | null;
+                    parent_id?: string | null;
+                };
+                Relationships: [];
+            };
             cat_item_ingestion_sources: {
                 Row: {
                     brand_id: string | null;
@@ -529,38 +450,6 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            cat_item_suitability: {
-                Row: {
-                    created_at: string | null;
-                    id: string;
-                    source_item_id: string | null;
-                    target_id: string;
-                    target_type: string;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    id?: string;
-                    source_item_id?: string | null;
-                    target_id: string;
-                    target_type: string;
-                };
-                Update: {
-                    created_at?: string | null;
-                    id?: string;
-                    source_item_id?: string | null;
-                    target_id?: string;
-                    target_type?: string;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'catalog_item_suitability_source_item_id_fkey';
-                        columns: ['source_item_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -854,128 +743,6 @@ export type Database = {
                     },
                 ];
             };
-            cat_price_state_history: {
-                Row: {
-                    delta: number;
-                    id: string;
-                    new_on_road: number;
-                    old_on_road: number | null;
-                    publish_job_id: string;
-                    published_at: string;
-                    published_by: string | null;
-                    state_code: string;
-                    vehicle_color_id: string;
-                };
-                Insert: {
-                    delta?: number;
-                    id?: string;
-                    new_on_road: number;
-                    old_on_road?: number | null;
-                    publish_job_id: string;
-                    published_at?: string;
-                    published_by?: string | null;
-                    state_code: string;
-                    vehicle_color_id: string;
-                };
-                Update: {
-                    delta?: number;
-                    id?: string;
-                    new_on_road?: number;
-                    old_on_road?: number | null;
-                    publish_job_id?: string;
-                    published_at?: string;
-                    published_by?: string | null;
-                    state_code?: string;
-                    vehicle_color_id?: string;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'cat_price_history_vehicle_color_id_fkey';
-                        columns: ['vehicle_color_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            cat_price_state_trash: {
-                Row: {
-                    category: string | null;
-                    created_at: string | null;
-                    district: string | null;
-                    ex_showroom_price: number | null;
-                    gst_rate: number | null;
-                    hsn_code: string | null;
-                    id: string | null;
-                    insurance: Json | null;
-                    insurance_breakdown: Json | null;
-                    insurance_total: number | null;
-                    is_active: boolean | null;
-                    latitude: number | null;
-                    longitude: number | null;
-                    on_road_price: number | null;
-                    publish_stage: string | null;
-                    published_at: string | null;
-                    published_by: string | null;
-                    rto: Json | null;
-                    rto_breakdown: Json | null;
-                    rto_total: number | null;
-                    state_code: string | null;
-                    updated_at: string | null;
-                    vehicle_color_id: string | null;
-                };
-                Insert: {
-                    category?: string | null;
-                    created_at?: string | null;
-                    district?: string | null;
-                    ex_showroom_price?: number | null;
-                    gst_rate?: number | null;
-                    hsn_code?: string | null;
-                    id?: string | null;
-                    insurance?: Json | null;
-                    insurance_breakdown?: Json | null;
-                    insurance_total?: number | null;
-                    is_active?: boolean | null;
-                    latitude?: number | null;
-                    longitude?: number | null;
-                    on_road_price?: number | null;
-                    publish_stage?: string | null;
-                    published_at?: string | null;
-                    published_by?: string | null;
-                    rto?: Json | null;
-                    rto_breakdown?: Json | null;
-                    rto_total?: number | null;
-                    state_code?: string | null;
-                    updated_at?: string | null;
-                    vehicle_color_id?: string | null;
-                };
-                Update: {
-                    category?: string | null;
-                    created_at?: string | null;
-                    district?: string | null;
-                    ex_showroom_price?: number | null;
-                    gst_rate?: number | null;
-                    hsn_code?: string | null;
-                    id?: string | null;
-                    insurance?: Json | null;
-                    insurance_breakdown?: Json | null;
-                    insurance_total?: number | null;
-                    is_active?: boolean | null;
-                    latitude?: number | null;
-                    longitude?: number | null;
-                    on_road_price?: number | null;
-                    publish_stage?: string | null;
-                    published_at?: string | null;
-                    published_by?: string | null;
-                    rto?: Json | null;
-                    rto_breakdown?: Json | null;
-                    rto_total?: number | null;
-                    state_code?: string | null;
-                    updated_at?: string | null;
-                    vehicle_color_id?: string | null;
-                };
-                Relationships: [];
-            };
             cat_raw_items: {
                 Row: {
                     category: Database['public']['Enums']['vehicle_category'] | null;
@@ -1035,6 +802,45 @@ export type Database = {
                     variant?: string;
                 };
                 Relationships: [];
+            };
+            cat_recommendations: {
+                Row: {
+                    created_at: string | null;
+                    id: string;
+                    position: number | null;
+                    recommended_variant_id: string | null;
+                    source_variant_id: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    id?: string;
+                    position?: number | null;
+                    recommended_variant_id?: string | null;
+                    source_variant_id?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    id?: string;
+                    position?: number | null;
+                    recommended_variant_id?: string | null;
+                    source_variant_id?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_recommendations_recommended_variant_id_fkey';
+                        columns: ['recommended_variant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_recommendations_source_variant_id_fkey';
+                        columns: ['source_variant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             cat_reg_rules: {
                 Row: {
@@ -1170,39 +976,165 @@ export type Database = {
                 };
                 Relationships: [];
             };
-            cat_tenure_config: {
+            cat_skus_linear: {
                 Row: {
-                    allowed_years: number[];
-                    component: string;
-                    created_at: string | null;
-                    default_years: number;
+                    assets_json: Json | null;
+                    brand_id: string;
+                    brand_json: Json;
+                    brand_name: string;
+                    checksum_md5: string;
+                    created_at: string;
+                    gallery_urls: string[] | null;
                     id: string;
-                    linked_to: string | null;
-                    max_years: number;
-                    min_years: number;
-                    updated_at: string | null;
+                    image_url: string | null;
+                    price_base: number;
+                    price_mh: Json | null;
+                    product_json: Json;
+                    product_name: string;
+                    sku_code: string;
+                    specs: Json;
+                    status: Database['public']['Enums']['sku_status'];
+                    type_name: string;
+                    unit_json: Json;
+                    unit_name: string;
+                    updated_at: string;
+                    variant_json: Json;
+                    variant_name: string;
                 };
                 Insert: {
-                    allowed_years?: number[];
-                    component: string;
-                    created_at?: string | null;
-                    default_years?: number;
+                    assets_json?: Json | null;
+                    brand_id: string;
+                    brand_json: Json;
+                    brand_name: string;
+                    checksum_md5: string;
+                    created_at?: string;
+                    gallery_urls?: string[] | null;
                     id?: string;
-                    linked_to?: string | null;
-                    max_years?: number;
-                    min_years?: number;
-                    updated_at?: string | null;
+                    image_url?: string | null;
+                    price_base: number;
+                    price_mh?: Json | null;
+                    product_json: Json;
+                    product_name: string;
+                    sku_code: string;
+                    specs?: Json;
+                    status?: Database['public']['Enums']['sku_status'];
+                    type_name: string;
+                    unit_json: Json;
+                    unit_name: string;
+                    updated_at?: string;
+                    variant_json: Json;
+                    variant_name: string;
                 };
                 Update: {
-                    allowed_years?: number[];
-                    component?: string;
-                    created_at?: string | null;
-                    default_years?: number;
+                    assets_json?: Json | null;
+                    brand_id?: string;
+                    brand_json?: Json;
+                    brand_name?: string;
+                    checksum_md5?: string;
+                    created_at?: string;
+                    gallery_urls?: string[] | null;
                     id?: string;
-                    linked_to?: string | null;
-                    max_years?: number;
-                    min_years?: number;
-                    updated_at?: string | null;
+                    image_url?: string | null;
+                    price_base?: number;
+                    price_mh?: Json | null;
+                    product_json?: Json;
+                    product_name?: string;
+                    sku_code?: string;
+                    specs?: Json;
+                    status?: Database['public']['Enums']['sku_status'];
+                    type_name?: string;
+                    unit_json?: Json;
+                    unit_name?: string;
+                    updated_at?: string;
+                    variant_json?: Json;
+                    variant_name?: string;
+                };
+                Relationships: [];
+            };
+            cat_spec_schema: {
+                Row: {
+                    category: string;
+                    created_at: string | null;
+                    data_type: string;
+                    group_name: string | null;
+                    id: string;
+                    is_comparable: boolean | null;
+                    is_filterable: boolean | null;
+                    is_required: boolean | null;
+                    key: string;
+                    label: string;
+                    level: string;
+                    sort_order: number | null;
+                    unit: string | null;
+                };
+                Insert: {
+                    category: string;
+                    created_at?: string | null;
+                    data_type?: string;
+                    group_name?: string | null;
+                    id?: string;
+                    is_comparable?: boolean | null;
+                    is_filterable?: boolean | null;
+                    is_required?: boolean | null;
+                    key: string;
+                    label: string;
+                    level: string;
+                    sort_order?: number | null;
+                    unit?: string | null;
+                };
+                Update: {
+                    category?: string;
+                    created_at?: string | null;
+                    data_type?: string;
+                    group_name?: string | null;
+                    id?: string;
+                    is_comparable?: boolean | null;
+                    is_filterable?: boolean | null;
+                    is_required?: boolean | null;
+                    key?: string;
+                    label?: string;
+                    level?: string;
+                    sort_order?: number | null;
+                    unit?: string | null;
+                };
+                Relationships: [];
+            };
+            catalog_audit_log: {
+                Row: {
+                    action: string;
+                    actor_id: string | null;
+                    actor_label: string | null;
+                    changed_fields: string[] | null;
+                    created_at: string;
+                    id: string;
+                    new_data: Json | null;
+                    old_data: Json | null;
+                    record_id: string;
+                    table_name: string;
+                };
+                Insert: {
+                    action: string;
+                    actor_id?: string | null;
+                    actor_label?: string | null;
+                    changed_fields?: string[] | null;
+                    created_at?: string;
+                    id?: string;
+                    new_data?: Json | null;
+                    old_data?: Json | null;
+                    record_id: string;
+                    table_name: string;
+                };
+                Update: {
+                    action?: string;
+                    actor_id?: string | null;
+                    actor_label?: string | null;
+                    changed_fields?: string[] | null;
+                    created_at?: string;
+                    id?: string;
+                    new_data?: Json | null;
+                    old_data?: Json | null;
+                    record_id?: string;
+                    table_name?: string;
                 };
                 Relationships: [];
             };
@@ -1309,6 +1241,48 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            crm_audit_log: {
+                Row: {
+                    action: string;
+                    changed_fields: string[] | null;
+                    entity_id: string;
+                    entity_type: string;
+                    id: string;
+                    ip_address: string | null;
+                    new_data: Json | null;
+                    old_data: Json | null;
+                    performed_at: string;
+                    performed_by: string | null;
+                    source: string | null;
+                };
+                Insert: {
+                    action: string;
+                    changed_fields?: string[] | null;
+                    entity_id: string;
+                    entity_type: string;
+                    id?: string;
+                    ip_address?: string | null;
+                    new_data?: Json | null;
+                    old_data?: Json | null;
+                    performed_at?: string;
+                    performed_by?: string | null;
+                    source?: string | null;
+                };
+                Update: {
+                    action?: string;
+                    changed_fields?: string[] | null;
+                    entity_id?: string;
+                    entity_type?: string;
+                    id?: string;
+                    ip_address?: string | null;
+                    new_data?: Json | null;
+                    old_data?: Json | null;
+                    performed_at?: string;
+                    performed_by?: string | null;
+                    source?: string | null;
+                };
+                Relationships: [];
+            };
             crm_bank_apps: {
                 Row: {
                     bank_tenant_id: string | null;
@@ -1406,48 +1380,6 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                 ];
-            };
-            crm_audit_log: {
-                Row: {
-                    id: string;
-                    entity_type: string;
-                    entity_id: string;
-                    action: string;
-                    old_data: Json | null;
-                    new_data: Json | null;
-                    changed_fields: string[] | null;
-                    performed_by: string | null;
-                    performed_at: string;
-                    source: string | null;
-                    ip_address: string | null;
-                };
-                Insert: {
-                    id?: string;
-                    entity_type: string;
-                    entity_id: string;
-                    action: string;
-                    old_data?: Json | null;
-                    new_data?: Json | null;
-                    changed_fields?: string[] | null;
-                    performed_by?: string | null;
-                    performed_at?: string;
-                    source?: string | null;
-                    ip_address?: string | null;
-                };
-                Update: {
-                    id?: string;
-                    entity_type?: string;
-                    entity_id?: string;
-                    action?: string;
-                    old_data?: Json | null;
-                    new_data?: Json | null;
-                    changed_fields?: string[] | null;
-                    performed_by?: string | null;
-                    performed_at?: string;
-                    source?: string | null;
-                    ip_address?: string | null;
-                };
-                Relationships: [];
             };
             crm_bookings: {
                 Row: {
@@ -1608,6 +1540,13 @@ export type Database = {
                         referencedRelation: 'cat_items';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'fk_bookings_quote_protect';
+                        columns: ['quote_id'];
+                        isOneToOne: true;
+                        referencedRelation: 'crm_quotes';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             crm_dealer_shares: {
@@ -1652,9 +1591,9 @@ export type Database = {
                     approved_amount: number | null;
                     booking_id: string | null;
                     created_at: string | null;
-                    display_id: string | null;
                     disbursement_completed_at: string | null;
                     disbursement_initiated_at: string | null;
+                    display_id: string | null;
                     enach_done_at: string | null;
                     id: string;
                     insurance_requested_at: string | null;
@@ -1674,9 +1613,9 @@ export type Database = {
                     approved_amount?: number | null;
                     booking_id?: string | null;
                     created_at?: string | null;
-                    display_id?: string | null;
                     disbursement_completed_at?: string | null;
                     disbursement_initiated_at?: string | null;
+                    display_id?: string | null;
                     enach_done_at?: string | null;
                     id?: string;
                     insurance_requested_at?: string | null;
@@ -1696,9 +1635,9 @@ export type Database = {
                     approved_amount?: number | null;
                     booking_id?: string | null;
                     created_at?: string | null;
-                    display_id?: string | null;
                     disbursement_completed_at?: string | null;
                     disbursement_initiated_at?: string | null;
+                    display_id?: string | null;
                     enach_done_at?: string | null;
                     id?: string;
                     insurance_requested_at?: string | null;
@@ -1718,6 +1657,48 @@ export type Database = {
                         columns: ['booking_id'];
                         isOneToOne: false;
                         referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            crm_finance_assignments: {
+                Row: {
+                    created_at: string | null;
+                    entity_id: string;
+                    entity_type: string;
+                    finance_exec_id: string;
+                    finance_tenant_id: string;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    entity_id: string;
+                    entity_type: string;
+                    finance_exec_id: string;
+                    finance_tenant_id: string;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    entity_id?: string;
+                    entity_type?: string;
+                    finance_exec_id?: string;
+                    finance_tenant_id?: string;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_finance_assignments_finance_tenant_id_fkey';
+                        columns: ['finance_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_finance_assignments_finance_tenant_id_fkey';
+                        columns: ['finance_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -1907,8 +1888,8 @@ export type Database = {
                     interest_model: string | null;
                     interest_text: string | null;
                     interest_variant: string | null;
-                    is_serviceable: boolean | null;
                     is_deleted: boolean | null;
+                    is_serviceable: boolean | null;
                     notes: string | null;
                     owner_tenant_id: string | null;
                     permanent_address: string | null;
@@ -1944,8 +1925,8 @@ export type Database = {
                     interest_model?: string | null;
                     interest_text?: string | null;
                     interest_variant?: string | null;
-                    is_serviceable?: boolean | null;
                     is_deleted?: boolean | null;
+                    is_serviceable?: boolean | null;
                     notes?: string | null;
                     owner_tenant_id?: string | null;
                     permanent_address?: string | null;
@@ -1981,8 +1962,8 @@ export type Database = {
                     interest_model?: string | null;
                     interest_text?: string | null;
                     interest_variant?: string | null;
-                    is_serviceable?: boolean | null;
                     is_deleted?: boolean | null;
+                    is_serviceable?: boolean | null;
                     notes?: string | null;
                     owner_tenant_id?: string | null;
                     permanent_address?: string | null;
@@ -1998,6 +1979,27 @@ export type Database = {
                     utm_data?: Json | null;
                 };
                 Relationships: [
+                    {
+                        foreignKeyName: 'fk_leads_customer_protect';
+                        columns: ['customer_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'fk_leads_tenant_protect';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'fk_leads_tenant_protect';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                     {
                         foreignKeyName: 'leads_customer_id_fkey';
                         columns: ['customer_id'];
@@ -2071,7 +2073,7 @@ export type Database = {
                     deleted_by: string | null;
                     display_id: string | null;
                     id: string;
-                    is_deleted: boolean | null;
+                    is_deleted: boolean;
                     lead_id: string | null;
                     member_id: string | null;
                     method: string | null;
@@ -2090,7 +2092,7 @@ export type Database = {
                     deleted_by?: string | null;
                     display_id?: string | null;
                     id?: string;
-                    is_deleted?: boolean | null;
+                    is_deleted?: boolean;
                     lead_id?: string | null;
                     member_id?: string | null;
                     method?: string | null;
@@ -2109,7 +2111,7 @@ export type Database = {
                     deleted_by?: string | null;
                     display_id?: string | null;
                     id?: string;
-                    is_deleted?: boolean | null;
+                    is_deleted?: boolean;
                     lead_id?: string | null;
                     member_id?: string | null;
                     method?: string | null;
@@ -2150,111 +2152,6 @@ export type Database = {
                     },
                     {
                         foreignKeyName: 'crm_4_payments_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            crm_receipts: {
-                Row: {
-                    amount: number | null;
-                    booking_id: string | null;
-                    created_at: string | null;
-                    currency: string | null;
-                    deleted_at: string | null;
-                    deleted_by: string | null;
-                    display_id: string | null;
-                    id: string;
-                    is_deleted: boolean | null;
-                    is_reconciled: boolean | null;
-                    lead_id: string | null;
-                    member_id: string | null;
-                    method: string | null;
-                    provider_data: Json | null;
-                    reconciled_at: string | null;
-                    reconciled_by: string | null;
-                    status: string | null;
-                    tenant_id: string | null;
-                    transaction_id: string | null;
-                    updated_at: string | null;
-                };
-                Insert: {
-                    amount?: number | null;
-                    booking_id?: string | null;
-                    created_at?: string | null;
-                    currency?: string | null;
-                    deleted_at?: string | null;
-                    deleted_by?: string | null;
-                    display_id?: string | null;
-                    id?: string;
-                    is_deleted?: boolean | null;
-                    is_reconciled?: boolean | null;
-                    lead_id?: string | null;
-                    member_id?: string | null;
-                    method?: string | null;
-                    provider_data?: Json | null;
-                    reconciled_at?: string | null;
-                    reconciled_by?: string | null;
-                    status?: string | null;
-                    tenant_id?: string | null;
-                    transaction_id?: string | null;
-                    updated_at?: string | null;
-                };
-                Update: {
-                    amount?: number | null;
-                    booking_id?: string | null;
-                    created_at?: string | null;
-                    currency?: string | null;
-                    deleted_at?: string | null;
-                    deleted_by?: string | null;
-                    display_id?: string | null;
-                    id?: string;
-                    is_deleted?: boolean | null;
-                    is_reconciled?: boolean | null;
-                    lead_id?: string | null;
-                    member_id?: string | null;
-                    method?: string | null;
-                    provider_data?: Json | null;
-                    reconciled_at?: string | null;
-                    reconciled_by?: string | null;
-                    status?: string | null;
-                    tenant_id?: string | null;
-                    transaction_id?: string | null;
-                    updated_at?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'crm_receipts_booking_id_fkey';
-                        columns: ['booking_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'crm_bookings';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_receipts_lead_id_fkey';
-                        columns: ['lead_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'crm_leads';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_receipts_member_id_fkey';
-                        columns: ['member_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_members';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_receipts_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_receipts_tenant_id_fkey';
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'tenants';
@@ -2424,6 +2321,13 @@ export type Database = {
                         referencedRelation: 'crm_quotes';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'fk_finance_quote_protect';
+                        columns: ['quote_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_quotes';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
             crm_quotes: {
@@ -2444,6 +2348,7 @@ export type Database = {
                     finance_mode: string | null;
                     id: string;
                     insurance_amount: number | null;
+                    is_deleted: boolean | null;
                     lead_id: string | null;
                     lead_referrer_id: string | null;
                     manager_discount: number | null;
@@ -2451,7 +2356,6 @@ export type Database = {
                     member_id: string | null;
                     on_road_price: number | null;
                     operational_stage: Database['public']['Enums']['crm_operational_stage'] | null;
-                    is_deleted: boolean | null;
                     quote_owner_id: string | null;
                     reviewed_at: string | null;
                     reviewed_by: string | null;
@@ -2489,6 +2393,7 @@ export type Database = {
                     finance_mode?: string | null;
                     id?: string;
                     insurance_amount?: number | null;
+                    is_deleted?: boolean | null;
                     lead_id?: string | null;
                     lead_referrer_id?: string | null;
                     manager_discount?: number | null;
@@ -2496,7 +2401,6 @@ export type Database = {
                     member_id?: string | null;
                     on_road_price?: number | null;
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
-                    is_deleted?: boolean | null;
                     quote_owner_id?: string | null;
                     reviewed_at?: string | null;
                     reviewed_by?: string | null;
@@ -2534,6 +2438,7 @@ export type Database = {
                     finance_mode?: string | null;
                     id?: string;
                     insurance_amount?: number | null;
+                    is_deleted?: boolean | null;
                     lead_id?: string | null;
                     lead_referrer_id?: string | null;
                     manager_discount?: number | null;
@@ -2541,7 +2446,6 @@ export type Database = {
                     member_id?: string | null;
                     on_road_price?: number | null;
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
-                    is_deleted?: boolean | null;
                     quote_owner_id?: string | null;
                     reviewed_at?: string | null;
                     reviewed_by?: string | null;
@@ -2571,10 +2475,164 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                     {
+                        foreignKeyName: 'fk_quotes_color_protect';
+                        columns: ['color_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'fk_quotes_lead_protect';
+                        columns: ['lead_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_leads';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'fk_quotes_studio_protect';
+                        columns: ['studio_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'fk_quotes_studio_protect';
+                        columns: ['studio_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'fk_quotes_tenant_protect';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'fk_quotes_tenant_protect';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'fk_quotes_variant_protect';
+                        columns: ['variant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                    {
                         foreignKeyName: 'quotes_lead_id_fkey';
                         columns: ['lead_id'];
                         isOneToOne: false;
                         referencedRelation: 'crm_leads';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            crm_receipts: {
+                Row: {
+                    amount: number | null;
+                    booking_id: string | null;
+                    created_at: string | null;
+                    currency: string | null;
+                    deleted_at: string | null;
+                    deleted_by: string | null;
+                    display_id: string | null;
+                    id: string;
+                    is_deleted: boolean;
+                    is_reconciled: boolean;
+                    lead_id: string | null;
+                    member_id: string | null;
+                    method: string | null;
+                    provider_data: Json | null;
+                    reconciled_at: string | null;
+                    reconciled_by: string | null;
+                    status: string | null;
+                    tenant_id: string | null;
+                    transaction_id: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    amount?: number | null;
+                    booking_id?: string | null;
+                    created_at?: string | null;
+                    currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
+                    display_id?: string | null;
+                    id?: string;
+                    is_deleted?: boolean;
+                    is_reconciled?: boolean;
+                    lead_id?: string | null;
+                    member_id?: string | null;
+                    method?: string | null;
+                    provider_data?: Json | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    transaction_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    amount?: number | null;
+                    booking_id?: string | null;
+                    created_at?: string | null;
+                    currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
+                    display_id?: string | null;
+                    id?: string;
+                    is_deleted?: boolean;
+                    is_reconciled?: boolean;
+                    lead_id?: string | null;
+                    member_id?: string | null;
+                    method?: string | null;
+                    provider_data?: Json | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    transaction_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_receipts_booking_id_fkey';
+                        columns: ['booking_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_receipts_lead_id_fkey';
+                        columns: ['lead_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_leads';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_receipts_member_id_fkey';
+                        columns: ['member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_receipts_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_receipts_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -2687,6 +2745,189 @@ export type Database = {
                     updated_at?: string | null;
                 };
                 Relationships: [];
+            };
+            dealer_finance_access: {
+                Row: {
+                    created_at: string | null;
+                    dealer_tenant_id: string;
+                    finance_tenant_id: string;
+                    id: string;
+                    is_default: boolean | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    dealer_tenant_id: string;
+                    finance_tenant_id: string;
+                    id?: string;
+                    is_default?: boolean | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    dealer_tenant_id?: string;
+                    finance_tenant_id?: string;
+                    id?: string;
+                    is_default?: boolean | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'dealer_finance_access_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_finance_access_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_finance_access_finance_tenant_id_fkey';
+                        columns: ['finance_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_finance_access_finance_tenant_id_fkey';
+                        columns: ['finance_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            dealer_finance_schemes: {
+                Row: {
+                    created_at: string | null;
+                    dealer_tenant_id: string;
+                    finance_tenant_id: string;
+                    id: string;
+                    incentive: Json | null;
+                    is_active: boolean | null;
+                    payout: Json | null;
+                    scheme_id: string;
+                    target: Json | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    dealer_tenant_id: string;
+                    finance_tenant_id: string;
+                    id?: string;
+                    incentive?: Json | null;
+                    is_active?: boolean | null;
+                    payout?: Json | null;
+                    scheme_id: string;
+                    target?: Json | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    dealer_tenant_id?: string;
+                    finance_tenant_id?: string;
+                    id?: string;
+                    incentive?: Json | null;
+                    is_active?: boolean | null;
+                    payout?: Json | null;
+                    scheme_id?: string;
+                    target?: Json | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'dealer_finance_schemes_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_finance_schemes_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_finance_schemes_finance_tenant_id_fkey';
+                        columns: ['finance_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_finance_schemes_finance_tenant_id_fkey';
+                        columns: ['finance_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            dealer_finance_user_access: {
+                Row: {
+                    created_at: string | null;
+                    crm_access: boolean | null;
+                    dealer_tenant_id: string;
+                    finance_tenant_id: string;
+                    id: string;
+                    is_default: boolean | null;
+                    updated_at: string | null;
+                    user_id: string;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    crm_access?: boolean | null;
+                    dealer_tenant_id: string;
+                    finance_tenant_id: string;
+                    id?: string;
+                    is_default?: boolean | null;
+                    updated_at?: string | null;
+                    user_id: string;
+                };
+                Update: {
+                    created_at?: string | null;
+                    crm_access?: boolean | null;
+                    dealer_tenant_id?: string;
+                    finance_tenant_id?: string;
+                    id?: string;
+                    is_default?: boolean | null;
+                    updated_at?: string | null;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'dealer_finance_user_access_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_finance_user_access_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_finance_user_access_finance_tenant_id_fkey';
+                        columns: ['finance_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_finance_user_access_finance_tenant_id_fkey';
+                        columns: ['finance_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             debug_logs: {
                 Row: {
@@ -2941,75 +3182,6 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                 ];
-            };
-            id_dealer_pricing_rules: {
-                Row: {
-                    brand_id: string | null;
-                    color_id: string | null;
-                    created_at: string | null;
-                    created_by: string | null;
-                    dealer_id: string;
-                    discount_type: string | null;
-                    discount_value: number | null;
-                    effective_from: string | null;
-                    effective_to: string | null;
-                    id: string;
-                    is_active: boolean | null;
-                    max_discount: number | null;
-                    min_margin: number | null;
-                    model_id: string | null;
-                    priority: number | null;
-                    rule_name: string;
-                    rule_type: string;
-                    updated_at: string | null;
-                    variant_id: string | null;
-                    vehicle_type: string | null;
-                };
-                Insert: {
-                    brand_id?: string | null;
-                    color_id?: string | null;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    dealer_id: string;
-                    discount_type?: string | null;
-                    discount_value?: number | null;
-                    effective_from?: string | null;
-                    effective_to?: string | null;
-                    id?: string;
-                    is_active?: boolean | null;
-                    max_discount?: number | null;
-                    min_margin?: number | null;
-                    model_id?: string | null;
-                    priority?: number | null;
-                    rule_name: string;
-                    rule_type?: string;
-                    updated_at?: string | null;
-                    variant_id?: string | null;
-                    vehicle_type?: string | null;
-                };
-                Update: {
-                    brand_id?: string | null;
-                    color_id?: string | null;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    dealer_id?: string;
-                    discount_type?: string | null;
-                    discount_value?: number | null;
-                    effective_from?: string | null;
-                    effective_to?: string | null;
-                    id?: string;
-                    is_active?: boolean | null;
-                    max_discount?: number | null;
-                    min_margin?: number | null;
-                    model_id?: string | null;
-                    priority?: number | null;
-                    rule_name?: string;
-                    rule_type?: string;
-                    updated_at?: string | null;
-                    variant_id?: string | null;
-                    vehicle_type?: string | null;
-                };
-                Relationships: [];
             };
             id_dealer_service_areas: {
                 Row: {
@@ -3831,42 +4003,6 @@ export type Database = {
                     },
                 ];
             };
-            id_tenant_reward_wheel_configs: {
-                Row: {
-                    tenant_id: string;
-                    rewards: Json;
-                    created_at: string | null;
-                    updated_at: string | null;
-                };
-                Insert: {
-                    tenant_id: string;
-                    rewards?: Json;
-                    created_at?: string | null;
-                    updated_at?: string | null;
-                };
-                Update: {
-                    tenant_id?: string;
-                    rewards?: Json;
-                    created_at?: string | null;
-                    updated_at?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'id_tenant_reward_wheel_configs_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: true;
-                        referencedRelation: 'id_tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'id_tenant_reward_wheel_configs_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: true;
-                        referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
             id_team: {
                 Row: {
                     created_at: string | null;
@@ -4404,257 +4540,6 @@ export type Database = {
                     },
                 ];
             };
-            registration_rules: {
-                Row: {
-                    bh_tenure: number | null;
-                    company_multiplier: number | null;
-                    components: Json;
-                    created_at: string | null;
-                    display_id: string | null;
-                    id: string;
-                    rule_name: string;
-                    state_code: string;
-                    state_tenure: number | null;
-                    status: string | null;
-                    updated_at: string | null;
-                    vehicle_type: string;
-                    version: number | null;
-                };
-                Insert: {
-                    bh_tenure?: number | null;
-                    company_multiplier?: number | null;
-                    components?: Json;
-                    created_at?: string | null;
-                    display_id?: string | null;
-                    id?: string;
-                    rule_name: string;
-                    state_code: string;
-                    state_tenure?: number | null;
-                    status?: string | null;
-                    updated_at?: string | null;
-                    vehicle_type: string;
-                    version?: number | null;
-                };
-                Update: {
-                    bh_tenure?: number | null;
-                    company_multiplier?: number | null;
-                    components?: Json;
-                    created_at?: string | null;
-                    display_id?: string | null;
-                    id?: string;
-                    rule_name?: string;
-                    state_code?: string;
-                    state_tenure?: number | null;
-                    status?: string | null;
-                    updated_at?: string | null;
-                    vehicle_type?: string;
-                    version?: number | null;
-                };
-                Relationships: [];
-            };
-            sys_analytics_events: {
-                Row: {
-                    created_at: string | null;
-                    event_name: string | null;
-                    event_type: string;
-                    id: string;
-                    metadata: Json | null;
-                    page_path: string;
-                    session_id: string | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    event_name?: string | null;
-                    event_type: string;
-                    id?: string;
-                    metadata?: Json | null;
-                    page_path: string;
-                    session_id?: string | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    event_name?: string | null;
-                    event_type?: string;
-                    id?: string;
-                    metadata?: Json | null;
-                    page_path?: string;
-                    session_id?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'analytics_events_session_id_fkey';
-                        columns: ['session_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'sys_analytics_sessions';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            sys_analytics_sessions: {
-                Row: {
-                    anonymous_id: string | null;
-                    browser_name: string | null;
-                    country: string | null;
-                    device_type: string | null;
-                    id: string;
-                    ip_address: unknown;
-                    last_active_at: string | null;
-                    latitude: number | null;
-                    longitude: number | null;
-                    os_name: string | null;
-                    referrer: string | null;
-                    started_at: string | null;
-                    taluka: string | null;
-                    user_agent: string | null;
-                    user_id: string | null;
-                };
-                Insert: {
-                    anonymous_id?: string | null;
-                    browser_name?: string | null;
-                    country?: string | null;
-                    device_type?: string | null;
-                    id?: string;
-                    ip_address?: unknown;
-                    last_active_at?: string | null;
-                    latitude?: number | null;
-                    longitude?: number | null;
-                    os_name?: string | null;
-                    referrer?: string | null;
-                    started_at?: string | null;
-                    taluka?: string | null;
-                    user_agent?: string | null;
-                    user_id?: string | null;
-                };
-                Update: {
-                    anonymous_id?: string | null;
-                    browser_name?: string | null;
-                    country?: string | null;
-                    device_type?: string | null;
-                    id?: string;
-                    ip_address?: unknown;
-                    last_active_at?: string | null;
-                    latitude?: number | null;
-                    longitude?: number | null;
-                    os_name?: string | null;
-                    referrer?: string | null;
-                    started_at?: string | null;
-                    taluka?: string | null;
-                    user_agent?: string | null;
-                    user_id?: string | null;
-                };
-                Relationships: [];
-            };
-            sys_archived: {
-                Row: {
-                    archived_at: string | null;
-                    archived_by: string | null;
-                    data: Json;
-                    id: string;
-                    original_id: string;
-                    original_table: string;
-                    tenant_id: string | null;
-                };
-                Insert: {
-                    archived_at?: string | null;
-                    archived_by?: string | null;
-                    data: Json;
-                    id?: string;
-                    original_id: string;
-                    original_table: string;
-                    tenant_id?: string | null;
-                };
-                Update: {
-                    archived_at?: string | null;
-                    archived_by?: string | null;
-                    data?: Json;
-                    id?: string;
-                    original_id?: string;
-                    original_table?: string;
-                    tenant_id?: string | null;
-                };
-                Relationships: [];
-            };
-            sys_dashboard_templates: {
-                Row: {
-                    created_at: string | null;
-                    description: string | null;
-                    id: string;
-                    is_system: boolean | null;
-                    layout_config: Json;
-                    name: string;
-                    sidebar_config: Json;
-                    tenant_type: string;
-                    updated_at: string | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    description?: string | null;
-                    id?: string;
-                    is_system?: boolean | null;
-                    layout_config: Json;
-                    name: string;
-                    sidebar_config: Json;
-                    tenant_type: string;
-                    updated_at?: string | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    description?: string | null;
-                    id?: string;
-                    is_system?: boolean | null;
-                    layout_config?: Json;
-                    name?: string;
-                    sidebar_config?: Json;
-                    tenant_type?: string;
-                    updated_at?: string | null;
-                };
-                Relationships: [];
-            };
-            sys_error_log: {
-                Row: {
-                    affected_table: string | null;
-                    created_at: string | null;
-                    error_message: string | null;
-                    function_name: string | null;
-                    id: string;
-                    resolved_at: string | null;
-                    severity: string | null;
-                    source_file: string | null;
-                    stack_trace: string | null;
-                    status: string | null;
-                    tenant_id: string | null;
-                    user_id: string | null;
-                };
-                Insert: {
-                    affected_table?: string | null;
-                    created_at?: string | null;
-                    error_message?: string | null;
-                    function_name?: string | null;
-                    id?: string;
-                    resolved_at?: string | null;
-                    severity?: string | null;
-                    source_file?: string | null;
-                    stack_trace?: string | null;
-                    status?: string | null;
-                    tenant_id?: string | null;
-                    user_id?: string | null;
-                };
-                Update: {
-                    affected_table?: string | null;
-                    created_at?: string | null;
-                    error_message?: string | null;
-                    function_name?: string | null;
-                    id?: string;
-                    resolved_at?: string | null;
-                    severity?: string | null;
-                    source_file?: string | null;
-                    stack_trace?: string | null;
-                    status?: string | null;
-                    tenant_id?: string | null;
-                    user_id?: string | null;
-                };
-                Relationships: [];
-            };
             oclub_booking_coin_applies: {
                 Row: {
                     booking_id: string;
@@ -4845,7 +4730,7 @@ export type Database = {
                     {
                         foreignKeyName: 'oclub_referrals_lead_id_fkey';
                         columns: ['lead_id'];
-                        isOneToOne: false;
+                        isOneToOne: true;
                         referencedRelation: 'crm_leads';
                         referencedColumns: ['id'];
                     },
@@ -5038,6 +4923,72 @@ export type Database = {
                     },
                 ];
             };
+            sys_archived: {
+                Row: {
+                    archived_at: string | null;
+                    archived_by: string | null;
+                    data: Json;
+                    id: string;
+                    original_id: string;
+                    original_table: string;
+                    tenant_id: string | null;
+                };
+                Insert: {
+                    archived_at?: string | null;
+                    archived_by?: string | null;
+                    data: Json;
+                    id?: string;
+                    original_id: string;
+                    original_table: string;
+                    tenant_id?: string | null;
+                };
+                Update: {
+                    archived_at?: string | null;
+                    archived_by?: string | null;
+                    data?: Json;
+                    id?: string;
+                    original_id?: string;
+                    original_table?: string;
+                    tenant_id?: string | null;
+                };
+                Relationships: [];
+            };
+            sys_dashboard_templates: {
+                Row: {
+                    created_at: string | null;
+                    description: string | null;
+                    id: string;
+                    is_system: boolean | null;
+                    layout_config: Json;
+                    name: string;
+                    sidebar_config: Json;
+                    tenant_type: string;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    description?: string | null;
+                    id?: string;
+                    is_system?: boolean | null;
+                    layout_config: Json;
+                    name: string;
+                    sidebar_config: Json;
+                    tenant_type: string;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    description?: string | null;
+                    id?: string;
+                    is_system?: boolean | null;
+                    layout_config?: Json;
+                    name?: string;
+                    sidebar_config?: Json;
+                    tenant_type?: string;
+                    updated_at?: string | null;
+                };
+                Relationships: [];
+            };
             sys_role_templates: {
                 Row: {
                     created_at: string | null;
@@ -5078,18 +5029,21 @@ export type Database = {
                     default_owner_tenant_id: string | null;
                     id: string;
                     unified_context_strict_mode: boolean | null;
+                    unified_marketplace_context: boolean | null;
                     updated_at: string | null;
                 };
                 Insert: {
                     default_owner_tenant_id?: string | null;
                     id?: string;
                     unified_context_strict_mode?: boolean | null;
+                    unified_marketplace_context?: boolean | null;
                     updated_at?: string | null;
                 };
                 Update: {
                     default_owner_tenant_id?: string | null;
                     id?: string;
                     unified_context_strict_mode?: boolean | null;
+                    unified_marketplace_context?: boolean | null;
                     updated_at?: string | null;
                 };
                 Relationships: [];
@@ -5182,28 +5136,7 @@ export type Database = {
                 Args: { p_tenant_id: string; p_user_id: string };
                 Returns: boolean;
             };
-            oclub_apply_booking_coins: {
-                Args: {
-                    p_booking_id: string;
-                    p_member_id: string;
-                    p_system_coins: number;
-                    p_referral_coins: number;
-                    p_sponsored_coins: number;
-                };
-                Returns: string;
-            };
-            oclub_approve_redemption: {
-                Args: { p_request_id: string; p_approved_by: string };
-                Returns: undefined;
-            };
-            oclub_confirm_redemption_paid: {
-                Args: { p_request_id: string; p_payment_ref: string };
-                Returns: undefined;
-            };
-            oclub_reject_redemption: {
-                Args: { p_request_id: string; p_rejected_by: string };
-                Returns: undefined;
-            };
+            create_booking_from_quote: { Args: { quote_id: string }; Returns: string };
             encode_base33: { Args: { length: number; num: number }; Returns: string };
             generate_display_id: { Args: never; Returns: string };
             get_dealer_offers: {
@@ -5302,6 +5235,55 @@ export type Database = {
             get_user_memberships: { Args: { p_user_id: string }; Returns: Json };
             is_marketplace_admin: { Args: never; Returns: boolean };
             is_super_admin: { Args: never; Returns: boolean };
+            oclub_add_ledger: {
+                Args: {
+                    p_coin_type: string;
+                    p_delta: number;
+                    p_member_id: string;
+                    p_metadata: Json;
+                    p_source_id: string;
+                    p_source_type: string;
+                    p_sponsor_id: string;
+                    p_status: string;
+                };
+                Returns: string;
+            };
+            oclub_apply_booking_coins: {
+                Args: {
+                    p_booking_id: string;
+                    p_member_id: string;
+                    p_referral_coins: number;
+                    p_sponsored_coins: number;
+                    p_system_coins: number;
+                };
+                Returns: string;
+            };
+            oclub_approve_redemption: {
+                Args: { p_approved_by: string; p_request_id: string };
+                Returns: undefined;
+            };
+            oclub_confirm_redemption_paid: {
+                Args: { p_payment_ref: string; p_request_id: string };
+                Returns: undefined;
+            };
+            oclub_credit_referral: {
+                Args: {
+                    p_lead_id: string;
+                    p_referred_member_id: string;
+                    p_referrer_id: string;
+                };
+                Returns: undefined;
+            };
+            oclub_credit_signup: { Args: { p_member_id: string }; Returns: undefined };
+            oclub_ensure_wallet: { Args: { p_member_id: string }; Returns: undefined };
+            oclub_reject_redemption: {
+                Args: { p_rejected_by: string; p_request_id: string };
+                Returns: undefined;
+            };
+            oclub_unlock_referral: {
+                Args: { p_referral_id: string };
+                Returns: undefined;
+            };
             publish_price_with_lock: {
                 Args: {
                     p_insurance_total: number;
@@ -5346,6 +5328,7 @@ export type Database = {
             lead_status: 'NEW' | 'CONTACTED' | 'QUOTED' | 'BOOKED' | 'DELIVERED' | 'CLOSED' | 'LOST';
             po_status: 'DRAFT' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'COMPLETED' | 'CANCELLED';
             power_unit: 'CC' | 'KW';
+            sku_status: 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED' | 'UPCOMING';
             tenant_type: 'MARKETPLACE' | 'DEALER' | 'BANK' | 'SUPER_ADMIN';
             vehicle_category: 'MOTORCYCLE' | 'SCOOTER' | 'MOPED' | 'ELECTRIC_BIKE' | 'ELECTRIC_SCOOTER';
         };
@@ -5486,6 +5469,7 @@ export const Constants = {
             lead_status: ['NEW', 'CONTACTED', 'QUOTED', 'BOOKED', 'DELIVERED', 'CLOSED', 'LOST'],
             po_status: ['DRAFT', 'ORDERED', 'PARTIALLY_RECEIVED', 'COMPLETED', 'CANCELLED'],
             power_unit: ['CC', 'KW'],
+            sku_status: ['ACTIVE', 'INACTIVE', 'DISCONTINUED', 'UPCOMING'],
             tenant_type: ['MARKETPLACE', 'DEALER', 'BANK', 'SUPER_ADMIN'],
             vehicle_category: ['MOTORCYCLE', 'SCOOTER', 'MOPED', 'ELECTRIC_BIKE', 'ELECTRIC_SCOOTER'],
         },

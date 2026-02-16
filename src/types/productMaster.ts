@@ -10,7 +10,7 @@ export interface ProductVariant {
     modelSlug: string;
     sku: string;
     status: VehicleStatus;
-    bodyType: 'MOTORCYCLE' | 'SCOOTER' | 'MOPED';
+    bodyType: 'MOTORCYCLE' | 'SCOOTER' | 'MOPED' | 'ACCESSORY' | 'SERVICE';
     fuelType: 'PETROL' | 'EV' | 'CNG';
     displacement?: number;
     powerUnit: 'CC' | 'KW';

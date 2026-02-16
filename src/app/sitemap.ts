@@ -44,7 +44,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         // Add each Variant page
         (family.variants as any)?.forEach((variant: any) => {
-            const variantSlug = variant.slug || variant.name.toLowerCase().replace(/\s+/g, '-');
+            const fullVariantSlug = variant.slug || variant.name.toLowerCase().replace(/\s+/g, '-');
+            // Strip the model slug prefix to get just the variant portion
+            // e.g., "fascino-125-fi-hybrid-disc" → "disc"
+            const variantSlug = fullVariantSlug.startsWith(`${modelSlug}-`)
+                ? fullVariantSlug.slice(modelSlug.length + 1)
+                : fullVariantSlug;
             productRoutes.push({
                 url: `${baseUrl}/store/${brandSlug}/${modelSlug}/${variantSlug}`,
                 lastModified: new Date(),

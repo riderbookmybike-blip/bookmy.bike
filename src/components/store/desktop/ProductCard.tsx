@@ -11,6 +11,7 @@ import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
+import { Logo } from '@/components/brand/Logo';
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
     const fullStars = Math.floor(rating);
@@ -909,21 +910,9 @@ export const ProductCard = ({
                             </span>
                             {showBcoinBadge && (
                                 <div className="flex items-center gap-1.5 pl-0.5">
-                                    <span className="relative w-4.5 h-4.5 rounded-full bg-gradient-to-tr from-[#9B7F13] via-[#F4B000] to-[#FFD700] text-slate-950 text-[9px] font-black flex items-center justify-center shrink-0 shadow-[0_2px_5px_rgba(0,0,0,0.15)] border border-[#F4B000]/30 overflow-hidden ring-1 ring-white/20">
-                                        <span style={{ fontFamily: 'Georgia, serif' }} className="relative z-10">
-                                            B
-                                        </span>
-                                        <motion.div
-                                            animate={{ x: ['-100%', '200%'] }}
-                                            transition={{
-                                                duration: 2,
-                                                repeat: Infinity,
-                                                ease: 'linear',
-                                                repeatDelay: 3,
-                                            }}
-                                            className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-20deg]"
-                                        />
-                                    </span>
+                                    <div className="w-4.5 h-4.5 shrink-0 flex items-center justify-center">
+                                        <Logo variant="icon" size={16} />
+                                    </div>
                                     <span className="text-base md:text-lg font-bold italic text-slate-600 dark:text-brand-primary/80 leading-none">
                                         {bcoinTotal.toLocaleString('en-IN')}
                                     </span>

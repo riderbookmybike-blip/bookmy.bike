@@ -27,6 +27,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         const makes = Array.from(
             new Set(
                 initialVehicles
+                    .filter(v => v.bodyType !== 'ACCESSORY' && v.bodyType !== 'SERVICE')
                     .map(v => (v.make || '').trim())
                     .filter(Boolean)
                     .map(m => m.toUpperCase())
@@ -189,8 +190,11 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             const segment = v.segment || 'Commuter';
             const matchesSegment = selectedSegments.length === 0 || selectedSegments.includes(segment);
 
+            const isVehicle = v.bodyType !== 'ACCESSORY' && v.bodyType !== 'SERVICE';
+
+            // Default: hide accessories/services unless explicitly filtered in body type
             const matchesBodyType =
-                selectedBodyTypes.length === 0 || (v.bodyType && selectedBodyTypes.includes(v.bodyType));
+                selectedBodyTypes.length === 0 ? isVehicle : v.bodyType && selectedBodyTypes.includes(v.bodyType);
 
             const displacement = v.displacement || 0;
             const ccTag =

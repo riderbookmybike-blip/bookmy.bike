@@ -35,18 +35,8 @@ export async function getDealerPriceAction(itemId: string, stateCode?: string): 
         return Number(price.ex_showroom_price);
     }
 
-    // 2. Fallback: Get the base price from cat_items if district price not found
-    const { data: item, error: itemError } = await supabase
-        .from('cat_items')
-        .select('price_base')
-        .eq('id', itemId)
-        .single();
-
-    if (item?.price_base) {
-        return item.price_base;
-    }
-
-    return 85000; // Final hardcoded fallback if everything fails
+    // No fallback: cat_price_state is the sole SOT. If missing, signal no price.
+    throw new Error('Price not found in cat_price_state for this SKU/state');
 }
 
 /**

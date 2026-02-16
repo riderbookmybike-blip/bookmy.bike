@@ -704,32 +704,35 @@ export default function PricingLedgerTable({
     return (
         <div className="w-full h-full flex flex-col animate-in fade-in duration-700 bg-white dark:bg-slate-950">
             {/* Soft Tricolor Toolbar */}
-            <div className="z-30 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+            <div className="z-30 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-1 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
                 <div className="flex items-center gap-2 flex-wrap flex-1">
                     {/* Search Bar */}
-                    <div className="relative w-[160px] ml-[18px]">
-                        <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
+                    <div className="relative w-[150px] ml-[10px]">
+                        <Search
+                            size={10}
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
+                        />
                         <input
                             type="text"
                             placeholder="Search..."
-                            className="w-full pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide placeholder:text-slate-400 placeholder:normal-case focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
+                            className="w-full pl-6 pr-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[9px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide placeholder:text-slate-400 placeholder:normal-case focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
                         />
                     </div>
                     {/* State Filter */}
-                    <div className="relative group w-[160px]">
+                    <div className="relative group w-[150px]">
                         <button
                             onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'state' ? null : 'state')}
-                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'state' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
+                            className={`w-full flex items-center justify-between pl-6 pr-2 py-1 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'state' ? 'border-emerald-500 ring-1 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[9px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
                             <Landmark
-                                size={12}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
+                                size={10}
+                                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
                             />
                             <span className="truncate">
                                 {states.find((s: RegistrationRule) => s.id === selectedStateId)?.ruleName ||
                                     'Select State'}
                             </span>
-                            <Filter size={10} className="opacity-50 text-emerald-600" />
+                            <Filter size={8} className="opacity-50 text-emerald-600" />
                         </button>
 
                         {activeToolbarFilter === 'state' && (
@@ -761,22 +764,22 @@ export default function PricingLedgerTable({
                         )}
                     </div>
                     {/* Category Filter */}
-                    <div className="relative group w-[160px]">
+                    <div className="relative group w-[150px]">
                         <button
                             onClick={() =>
                                 setActiveToolbarFilter(activeToolbarFilter === 'category' ? null : 'category')
                             }
-                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'category' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
+                            className={`w-full flex items-center justify-between pl-6 pr-2 py-1 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'category' ? 'border-emerald-500 ring-1 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[9px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
                         >
                             <Activity
-                                size={12}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
+                                size={10}
+                                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
                             />
                             <span className="truncate">
                                 {selectedCategory === 'ALL' ? 'All Categories' : selectedCategory}
                             </span>
                             <Filter
-                                size={10}
+                                size={8}
                                 className={`opacity-50 ${selectedCategory !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
                             />
                         </button>
@@ -1405,26 +1408,26 @@ export default function PricingLedgerTable({
 
                                     {activeCategory === 'vehicles' ? (
                                         <>
-                                            <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
                                                 RTO
                                             </th>
-                                            <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
                                                 Insurance
                                             </th>
                                         </>
                                     ) : (
                                         <>
-                                            <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
+                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
                                                 Base Price
                                             </th>
-                                            <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
+                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
                                                 GST (28%)
                                             </th>
                                         </>
                                     )}
 
                                     {activeCategory !== 'vehicles' && (
-                                        <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-center min-w-[80px]">
+                                        <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-center min-w-[70px]">
                                             Inclusion
                                         </th>
                                     )}
@@ -1436,12 +1439,12 @@ export default function PricingLedgerTable({
                                     )}
 
                                     {activeCategory !== 'vehicles' && (
-                                        <th className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right">
+                                        <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right">
                                             Offer (₹)
                                         </th>
                                     )}
 
-                                    <th className="px-3 py-2.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap bg-emerald-50/80 dark:bg-emerald-900/20">
+                                    <th className="px-2 py-1.5 text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap bg-emerald-50/80 dark:bg-emerald-900/20">
                                         {activeCategory === 'vehicles'
                                             ? isAums
                                                 ? 'On-Road'
@@ -1456,7 +1459,7 @@ export default function PricingLedgerTable({
                                     )}
 
                                     <th
-                                        className="px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right w-[100px] whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                        className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right w-[100px] whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
                                         onClick={() => handleSort('updatedAt')}
                                     >
                                         <div className="flex items-center justify-end gap-1">
@@ -1468,7 +1471,7 @@ export default function PricingLedgerTable({
                                         </div>
                                     </th>
 
-                                    <th className="relative px-3 py-2.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right group/header w-[100px] whitespace-nowrap">
+                                    <th className="relative px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right group/header w-[100px] whitespace-nowrap">
                                         <div className="flex items-center justify-end gap-1">
                                             <div
                                                 onClick={() => handleSort('displayState')}
@@ -1594,7 +1597,7 @@ export default function PricingLedgerTable({
                                     </th>
 
                                     {/* Popular Header */}
-                                    <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-2 text-[9px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider border-r border-emerald-100 dark:border-white/10 w-16">
+                                    <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 text-[8px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider border-r border-emerald-100 dark:border-white/10 w-14">
                                         Popular
                                     </th>
                                 </tr>
@@ -1645,12 +1648,12 @@ export default function PricingLedgerTable({
                                             {/* VEHICLE COLUMNS */}
                                             {activeCategory === 'vehicles' && (
                                                 <>
-                                                    <td className="px-3 py-1.5">
+                                                    <td className="px-2 py-1">
                                                         <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
                                                             {sku.model}
                                                         </span>
                                                     </td>
-                                                    <td className="px-3 py-1.5">
+                                                    <td className="px-2 py-1">
                                                         <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
                                                             {sku.variant}
                                                         </span>
@@ -1684,7 +1687,7 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            <td className="px-3 py-1.5 text-right">
+                                            <td className="px-2 py-1 text-right">
                                                 <div className="flex justify-end items-center gap-2">
                                                     <input
                                                         type="number"
@@ -1960,7 +1963,7 @@ export default function PricingLedgerTable({
                                                         )}
                                                     </td>
                                                     {!isAums && (
-                                                        <td className="px-3 py-1.5 text-right">
+                                                        <td className="px-2 py-1 text-right">
                                                             <span className="font-bold text-[11px] text-slate-400 dark:text-slate-500">
                                                                 {sku.onRoad ? `₹${sku.onRoad.toLocaleString()}` : '—'}
                                                             </span>
@@ -1969,7 +1972,7 @@ export default function PricingLedgerTable({
                                                 </>
                                             ) : (
                                                 <>
-                                                    <td className="px-3 py-1.5 text-right">
+                                                    <td className="px-2 py-1 text-right">
                                                         <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">
                                                             ₹
                                                             {basePrice.toLocaleString(undefined, {
@@ -1977,7 +1980,7 @@ export default function PricingLedgerTable({
                                                             })}
                                                         </span>
                                                     </td>
-                                                    <td className="px-3 py-1.5 text-right">
+                                                    <td className="px-2 py-1 text-right">
                                                         <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">
                                                             ₹
                                                             {totalGst.toLocaleString(undefined, {
@@ -2011,7 +2014,7 @@ export default function PricingLedgerTable({
                                                         </select>
                                                     </td>
                                                     {!isAums && (
-                                                        <td className="px-3 py-1.5 text-right">
+                                                        <td className="px-2 py-1 text-right">
                                                             {(() => {
                                                                 const delta = offerDelta;
                                                                 if (delta === 0)
@@ -2104,7 +2107,7 @@ export default function PricingLedgerTable({
                                             </td>
 
                                             {!isAums && activeCategory === 'vehicles' && (
-                                                <td className="px-3 py-1.5 text-right">
+                                                <td className="px-2 py-1 text-right">
                                                     {(() => {
                                                         // Delta = OnRoad (AUMS base) - OfferOnRoad (dealer input)
                                                         // offerDelta here is the dealer's Offer On Road price
@@ -2133,8 +2136,8 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            <td className="px-3 py-1.5 text-right w-[90px] relative group/updated">
-                                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">
+                                            <td className="px-2 py-1 text-right w-[80px] relative group/updated">
+                                                <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">
                                                     {updatedLabel}
                                                 </span>
                                                 {updatedTooltip && (

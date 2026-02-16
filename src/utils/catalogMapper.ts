@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ProductVariant } from '@/types/productMaster';
+import { normalizeFinish } from '@/actions/catalog/catalogUtils';
 
 // State code to full name mapping
 export const STATE_NAMES: Record<string, string> = {
@@ -501,11 +502,16 @@ export function mapCatalogItems(
                                     offsetX: Number(primaryAsset?.offset_x || sku.offset_x || 0),
                                     offsetY: Number(primaryAsset?.offset_y || sku.offset_y || 0),
                                     finish: (
-                                        color?.specs?.Finish ||
                                         color?.specs?.finish ||
-                                        sku.specs?.Finish ||
-                                        sku.specs?.finish
-                                    )?.toUpperCase(),
+                                        sku.specs?.finish ||
+                                        normalizeFinish(
+                                            color?.specs?.color || color?.name || sku.specs?.Color || sku.name || '',
+                                            {
+                                                ...color?.specs,
+                                                ...sku.specs,
+                                            }
+                                        )
+                                    ).toUpperCase(),
                                     isPrimary: Boolean(sku.is_primary),
                                 });
                             });

@@ -100,6 +100,105 @@ async function getRawCatalog() {
     return data;
 }
 
+async function getRawCatalogFromLinear() {
+    const { data, error } = await adminClient
+        .from('cat_skus_linear')
+        .select('*')
+        .eq('status', 'ACTIVE')
+        .not('type_name', 'in', '(ACCESSORY,SERVICE)');
+
+    if (error) {
+        console.error('[CatalogLinearFetch] Error:', error.message);
+        return null;
+    }
+    console.debug('[CatalogLinearFetch] rows:', data?.length ?? 0);
+    return data;
+}
+
+function reconstructHierarchy(rows: any[]): any[] {
+    const productGroups = new Map<string, any>();
+
+    if (!rows || rows.length === 0) {
+        console.warn('[CatalogLinearFetch] reconstructHierarchy received 0 rows');
+        return [];
+    }
+
+    for (const row of rows) {
+        if (!productGroups.has(row.product_json.id)) {
+            productGroups.set(row.product_json.id, {
+                ...row.product_json,
+                brand: row.brand_json,
+                children: [],
+            });
+        }
+
+        const product = productGroups.get(row.product_json.id);
+
+        // Find or create variant
+        let variant = product.children.find((c: any) => c.id === row.variant_json.id);
+        if (!variant) {
+            variant = {
+                ...row.variant_json,
+                skus: [],
+                colors: [],
+            };
+            product.children.push(variant);
+        }
+
+        // Reconstruct SKU/UNIT structure
+        // Prefer price_mh (cached MH pricing) over unit_json.prices
+        const priceMh = row.price_mh;
+        const prices = priceMh
+            ? [
+                  {
+                      ex_showroom_price: Number(priceMh.ex_showroom) || 0,
+                      rto_total: Number(priceMh.rto_total) || 0,
+                      insurance_total: Number(priceMh.insurance_total) || 0,
+                      rto: priceMh.rto || null,
+                      insurance: priceMh.insurance || null,
+                      on_road_price: Number(priceMh.on_road_price) || 0,
+                      state_code: 'MH',
+                      district: 'ALL',
+                      is_active: true,
+                      published_at: null,
+                      latitude: null,
+                      longitude: null,
+                  },
+              ]
+            : row.unit_json.prices || [];
+        // CRITICAL: Extract the actual color/sku ID from the price entries if available
+        // The linear table often embeds the Variant ID as unit_json.id, leading to price mismatches
+        const effectiveUnitId = prices[0]?.vehicle_color_id || row.unit_json.id || row.id;
+
+        const skuData = {
+            ...row.unit_json,
+            id: effectiveUnitId,
+            prices: prices,
+            image_url: row.image_url,
+            gallery_urls: row.gallery_urls || [],
+            assets: row.assets_json || [],
+        };
+
+        // Determine if it should go into colors or skus based on existing pattern
+        if (
+            row.unit_json.type === 'COLOR_DEF' ||
+            (row.unit_json.specs &&
+                (row.unit_json.specs.hex_primary || row.unit_json.specs.hex_code || row.unit_json.specs.Color))
+        ) {
+            // In the hierarchical catalog, colors often have skus as children.
+            // Here we simplify by treating the unit as the sku container if it has color specs.
+            variant.colors.push({
+                ...skuData,
+                skus: [skuData],
+            });
+        } else {
+            variant.skus.push(skuData);
+        }
+    }
+
+    return Array.from(productGroups.values());
+}
+
 export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVariant[]> {
     const cookieStore = await cookies();
 
@@ -110,11 +209,17 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     const stateCode = pricingContext.stateCode;
 
     // 2. Parallel Fetch - SOT Phase 3: Rules removed, pricing from JSON
+    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
+
     const [rawCatalog, offerData] = await Promise.all([
-        withCache(() => getRawCatalog(), ['raw-catalog'], {
-            revalidate: 3600,
-            tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global],
-        }),
+        withCache(
+            () => (useLinear ? getRawCatalogFromLinear() : getRawCatalog()) as any,
+            [useLinear ? 'raw-catalog-linear' : 'raw-catalog'],
+            {
+                revalidate: 3600,
+                tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global],
+            }
+        ),
         dealerId
             ? withCache(() => getRawDealerOffers(dealerId, stateCode), ['dealer-offers', dealerId, stateCode], {
                   revalidate: 3600,
@@ -129,6 +234,9 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     ]);
 
     if (!rawCatalog) return [];
+
+    // 3. Reconstruct if using linear
+    const rawData = (useLinear ? reconstructHierarchy(rawCatalog) : rawCatalog) as any[];
 
     // Location coordinates for distance calc (optional)
     let userLat: number | null = null;
@@ -151,7 +259,7 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     }
 
     // 3. Map Items
-    let filteredData = rawCatalog as any[];
+    let filteredData = rawData as any[];
 
     // 3.1 Dealer-only filter
     const activeOffers = offerData || [];

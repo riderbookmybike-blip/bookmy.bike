@@ -570,6 +570,25 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                 continue;
             }
 
+            // Dual-write: sync price_mh cache in cat_skus_linear for MH
+            if (stateCode === 'MH') {
+                const priceMhCache = {
+                    ex_showroom: exShowroom,
+                    gst_rate: gstRatePercent / 100,
+                    hsn_code: '',
+                    rto_total: Number(rtoResult.json.STATE.total),
+                    rto: rtoResult.json,
+                    insurance_total: Number(insuranceResult.json.base_total),
+                    insurance: insuranceResult.json,
+                    on_road_price: newOnRoad,
+                    is_popular: false,
+                };
+                await (adminClient as any)
+                    .from('cat_skus_linear')
+                    .update({ price_mh: priceMhCache })
+                    .eq('unit_json->>id', skuId);
+            }
+
             // 6. Auto-adjust dealer offers if price increased
             let dealersAdjusted = 0;
             if (delta > 0) {
