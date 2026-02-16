@@ -9,6 +9,22 @@
 
 `cat_items` + `cat_skus_linear` (JSONB mess) → **8 clean, normalized tables** — Zero JSONB, सब flat columns, proper naming per product type.
 
+## 🔍 Review Outcome (Tight)
+
+### Must-fix changes added in this revision
+1. Enforce `sku_type` ↔ variant FK integrity in `cat_skus` with CHECK constraints.
+2. Add matrix-level uniqueness so duplicate SKUs cannot be created accidentally.
+3. Add explicit unique/index strategy for slugs and parent ordering.
+4. Add migration cutover/rollback checklist (counts + totals + parity checks before archive).
+5. Clarify one ambiguity: no table DROP is allowed, but dropping obsolete columns is allowed only if data is fully migrated.
+
+### 3 Decisions Confirmed ✅
+| # | Question | Decision | Rationale |
+|---|----------|----------|----------|
+| 1 | Slug policy | **Parent-scoped** `(parent_id, slug)` unique | Same slug under different parents is valid ("disc" under Jupiter ≠ "disc" under Activa) |
+| 2 | Pricing table | **Rename `cat_price_mh` → `cat_pricing`** + `state_code DEFAULT 'MH'`, unique `(sku_id, state_code)` | Single table scales to multi-state; avoids 15 identical tables |
+| 3 | Fitment | **`fitment_vehicle` TEXT required** + `fitment_model_id` UUID FK optional | Free text always available; FK bonus when vehicle exists in catalog |
+
 ### Core Principles
 1. **Zero JSONB** — पूरे catalog में कहीं भी
 2. **`cat_specifications`** = Master Blueprint for all specs
@@ -426,8 +442,8 @@ Step 7: Publish
 | `color_name` | TEXT | "Starlight Blue" |
 | `finish` | TEXT | CHECK IN (GLOSS, MATTE, METALLIC, CHROME) |
 | — **Fitment** (some Accessories) | — | — |
-| `fitment_vehicle` | TEXT | "Activa" — vehicle this fits |
-| `fitment_model_id` | UUID FK → `cat_models` | Optional FK to parent vehicle model |
+| `fitment_vehicle` | TEXT | **REQUIRED** — "Activa", "Pulsar NS200" (human-readable, always set) |
+| `fitment_model_id` | UUID FK → `cat_models` NULL | **OPTIONAL** — set when vehicle exists in our catalog (cross-sell) |
 | — **Media (ONLY HERE)** | — | — |
 | `primary_image` | TEXT | Main image |
 | `gallery_img_1` | TEXT | |
@@ -452,17 +468,47 @@ Step 7: Publish
 
 **40 columns. Zero JSONB.**
 
-> 🆕 Added `fitment_vehicle` + `fitment_model_id` — for accessories like Crash Guards where
-> the Unit dimension is vehicle compatibility, not colour.
+> 🆕 `fitment_vehicle` = **required free text** (always have a label).
+> 🆕 `fitment_model_id` = **optional FK** (set when vehicle is in our catalog for cross-sell/compatibility).
+
+#### Required DB Constraints (Critical)
+
+```sql
+-- 1) Exactly one variant FK must be set based on sku_type
+ALTER TABLE cat_skus
+ADD CONSTRAINT chk_cat_skus_type_fk
+CHECK (
+  (sku_type = 'VEHICLE'   AND vehicle_variant_id   IS NOT NULL AND accessory_variant_id IS NULL AND service_variant_id IS NULL) OR
+  (sku_type = 'ACCESSORY' AND accessory_variant_id IS NOT NULL AND vehicle_variant_id   IS NULL AND service_variant_id IS NULL) OR
+  (sku_type = 'SERVICE'   AND service_variant_id   IS NOT NULL AND vehicle_variant_id   IS NULL AND accessory_variant_id IS NULL)
+);
+
+-- 2) Prevent duplicate matrix cells (same variant + same unit name)
+CREATE UNIQUE INDEX uq_cat_skus_vehicle_cell
+  ON cat_skus (vehicle_variant_id, slug) WHERE sku_type = 'VEHICLE';
+CREATE UNIQUE INDEX uq_cat_skus_accessory_cell
+  ON cat_skus (accessory_variant_id, slug) WHERE sku_type = 'ACCESSORY';
+CREATE UNIQUE INDEX uq_cat_skus_service_cell
+  ON cat_skus (service_variant_id, slug) WHERE sku_type = 'SERVICE';
+```
+
+> Note: keep `slug` normalized/lowercased and generated deterministically from unit name.
 
 ---
 
-### 8️⃣ `cat_price_mh` 🆕 — Pricing (All Flat)
+### 8️⃣ `cat_pricing` 🆕 — Pricing (All Flat, Multi-State Ready)
+
+> ⚠️ **Renamed from `cat_price_mh`** → `cat_pricing`
+> - Added `state_code DEFAULT 'MH'` — same table works for all states
+> - Unique on `(sku_id, state_code)` — 1 price per SKU per state
+> - No need for `cat_price_ka`, `cat_price_dl` etc. — single table scales
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | UUID PK | |
-| `sku_id` | UUID FK UNIQUE → `cat_skus` | 1 price per SKU |
+| `sku_id` | UUID FK → `cat_skus` | |
+| `state_code` | TEXT NOT NULL DEFAULT 'MH' | 'MH', 'KA', 'DL' etc. |
+| — | — | **UNIQUE (sku_id, state_code)** |
 | — **Core** | — | — |
 | `ex_showroom` | INTEGER NOT NULL | CHECK > 0 |
 | `on_road_price` | INTEGER NOT NULL | CHECK >= ex_showroom |
@@ -526,7 +572,7 @@ Step 7: Publish
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-**52 columns. Zero JSONB.**
+**53 columns. Zero JSONB.**
 
 ---
 
@@ -541,7 +587,7 @@ cat_brands
               └── cat_skus (brand_id + model_id + variant_id FKs)
                     │     display: Colour / Sub-Variant / Tier
                     │     ⬆ Each cell in SKU Matrix = 1 row here
-                    └── cat_price_mh (sku_id FK)
+                    └── cat_pricing (sku_id + state_code) — multi-state ready
 
 cat_specifications ← standalone blueprint, defines columns + validation
 ```
@@ -551,8 +597,8 @@ cat_specifications ← standalone blueprint, defines columns + validation
 cat_brands         → Arihant (id: abc)
 cat_models         → Crash Guard (brand_id: abc, product_type: ACCESSORY)
 cat_variants_acc   → Standard (model_id: crash-guard-id)
-cat_skus           → "Activa Fitment" (accessory_variant_id: standard-id, fitment_vehicle: "Activa")
-cat_price_mh       → ex_showroom: 850 (sku_id: activa-fitment-id)
+cat_skus           → "Activa Fitment" (accessory_variant_id: standard-id, fitment_vehicle: "Activa", fitment_model_id: activa-model-id)
+cat_pricing        → ex_showroom: 850, state_code: 'MH' (sku_id: activa-fitment-id)
 ```
 
 **Example Trace — Studds Helmet Half Face Blue:**
@@ -561,7 +607,7 @@ cat_brands         → Studds (id: xyz)
 cat_models         → Helmet (brand_id: xyz, product_type: ACCESSORY)
 cat_variants_acc   → Half Face (model_id: helmet-id)
 cat_skus           → "Blue" (accessory_variant_id: half-face-id, color_name: Blue, hex_primary: #0000FF)
-cat_price_mh       → ex_showroom: 1200 (sku_id: blue-id)
+cat_pricing        → ex_showroom: 1200, state_code: 'MH' (sku_id: blue-id)
 ```
 
 ---
@@ -601,7 +647,7 @@ cat_price_mh       → ex_showroom: 1200 (sku_id: blue-id)
 5. CREATE cat_variants_accessory
 6. CREATE cat_variants_service
 7. CREATE cat_skus
-8. CREATE cat_price_mh
+8. CREATE cat_pricing (renamed from cat_price_mh, + state_code)
 9. ALTER cat_brands — DROP 2 JSONB cols
 ```
 
@@ -611,7 +657,7 @@ cat_price_mh       → ex_showroom: 1200 (sku_id: blue-id)
 2. INSERT INTO cat_variants_vehicle (JSONB specs → flat columns)
 3. INSERT INTO cat_variants_accessory
 4. INSERT INTO cat_skus + color/fitment/media data
-5. INSERT INTO cat_price_mh (JSONB price_mh → 52 flat columns)
+5. INSERT INTO cat_pricing (JSONB price_mh → flat columns, state_code = 'MH')
 ```
 
 ### Phase 3: Verify _(Risk: ZERO)_
@@ -621,6 +667,8 @@ cat_price_mh       → ex_showroom: 1200 (sku_id: blue-id)
 3. FK integrity OK
 4. Required fields filled
 5. ENUM values valid
+6. Duplicate matrix cells = 0
+7. `cat_items` vs new joins parity snapshot (sample 100 + top sellers 100%)
 ```
 
 ### Phase 4: Update Code _(Risk: MEDIUM)_
@@ -629,7 +677,7 @@ cat_price_mh       → ex_showroom: 1200 (sku_id: blue-id)
 2. catalogFetcher.ts → simple JOINs on new tables
 3. SystemCatalogLogic.ts → same
 4. catalogMapper.ts → dramatically simplify
-5. savePrices.ts → write to cat_price_mh
+5. savePrices.ts → write to cat_pricing (state_code aware)
 6. Product Studio → already has "Add Vehicle" / "Add Accessory" / "Add Service" ✅
 7. UnitStep.tsx → handle both colour entry AND fitment entry based on context
 8. MatrixStep.tsx → works as-is (Variant × Unit cells)
@@ -649,10 +697,12 @@ cat_price_mh       → ex_showroom: 1200 (sku_id: blue-id)
 
 ### Phase 6: Archive _(Risk: LOW)_
 ```
+0. Freeze writes to old tables (temporary app guard)
 1. RENAME cat_items → cat_items_v1_archive
 2. RENAME cat_skus_linear → cat_skus_linear_v1_archive
 3. RENAME cat_assets → cat_assets_v1_archive
 4. RENAME cat_spec_schema → cat_spec_schema_v1_archive
+5. Unfreeze writes on new tables only
 ```
 
 ---
@@ -668,8 +718,8 @@ cat_price_mh       → ex_showroom: 1200 (sku_id: blue-id)
 | 5 | `cat_variants_accessory` | 12 | ❌ | 🆕 | Variant |
 | 6 | `cat_variants_service` | 11 | ❌ | 🆕 | Plan |
 | 7 | `cat_skus` | 40 | ❌ | 🆕 | Colour / Sub-Variant / Tier |
-| 8 | `cat_price_mh` | 52 | ❌ | 🆕 | Pricing |
-| **Total** | **8 tables** | **~205** | **Zero** | | |
+| 8 | `cat_pricing` | 53 | ❌ | 🆕 | Pricing (multi-state) |
+| **Total** | **8 tables** | **~206** | **Zero** | | |
 
 ---
 
@@ -704,6 +754,36 @@ export const HIERARCHY_LABELS = {
 7. **SKU Matrix universal** — Variant × Unit = SKU (all types, all products)
 8. **CRM tables मत छुओ** — post-launch
 9. **cat_price_dealer, cat_ins_rules, cat_reg_rules** — already ठीक हैं
+
+---
+
+## 🧷 Index + Uniqueness — Parent-Scoped ✅
+
+> **Decision:** Slugs are **parent-scoped unique**, not globally unique.
+> Rationale: "disc" under Jupiter ≠ "disc" under Activa — same slug, different parents is valid.
+
+```sql
+-- cat_models: slug unique within brand + type
+CREATE UNIQUE INDEX uq_cat_models_brand_type_slug
+  ON cat_models (brand_id, product_type, slug);
+CREATE INDEX ix_cat_models_brand_status ON cat_models (brand_id, status);
+
+-- variants: slug unique within model (parent-scoped)
+CREATE UNIQUE INDEX uq_cat_variants_vehicle_model_slug
+  ON cat_variants_vehicle (model_id, slug);
+CREATE UNIQUE INDEX uq_cat_variants_accessory_model_slug
+  ON cat_variants_accessory (model_id, slug);
+CREATE UNIQUE INDEX uq_cat_variants_service_model_slug
+  ON cat_variants_service (model_id, slug);
+
+-- cat_skus: lookup indexes
+CREATE INDEX ix_cat_skus_model_status ON cat_skus (model_id, status);
+
+-- cat_pricing: unique per SKU per state + publish lookup
+CREATE UNIQUE INDEX uq_cat_pricing_sku_state
+  ON cat_pricing (sku_id, state_code);
+CREATE INDEX ix_cat_pricing_publish_stage ON cat_pricing (publish_stage);
+```
 
 ---
 
@@ -747,7 +827,7 @@ VALUES ('ACCESSORY', 'arihant-id', 'crash-guard-id', 'standard-id', 'Pulsar NS20
 | DB: cat_models table | ⏳ Phase 1 |
 | DB: cat_variants_* tables | ⏳ Phase 1 |
 | DB: cat_skus table | ⏳ Phase 1 |
-| DB: cat_price_mh table | ⏳ Phase 1 |
+| DB: cat_pricing table (renamed from cat_price_mh) | ⏳ Phase 1 |
 | Data migration | ⏳ Phase 2 |
 | Code updates (fetchers, mappers) | ⏳ Phase 4 |
 | Archive old tables | ⏳ Phase 6 |
