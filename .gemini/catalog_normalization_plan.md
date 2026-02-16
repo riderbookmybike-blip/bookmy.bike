@@ -1,13 +1,13 @@
-# 🏗️ Catalog Normalization Plan v4
+# 🏗️ Catalog Normalization Plan v4.2
 
 > 📅 16 Feb 2026 · BookMyBike · Supabase `aytdeqjxxjxbgiyslubx`
-> 🔄 v4 — Final decision: SKU Matrix universal, Units = Colour / Sub-Variant / Tier
+> 🔄 v4.2 — Locked decisions: parent-scoped slug, `cat_pricing` multi-state, `cat_suitable_for` Suitable For (cascading Brand→Model→Variant)
 
 ---
 
 ## 🎯 Goal
 
-`cat_items` + `cat_skus_linear` (JSONB mess) → **8 clean, normalized tables** — Zero JSONB, सब flat columns, proper naming per product type.
+`cat_items` + `cat_skus_linear` (JSONB mess) → **9 clean, normalized tables** — Zero JSONB, सब flat columns, proper naming per product type.
 
 ## 🔍 Review Outcome (Tight)
 
@@ -23,15 +23,85 @@
 |---|----------|----------|----------|
 | 1 | Slug policy | **Parent-scoped** `(parent_id, slug)` unique | Same slug under different parents is valid ("disc" under Jupiter ≠ "disc" under Activa) |
 | 2 | Pricing table | **Rename `cat_price_mh` → `cat_pricing`** + `state_code DEFAULT 'MH'`, unique `(sku_id, state_code)` | Single table scales to multi-state; avoids 15 identical tables |
-| 3 | Fitment | **`fitment_vehicle` TEXT required** + `fitment_model_id` UUID FK optional | Free text always available; FK bonus when vehicle exists in catalog |
+| 3 | Suitable For | **`cat_suitable_for` junction table** — cascading Brand→Model→Variant with ALL defaults. No rows = UNIVERSAL | Proper relational model; enables reverse lookups ("which accessories fit Jupiter?"); Studio Review tab: Suitable For selector |
 
 ### Core Principles
 1. **Zero JSONB** — पूरे catalog में कहीं भी
 2. **`cat_specifications`** = Master Blueprint for all specs
 3. **Media सिर्फ SKU level पर** — Brand पर सिर्फ logo
 4. **कोई table DROP नहीं** — rename to `_v1_archive`
-5. **SKU Matrix = universal** — Variant × Unit = SKU (all product types)
+5. **SKU Matrix = universal** — Variant × SKU (all product types)
 6. **7-step Studio flow** — same for all types, labels change dynamically
+7. **“Suitable For” = single term** — vehicle compatibility managed via `cat_suitable_for` junction table. No "fitment", no "compatibility" word soup.
+8. **No new JSONB anywhere** — project-wide freeze on new JSONB columns/functions.
+
+## 🚫 JSONB Elimination Program (All Tables, Gradual)
+
+### Policy (effective immediately)
+1. New table/column में `JSONB` allowed नहीं.
+2. Existing JSONB read allowed temporarily; write path must move to flat columns first.
+3. Every JSONB column needs owner + removal phase tag.
+
+### Phase A: Catalog first (in-flight)
+1. `cat_skus_linear.specs`, `cat_skus_linear.price_mh` -> `cat_variants_*` + `cat_pricing` flat columns.
+2. Remove legacy sync trigger/function after cutover.
+3. Archive old catalog tables to `_v1_archive`.
+
+### Phase B: Pricing/Rules modules
+1. `cat_price_state` and related JSON structures -> normalized breakdown columns/tables.
+2. RPC inputs currently taking `JSONB` -> typed params or staging table.
+
+### Phase C: CRM/Operations modules
+1. `commercials`, `vehicle_details`, `customer_details`, snapshot blobs -> structured tables.
+2. Keep append-only audit tables if needed, but payload shape must be typed.
+
+### Phase D: Remaining platform modules
+1. Membership/analytics/metadata JSONB columns -> typed schema migration by domain.
+2. Drop deprecated JSONB columns only after parity + backfill verification.
+
+### Tracking SQL (run weekly)
+```sql
+SELECT table_schema, table_name, column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND data_type = 'jsonb'
+ORDER BY table_name, column_name;
+```
+
+### 🔒 Canonical Naming Contract (DB + Code + UI)
+1. **Use only:** `Brand -> Model -> Variant -> SKU`
+2. **Do not use aliases:** `Product`, `Family`, `Unit`, `Color_Def`, `Fitment`, `Compatibility`
+3. `product_type` stays only as technical enum (`VEHICLE|ACCESSORY|SERVICE`) for behavior, not naming.
+4. Accessory/Service differences are handled by metadata (`sku_type`, `cat_suitable_for`) not by changing hierarchy terms.
+
+### 📘 One-Word SOT Glossary (Project-wide)
+1. `Brand` = brand entity
+2. `Model` = second level item
+3. `Variant` = third level item
+4. `SKU` = purchasable unit
+5. `Suitable For` = vehicle applicability
+
+### ⛔ Banned Terms (use SOT only)
+1. `Product` -> use `Model`
+2. `Family` -> use `Model`
+3. `Plan` / `Tier` (as hierarchy names) -> use `Variant` / `SKU`
+4. `Fitment` / `Compatibility` -> use `Suitable For`
+5. `Unit` / `Sub-Variant` / `Colour` / `Tier` / `Plan` (as hierarchy names) -> use **`SKU`**
+
+> PR gate checklist: `docs/catalog_naming_sot_checklist.md`
+
+### 📜 Migration Lineage (Old → New)
+
+| Old (Active) | Rows | New (v4.2) | Status |
+|-------------|------|------------|--------|
+| `cat_items` (BRAND/TYPE/PRODUCT/VARIANT/UNIT/SKU) | 406 | `cat_models` + `cat_variants_*` + `cat_skus` | ⏳ Phase 2 |
+| `cat_skus_linear` (flat + JSONB `specs`, `price_mh`) | 247 | `cat_skus` + `cat_pricing` (all flat columns) | ⏳ Phase 2 |
+| `cat_item_compatibility` (FKs → `cat_items`, `is_universal` bool) | 2 | `cat_suitable_for` (FKs → `cat_skus`, NULL = ALL semantics) | 📦 Archive only (no transform) |
+| `cat_price_state` → `cat_price_state_archive` | 188 | `cat_pricing` (flat, multi-state) | ✅ Archived |
+| `cat_brands` | shared | `cat_brands` (same, JSONB cols to drop) | ✅ Shared |
+
+> ⚠️ **App code currently uses old tables.** Phase 4 will update all code references.
+> ⚠️ Old `supabase/migrations/` files are historical — they document the evolution. Do NOT edit/delete them.
 
 ---
 
@@ -48,28 +118,28 @@
 | 5 | UNIT / COLOR_DEF | ❓ "Blue Gloss" is a Colour, not "unit" |
 | 6 | SKU | ✅ OK but matrix logic unclear |
 
-### ✅ After: Clean Naming Per Type
+### ✅ After: Single Naming (All Types)
 
 **🏍️ VEHICLE:**
 ```
-Brand → Model → Variant → Colour
+Brand → Model → Variant → SKU
 TVS   → Jupiter → Disc SmartXonnect → Starlight Blue Gloss
-                    (trim level)        (paint colour)
+                    (trim level)        (SKU name)
 ```
 
 **🎒 ACCESSORY:**
 ```
-Brand → Product → Variant → Sub-Variant
+Brand → Model → Variant → SKU
 Studds → Helmet → Half Face → Blue
-                   (style)     (colour/fitment)
+                   (style)     (colour/suitable-for)
 
-Arihant → Crash Guard → Standard → Activa Fitment
-                          (tier)    (vehicle compatibility)
+Arihant → Crash Guard → Standard → Activa SKU
+                          (variant) (vehicle suitability via cat_suitable_for)
 ```
 
 **🔧 SERVICE:**
 ```
-Brand → Service → Plan → Tier
+Brand → Model → Variant → SKU
 BookMyBike → Extended Warranty → 2 Year Comprehensive → Platinum
                                   (coverage plan)        (pricing tier)
 ```
@@ -78,16 +148,16 @@ BookMyBike → Extended Warranty → 2 Year Comprehensive → Platinum
 
 ## 🧪 Why SKU Matrix Works For ALL Types
 
-### The Universal Pattern: `Variant × Unit = SKU`
+### The Universal Pattern: `Variant × SKU`
 
 Every product type has 2 dimensions that combine to create unique purchasable items:
 
-| Type | Example | Variant (Rows) | Unit (Columns) | SKU = Cell |
-|------|---------|----------------|-----------------|------------|
+| Type | Example | Variant (Rows) | SKU (Columns) | SKU = Cell |
+|------|---------|----------------|---------------|------------|
 | **Vehicle** | TVS Jupiter | Disc, Drum, SmartXonnect | Starlight Blue, Coral Red | Disc × Starlight Blue |
 | **Accessory (colours)** | Studds Helmet | Half Face, Full Face | Blue, Red, Purple | Half Face × Blue |
-| **Accessory (fitment)** | Arihant Crash Guard | Standard, Premium Silver | Activa, Jupiter, Fascino | Standard × Activa |
-| **Service** | Extended Warranty | Gold Plan, Silver Plan | 1yr, 2yr, 3yr | Gold × 2yr |
+| **Accessory (suitable for)** | Arihant Crash Guard | Standard, Premium Silver | Activa, Jupiter, Fascino | Standard × Activa |
+| **Service** | Extended Warranty | 2 Year Comprehensive, 1 Year Basic | Platinum, Gold, Silver | 2yr Comp × Platinum |
 
 ### Real-World Proof:
 
@@ -120,7 +190,7 @@ Step 1: Brand & Type     ← Select category + brand (merged step)
 Step 2: [Model Level]    ← Dynamic label per type
 Step 3: [Variant Level]  ← Dynamic label per type
 Step 4: [Unit Level]     ← Dynamic label per type
-Step 5: SKU Matrix       ← Variant × Unit grid (universal)
+Step 5: SKU Matrix       ← Variant × SKU grid (universal)
 Step 6: Review
 Step 7: Publish
 ```
@@ -128,16 +198,16 @@ Step 7: Publish
 | Step | Vehicle | Accessory | Service |
 |------|---------|-----------|---------|
 | 1 | Brand & Type | Brand & Type | Brand & Type |
-| 2 | **Model** (Jupiter) | **Product** (Helmet) | **Service** (Warranty) |
-| 3 | **Variants** (Disc, Drum) | **Variants** (Half Face, Full Face) | **Plans** (Gold, Silver) |
-| 4 | **Colours** (Blue, Red) | **Sub-Variants** (Blue, Red / Activa) | **Tiers** (1yr, 2yr) |
+| 2 | **Model** (Jupiter) | **Model** (Helmet) | **Model** (Warranty) |
+| 3 | **Variant** (Disc, Drum) | **Variant** (Half Face, Full Face) | **Variant** (Gold, Silver) |
+| 4 | **SKU** (Blue, Red) | **SKU** (Blue, Red / Activa) | **SKU** (1yr, 2yr) |
 | 5 | SKU Matrix | SKU Matrix | SKU Matrix |
 | 6 | Review | Review | Review |
 | 7 | Publish | Publish | Publish |
 
 > **Key:** Step 4 "Unit" dimension is flexible:
 > - Vehicle → always colours (hex codes, finish)
-> - Accessory → could be colours (helmet) OR vehicle fitments (crash guard) OR sizes
+> - Accessory → could be colours (helmet) OR vehicle-specific (crash guard, Suitable For via cat_suitable_for) OR sizes
 > - Service → duration / coverage level
 
 ---
@@ -276,19 +346,17 @@ Step 7: Publish
 
 ---
 
-### 3️⃣ `cat_models` 🆕 — Model / Product / Service Master
+### 3️⃣ `cat_models` 🆕 — Model Master (All Types)
 
 > ⚠️ **Renamed from `cat_products`** → `cat_models`
-> - Vehicle → "Model" (Jupiter, Splendor)
-> - Accessory → "Product" (Crash Guard, Helmet)
-> - Service → "Service" (Extended Warranty)
+> - Vehicle/Accessory/Service: all represented as **Model**
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | UUID PK | |
 | `brand_id` | UUID FK → `cat_brands` | |
 | `name` | TEXT NOT NULL | "Jupiter", "Crash Guard", "Extended Warranty" |
-| `slug` | TEXT UNIQUE | |
+| `slug` | TEXT | Parent-scoped unique via index `(brand_id, product_type, slug)` |
 | `product_type` | TEXT NOT NULL | VEHICLE \| ACCESSORY \| SERVICE — from registry |
 | `body_type` | TEXT | MOTORCYCLE \| SCOOTER \| MOPED \| ELECTRIC |
 | `engine_cc` | NUMERIC(6,1) | Vehicles only |
@@ -315,7 +383,7 @@ Step 7: Publish
 | `id` | UUID PK | |
 | `model_id` | UUID FK → `cat_models` | |
 | `name` | TEXT NOT NULL | "Disc SmartXonnect" |
-| `slug` | TEXT UNIQUE | |
+| `slug` | TEXT | Parent-scoped unique via index `(model_id, slug)` |
 | `position` | INTEGER | |
 | `status` | TEXT | |
 | — **ENGINE** | — | — |
@@ -374,7 +442,7 @@ Step 7: Publish
 | `id` | UUID PK | |
 | `model_id` | UUID FK → `cat_models` | |
 | `name` | TEXT NOT NULL | "Half Face" / "Standard" / "Premium Silver" |
-| `slug` | TEXT UNIQUE | |
+| `slug` | TEXT | Parent-scoped unique via index `(model_id, slug)` |
 | `position` | INTEGER | |
 | `status` | TEXT | |
 | `suitable_for` | TEXT | "Jupiter, Activa" — vehicle compat hint |
@@ -395,7 +463,7 @@ Step 7: Publish
 | `id` | UUID PK | |
 | `model_id` | UUID FK → `cat_models` | |
 | `name` | TEXT NOT NULL | "2 Year Comprehensive" |
-| `slug` | TEXT UNIQUE | |
+| `slug` | TEXT | Parent-scoped unique via index `(model_id, slug)` |
 | `position` | INTEGER | |
 | `status` | TEXT | |
 | `duration_months` | INTEGER | |
@@ -410,13 +478,9 @@ Step 7: Publish
 
 ### 7️⃣ `cat_skus` 🆕 — Final Purchasable Unit + ALL Media
 
-> **Display name per type:**
-> - Vehicle → **"Colour"** (Starlight Blue Gloss)
-> - Accessory → **"Sub-Variant"** (Blue / Activa Fitment)
-> - Service → **"Tier"** (Platinum)
->
 > **Every cell in SKU Matrix = 1 row in this table.**
 > **Each row = separate inventory, separate price, separate media.**
+> Canonical name: **SKU** (all product types).
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -430,8 +494,8 @@ Step 7: Publish
 | `accessory_variant_id` | UUID FK → `cat_variants_accessory` | when ACCESSORY |
 | `service_variant_id` | UUID FK → `cat_variants_service` | when SERVICE |
 | — **Identity** | — | — |
-| `name` | TEXT NOT NULL | "Starlight Blue Gloss" / "Activa Fitment" / "Platinum" |
-| `slug` | TEXT UNIQUE | |
+| `name` | TEXT NOT NULL | "Starlight Blue Gloss" / "Standard" / "Platinum" |
+| `slug` | TEXT | Matrix uniqueness enforced by partial indexes on `(variant_id, slug)` |
 | `status` | TEXT | ACTIVE \| INACTIVE \| ARCHIVED |
 | `position` | INTEGER | |
 | `is_primary` | BOOLEAN | Primary display for variant |
@@ -441,9 +505,8 @@ Step 7: Publish
 | `hex_secondary` | TEXT | "#C0C0C0" |
 | `color_name` | TEXT | "Starlight Blue" |
 | `finish` | TEXT | CHECK IN (GLOSS, MATTE, METALLIC, CHROME) |
-| — **Fitment** (some Accessories) | — | — |
-| `fitment_vehicle` | TEXT | **REQUIRED** — "Activa", "Pulsar NS200" (human-readable, always set) |
-| `fitment_model_id` | UUID FK → `cat_models` NULL | **OPTIONAL** — set when vehicle exists in our catalog (cross-sell) |
+| — **Suitable For** | — | — |
+| _(managed via `cat_suitable_for`)_ | — | See Table 9: cascading Brand→Model→Variant. No rows = UNIVERSAL |
 | — **Media (ONLY HERE)** | — | — |
 | `primary_image` | TEXT | Main image |
 | `gallery_img_1` | TEXT | |
@@ -466,10 +529,9 @@ Step 7: Publish
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-**40 columns. Zero JSONB.**
+**37 columns. Zero JSONB.**
 
-> 🆕 `fitment_vehicle` = **required free text** (always have a label).
-> 🆕 `fitment_model_id` = **optional FK** (set when vehicle is in our catalog for cross-sell/compatibility).
+> 🆕 **Suitable For** = managed via `cat_suitable_for` junction table. No rows = UNIVERSAL. Cascading Brand→Model→Variant.
 
 #### Required DB Constraints (Critical)
 
@@ -490,6 +552,9 @@ CREATE UNIQUE INDEX uq_cat_skus_accessory_cell
   ON cat_skus (accessory_variant_id, slug) WHERE sku_type = 'ACCESSORY';
 CREATE UNIQUE INDEX uq_cat_skus_service_cell
   ON cat_skus (service_variant_id, slug) WHERE sku_type = 'SERVICE';
+
+-- 3) Suitable For = managed via cat_suitable_for (dedicated junction table, not inline columns)
+-- See Table 9: cat_suitable_for — cascading Brand→Model→Variant with hierarchy guard
 ```
 
 > Note: keep `slug` normalized/lowercased and generated deterministically from unit name.
@@ -580,12 +645,12 @@ CREATE UNIQUE INDEX uq_cat_skus_service_cell
 
 ```
 cat_brands
-  └── cat_models (brand_id FK)  — display: Model / Product / Service
-        ├── cat_variants_vehicle (model_id FK)     — display: Variant
-        ├── cat_variants_accessory (model_id FK)   — display: Variant
-        └── cat_variants_service (model_id FK)     — display: Plan
+  └── cat_models (brand_id FK)  — Brand → Model
+        ├── cat_variants_vehicle (model_id FK)     — Model → Variant
+        ├── cat_variants_accessory (model_id FK)   — Model → Variant
+        └── cat_variants_service (model_id FK)     — Model → Variant
               └── cat_skus (brand_id + model_id + variant_id FKs)
-                    │     display: Colour / Sub-Variant / Tier
+                    │     Variant → SKU
                     │     ⬆ Each cell in SKU Matrix = 1 row here
                     └── cat_pricing (sku_id + state_code) — multi-state ready
 
@@ -597,8 +662,9 @@ cat_specifications ← standalone blueprint, defines columns + validation
 cat_brands         → Arihant (id: abc)
 cat_models         → Crash Guard (brand_id: abc, product_type: ACCESSORY)
 cat_variants_acc   → Standard (model_id: crash-guard-id)
-cat_skus           → "Activa Fitment" (accessory_variant_id: standard-id, fitment_vehicle: "Activa", fitment_model_id: activa-model-id)
-cat_pricing        → ex_showroom: 850, state_code: 'MH' (sku_id: activa-fitment-id)
+cat_skus           → "Standard" (accessory_variant_id: standard-id)
+cat_suitable_for  → Suitable For: TVS → Activa → ALL variants
+cat_pricing        → ex_showroom: 850, state_code: 'MH' (sku_id: standard-sku-id)
 ```
 
 **Example Trace — Studds Helmet Half Face Blue:**
@@ -638,107 +704,57 @@ cat_pricing        → ex_showroom: 1200, state_code: 'MH' (sku_id: blue-id)
 
 ## 🔄 Execution Plan
 
-### Phase 1: Create Empty Tables _(Risk: ZERO)_
+### Phase 1: Create Empty Tables _(Risk: ZERO)_ ✅ DONE
 ```
-1. CREATE cat_specifications
-2. SEED cat_specifications (36+ spec definitions)
-3. CREATE cat_models  (renamed from cat_products)
-4. CREATE cat_variants_vehicle
-5. CREATE cat_variants_accessory
-6. CREATE cat_variants_service
-7. CREATE cat_skus
-8. CREATE cat_pricing (renamed from cat_price_mh, + state_code)
-9. ALTER cat_brands — DROP 2 JSONB cols
-```
-
-### Phase 2: Migrate Data _(Risk: LOW)_
-```
-1. INSERT INTO cat_models FROM cat_items + cat_skus_linear
-2. INSERT INTO cat_variants_vehicle (JSONB specs → flat columns)
-3. INSERT INTO cat_variants_accessory
-4. INSERT INTO cat_skus + color/fitment/media data
-5. INSERT INTO cat_pricing (JSONB price_mh → flat columns, state_code = 'MH')
+1. CREATE cat_specifications              ✅
+2. SEED cat_specifications (36+ spec definitions)  ✅
+3. CREATE cat_models                      ✅
+4. CREATE cat_variants_vehicle            ✅
+5. CREATE cat_variants_accessory          ✅
+6. CREATE cat_variants_service            ✅
+7. CREATE cat_skus                        ✅
+8. CREATE cat_pricing (multi-state)       ✅
+9. CREATE cat_suitable_for (Suitable For)✅
+10. ALTER cat_brands — DROP 2 JSONB cols   ⏳
 ```
 
-### Phase 3: Verify _(Risk: ZERO)_
-```
-1. Row counts match
-2. Price totals match
-3. FK integrity OK
-4. Required fields filled
-5. ENUM values valid
-6. Duplicate matrix cells = 0
-7. `cat_items` vs new joins parity snapshot (sample 100 + top sellers 100%)
-```
-
-### Phase 4: Update Code _(Risk: MEDIUM)_
-```
-1. Update HIERARCHY_LABELS → sku label: Colour / Sub-Variant / Tier
-2. catalogFetcher.ts → simple JOINs on new tables
-3. SystemCatalogLogic.ts → same
-4. catalogMapper.ts → dramatically simplify
-5. savePrices.ts → write to cat_pricing (state_code aware)
-6. Product Studio → already has "Add Vehicle" / "Add Accessory" / "Add Service" ✅
-7. UnitStep.tsx → handle both colour entry AND fitment entry based on context
-8. MatrixStep.tsx → works as-is (Variant × Unit cells)
-9. supabase gen types
-```
-
-### Phase 5: Test _(Risk: ZERO)_
-```
-1. Marketplace catalog — all products visible
-2. PDP — pricing, colours, specs correct
-3. CRM quote — SKU selection
-4. Admin pricing studio — save/publish
-5. Filters — bodyType, braking_system, headlamp etc.
-6. Compare page — specs side by side
-7. Accessories — Helmet (colour matrix) + Crash Guard (fitment matrix) both work
-```
-
-### Phase 6: Archive _(Risk: LOW)_
-```
-0. Freeze writes to old tables (temporary app guard)
-1. RENAME cat_items → cat_items_v1_archive
-2. RENAME cat_skus_linear → cat_skus_linear_v1_archive
-3. RENAME cat_assets → cat_assets_v1_archive
-4. RENAME cat_spec_schema → cat_spec_schema_v1_archive
-5. Unfreeze writes on new tables only
-```
+> ⚠️ **STALE DUPLICATE REMOVED** — See below for current execution plan.
 
 ---
 
 ## 📊 Final Summary
 
-| # | Table | Cols | JSONB | Status | Display Label |
-|---|-------|:----:|:-----:|--------|--------------|
-| 1 | `cat_specifications` | 21 | ❌ | 🆕 | Blueprint |
-| 2 | `cat_brands` | 10 | ❌ | 🔧 | Brand |
-| 3 | `cat_models` | 15 | ❌ | 🆕 | Model / Product / Service |
-| 4 | `cat_variants_vehicle` | 44 | ❌ | 🆕 | Variant |
-| 5 | `cat_variants_accessory` | 12 | ❌ | 🆕 | Variant |
-| 6 | `cat_variants_service` | 11 | ❌ | 🆕 | Plan |
-| 7 | `cat_skus` | 40 | ❌ | 🆕 | Colour / Sub-Variant / Tier |
-| 8 | `cat_pricing` | 53 | ❌ | 🆕 | Pricing (multi-state) |
-| **Total** | **8 tables** | **~206** | **Zero** | | |
+| # | Table | Cols | JSONB | Status | Hierarchy Level |
+|---|-------|:----:|:-----:|--------|----------------|
+| 1 | `cat_specifications` | 22 | ❌ | ✅ Created + Seeded (60 specs) | Blueprint |
+| 2 | `cat_brands` | 10 | ❌ | 🔧 Existing | Brand |
+| 3 | `cat_models` | 15 | ❌ | ✅ Created | Model |
+| 4 | `cat_variants_vehicle` | 42 | ❌ | ✅ Created | Variant |
+| 5 | `cat_variants_accessory` | 11 | ❌ | ✅ Created | Variant |
+| 6 | `cat_variants_service` | 11 | ❌ | ✅ Created | Variant |
+| 7 | `cat_skus` | 36 | ❌ | ✅ Created | SKU |
+| 8 | `cat_pricing` | 55 | ❌ | ✅ Created | Pricing |
+| 9 | `cat_suitable_for` | 6 | ❌ | ✅ Created | Suitable For |
+| **Total** | **9 tables** | **~208** | **Zero** | | |
 
 ---
 
-## 🔧 Code Constant — Hierarchy Labels
+## 🔧 Code Constant — Hierarchy Labels (Canonical)
 
 ```typescript
 // src/lib/constants/catalogLabels.ts
 export const HIERARCHY_LABELS = {
-  VEHICLE:   { model: 'Model',   variant: 'Variant', sku: 'Colour' },
-  ACCESSORY: { model: 'Product', variant: 'Variant', sku: 'Sub-Variant' },
-  SERVICE:   { model: 'Service', variant: 'Plan',    sku: 'Tier'   },
+  VEHICLE:   { model: 'Model', variant: 'Variant', sku: 'SKU' },
+  ACCESSORY: { model: 'Model', variant: 'Variant', sku: 'SKU' },
+  SERVICE:   { model: 'Model', variant: 'Variant', sku: 'SKU' },
 } as const;
 
 // Usage in Studio:
 // const labels = HIERARCHY_LABELS[product_type];
-// Step 2: <h2>Add {labels.model}</h2>     → "Add Model" / "Add Product" / "Add Service"
-// Step 3: <h2>Add {labels.variant}</h2>   → "Add Variant" / "Add Variant" / "Add Plan"
-// Step 4: <h2>Add {labels.sku}</h2>       → "Add Colour" / "Add Sub-Variant" / "Add Tier"
-// Step 5: SKU Matrix                       → Variant × Colour / Variant × Sub-Variant / Plan × Tier
+// Step 2: <h2>Add {labels.model}</h2>     → "Add Model"
+// Step 3: <h2>Add {labels.variant}</h2>   → "Add Variant"
+// Step 4: <h2>Add {labels.sku}</h2>       → "Add SKU"
+// Step 5: SKU Matrix                       → Variant × SKU
 ```
 
 ---
@@ -749,11 +765,87 @@ export const HIERARCHY_LABELS = {
 2. **`cat_specifications`** = Single Source of Truth for spec definitions
 3. **Media सिर्फ `cat_skus`** पर — brand पर सिर्फ logo
 4. **कोई DROP नहीं** — rename to `_v1_archive`
-5. **Naming:** Vehicle=Model/Variant/Colour, Accessory=Product/Variant/Sub-Variant, Service=Service/Plan/Tier
+5. **Naming (strict):** Brand=Brand, Level2=Model, Level3=Variant, Level4=SKU
 6. **Studio:** 3 entry points — Add Vehicle, Add Accessory, Add Service ✅ (DONE)
-7. **SKU Matrix universal** — Variant × Unit = SKU (all types, all products)
+7. **SKU Matrix universal** — Variant × SKU (all types, all products)
 8. **CRM tables मत छुओ** — post-launch
 9. **cat_price_dealer, cat_ins_rules, cat_reg_rules** — already ठीक हैं
+10. **Save is always allowed** — incomplete data = fine, status stays DRAFT
+11. **Validation only on status transitions** — not on save
+
+---
+
+## 🚦 Product Lifecycle — 3-Stage Gate System
+
+### Status Flow:
+```
+ ┌──────────┐    ┌──────────┐    ┌───────────┐    ┌──────────┐
+ │  DRAFT   │───▶│  ACTIVE  │───▶│ PUBLISHED │───▶│   LIVE   │
+ └──────────┘    └──────────┘    └───────────┘    └──────────┘
+      ↑               ↑               ↑                ↑
+   Save (any)    Product Studio   Pricing Engine   Dealer Pricing
+   no checks     all specs ✅     all prices ✅    offer exists ✅
+```
+
+### Stage 1: DRAFT → ACTIVE _(Product Studio — Review Step)_
+> **Who:** Admin / Catalog Manager via **Product Studio**
+> **Gate:** All required specs (`cat_specifications.is_required = true`) must be filled
+> **What happens:** Model/Variant/SKU is visible for pricing, but NOT on marketplace
+
+```
+✅ ALLOW SAVE with missing specs (status stays DRAFT)
+❌ BLOCK ACTIVATE if:
+   - Model missing: engine_cc, cooling, fuel_system, emission_standard, mileage, fuel_capacity, transmission
+   - Variant missing: max_power, max_torque, front_brake, rear_brake, braking_system, 
+     headlamp, console_type, bluetooth, navigation, usb_charging, start_type, key_type, 
+     led_drl, aho, front/rear suspension, front/rear tyre, tyre_type, wheel_type,
+     kerb_weight, ground_clearance, seat_height, gearbox
+   - SKU missing: name, slug, primary_image
+💡 Error message: "Cannot activate: 4 required specs missing — [engine_cc, cooling, ...]"
+```
+
+### Stage 2: ACTIVE → PUBLISHED _(Pricing Engine)_
+> **Who:** Admin / Pricing Manager via **Pricing Engine**
+> **Gate:** All pricing fields in `cat_pricing` must be complete for at least 1 state
+> **What happens:** SKU has base pricing, visible on marketplace with "Starting at ₹XX,XXX"
+
+```
+✅ ALLOW SAVE draft pricing (publish_stage = 'DRAFT')
+❌ BLOCK PUBLISH if:
+   - ex_showroom missing or zero
+   - insurance_od, insurance_tp not calculated
+   - rto_total missing
+   - on_road_price doesn't compute correctly
+💡 Error message: "Cannot publish: ex_showroom price missing for state MH"
+```
+
+### Stage 3: PUBLISHED → LIVE _(Dealer Pricing)_
+> **Who:** Dealership via **Dealer Pricing Dashboard**
+> **Gate:** Dealer-specific offer must exist (margin, discount, finance terms)
+> **What happens:** SKU shows on that dealer's storefront as purchasable with on-road price
+
+```
+✅ ALLOW SAVE offer draft
+❌ BLOCK GO-LIVE if:
+   - No dealer margin set
+   - No valid offer window (start_date / end_date)
+💡 Error message: "Cannot go live: dealer margin not configured"
+```
+
+### Status in DB Tables:
+
+| Table | Column | Values | Meaning |
+|-------|--------|--------|---------|
+| `cat_models` | `status` | `DRAFT`, `ACTIVE` | Specs completeness |
+| `cat_variants_*` | `status` | `DRAFT`, `ACTIVE` | Variant specs complete |
+| `cat_skus` | `status` | `DRAFT`, `ACTIVE` | SKU details + media complete |
+| `cat_pricing` | `publish_stage` | `DRAFT`, `PUBLISHED` | Pricing complete |
+| Dealer offer table | `stage` | `DRAFT`, `LIVE` | Dealer offer complete |
+
+### Key Principle:
+> 📝 **Save कभी fail नहीं होगा.** Data incomplete हो, missing हो — save हो जायेगा DRAFT के रूप में.
+> ❌ **Status change fail होगा** अगर required fields empty हैं.
+> यानी — एक ही काम चार बार नहीं करना पड़ेगा. जब ready हो, tab activate करो.
 
 ---
 
@@ -805,9 +897,13 @@ ALTER TABLE cat_variants_vehicle ADD CONSTRAINT chk_console_type CHECK (console_
 
 **नया accessory type (Crash Guard for new vehicle):**
 ```sql
--- Just add a new SKU — no schema change needed!
-INSERT INTO cat_skus (sku_type, brand_id, model_id, accessory_variant_id, name, fitment_vehicle, fitment_model_id, ...)
-VALUES ('ACCESSORY', 'arihant-id', 'crash-guard-id', 'standard-id', 'Pulsar NS200 Fitment', 'Pulsar NS200', 'pulsar-model-id');
+-- Just add a new SKU + Suitable For entry — no schema change needed!
+INSERT INTO cat_skus (sku_type, brand_id, model_id, accessory_variant_id, name, ...)
+VALUES ('ACCESSORY', 'arihant-id', 'crash-guard-id', 'standard-id', 'Standard', ...);
+
+-- Then add Suitable For:
+INSERT INTO cat_suitable_for (sku_id, target_brand_id, target_model_id)
+VALUES ('new-sku-id', 'bajaj-id', 'pulsar-ns200-model-id');
 ```
 
 ---
@@ -823,11 +919,13 @@ VALUES ('ACCESSORY', 'arihant-id', 'crash-guard-id', 'standard-id', 'Pulsar NS20
 | Studio: Dynamic step labels per product_type | ✅ Done |
 | Studio: Header renamed to "Catalog Studio" | ✅ Done |
 | Products listing: 3 color-coded add buttons | ✅ Done |
-| DB: cat_specifications table | ⏳ Phase 1 |
-| DB: cat_models table | ⏳ Phase 1 |
-| DB: cat_variants_* tables | ⏳ Phase 1 |
-| DB: cat_skus table | ⏳ Phase 1 |
-| DB: cat_pricing table (renamed from cat_price_mh) | ⏳ Phase 1 |
-| Data migration | ⏳ Phase 2 |
-| Code updates (fetchers, mappers) | ⏳ Phase 4 |
-| Archive old tables | ⏳ Phase 6 |
+| DB: Phase 1 — 9 new tables created (all empty, RLS enabled) | ✅ Done |
+| DB: `cat_price_state` → archived to `cat_price_state_archive` | ✅ Done |
+| DB: `cat_item_compatibility` still active (2 rows) | ⚠️ Legacy — archive in Phase 5 |
+| DB: `cat_skus_linear` still active (247 rows, JSONB) | ⚠️ Legacy — archive in Phase 5 |
+| DB: `cat_items` still active (406 rows) | ⚠️ Legacy — archive in Phase 5 |
+| Legacy data migration | ⏭️ SKIPPED — fresh seed approach |
+| Code + UI update (fetchers, mappers, studio) | ⏳ Phase 2 ← NEXT |
+| Fresh data seeding (SQL scripts per product) | ⏳ Phase 3 |
+| Testing | ⏳ Phase 4 |
+| Archive old tables | ⏳ Phase 5 |
