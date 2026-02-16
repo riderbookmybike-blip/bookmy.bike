@@ -212,81 +212,81 @@ export function useSystemDealerContext({
                 };
 
                 if (activeSku) {
-                    // SSPP v1.5: PRIORITIZE cat_price_state (Published SOT)
-                    const { data: publishedRecord } = await supabase
-                        .from('cat_price_state')
-                        .select('*')
-                        .eq('vehicle_color_id', activeSku)
-                        .eq('state_code', stateCode || 'MH')
-                        .eq('district', 'ALL')
-                        .eq('is_active', true)
-                        .order('district', { ascending: false }) // Stable fetch (state-level SOT)
+                    // SSPP v1.5: PRIORITIZE cat_skus_linear (Published SOT)
+                    const activeStateCode = stateCode || 'MH';
+                    const priceCol = `price_${activeStateCode.toLowerCase()}`;
+                    const { data: linearRow } = await supabase
+                        .from('cat_skus_linear')
+                        .select(`unit_json, ${priceCol}`)
+                        .eq('unit_json->>id', activeSku)
+                        .eq('status', 'ACTIVE')
                         .limit(1)
-                        .single();
+                        .maybeSingle();
 
-                    if (publishedRecord && (publishedRecord as any).rto_total > 0) {
-                        const rec = publishedRecord as any;
+                    const priceMh = (linearRow as any)?.[priceCol];
 
-                        // SOT Phase 3: Prefer new JSON columns, fallback to legacy
-                        const hasRtoJson = rec.rto && typeof rec.rto === 'object' && rec.rto.STATE !== undefined;
+                    if (priceMh && Number(priceMh.rto_total) > 0) {
+                        // SOT: Read structured JSON from cat_skus_linear price column
+                        const hasRtoJson =
+                            priceMh.rto && typeof priceMh.rto === 'object' && priceMh.rto.STATE !== undefined;
                         const hasInsJson =
-                            rec.insurance &&
-                            typeof rec.insurance === 'object' &&
-                            rec.insurance.base_total !== undefined;
+                            priceMh.insurance &&
+                            typeof priceMh.insurance === 'object' &&
+                            priceMh.insurance.base_total !== undefined;
 
                         const rtoData = hasRtoJson
-                            ? rec.rto
+                            ? priceMh.rto
                             : {
-                                  STATE: parseFloat(rec.rto_total),
+                                  STATE: parseFloat(priceMh.rto_total),
                                   BH: null,
                                   COMPANY: null,
                                   default: 'STATE',
                               };
 
                         const insData = hasInsJson
-                            ? rec.insurance
+                            ? priceMh.insurance
                             : {
-                                  od: Number((rec.insurance_breakdown as any)?.odPremium || 0),
-                                  tp: Number((rec.insurance_breakdown as any)?.tpPremium || 0),
+                                  od: Number(priceMh.insurance_breakdown?.odPremium || 0),
+                                  tp: Number(priceMh.insurance_breakdown?.tpPremium || 0),
                                   gst_rate: 18,
-                                  base_total: parseFloat(rec.insurance_total),
+                                  base_total: parseFloat(priceMh.insurance_total),
                                   addons: [],
                               };
 
                         // Legacy breakdown for UI compatibility
                         const legacyRtoBreakdown =
-                            typeof rec.rto_breakdown === 'object' && rec.rto_breakdown
-                                ? Object.entries(rec.rto_breakdown).map(([label, amount]) => ({
+                            typeof priceMh.rto_breakdown === 'object' && priceMh.rto_breakdown
+                                ? Object.entries(priceMh.rto_breakdown).map(([label, amount]) => ({
                                       label,
                                       amount: Number(amount),
                                   }))
                                 : [];
 
                         const legacyInsBreakdown =
-                            typeof rec.insurance_breakdown === 'object' && rec.insurance_breakdown
+                            typeof priceMh.insurance_breakdown === 'object' && priceMh.insurance_breakdown
                                 ? [
                                       {
                                           label: 'OD Premium',
-                                          amount: Number((rec.insurance_breakdown as any).odPremium || 0),
+                                          amount: Number(priceMh.insurance_breakdown.odPremium || 0),
                                           componentId: 'od',
                                       },
                                       {
                                           label: 'TP Premium',
-                                          amount: Number((rec.insurance_breakdown as any).tpPremium || 0),
+                                          amount: Number(priceMh.insurance_breakdown.tpPremium || 0),
                                           componentId: 'tp',
                                       },
                                       {
                                           label: 'Zero Depreciation',
                                           amount: Number(
-                                              (rec.insurance_breakdown as any).addons?.zeroDep ||
-                                                  (rec.insurance_breakdown as any).zeroDep ||
+                                              priceMh.insurance_breakdown.addons?.zeroDep ||
+                                                  priceMh.insurance_breakdown.zeroDep ||
                                                   0
                                           ),
                                           componentId: 'zeroDep',
                                       },
                                       {
                                           label: 'GST',
-                                          amount: Number((rec.insurance_breakdown as any).gst || 0),
+                                          amount: Number(priceMh.insurance_breakdown.gst || 0),
                                           componentId: 'gst',
                                       },
                                   ].filter(i => i.amount > 0)
@@ -294,7 +294,7 @@ export function useSystemDealerContext({
 
                         const pricingSnap = {
                             success: true,
-                            ex_showroom: parseFloat(rec.ex_showroom_price),
+                            ex_showroom: parseFloat(priceMh.ex_showroom),
                             rto: rtoData,
                             insurance: insData,
                             dealer: {
@@ -304,15 +304,15 @@ export function useSystemDealerContext({
                                 studio_id: null,
                                 is_serviceable: true,
                             },
-                            final_on_road: parseFloat(rec.on_road_price),
+                            final_on_road: parseFloat(priceMh.on_road_price),
                             location: {
-                                district: rec.district,
-                                state_code: rec.state_code,
+                                district: 'ALL',
+                                state_code: activeStateCode,
                             },
                             meta: {
                                 vehicle_color_id: activeSku,
                                 engine_cc: (product.specs as any)?.engine_cc || 110,
-                                idv: Math.round(parseFloat(rec.ex_showroom_price) * 0.95),
+                                idv: Math.round(parseFloat(priceMh.ex_showroom) * 0.95),
                                 calculated_at: new Date().toISOString(),
                             },
                             rto_breakdown: legacyRtoBreakdown,

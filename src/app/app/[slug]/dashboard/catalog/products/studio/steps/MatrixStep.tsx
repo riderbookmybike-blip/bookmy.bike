@@ -132,17 +132,24 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
     // Fetch state prices + compatibility when editing a SKU
     const fetchSkuDetails = async (skuId: string) => {
         const supabase = createClient();
-        // Fetch state prices
-        const { data: prices } = await supabase
-            .from('cat_price_state')
-            .select('state_code, ex_showroom_price')
-            .eq('vehicle_color_id', skuId);
-        if (prices && prices.length > 0) {
+        // Fetch state prices from cat_skus_linear JSONB columns
+        const allPriceCols = INDIAN_STATES.map(s => `price_${s.code.toLowerCase()}`);
+        const { data: linearRow } = await supabase
+            .from('cat_skus_linear')
+            .select(`unit_json, ${allPriceCols.join(', ')}`)
+            .eq('unit_json->>id', skuId)
+            .limit(1)
+            .maybeSingle();
+        if (linearRow) {
             const priceMap: Record<string, number> = {};
             const states: string[] = [];
-            prices.forEach((p: any) => {
-                priceMap[p.state_code] = Number(p.ex_showroom_price) || 0;
-                states.push(p.state_code);
+            INDIAN_STATES.forEach((s: any) => {
+                const col = `price_${s.code.toLowerCase()}`;
+                const pm = (linearRow as any)[col];
+                if (pm && Number(pm.ex_showroom) > 0) {
+                    priceMap[s.code] = Number(pm.ex_showroom);
+                    states.push(s.code);
+                }
             });
             setStatePrices(priceMap);
             setSelectedStates(states.length > 0 ? states : [DEFAULT_STATE_CODE]);
@@ -1247,7 +1254,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                             .eq('id', editingSku.id);
                                         if (error) throw error;
 
-                                        // 3. Upsert state prices into cat_price_state
+                                        // 3. Upsert state prices into cat_skus_linear JSONB columns
                                         const effectivePrices: Record<string, number> = {};
                                         selectedStates.forEach(code => {
                                             const val = statePrices[code];
@@ -1258,19 +1265,17 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                             }
                                         });
 
-                                        const priceRows = Object.entries(effectivePrices).map(([code, price]) => ({
-                                            vehicle_color_id: editingSku.id,
-                                            state_code: code,
-                                            district: 'ALL',
-                                            ex_showroom_price: price,
-                                            is_active: true,
-                                        }));
-                                        if (priceRows.length > 0) {
+                                        // Build per-state JSONB update payload
+                                        const stateUpdatePayload: Record<string, any> = {};
+                                        Object.entries(effectivePrices).forEach(([code, price]) => {
+                                            const col = `price_${code.toLowerCase()}`;
+                                            stateUpdatePayload[col] = { ex_showroom: price, status: 'ACTIVE' };
+                                        });
+                                        if (Object.keys(stateUpdatePayload).length > 0) {
                                             const { error: priceErr } = await supabase
-                                                .from('cat_price_state')
-                                                .upsert(priceRows, {
-                                                    onConflict: 'vehicle_color_id,state_code,district',
-                                                });
+                                                .from('cat_skus_linear')
+                                                .update(stateUpdatePayload)
+                                                .eq('unit_json->>id', editingSku.id);
                                             if (priceErr) console.error('State price upsert warning:', priceErr);
                                         }
 

@@ -654,15 +654,16 @@ export type Database = {
                     },
                 ];
             };
-            cat_price_state: {
+            cat_price_state_archive: {
                 Row: {
+                    archived_at: string | null;
                     category: string | null;
                     created_at: string | null;
                     district: string | null;
                     ex_showroom_price: number | null;
                     gst_rate: number | null;
                     hsn_code: string | null;
-                    id: string;
+                    id: string | null;
                     insurance: Json | null;
                     insurance_breakdown: Json | null;
                     insurance_total: number | null;
@@ -677,18 +678,19 @@ export type Database = {
                     rto: Json | null;
                     rto_breakdown: Json | null;
                     rto_total: number | null;
-                    state_code: string;
+                    state_code: string | null;
                     updated_at: string | null;
-                    vehicle_color_id: string;
+                    vehicle_color_id: string | null;
                 };
                 Insert: {
+                    archived_at?: string | null;
                     category?: string | null;
                     created_at?: string | null;
                     district?: string | null;
                     ex_showroom_price?: number | null;
                     gst_rate?: number | null;
                     hsn_code?: string | null;
-                    id?: string;
+                    id?: string | null;
                     insurance?: Json | null;
                     insurance_breakdown?: Json | null;
                     insurance_total?: number | null;
@@ -703,18 +705,19 @@ export type Database = {
                     rto?: Json | null;
                     rto_breakdown?: Json | null;
                     rto_total?: number | null;
-                    state_code: string;
+                    state_code?: string | null;
                     updated_at?: string | null;
-                    vehicle_color_id: string;
+                    vehicle_color_id?: string | null;
                 };
                 Update: {
+                    archived_at?: string | null;
                     category?: string | null;
                     created_at?: string | null;
                     district?: string | null;
                     ex_showroom_price?: number | null;
                     gst_rate?: number | null;
                     hsn_code?: string | null;
-                    id?: string;
+                    id?: string | null;
                     insurance?: Json | null;
                     insurance_breakdown?: Json | null;
                     insurance_total?: number | null;
@@ -729,19 +732,11 @@ export type Database = {
                     rto?: Json | null;
                     rto_breakdown?: Json | null;
                     rto_total?: number | null;
-                    state_code?: string;
+                    state_code?: string | null;
                     updated_at?: string | null;
-                    vehicle_color_id?: string;
+                    vehicle_color_id?: string | null;
                 };
-                Relationships: [
-                    {
-                        foreignKeyName: 'vehicle_prices_vehicle_color_id_fkey';
-                        columns: ['vehicle_color_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                ];
+                Relationships: [];
             };
             cat_raw_items: {
                 Row: {

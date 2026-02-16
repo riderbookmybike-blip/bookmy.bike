@@ -90,7 +90,7 @@ interface PricingLedgerTableProps {
     onUpdateOffer: (skuId: string, offer: number) => void;
     onUpdateInclusion: (skuId: string, type: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE') => void;
     onUpdateStatus: (skuId: string, status: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH') => void;
-    onUpdatePublishStage?: (skuId: string, stage: string) => void; // AUMS: update cat_price_state.publish_stage
+    onUpdatePublishStage?: (skuId: string, stage: string) => void; // AUMS: update cat_skus_linear publish_stage
     onUpdateLocalStatus?: (skuId: string, isActive: boolean) => void;
     onUpdatePopular?: (skuId: string, isPopular: boolean) => void;
     onSaveAll?: () => void;
@@ -2235,7 +2235,7 @@ export default function PricingLedgerTable({
                                                                                             isAums &&
                                                                                             onUpdatePublishStage
                                                                                         ) {
-                                                                                            // AUMS: Update publish_stage in cat_price_state
+                                                                                            // AUMS: Update publish_stage in cat_skus_linear
                                                                                             const stageMap: Record<
                                                                                                 string,
                                                                                                 string

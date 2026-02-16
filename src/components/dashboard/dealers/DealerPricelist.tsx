@@ -90,48 +90,32 @@ export const DealerPricelist = ({
 
             const skuIds = (skuData || []).map((item: any) => item.id).filter(Boolean);
 
-            // 4. Fetch Base Prices (cat_price_state) - Now includes RTO, Insurance, On-Road (Published SOT)
-            const { data: pricingData } =
+            // 4. Fetch Base Prices from cat_skus_linear (Published SOT)
+            const priceCol = `price_${defaultStateCode.toLowerCase()}`;
+            const { data: linearRows } =
                 skuIds.length > 0
-                    ? await supabase
-                          .from('cat_price_state')
-                          .select(
-                              'vehicle_color_id, ex_showroom_price, rto_total, insurance_total, on_road_price, district'
-                          )
-                          .eq('state_code', defaultStateCode)
-                          .eq('is_active', true)
-                          .in('vehicle_color_id', skuIds)
+                    ? await supabase.from('cat_skus_linear').select(`unit_json, ${priceCol}`).eq('status', 'ACTIVE')
                     : { data: [] as any[] };
 
             const ruleMap = new Map(rulesData?.map(r => [r.vehicle_color_id, r]));
-
-            const normalizedDistrict = dealerDistrict?.toString().toUpperCase();
-            const districtPriority = (districtValue: string | null | undefined) => {
-                const normalized = (districtValue || '').toString().toUpperCase();
-                if (normalizedDistrict && normalized === normalizedDistrict) return 2;
-                if (normalized === 'ALL' || normalized === '') return 1;
-                return 0;
-            };
 
             const priceMap = new Map<
                 string,
                 { price: number; rto: number; insurance: number; onRoad: number; district?: string | null }
             >();
-            (pricingData || []).forEach((p: any) => {
-                const next = {
-                    price: Number(p.ex_showroom_price) || 0,
-                    rto: Number(p.rto_total) || 0,
-                    insurance: Number(p.insurance_total) || 0,
-                    onRoad: Number(p.on_road_price) || Number(p.ex_showroom_price) || 0,
-                    district: p.district,
-                };
-                const existing = priceMap.get(p.vehicle_color_id);
-                if (!existing || districtPriority(next.district) > districtPriority(existing.district)) {
-                    priceMap.set(p.vehicle_color_id, next);
+            (linearRows || []).forEach((row: any) => {
+                const pm = row[priceCol];
+                const unitId = row.unit_json?.id;
+                if (unitId && pm && skuIds.includes(unitId)) {
+                    priceMap.set(unitId, {
+                        price: Number(pm.ex_showroom) || 0,
+                        rto: Number(pm.rto_total) || 0,
+                        insurance: Number(pm.insurance_total) || 0,
+                        onRoad: Number(pm.on_road_price) || Number(pm.ex_showroom) || 0,
+                        district: 'ALL',
+                    });
                 }
             });
-
-            // RPC removed - all pricing data now comes from cat_price_state table (Published SOT)
 
             const formatted: SKU[] = (skuData || []).map((item: any) => {
                 const color = item.specs?.Color || item.name;

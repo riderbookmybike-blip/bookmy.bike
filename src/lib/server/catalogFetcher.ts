@@ -10,7 +10,7 @@ import { resolvePricingContext } from '@/lib/server/pricingContext';
  * FETCHERS
  */
 
-// SOT Phase 3: Rule fetches deprecated - pricing comes from JSON columns in cat_price_state
+// SOT Phase 3: Rule fetches deprecated - pricing comes from JSON columns in cat_skus_linear
 // Keeping functions for potential fallback/debugging but not called in catalog path
 // async function getRawRules(stateCode: string) { ... }
 // async function getRawInsuranceRules(stateCode: string) { ... }
@@ -63,9 +63,7 @@ async function getRawCatalog() {
                         is_flipped,
                         offset_x,
                         offset_y,
-                        specs,
-                        assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                        prices:cat_price_state!vehicle_color_id(ex_showroom_price, rto_total, insurance_total, rto, insurance, on_road_price, published_at, state_code, district, latitude, longitude, is_active)
+                        specs
                     )
                 ),
                 skus:cat_items!parent_id(
@@ -82,9 +80,7 @@ async function getRawCatalog() {
                     is_flipped,
                     offset_x,
                     offset_y,
-                    specs,
-                    assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                    prices:cat_price_state!vehicle_color_id(ex_showroom_price, rto_total, insurance_total, rto, insurance, on_road_price, published_at, state_code, district, latitude, longitude, is_active)
+                    specs
                 )
             )
         `
@@ -310,10 +306,31 @@ export async function fetchCatalogServerSide(leadId?: string): Promise<ProductVa
     }
 
     // SOT Phase 3: Pass empty arrays for rules - pricing comes from JSON columns
-    return mapCatalogItems(
+    const mappedCatalog = mapCatalogItems(
         filteredData,
         [], // ruleData deprecated
         [], // insuranceRuleData deprecated
         { stateCode, userLat, userLng, userDistrict, offers: offerData || [], requireEligibility: hasEligibility }
     );
+
+    // Runtime pricing provenance debug (helps trace which table fed the catalog)
+    try {
+        const firstFamily = mappedCatalog?.[0];
+        const firstVariant = firstFamily?.children?.[0];
+        const firstSku = firstVariant?.skus?.[0] || firstVariant?.colors?.[0]?.skus?.[0];
+        const firstPrice = firstSku?.prices?.[0];
+        console.info('[CatalogPricingDebug]', {
+            useLinear,
+            priceSource: useLinear ? 'cat_skus_linear.price_mh|unit_json.prices' : 'cat_items.price_base',
+            dealerId: dealerId || 'NONE',
+            stateCode,
+            district: userDistrict || 'ALL',
+            sampleSkuId: firstSku?.id || 'NONE',
+            samplePrice: firstPrice || null,
+        });
+    } catch (err) {
+        console.warn('[CatalogPricingDebug] logging failed', err);
+    }
+
+    return mappedCatalog;
 }

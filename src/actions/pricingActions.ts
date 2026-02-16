@@ -21,22 +21,21 @@ export async function getDistrictFromPincode(pincode: string): Promise<string | 
 export async function getDealerPriceAction(itemId: string, stateCode?: string): Promise<number> {
     const supabase = await createClient();
 
-    // 1. Try to get price from cat_price_state (single source of truth)
-    const { data: price, error } = await supabase
-        .from('cat_price_state')
-        .select('ex_showroom_price')
-        .eq('vehicle_color_id', itemId)
-        .eq('state_code', stateCode || 'MH')
-        .eq('district', 'ALL')
-        .eq('is_active', true)
+    // 1. Try to get price from cat_skus_linear.price_mh (single source of truth)
+    const priceColumn = `price_${(stateCode || 'mh').toLowerCase()}`;
+    const { data: linearRow, error } = await supabase
+        .from('cat_skus_linear')
+        .select(priceColumn)
+        .eq('unit_json->>id', itemId)
         .maybeSingle();
 
-    if (price?.ex_showroom_price) {
-        return Number(price.ex_showroom_price);
+    const priceMh = (linearRow as any)?.[priceColumn];
+    if (priceMh?.ex_showroom) {
+        return Number(priceMh.ex_showroom);
     }
 
-    // No fallback: cat_price_state is the sole SOT. If missing, signal no price.
-    throw new Error('Price not found in cat_price_state for this SKU/state');
+    // No fallback: cat_skus_linear is the sole SOT. If missing, signal no price.
+    throw new Error('Price not found in cat_skus_linear for this SKU/state');
 }
 
 /**

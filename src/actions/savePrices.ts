@@ -36,57 +36,39 @@ export async function savePrices(
         if (prices.length > 0) {
             const allowedStages = new Set(['DRAFT', 'UNDER_REVIEW', 'PUBLISHED', 'LIVE', 'INACTIVE']);
 
-            const priceRecords = prices.map(p => ({
-                vehicle_color_id: p.vehicle_color_id,
-                state_code: p.state_code,
-                district: p.district || 'ALL',
-                ex_showroom_price: p.ex_showroom_price,
-                is_active: p.is_active,
-                // Explicitly NULL on-road fields so chk_on_road_calc_v2 constraint passes
-                // (accessories have no RTO/insurance; publishPrices sets these for vehicles)
-                on_road_price: null,
-                rto: null,
-                insurance: null,
-                rto_total: null,
-                insurance_total: null,
-                publish_stage:
+            for (const p of prices) {
+                const priceColumn = `price_${p.state_code.toLowerCase()}`;
+                const resolvedStage =
                     p.publish_stage && allowedStages.has(p.publish_stage.trim().toUpperCase())
                         ? p.publish_stage.trim().toUpperCase()
-                        : 'DRAFT',
-                ...(p.is_popular !== undefined && { is_popular: p.is_popular }),
-                updated_at: new Date().toISOString(),
-            }));
+                        : 'DRAFT';
 
-            const { error: priceError } = await adminClient.from('cat_price_state').upsert(priceRecords as any, {
-                onConflict: 'vehicle_color_id,state_code,district',
-            });
+                // 1. PRIMARY SOT: Read existing price_mh, merge ex_showroom, write back
+                const { data: existingRow } = await (adminClient as any)
+                    .from('cat_skus_linear')
+                    .select(priceColumn)
+                    .eq('unit_json->>id', p.vehicle_color_id)
+                    .single();
 
-            if (priceError) {
-                console.error('[savePrices] Price upsert error:', priceError);
-                return { success: false, error: priceError.message };
-            }
+                const existingPrice = existingRow?.[priceColumn] || {};
+                const mergedPrice = {
+                    ...existingPrice,
+                    ex_showroom: p.ex_showroom_price,
+                    publish_stage: resolvedStage,
+                    ...(p.is_popular !== undefined && { is_popular: p.is_popular }),
+                };
 
-            // Dual-write: sync price_mh cache in cat_skus_linear for MH prices
-            const mhPrices = prices.filter(p => p.state_code === 'MH');
-            if (mhPrices.length > 0) {
-                for (const p of mhPrices) {
-                    const priceMhPayload = {
-                        ex_showroom: p.ex_showroom_price,
-                        gst_rate: 0, // Will be set properly on publish
-                        hsn_code: '',
-                        rto_total: 0,
-                        rto: null,
-                        insurance_total: 0,
-                        insurance: null,
-                        on_road_price: 0,
-                        is_popular: p.is_popular ?? false,
-                    };
-                    // Match: cat_price_state.vehicle_color_id == cat_skus_linear.unit_json.id
-                    await (adminClient as any)
-                        .from('cat_skus_linear')
-                        .update({ price_mh: priceMhPayload })
-                        .eq('unit_json->>id', p.vehicle_color_id);
+                const { error: linearError } = await (adminClient as any)
+                    .from('cat_skus_linear')
+                    .update({ [priceColumn]: mergedPrice })
+                    .eq('unit_json->>id', p.vehicle_color_id);
+
+                if (linearError) {
+                    console.error('[savePrices] cat_skus_linear update error:', linearError);
+                    return { success: false, error: linearError.message };
                 }
+
+                // cat_price_state secondary write REMOVED — cat_skus_linear is now the sole SOT
             }
 
             // Push Invalidation: Trigger revalidation for each unique district

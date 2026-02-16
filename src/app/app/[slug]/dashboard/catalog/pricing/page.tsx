@@ -193,15 +193,10 @@ export default function PricingPage() {
             if (skuError) throw skuError;
 
             const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode ?? 'MH';
-            const [priceRes, offerRes, stockRes] = await Promise.all([
-                supabase
-                    .from('cat_price_state')
-                    .select(
-                        'vehicle_color_id, ex_showroom_price, rto_total, rto, insurance_total, insurance, on_road_price, updated_at, district, published_at, publish_stage, is_popular'
-                    )
-                    .eq('state_code', activeStateCode)
-                    .eq('is_active', true)
-                    .or('district.is.null,district.eq.ALL'),
+            const priceColumn = `price_${activeStateCode.toLowerCase()}`;
+
+            const [linearRes, offerRes, stockRes] = await Promise.all([
+                supabase.from('cat_skus_linear').select(`unit_json, ${priceColumn}`).eq('status', 'ACTIVE'),
                 tenantSlug !== 'aums'
                     ? supabase
                           .from('cat_price_dealer')
@@ -212,8 +207,8 @@ export default function PricingPage() {
                 Promise.resolve({ data: [] as any, error: null as any }),
             ]);
 
-            const { data: priceData, error: priceError } = priceRes;
-            if (priceError) throw priceError;
+            const { data: linearData, error: linearError } = linearRes;
+            if (linearError) throw linearError;
 
             const { data: offerData, error: offerError } = offerRes as any;
             if (offerError) console.error('Offer Fetch Error:', offerError);
@@ -237,24 +232,23 @@ export default function PricingPage() {
                     isPopular?: boolean;
                 }
             >();
-            priceData?.forEach((p: any) => {
-                const district = (p.district || '').toString().toUpperCase();
-                const existing = priceMap.get(p.vehicle_color_id);
-                if (!existing || district === 'ALL' || (existing.district || '').toUpperCase() !== 'ALL') {
-                    priceMap.set(p.vehicle_color_id, {
-                        price: p.ex_showroom_price || 0,
-                        rto: p.rto_total || 0,
-                        rto_data: p.rto,
-                        insurance: p.insurance_total || 0,
-                        insurance_data: p.insurance,
-                        onRoad: p.on_road_price || p.ex_showroom_price || 0,
-                        district: p.district,
-                        publishedAt: p.published_at,
-                        publishStage: p.publish_stage || 'DRAFT',
-                        updatedAt: p.updated_at,
-                        isPopular: p.is_popular || false,
-                    });
-                }
+            (linearData || []).forEach((row: any) => {
+                const priceMh = row[priceColumn];
+                const unitId = row.unit_json?.id;
+                if (!unitId || !priceMh) return;
+                priceMap.set(unitId, {
+                    price: Number(priceMh.ex_showroom) || 0,
+                    rto: Number(priceMh.rto_total) || 0,
+                    rto_data: priceMh.rto,
+                    insurance: Number(priceMh.insurance_total) || 0,
+                    insurance_data: priceMh.insurance,
+                    onRoad: Number(priceMh.on_road_price) || Number(priceMh.ex_showroom) || 0,
+                    district: 'ALL',
+                    publishedAt: priceMh.published_at,
+                    publishStage: priceMh.publish_stage || 'DRAFT',
+                    updatedAt: priceMh.updated_at,
+                    isPopular: priceMh.is_popular || false,
+                });
             });
 
             const offerMap = new Map();
@@ -317,7 +311,7 @@ export default function PricingPage() {
                 if (tenantSlug !== 'aums') {
                     displayState = resolvedStatus === 'ACTIVE' && localIsActive ? 'Live' : 'Inactive';
                 } else {
-                    // AUMS uses publish_stage from cat_price_state, not sku.status from cat_items
+                    // AUMS uses publish_stage from cat_skus_linear pricing, not sku.status from cat_items
                     if (publishStage === 'PUBLISHED') displayState = 'Published';
                     else if (publishStage === 'UNDER_REVIEW') displayState = 'In Review';
                     else if (publishStage === 'LIVE') displayState = 'Live';
@@ -393,7 +387,7 @@ export default function PricingPage() {
 
             formattedSkus.sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model));
 
-            // RPC removed - all pricing data now comes from cat_price_state table (Published SOT)
+            // RPC removed - all pricing data now comes from cat_skus_linear (Published SOT)
 
             setSkus(formattedSkus);
         } catch (error: any) {
@@ -428,7 +422,7 @@ export default function PricingPage() {
         setLastEditTime(Date.now());
     };
 
-    // AUMS: Update publish_stage in cat_price_state
+    // AUMS: Update publish_stage in cat_skus_linear
     const handleUpdatePublishStage = (skuId: string, stage: string) => {
         const displayStateMap: Record<string, SKUPriceRow['displayState']> = {
             DRAFT: 'Draft',

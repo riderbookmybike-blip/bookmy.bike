@@ -666,23 +666,25 @@ export async function refreshLinearCatalogForBrand(supabase: any, brandId: strin
 
     if (brandError) throw brandError;
 
-    const { data: prices, error: pricesError } = await supabase
-        .from('cat_price_state')
-        .select('*')
-        .eq('is_active', true);
+    // Fetch existing price_mh from cat_skus_linear to preserve during sync (SOT is now in cat_skus_linear itself)
+    const { data: existingLinear, error: existingLinearError } = await supabase
+        .from('cat_skus_linear')
+        .select('sku_code, price_mh')
+        .eq('brand_id', brandId);
 
-    if (pricesError) throw pricesError;
+    if (existingLinearError) throw existingLinearError;
+
+    // Build a map of existing price_mh by sku_code for preservation during upsert
+    const existingPriceMhMap = new Map<string, any>();
+    (existingLinear || []).forEach((row: any) => {
+        if (row.price_mh) existingPriceMhMap.set(row.sku_code, row.price_mh);
+    });
 
     const { data: assets, error: assetsError } = await supabase.from('cat_assets').select('*');
 
     if (assetsError) throw assetsError;
 
     const itemsMap = new Map(allItems.map((i: any) => [i.id, i]));
-    const pricesMap = new Map();
-    prices.forEach((p: any) => {
-        if (!pricesMap.has(p.vehicle_color_id)) pricesMap.set(p.vehicle_color_id, []);
-        pricesMap.get(p.vehicle_color_id).push(p);
-    });
 
     const assetsMap = new Map();
     assets.forEach((a: any) => {
@@ -718,15 +720,6 @@ export async function refreshLinearCatalogForBrand(supabase: any, brandId: strin
         const effectiveVariant = variant || product;
         const effectiveUnit = { ...(unit || leaf) };
 
-        // Attach prices
-        const unitPrices = pricesMap.get(leaf.id) || [];
-        (effectiveUnit as any).prices = unitPrices;
-
-        const allRegionalPrices = unitPrices
-            .map((p: any) => parseFloat(p.ex_showroom_price))
-            .filter((p: number) => p > 0);
-        const basePrice = allRegionalPrices.length > 0 ? Math.min(...allRegionalPrices) : leaf.price_base || 0;
-
         const galleryUrls = (
             leaf.gallery_urls ||
             unit?.gallery_urls ||
@@ -744,17 +737,19 @@ export async function refreshLinearCatalogForBrand(supabase: any, brandId: strin
         };
         const normalizedSpecs = normalizeSpecsForLinear(rawSpecs);
 
+        const skuCode =
+            leaf.sku_code ||
+            (leaf.type === 'SKU' ? `SKU-${leaf.id.substring(0, 8)}` : `UNIT-${leaf.id.substring(0, 8)}`);
+
         const row = {
-            sku_code:
-                leaf.sku_code ||
-                (leaf.type === 'SKU' ? `SKU-${leaf.id.substring(0, 8)}` : `UNIT-${leaf.id.substring(0, 8)}`),
+            sku_code: skuCode,
             brand_id: brandId,
             brand_name: brand.name,
             type_name: (product as any).category || 'VEHICLE',
             product_name: product.name,
             variant_name: effectiveVariant.name,
             unit_name: effectiveUnit.name,
-            price_base: basePrice,
+            price_base: leaf.price_base || 0,
             status: leaf.status === 'DRAFT' ? 'INACTIVE' : (leaf.status as any),
             image_url: leaf.image_url || unit?.image_url || variant?.image_url || product.image_url,
             gallery_urls: galleryUrls,
@@ -765,22 +760,8 @@ export async function refreshLinearCatalogForBrand(supabase: any, brandId: strin
             variant_json: effectiveVariant,
             unit_json: effectiveUnit,
             checksum_md5: '',
-            // Populate price_mh cache from MH active prices
-            price_mh: (() => {
-                const mhPrice = unitPrices.find((p: any) => p.state_code === 'MH' && p.is_active);
-                if (!mhPrice) return null;
-                return {
-                    ex_showroom: Number(mhPrice.ex_showroom_price) || 0,
-                    gst_rate: Number(mhPrice.gst_rate) || 0,
-                    hsn_code: mhPrice.hsn_code || '',
-                    rto_total: Number(mhPrice.rto_total) || 0,
-                    rto: mhPrice.rto || null,
-                    insurance_total: Number(mhPrice.insurance_total) || 0,
-                    insurance: mhPrice.insurance || null,
-                    on_road_price: Number(mhPrice.on_road_price) || 0,
-                    is_popular: mhPrice.is_popular || false,
-                };
-            })(),
+            // PRESERVE existing price_mh (SOT) — never overwrite during sync
+            price_mh: existingPriceMhMap.get(skuCode) || null,
         };
 
         // Enforce allowed spec keys/units and gallery cap at app-layer; DB CHECK will also enforce

@@ -433,8 +433,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                         is_flipped,
                                         offset_x,
                                         offset_y,
-                                        assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                        prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                                        assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position)
                                     )
                                 ),
                                 skus:cat_items!parent_id(
@@ -452,8 +451,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                     is_flipped,
                                     offset_x,
                                     offset_y,
-                                    assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                                    prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                                    assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position)
                                 )
                             )
                         `
@@ -647,34 +645,25 @@ export function useSystemCatalogLogic(leadId?: string) {
                             .filter(Boolean) as string[];
 
                         if (primarySkuIds.length > 0) {
-                            // Published SOT: Read directly from cat_price_state instead of RPC
-                            const { data: pricingRows } = await supabase
-                                .from('cat_price_state')
-                                .select(
-                                    'vehicle_color_id, ex_showroom_price, rto_total, insurance_total, on_road_price, district'
-                                )
-                                .eq('state_code', resolvedStateCode || 'MH')
-                                .in(
-                                    'district',
-                                    ['ALL', resolvedUserDistrict?.toUpperCase()].filter(Boolean) as string[]
-                                )
-                                .eq('is_active', true)
-                                .in('vehicle_color_id', primarySkuIds);
+                            // Published SOT: Read directly from cat_skus_linear JSONB
+                            const priceCol = `price_${(resolvedStateCode || 'MH').toLowerCase()}`;
+                            const { data: linearRows } = await supabase
+                                .from('cat_skus_linear')
+                                .select(`unit_json, ${priceCol}`)
+                                .eq('status', 'ACTIVE');
 
                             const pricingMap = new Map<string, any>();
-                            (pricingRows || []).forEach((row: any) => {
-                                if (row?.vehicle_color_id) {
-                                    const existing = pricingMap.get(row.vehicle_color_id);
-                                    // Prefer district match over 'ALL' fallback
-                                    if (!existing || row.district !== 'ALL') {
-                                        pricingMap.set(row.vehicle_color_id, {
-                                            ex_showroom: row.ex_showroom_price,
-                                            rto_total: row.rto_total,
-                                            insurance_total: row.insurance_total,
-                                            final_on_road: row.on_road_price || row.ex_showroom_price,
-                                            location: { district: row.district, state_code: resolvedStateCode },
-                                        });
-                                    }
+                            (linearRows || []).forEach((row: any) => {
+                                const pm = row[priceCol];
+                                const unitId = row.unit_json?.id;
+                                if (unitId && pm && primarySkuIds.includes(unitId)) {
+                                    pricingMap.set(unitId, {
+                                        ex_showroom: Number(pm.ex_showroom) || 0,
+                                        rto_total: Number(pm.rto_total) || 0,
+                                        insurance_total: Number(pm.insurance_total) || 0,
+                                        final_on_road: Number(pm.on_road_price) || Number(pm.ex_showroom) || 0,
+                                        location: { district: 'ALL', state_code: resolvedStateCode },
+                                    });
                                 }
                             });
 

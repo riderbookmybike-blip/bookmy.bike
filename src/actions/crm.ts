@@ -1772,7 +1772,7 @@ export async function getQuoteById(
     const pricingSnapshot: any = commercials.pricing_snapshot || {};
     const dealerFromPricing = pricingSnapshot?.dealer || commercials?.dealer || null;
 
-    // Fetch high-fidelity pricing from cat_price_state
+    // Fetch high-fidelity pricing from cat_skus_linear (SOT)
     const pricingClient = await createClient();
     let highFidelityPricing = null;
     const colorId = q.color_id || q.vehicle_sku_id || pricingSnapshot?.color_id;
@@ -1780,16 +1780,23 @@ export async function getQuoteById(
     const district = commercials.location?.district || pricingSnapshot?.location?.district;
 
     if (colorId && stateCode) {
-        const { data: priceData } = await pricingClient
-            .from('cat_price_state')
-            .select('gst_rate, rto, hsn_code')
-            .eq('vehicle_color_id', colorId)
-            .eq('state_code', stateCode)
-            .or(`district.eq.${district},district.eq.ALL`)
-            .order('district', { ascending: false })
+        const priceCol = `price_${stateCode.toLowerCase()}`;
+        const { data: linearRow } = await pricingClient
+            .from('cat_skus_linear')
+            .select(`unit_json, ${priceCol}`)
+            .eq('unit_json->>id', colorId)
+            .eq('status', 'ACTIVE')
             .limit(1)
             .maybeSingle();
-        highFidelityPricing = priceData;
+        const pm = (linearRow as any)?.[priceCol];
+        if (pm) {
+            highFidelityPricing = {
+                gst_rate: pm.gst_rate,
+                rto: pm.rto,
+                hsn_code: pm.hsn_code,
+                insurance: pm.insurance,
+            };
+        }
     }
 
     const missing: string[] = [];
@@ -3328,7 +3335,7 @@ export async function getQuoteByDisplayId(
     const commercials: any = (quote.commercials as any) || {};
     const pricingSnapshot: any = commercials.pricing_snapshot || {};
 
-    // Fetch high-fidelity pricing (for RTO breakdown parity with CRM)
+    // Fetch high-fidelity pricing from cat_skus_linear (SOT)
     let highFidelityPricing = null;
     const colorId = quote.color_id || quote.variant_id || pricingSnapshot?.color_id;
     const stateCode =
@@ -3336,19 +3343,25 @@ export async function getQuoteByDisplayId(
         pricingSnapshot?.location?.stateCode ||
         commercials?.location?.state_code ||
         commercials?.location?.stateCode;
-    const district = pricingSnapshot?.location?.district || commercials?.location?.district || null;
 
     if (colorId && stateCode) {
-        const { data: priceData } = await supabase
-            .from('cat_price_state')
-            .select('gst_rate, rto, hsn_code, insurance')
-            .eq('vehicle_color_id', colorId)
-            .eq('state_code', stateCode)
-            .or(`district.eq.${district},district.eq.ALL`)
-            .order('district', { ascending: false })
+        const priceCol = `price_${stateCode.toLowerCase()}`;
+        const { data: linearRow } = await supabase
+            .from('cat_skus_linear')
+            .select(`unit_json, ${priceCol}`)
+            .eq('unit_json->>id', colorId)
+            .eq('status', 'ACTIVE')
             .limit(1)
             .maybeSingle();
-        highFidelityPricing = priceData;
+        const pm = (linearRow as any)?.[priceCol];
+        if (pm) {
+            highFidelityPricing = {
+                gst_rate: pm.gst_rate,
+                rto: pm.rto,
+                hsn_code: pm.hsn_code,
+                insurance: pm.insurance,
+            };
+        }
     }
 
     // Resolve finance if active

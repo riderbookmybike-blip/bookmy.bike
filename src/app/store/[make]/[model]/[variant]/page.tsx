@@ -469,38 +469,61 @@ export default async function Page({ params, searchParams }: Props) {
 
     const allSkus = [...(skus || []), ...colorSkus];
 
-    // 2.6 Fetch Prices from cat_price_state (Authoritative Source)
+    // 2.6 Fetch Prices from cat_skus_linear (Authoritative SOT)
     const skuIds = allSkus.map((s: any) => s.id);
     let publishedPriceData: any = null;
+    const priceCol = `price_${stateCode.toLowerCase()}`;
 
     if (skuIds.length > 0) {
-        const { data: priceRecords } = await supabase
-            .from('cat_price_state')
-            .select(
-                `
-                vehicle_color_id, 
-                ex_showroom_price, 
-                rto_total, 
-                insurance_total, 
-                on_road_price, 
-                rto,
-                insurance,
-                rto_breakdown, 
-                insurance_breakdown,
-                state_code, 
-                district,
-                published_at
-            `
-            )
-            .in('vehicle_color_id', skuIds)
-            .eq('state_code', stateCode)
-            .eq('district', 'ALL')
-            .eq('is_active', true)
-            .order('district', { ascending: false }); // State-level SOT (district = ALL)
+        const { data: linearRows } = await supabase
+            .from('cat_skus_linear')
+            .select(`unit_json, ${priceCol}`)
+            .eq('status', 'ACTIVE');
 
-        if (priceRecords && priceRecords.length > 0) {
-            // Find the first valid published record
-            publishedPriceData = priceRecords.find((p: any) => p.rto_total > 0) || priceRecords[0];
+        // Find the first SKU with valid pricing data
+        const matchingRow = (linearRows || []).find((row: any) => {
+            const unitId = row.unit_json?.id;
+            const pm = row[priceCol];
+            return unitId && skuIds.includes(unitId) && pm && Number(pm.rto_total) > 0;
+        });
+        const fallbackRow = !matchingRow
+            ? (linearRows || []).find((row: any) => {
+                  const unitId = row.unit_json?.id;
+                  return unitId && skuIds.includes(unitId) && row[priceCol];
+              })
+            : null;
+
+        const priceRow = matchingRow || fallbackRow;
+        if (priceRow) {
+            const pm = priceRow[priceCol];
+            publishedPriceData = {
+                vehicle_color_id: priceRow.unit_json?.id,
+                ex_showroom_price: pm.ex_showroom,
+                rto_total: pm.rto_total,
+                insurance_total: pm.insurance_total,
+                on_road_price: pm.on_road_price,
+                rto: pm.rto,
+                insurance: pm.insurance,
+                rto_breakdown: pm.rto_breakdown,
+                insurance_breakdown: pm.insurance_breakdown,
+                state_code: stateCode,
+                district: 'ALL',
+                published_at: pm.published_at,
+            };
+            console.info('[PDP Pricing Debug]', {
+                stateCode,
+                district: resolvedLocation?.district || 'ALL',
+                priceSource: `cat_skus_linear.${priceCol}`,
+                matchType: matchingRow ? 'strict_rto_positive' : 'fallback_any_price',
+                skuMatched: priceRow.unit_json?.id || 'NONE',
+                onRoad: pm?.on_road_price,
+                exShowroom: pm?.ex_showroom,
+            });
+        } else {
+            console.warn('[PDP Pricing Debug] No cat_skus_linear pricing matched for SKU set', {
+                stateCode,
+                skuCount: skuIds.length,
+            });
         }
     }
 

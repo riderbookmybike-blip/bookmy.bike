@@ -64,13 +64,14 @@ async function run() {
     const engineCC = targetSku.specs?.engine_cc || variant.specs?.engine_cc || 109.7;
     console.log('Engine CC:', engineCC);
 
-    // 3. Find Price
-    const { data: price, error: pError } = await supabase
-        .from('cat_price_state')
-        .select('*')
-        .eq('vehicle_color_id', targetSku.id)
-        .eq('state_code', 'MH')
-        .single();
+    // 3. Find Price from cat_skus_linear (SOT)
+    const { data: linearRow, error: pError } = await supabase
+        .from('cat_skus_linear')
+        .select('price_mh')
+        .eq('unit_json->>id', targetSku.id)
+        .maybeSingle();
+
+    const price = linearRow?.price_mh as any;
 
     console.log('\n--- PRICE HIERARCHY ---');
     console.log(`SKU price_base: ${targetSku.price_base}`);
@@ -80,7 +81,7 @@ async function run() {
     // Fetch family price_base if not in initial select
     const { data: familyData } = await supabase.from('cat_items').select('price_base').eq('id', familyId).single();
     console.log(`Family price_base: ${familyData?.price_base}`);
-    console.log(`Current State Price (cat_price_state): ${price?.ex_showroom_price}`);
+    console.log(`Current State Price (cat_skus_linear.price_mh): ${price?.ex_showroom}`);
     console.log('-----------------------\n');
 
     if (pError) console.log('Price fetch error (might not exist):', pError.message);

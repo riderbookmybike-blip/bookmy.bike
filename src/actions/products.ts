@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache';
  * - catalog_pricing_architecture.md (KI documentation)
  *
  * The key insight: The Pricing Ledger needs SKU-level data (type='SKU')
- * joined with cat_price_state via vehicle_color_id, not via parent joins.
+ * joined with cat_skus_linear via unit_json->>id, not via parent joins.
  */
 
 export async function getPricingLedger(tenantId: string) {
@@ -76,24 +76,32 @@ export async function getPricingLedger(tenantId: string) {
     // 2. Get SKU IDs for batch price fetch
     const skuIds = skus.map((s: any) => s.id);
 
-    // 3. Fetch prices for all these SKUs from cat_price_state
-    const { data: priceData, error: priceError } = await supabase
-        .from('cat_price_state')
-        .select(
-            'vehicle_color_id, ex_showroom_price, rto_total, insurance_total, on_road_price, published_at, state_code'
-        )
-        .in('vehicle_color_id', skuIds)
-        .eq('state_code', stateCode)
-        .eq('district', 'ALL');
+    // 3. Fetch prices for all these SKUs from cat_skus_linear (SOT)
+    const priceColumn = `price_${stateCode.toLowerCase()}`;
+    const { data: linearData, error: linearError } = await supabase
+        .from('cat_skus_linear')
+        .select(`unit_json, ${priceColumn}`)
+        .eq('status', 'ACTIVE');
 
-    if (priceError) {
-        console.error('getPricingLedger - Prices fetch error:', JSON.stringify(priceError, null, 2));
+    if (linearError) {
+        console.error('getPricingLedger - Linear prices fetch error:', JSON.stringify(linearError, null, 2));
     }
 
-    // 4. Create price lookup map
+    // 4. Create price lookup map from cat_skus_linear JSONB
     const priceMap = new Map<string, any>();
-    (priceData || []).forEach((p: any) => {
-        priceMap.set(p.vehicle_color_id, p);
+    (linearData || []).forEach((row: any) => {
+        const priceMh = row[priceColumn];
+        const unitId = row.unit_json?.id;
+        if (unitId && priceMh) {
+            priceMap.set(unitId, {
+                ex_showroom_price: Number(priceMh.ex_showroom) || 0,
+                rto_total: Number(priceMh.rto_total) || 0,
+                insurance_total: Number(priceMh.insurance_total) || 0,
+                on_road_price: Number(priceMh.on_road_price) || 0,
+                published_at: priceMh.published_at,
+                state_code: stateCode,
+            });
+        }
     });
 
     // 5. Fetch dealer rules if tenantId provided

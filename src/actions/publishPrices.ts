@@ -259,7 +259,10 @@ interface InsuranceJSON {
     od: InsuranceComponentJSON;
     tp: InsuranceComponentJSON;
     gst_rate: number;
-    base_total: number;
+    net_premium: number; // OD base + TP base (before GST)
+    gst: number; // Total GST on OD + TP
+    base_total: number; // net_premium + gst
+    pa: number; // Personal Accident cover total
     addons: InsuranceAddonJSON[];
 }
 
@@ -390,11 +393,19 @@ async function calculateInsurance(
                 total: result.tpTotal + Math.round(result.tpTotal * (rule.gstPercentage / 100)),
             },
             gst_rate: rule.gstPercentage,
-            // base_total = (OD + TP) with GST included
+            // net_premium = OD base + TP base (before GST)
+            net_premium: result.odTotal + result.tpTotal,
+            // gst = total GST on OD + TP
+            gst: Math.round((result.odTotal + result.tpTotal) * (rule.gstPercentage / 100)),
+            // base_total = net_premium + gst
             base_total:
                 result.odTotal +
                 result.tpTotal +
                 Math.round((result.odTotal + result.tpTotal) * (rule.gstPercentage / 100)),
+            // pa = Personal Accident cover total (from addons)
+            pa:
+                addons.find(a => a.id.includes('pa') || a.label.toLowerCase().includes('personal accident'))?.total ||
+                0,
             addons,
         },
     };
@@ -471,23 +482,23 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                 greatGrandparent?.specs?.engine_cc ||
                 110;
 
-            // 2. Get current ex-showroom or create record if not exists
-            const { data: existingPrice } = await (adminClient as any)
-                .from('cat_price_state')
-                .select('ex_showroom_price, on_road_price')
-                .eq('vehicle_color_id', skuId)
-                .eq('state_code', stateCode)
-                .eq('district', 'ALL')
+            // 2. Get current ex-showroom from cat_skus_linear (PRIMARY SOT)
+            const priceColumn = `price_${stateCode.toLowerCase()}`;
+            const { data: linearRow } = await (adminClient as any)
+                .from('cat_skus_linear')
+                .select(priceColumn)
+                .eq('unit_json->>id', skuId)
                 .single();
 
+            const existingPrice = linearRow?.[priceColumn] || null;
             let exShowroom: number;
             let isNewRecord = false;
 
-            if (existingPrice) {
-                // USER REQUEST: Respect existing price in cat_price_state (e.g. manual edits)
-                exShowroom = existingPrice.ex_showroom_price;
+            if (existingPrice?.ex_showroom) {
+                // Respect existing price in cat_skus_linear (e.g. manual edits)
+                exShowroom = Number(existingPrice.ex_showroom);
             } else {
-                // 2. Fallback: Fetch latest price from Source of Truth (cat_items hierarchy)
+                // Fallback: Fetch latest price from cat_items hierarchy
                 const { data: skuWithPrice } = await (adminClient as any)
                     .from('cat_items')
                     .select('price_base, parent:parent_id(price_base, parent:parent_id(price_base))')
@@ -536,58 +547,35 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
             const oldOnRoad = existingPrice?.on_road_price || exShowroom;
             const delta = newOnRoad - oldOnRoad;
 
-            // 5. UPSERT cat_price_state with calculated values (Published SOT)
-            const pricePayload = {
-                vehicle_color_id: skuId,
-                state_code: stateCode,
-                ex_showroom_price: exShowroom,
-                // Legacy columns - mirrored from JSON defaults
-                // Legacy columns - mirrored from JSON defaults
-                rto_total: Number(rtoResult.json.STATE.total),
-                insurance_total: Number(insuranceResult.json.base_total),
-                on_road_price: newOnRoad,
-                // Set legacy numeric columns to null to avoid type errors with JSON objects
-                rto_breakdown: null,
-                insurance_breakdown: null,
+            // 5. priceColumn already set above for the state-specific column
 
-                // JSONB columns - pass objects directly (Supabase handles serialization)
+            // 6. PRIMARY SOT: Write to cat_skus_linear.price_mh (or price_ka, etc.)
+            const priceSotPayload = {
+                ex_showroom: exShowroom,
+                gst_rate: gstRatePercent / 100,
+                hsn_code: '',
+                rto_total: Number(rtoResult.json.STATE.total),
                 rto: rtoResult.json,
+                insurance_total: Number(insuranceResult.json.base_total),
                 insurance: insuranceResult.json,
-                gst_rate: gstRatePercent / 100, // Store as decimal (0.18 for 18%)
+                on_road_price: newOnRoad,
+                is_popular: existingPrice?.is_popular ?? false,
                 published_at: new Date().toISOString(),
                 published_by: user.id,
-                is_active: true,
-                district: 'ALL',
-                publish_stage: 'UNDER_REVIEW',
+                publish_stage: 'PUBLISHED',
             };
 
-            const { error: upsertError } = await adminClient.from('cat_price_state').upsert(pricePayload as any, {
-                onConflict: 'vehicle_color_id,state_code,district',
-            });
+            const { error: linearError } = await (adminClient as any)
+                .from('cat_skus_linear')
+                .update({ [priceColumn]: priceSotPayload })
+                .eq('unit_json->>id', skuId);
 
-            if (upsertError) {
-                errors.push(`Publish failed for ${skuId}: ${upsertError.message}`);
+            if (linearError) {
+                errors.push(`Publish failed for ${skuId}: ${linearError.message}`);
                 continue;
             }
 
-            // Dual-write: sync price_mh cache in cat_skus_linear for MH
-            if (stateCode === 'MH') {
-                const priceMhCache = {
-                    ex_showroom: exShowroom,
-                    gst_rate: gstRatePercent / 100,
-                    hsn_code: '',
-                    rto_total: Number(rtoResult.json.STATE.total),
-                    rto: rtoResult.json,
-                    insurance_total: Number(insuranceResult.json.base_total),
-                    insurance: insuranceResult.json,
-                    on_road_price: newOnRoad,
-                    is_popular: false,
-                };
-                await (adminClient as any)
-                    .from('cat_skus_linear')
-                    .update({ price_mh: priceMhCache })
-                    .eq('unit_json->>id', skuId);
-            }
+            // cat_price_state secondary write REMOVED — cat_skus_linear is the sole SOT
 
             // 6. Auto-adjust dealer offers if price increased
             let dealersAdjusted = 0;
@@ -691,13 +679,21 @@ export async function previewPrices(skuIds: string[], stateCode: string) {
 
         if (!sku) continue;
 
-        const { data: price, error: priceError } = await (supabase as any)
-            .from('cat_price_state')
-            .select('ex_showroom_price, on_road_price, rto_total, insurance_total')
-            .eq('vehicle_color_id', skuId)
-            .eq('state_code', stateCode)
-            .eq('district', 'ALL')
+        const previewPriceCol = `price_${stateCode.toLowerCase()}`;
+        const { data: previewRow, error: priceError } = await (supabase as any)
+            .from('cat_skus_linear')
+            .select(previewPriceCol)
+            .eq('unit_json->>id', skuId)
             .single();
+
+        const price = previewRow?.[previewPriceCol]
+            ? {
+                  ex_showroom_price: Number(previewRow[previewPriceCol].ex_showroom) || 0,
+                  on_road_price: Number(previewRow[previewPriceCol].on_road_price) || 0,
+                  rto_total: Number(previewRow[previewPriceCol].rto_total) || 0,
+                  insurance_total: Number(previewRow[previewPriceCol].insurance_total) || 0,
+              }
+            : null;
 
         if (priceError || !price) continue;
 

@@ -94,8 +94,7 @@ export async function getProductBySlug(
                         zoom_factor,
                         is_flipped,
                         offset_x,
-                        assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position),
-                        prices:cat_price_state!vehicle_color_id(ex_showroom_price, state_code, district, latitude, longitude, is_active)
+                        assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position)
                     )
                 )
             `
