@@ -6,8 +6,10 @@ export async function createClient() {
     const cookieStore = await cookies();
     const headerList = await headers();
     const host = headerList.get('host') || '';
+    const proto = headerList.get('x-forwarded-proto') || 'http';
 
     const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
+    const isHttps = proto === 'https';
 
     return createServerClient<Database>(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,7 +26,7 @@ export async function createClient() {
                                 ...options,
                                 path: '/',
                                 sameSite: 'lax',
-                                secure: !isLocalhost,
+                                secure: isHttps && !isLocalhost,
                             });
                         });
                     } catch {

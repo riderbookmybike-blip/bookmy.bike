@@ -129,7 +129,11 @@ export const ProductCard = ({
     });
 
     useEffect(() => {
-        const primaryColor = v.availableColors?.find(c => c.imageUrl) || v.availableColors?.[0];
+        // Prefer the color matching the variant's primary imageUrl (set via is_primary SKU)
+        const primaryColor =
+            v.availableColors?.find(c => c.imageUrl && c.imageUrl === v.imageUrl) ||
+            v.availableColors?.find(c => c.imageUrl) ||
+            v.availableColors?.[0];
         setSelectedColorImage(primaryColor?.imageUrl || v.imageUrl || null);
         setSelectedColorZoom(primaryColor?.zoomFactor ?? v.zoomFactor ?? null);
         setSelectedColorFlip(primaryColor?.isFlipped ?? v.isFlipped ?? false);
@@ -784,7 +788,7 @@ export const ProductCard = ({
                                                     style={{ background: c.hexCode }}
                                                     title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
                                                 >
-                                                    {c.finish?.toUpperCase() === 'GLOSSY' && (
+                                                    {c.finish?.toUpperCase() === 'GLOSS' && (
                                                         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
                                                     )}
                                                     {c.finish?.toUpperCase() === 'MATTE' && (

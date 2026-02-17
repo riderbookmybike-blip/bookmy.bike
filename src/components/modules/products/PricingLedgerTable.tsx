@@ -402,6 +402,7 @@ export default function PricingLedgerTable({
     const [currentPage, setCurrentPage] = useState(1);
     const [filters, setFilters] = useState<Partial<Record<keyof SKUPriceRow, string>>>({});
     const [sortConfig, setSortConfig] = useState<{ key: keyof SKUPriceRow; direction: 'asc' | 'desc' } | null>(null);
+    const [deltaDrafts, setDeltaDrafts] = useState<Record<string, string>>({});
     const [prevSelectedCategory, setPrevSelectedCategory] = useState(selectedCategory);
     const [prevFilters, setPrevFilters] = useState({ filters, selectedBrand, selectedSubCategory, selectedStateId });
 
@@ -558,6 +559,32 @@ export default function PricingLedgerTable({
         // 2. Sort
         if (sortConfig) {
             result.sort((a, b) => {
+                if (sortConfig.key === 'updatedAt') {
+                    const aTs = new Date(a.updatedAt || a.publishedAt || 0).getTime();
+                    const bTs = new Date(b.updatedAt || b.publishedAt || 0).getTime();
+                    return sortConfig.direction === 'asc' ? aTs - bTs : bTs - aTs;
+                }
+                if (sortConfig.key === 'offerAmount') {
+                    const aVal =
+                        activeCategory === 'vehicles'
+                            ? Number(a.onRoad || 0) + Number(a.offerAmount || 0)
+                            : Number(a.exShowroom || 0) + Number(a.offerAmount || 0);
+                    const bVal =
+                        activeCategory === 'vehicles'
+                            ? Number(b.onRoad || 0) + Number(b.offerAmount || 0)
+                            : Number(b.exShowroom || 0) + Number(b.offerAmount || 0);
+                    return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+                if (sortConfig.key === 'isPopular') {
+                    const aVal = a.isPopular ? 1 : 0;
+                    const bVal = b.isPopular ? 1 : 0;
+                    return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+                if (sortConfig.key === 'engineCc') {
+                    const aVal = Number(a.engineCc || 0);
+                    const bVal = Number(b.engineCc || 0);
+                    return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                }
                 const aVal = a[sortConfig.key];
                 const bVal = b[sortConfig.key];
 
@@ -1411,11 +1438,29 @@ export default function PricingLedgerTable({
 
                                     {activeCategory === 'vehicles' ? (
                                         <>
-                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
-                                                RTO
+                                            <th
+                                                className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                                onClick={() => handleSort('rto')}
+                                            >
+                                                <div className="flex items-center justify-end gap-1">
+                                                    RTO
+                                                    <ArrowUpDown
+                                                        size={10}
+                                                        className={`opacity-30 ${sortConfig?.key === 'rto' ? 'text-emerald-600 opacity-100' : ''}`}
+                                                    />
+                                                </div>
                                             </th>
-                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
-                                                Insurance
+                                            <th
+                                                className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                                onClick={() => handleSort('insurance')}
+                                            >
+                                                <div className="flex items-center justify-end gap-1">
+                                                    Insurance
+                                                    <ArrowUpDown
+                                                        size={10}
+                                                        className={`opacity-30 ${sortConfig?.key === 'insurance' ? 'text-emerald-600 opacity-100' : ''}`}
+                                                    />
+                                                </div>
                                             </th>
                                         </>
                                     ) : (
@@ -1436,28 +1481,73 @@ export default function PricingLedgerTable({
                                     )}
 
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-3 py-2.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
-                                            On-Road
+                                        <th
+                                            className="px-3 py-2.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                            onClick={() => handleSort('onRoad')}
+                                        >
+                                            <div className="flex items-center justify-end gap-1">
+                                                On-Road
+                                                <ArrowUpDown
+                                                    size={10}
+                                                    className={`opacity-30 ${sortConfig?.key === 'onRoad' ? 'text-emerald-600 opacity-100' : ''}`}
+                                                />
+                                            </div>
                                         </th>
                                     )}
 
                                     {activeCategory !== 'vehicles' && (
-                                        <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right">
-                                            Offer (₹)
+                                        <th
+                                            className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right cursor-pointer hover:text-emerald-600 transition-colors"
+                                            onClick={() => handleSort('offerAmount')}
+                                        >
+                                            <div className="flex items-center justify-end gap-1">
+                                                Offer (₹)
+                                                <ArrowUpDown
+                                                    size={10}
+                                                    className={`opacity-30 ${sortConfig?.key === 'offerAmount' ? 'text-emerald-600 opacity-100' : ''}`}
+                                                />
+                                            </div>
                                         </th>
                                     )}
 
-                                    <th className="px-2 py-1.5 text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap bg-emerald-50/80 dark:bg-emerald-900/20">
-                                        {activeCategory === 'vehicles'
-                                            ? isAums
-                                                ? 'On-Road'
-                                                : 'Offer On Road'
-                                            : 'Final Price'}
+                                    <th
+                                        className="px-2 py-1.5 text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap bg-emerald-50/80 dark:bg-emerald-900/20 cursor-pointer hover:text-emerald-700 transition-colors"
+                                        onClick={() =>
+                                            handleSort(
+                                                activeCategory === 'vehicles' && isAums ? 'onRoad' : 'offerAmount'
+                                            )
+                                        }
+                                    >
+                                        <div className="flex items-center justify-end gap-1">
+                                            {activeCategory === 'vehicles'
+                                                ? isAums
+                                                    ? 'On-Road'
+                                                    : 'Offer On Road'
+                                                : 'Final Price'}
+                                            <ArrowUpDown
+                                                size={10}
+                                                className={`opacity-30 ${
+                                                    sortConfig?.key ===
+                                                    (activeCategory === 'vehicles' && isAums ? 'onRoad' : 'offerAmount')
+                                                        ? 'text-emerald-600 opacity-100'
+                                                        : ''
+                                                }`}
+                                            />
+                                        </div>
                                     </th>
 
                                     {!isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-3 py-2.5 text-[9px] font-black text-emerald-400 uppercase tracking-wider border-b border-white/5 text-right whitespace-nowrap">
-                                            Delta
+                                        <th
+                                            className="px-3 py-2.5 text-[9px] font-black text-emerald-400 uppercase tracking-wider border-b border-white/5 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                            onClick={() => handleSort('offerAmount')}
+                                        >
+                                            <div className="flex items-center justify-end gap-1">
+                                                Delta
+                                                <ArrowUpDown
+                                                    size={10}
+                                                    className={`opacity-30 ${sortConfig?.key === 'offerAmount' ? 'text-emerald-600 opacity-100' : ''}`}
+                                                />
+                                            </div>
                                         </th>
                                     )}
 
@@ -1600,8 +1690,17 @@ export default function PricingLedgerTable({
                                     </th>
 
                                     {/* Popular Header */}
-                                    <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 text-[8px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider border-r border-emerald-100 dark:border-white/10 w-14">
-                                        Popular
+                                    <th
+                                        className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 text-[8px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider border-r border-emerald-100 dark:border-white/10 w-14 cursor-pointer hover:text-emerald-600 transition-colors"
+                                        onClick={() => handleSort('isPopular')}
+                                    >
+                                        <div className="flex items-center justify-center gap-1">
+                                            Popular
+                                            <ArrowUpDown
+                                                size={10}
+                                                className={`opacity-30 ${sortConfig?.key === 'isPopular' ? 'text-emerald-600 opacity-100' : ''}`}
+                                            />
+                                        </div>
                                     </th>
                                 </tr>
                             </thead>
@@ -2080,6 +2179,17 @@ export default function PricingLedgerTable({
                                                     <div className="flex items-center justify-end gap-1">
                                                         <input
                                                             type="number"
+                                                            step={1}
+                                                            min={
+                                                                (activeCategory === 'vehicles'
+                                                                    ? sku.onRoad || 0
+                                                                    : sku.exShowroom) - 25000
+                                                            }
+                                                            max={
+                                                                (activeCategory === 'vehicles'
+                                                                    ? sku.onRoad || 0
+                                                                    : sku.exShowroom) + 25000
+                                                            }
                                                             value={
                                                                 activeCategory === 'vehicles'
                                                                     ? (sku.onRoad || 0) + offerDelta
@@ -2088,8 +2198,8 @@ export default function PricingLedgerTable({
                                                             readOnly={!canEdit}
                                                             title={
                                                                 activeCategory === 'vehicles'
-                                                                    ? "Dealer's Offer On Road price to customer."
-                                                                    : "Dealer's Final Price for this item."
+                                                                    ? "Dealer's Offer On Road price to customer. Delta range: -25000 to +25000."
+                                                                    : "Dealer's Final Price for this item. Delta range: -25000 to +25000."
                                                             }
                                                             onChange={e => {
                                                                 const enteredPrice = Number(e.target.value);
@@ -2137,22 +2247,103 @@ export default function PricingLedgerTable({
                                                         const onRoadBase = sku.onRoad || 0;
                                                         const dealerOfferPrice = onRoadBase + offerDelta; // offerDelta is the adjustment
                                                         const delta = onRoadBase - dealerOfferPrice; // = -offerDelta
-
-                                                        if (delta === 0 || offerDelta === 0)
-                                                            return (
-                                                                <span className="text-xs font-bold text-slate-300">
-                                                                    —
-                                                                </span>
-                                                            );
-                                                        const isSave = delta > 0; // Positive = customer saves
                                                         return (
-                                                            <div
-                                                                className={`inline-flex items-center gap-1 font-black text-xs ${isSave ? 'text-emerald-600' : 'text-rose-600'}`}
-                                                            >
-                                                                {isSave ? <Sparkles size={12} /> : <Zap size={12} />}
-                                                                {isSave
-                                                                    ? `₹${Math.abs(delta).toLocaleString()}`
-                                                                    : `-₹${Math.abs(delta).toLocaleString()}`}
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <input
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    step={1}
+                                                                    min={-25000}
+                                                                    max={25000}
+                                                                    value={
+                                                                        deltaDrafts[sku.id] ??
+                                                                        String(Math.trunc(delta || 0))
+                                                                    }
+                                                                    readOnly={!canEdit}
+                                                                    title="Delta (On-road - Offer). Allowed range: -25000 to +25000."
+                                                                    onFocus={() => {
+                                                                        setDeltaDrafts(prev => ({
+                                                                            ...prev,
+                                                                            [sku.id]: String(Math.trunc(delta || 0)),
+                                                                        }));
+                                                                    }}
+                                                                    onChange={e => {
+                                                                        const raw = e.target.value.trim();
+                                                                        if (!/^-?\d*$/.test(raw)) return;
+
+                                                                        setDeltaDrafts(prev => ({
+                                                                            ...prev,
+                                                                            [sku.id]: raw,
+                                                                        }));
+
+                                                                        if (raw === '' || raw === '-') return;
+                                                                        const enteredDelta = Math.max(
+                                                                            -25000,
+                                                                            Math.min(25000, Math.trunc(Number(raw)))
+                                                                        );
+                                                                        // Offer adjustment is inverse of delta:
+                                                                        // delta = onRoad - offerPrice and offerPrice = onRoad + offerAmount
+                                                                        // => delta = -offerAmount
+                                                                        onUpdateOffer(sku.id, -enteredDelta);
+                                                                    }}
+                                                                    onBlur={() => {
+                                                                        setDeltaDrafts(prev => {
+                                                                            const next = { ...prev };
+                                                                            const raw = (next[sku.id] ?? '').trim();
+                                                                            if (raw === '' || raw === '-') {
+                                                                                delete next[sku.id];
+                                                                                return next;
+                                                                            }
+                                                                            const enteredDelta = Math.max(
+                                                                                -25000,
+                                                                                Math.min(25000, Math.trunc(Number(raw)))
+                                                                            );
+                                                                            onUpdateOffer(sku.id, -enteredDelta);
+                                                                            delete next[sku.id];
+                                                                            return next;
+                                                                        });
+                                                                    }}
+                                                                    className={`w-20 rounded-lg px-2 py-1 text-[10px] font-bold text-right outline-none transition-all
+                                                                        ${
+                                                                            !canEdit
+                                                                                ? 'bg-transparent border-transparent text-slate-500 dark:text-slate-400 cursor-default'
+                                                                                : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-slate-700 dark:text-slate-200'
+                                                                        }
+                                                                    `}
+                                                                />
+                                                                {isSelected && selectedSkuIds.size > 1 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        title="Copy delta to all selected rows"
+                                                                        onClick={() => {
+                                                                            const currentDelta = Math.trunc(delta || 0);
+                                                                            selectedSkuIds.forEach(id => {
+                                                                                if (id !== sku.id) {
+                                                                                    // offerAmount is inverse of delta
+                                                                                    onUpdateOffer(id, -currentDelta);
+                                                                                }
+                                                                            });
+                                                                        }}
+                                                                        className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 dark:text-amber-400 transition-all"
+                                                                    >
+                                                                        <Copy size={12} />
+                                                                    </button>
+                                                                )}
+                                                                <span
+                                                                    className={`inline-flex items-center gap-1 font-black text-xs ${
+                                                                        delta > 0
+                                                                            ? 'text-emerald-600'
+                                                                            : delta < 0
+                                                                              ? 'text-rose-600'
+                                                                              : 'text-slate-300'
+                                                                    }`}
+                                                                >
+                                                                    {delta > 0 ? (
+                                                                        <Sparkles size={12} />
+                                                                    ) : delta < 0 ? (
+                                                                        <Zap size={12} />
+                                                                    ) : null}
+                                                                </span>
                                                             </div>
                                                         );
                                                     })()}

@@ -4,9 +4,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const host = request.headers.get('host') || '';
+    const hostname = request.nextUrl.hostname || host.split(':')[0] || '';
+    const isHttps = request.nextUrl.protocol === 'https:';
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
     const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
-    const cookieDomain = !isLocalhost ? `.${rootDomain}` : undefined;
+    const isRootDomainHost = hostname === rootDomain || hostname.endsWith(`.${rootDomain}`);
+    const cookieDomain = isRootDomainHost ? `.${rootDomain}` : undefined;
     const userAgent = request.headers.get('user-agent') || '';
 
     // A. BOT PROTECTION FOR API
@@ -62,7 +65,7 @@ export async function proxy(request: NextRequest) {
                             ...options,
                             path: '/',
                             sameSite: 'lax',
-                            secure: !isLocalhost,
+                            secure: isHttps,
                             ...(cookieDomain && !options?.domain ? { domain: cookieDomain } : {}),
                         });
                     });

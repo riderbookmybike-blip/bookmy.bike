@@ -17,15 +17,18 @@ interface SystemCatalogRouterProps {
 function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
-    const filters = useCatalogFilters(initialItems);
+    const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic(leadId || undefined);
+    const currentItems = clientItems.length > 0 ? clientItems : initialItems;
+    const loading = isClientLoading && currentItems.length === 0;
+    const filters = useCatalogFilters(currentItems);
 
     return (
         <DesktopCatalog
             filters={filters}
             leadId={leadId || undefined}
             basePath={basePath}
-            items={initialItems}
-            isLoading={false}
+            items={currentItems}
+            isLoading={loading}
             mode="smart"
         />
     );

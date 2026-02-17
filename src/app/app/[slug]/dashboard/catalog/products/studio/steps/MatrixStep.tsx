@@ -410,9 +410,15 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                         .replace(/\//g, '-'),
                     price_base: family.price_base || 0,
                     hsn_code: variant.hsn_code || family.hsn_code || '',
-                    image_url: inherited.primary,
-                    gallery_urls: inherited.gallery,
-                    video_url: inherited.videos[0] || null,
+                    primary_image: inherited.primary,
+                    gallery_img_1: inherited.gallery?.[0] || null,
+                    gallery_img_2: inherited.gallery?.[1] || null,
+                    gallery_img_3: inherited.gallery?.[2] || null,
+                    gallery_img_4: inherited.gallery?.[3] || null,
+                    gallery_img_5: inherited.gallery?.[4] || null,
+                    gallery_img_6: inherited.gallery?.[5] || null,
+                    video_url_1: inherited.videos[0] || null,
+                    video_url_2: inherited.videos[1] || null,
                 };
 
                 const { data, error } = await (supabase as any)
@@ -528,11 +534,19 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
             };
 
             const payload: any = {
-                gallery_urls: images,
-                image_url: primary,
-                video_url: videos[0] || null,
-                specs: updatedSpecs,
+                primary_image: primary,
+                gallery_img_1: images[0] || null,
+                gallery_img_2: images[1] || null,
+                gallery_img_3: images[2] || null,
+                gallery_img_4: images[3] || null,
+                gallery_img_5: images[4] || null,
+                gallery_img_6: images[5] || null,
+                video_url_1: videos[0] || null,
+                video_url_2: videos[1] || null,
                 zoom_factor: zoomFactor || 1.1,
+                is_flipped: isFlipped || false,
+                offset_x: offsetX || 0,
+                offset_y: offsetY || 0,
             };
 
             const { data, error } = await (supabase as any)

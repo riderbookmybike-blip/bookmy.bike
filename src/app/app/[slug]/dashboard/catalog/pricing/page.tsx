@@ -74,6 +74,13 @@ interface SKUPriceRow {
     originalIsPopular?: boolean;
 }
 
+const DELTA_MIN = -25000;
+const DELTA_MAX = 25000;
+const clampOfferDelta = (value: number) => {
+    const n = Number.isFinite(value) ? Math.trunc(value) : 0;
+    return Math.max(DELTA_MIN, Math.min(DELTA_MAX, n));
+};
+
 export default function PricingPage() {
     const supabase = createClient();
     const { tenantId, tenantSlug } = useTenant();
@@ -298,7 +305,7 @@ export default function PricingPage() {
                 const priceRecord = priceMap.get(sku.id);
                 const statePrice = priceRecord?.price;
                 const pricingRule = (offerData || []).find((o: any) => o.vehicle_color_id === sku.id);
-                const stateOffer = pricingRule?.offer_amount || offerMap.get(sku.id) || 0;
+                const stateOffer = clampOfferDelta(Number(pricingRule?.offer_amount ?? offerMap.get(sku.id) ?? -1));
                 const stateInclusion = pricingRule?.inclusion_type || 'OPTIONAL';
                 const localIsActive = activeMap.has(sku.id) ? activeMap.get(sku.id) : false;
 
@@ -389,7 +396,8 @@ export default function PricingPage() {
     };
 
     const handleUpdateOffer = (skuId: string, offer: number) => {
-        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, offerAmount: offer } : s)));
+        const normalized = clampOfferDelta(offer);
+        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, offerAmount: normalized } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
@@ -541,7 +549,7 @@ export default function PricingPage() {
                 tenant_id: tenantId,
                 vehicle_color_id: s.id,
                 state_code: activeStateCode,
-                offer_amount: s.offerAmount,
+                offer_amount: clampOfferDelta(s.offerAmount),
                 inclusion_type: s.inclusionType,
                 is_active: s.localIsActive,
                 is_popular: s.isPopular || false,
