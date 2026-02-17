@@ -115,6 +115,7 @@ export interface CatalogColour {
     hex_primary: string | null;
     hex_secondary: string | null;
     finish: string | null;
+    is_popular?: boolean; // Added for popularity tracking at color level
     position: number;
     created_at: string;
     updated_at: string;
@@ -534,6 +535,9 @@ export async function upsertPricing(payload: {
     ins_tp_total?: number;
     ins_pa?: number;
     ins_total?: number;
+    // Metadata
+    publish_stage?: string;
+    is_popular?: boolean;
     // Computed
     on_road_price?: number;
 }) {
@@ -550,7 +554,7 @@ export async function upsertPricing(payload: {
                 ins_total: insTotal,
                 rto_state_total: rtoTotal,
                 on_road_price: onRoad,
-                publish_stage: 'DRAFT' as const,
+                publish_stage: payload.publish_stage || 'DRAFT',
             },
             { onConflict: 'sku_id,state_code' }
         )

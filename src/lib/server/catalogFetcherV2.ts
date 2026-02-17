@@ -432,6 +432,39 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
             offsetX: primarySku.offset_x ?? undefined,
             offsetY: primarySku.offset_y ?? undefined,
             color: primarySku.color_name || undefined,
+            _debugSource: {
+                id: { table: 'cat_skus', logic: 'Primary SKU ID' },
+                imageUrl: { table: 'cat_skus', logic: `Column: primary_image from SKU: ${primarySku.sku_id}` },
+                name: { table: 'cat_models', logic: 'Name from cat_models joined via model_id' },
+                variant: {
+                    table: 'cat_variants_*',
+                    logic: 'Name from type-specific variant table (vehicle/accessory/service)',
+                },
+                exShowroom: {
+                    table: 'cat_price_mh',
+                    logic: `ex_showroom from state table MH. Fallback to SKU price_base: ${primarySku.price_base}`,
+                },
+                onRoad: {
+                    table: 'cat_price_mh',
+                    logic: 'on_road_price from state table MH. Calculated in save/publish actions.',
+                },
+                colors: {
+                    table: 'cat_skus (grouped)',
+                    logic: `Found ${skus.length} sibling SKUs for this variant group. Color data from cat_skus + cat_colours.`,
+                },
+                specs: {
+                    table: 'cat_variants_vehicle',
+                    logic: 'Technical specifications from vehicle variant table.',
+                },
+                emi: {
+                    table: 'Calculation',
+                    logic: '(OnRoad - Downpayment) * ~3.5% (approx monthly interest/repayment factor)',
+                },
+                bcoins: {
+                    table: 'Calculation',
+                    logic: '13 Coins = ₹1000 INR conversion on On-Road/Offer Price',
+                },
+            },
         };
 
         result.push(variant);

@@ -55,6 +55,7 @@ export interface ProductVariant {
     dealerId?: string; // Dealer tenant ID
     studioCode?: string; // e.g. 'ST-001'
     dealerLocation?: string; // e.g. 'MUMBAI, MAHARASHTRA'
+    _debugSource?: Record<string, { table: string; logic: string }>;
 }
 
 export interface VehicleSpecifications {
