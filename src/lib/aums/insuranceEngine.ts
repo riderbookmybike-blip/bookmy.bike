@@ -34,9 +34,9 @@ import { FormulaComponent, CalculationResultItem, CalculationContext, Registrati
  *
  * DESIGNATED USERS ONLY:
  * 1. AUMS Simulator (Superadmin)
- * 2. Pricing Publisher (cat_skus_linear JSONB generation)
+ * 2. Pricing Publisher (canonical state pricing generation)
  *
- * DO NOT USE in Client-Side PDP/Checkout. Read from `cat_skus_linear` JSONB columns instead.
+ * DO NOT USE in Client-Side PDP/Checkout. Read from published pricing tables instead.
  */
 
 // ============================================================================

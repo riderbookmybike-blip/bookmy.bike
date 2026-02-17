@@ -67,6 +67,26 @@ const mapFrontendToDb = (r: InsuranceRule) => ({
     updated_at: new Date().toISOString(),
 });
 
+const slugifyAddonLabel = (label: string): string =>
+    label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '')
+        .replace(/^addon/, '')
+        .trim();
+
+const buildAddonColumnsSql = (addonSlugs: string[]): string => {
+    if (addonSlugs.length === 0) return '-- No new addon columns required.';
+    const lines = addonSlugs.map(slug => {
+        return [
+            `ADD COLUMN IF NOT EXISTS addon_${slug}_amount numeric(12,2),`,
+            `ADD COLUMN IF NOT EXISTS addon_${slug}_gst_amount numeric(12,2),`,
+            `ADD COLUMN IF NOT EXISTS addon_${slug}_total_amount numeric(12,2),`,
+            `ADD COLUMN IF NOT EXISTS addon_${slug}_default boolean`,
+        ].join('\n    ');
+    });
+    return `ALTER TABLE public.cat_price_state_mh\n${lines.map(x => `    ${x}`).join(',\n')};`;
+};
+
 export default function InsuranceDetailPage() {
     const params = useParams();
     const router = useRouter();
@@ -88,6 +108,7 @@ export default function InsuranceDetailPage() {
     const [isCalcValid, setIsCalcValid] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const knownAddonSlugs = new Set(['zerodepreciation', 'pa']);
 
     useEffect(() => {
         setIsMounted(true);
@@ -159,6 +180,23 @@ export default function InsuranceDetailPage() {
         }
 
         const supabase = createClient();
+        const addonSlugs = (rule.addons || [])
+            .map((a: FormulaComponent) => slugifyAddonLabel(String(a?.label || '')))
+            .filter(Boolean);
+        const uniqueAddonSlugs = Array.from(new Set(addonSlugs));
+        const newAddonSlugs = uniqueAddonSlugs.filter(slug => !knownAddonSlugs.has(slug));
+
+        if (newAddonSlugs.length > 0) {
+            const sql = buildAddonColumnsSql(newAddonSlugs);
+            console.info('[Insurance Addon Schema Required] New addon columns migration SQL:\n', sql);
+            const proceed = window.confirm(
+                `New addons detected: ${newAddonSlugs.join(', ')}.\n\n` +
+                    'cat_price_state_mh migration required before publish. SQL template printed in browser console.\n\n' +
+                    'Save rule anyway?'
+            );
+            if (!proceed) return;
+        }
+
         const dbPayload = mapFrontendToDb(rule);
 
         const { error } = await supabase.from('cat_ins_rules').upsert(dbPayload as any);

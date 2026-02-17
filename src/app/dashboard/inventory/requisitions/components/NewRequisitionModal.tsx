@@ -61,21 +61,33 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
 
     const fetchModels = async (brandId: string) => {
         setLoading(true);
-        const { data } = await supabase.from('cat_items').select('*').eq('brand_id', brandId).eq('type', 'PRODUCT');
+        const { data } = await (supabase as any)
+            .from('cat_models')
+            .select('*')
+            .eq('brand_id', brandId)
+            .eq('status', 'ACTIVE');
         setModels(data || []);
         setLoading(false);
     };
 
     const fetchVariants = async (modelId: string) => {
         setLoading(true);
-        const { data } = await supabase.from('cat_items').select('*').eq('parent_id', modelId).eq('type', 'VARIANT');
+        const { data } = await (supabase as any)
+            .from('cat_variants_vehicle')
+            .select('*')
+            .eq('model_id', modelId)
+            .eq('status', 'ACTIVE');
         setVariants(data || []);
         setLoading(false);
     };
 
     const fetchColors = async (variantId: string) => {
         setLoading(true);
-        const { data } = await supabase.from('cat_items').select('*').eq('parent_id', variantId).eq('type', 'SKU');
+        const { data } = await (supabase as any)
+            .from('cat_skus')
+            .select('*')
+            .eq('vehicle_variant_id', variantId)
+            .eq('status', 'ACTIVE');
         setColors(data || []);
         setLoading(false);
     };
@@ -257,7 +269,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                                         />
                                     </div>
                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                        {v.type} • {v.specs?.engine_cc || '-'}cc
+                                        {v.engine_cc ? `${v.engine_cc}cc` : '—'}
                                     </span>
                                 </button>
                             ))}
@@ -276,7 +288,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                                     <div className="flex items-center gap-4">
                                         <div
                                             className="w-6 h-6 rounded-full border border-slate-200 dark:border-white/20"
-                                            style={{ backgroundColor: c.specs?.hex_primary || '#ccc' }}
+                                            style={{ backgroundColor: c.hex_primary || '#ccc' }}
                                         />
                                         <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic">
                                             {c.name}

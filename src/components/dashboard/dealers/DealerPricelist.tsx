@@ -47,25 +47,19 @@ export const DealerPricelist = ({
     const fetchPricelist = async () => {
         setLoading(true);
         try {
-            // 1. Fetch SKUs
-            const { data: skuData, error: skuError } = await supabase
-                .from('cat_items')
+            // 1. Fetch SKUs from canonical V2 catalog
+            const { data: skuData, error: skuError } = await (supabase as any)
+                .from('cat_skus')
                 .select(
                     `
-                    id, 
-                    name, 
-                    specs,
+                    id,
+                    name,
+                    color_name,
                     price_base,
-                    parent:cat_items!parent_id(
-                        name, 
-                        parent:cat_items!parent_id(
-                            name, 
-                            brand:cat_brands(name, logo_svg)
-                        )
-                    )
+                    vehicle_variant:cat_variants_vehicle!vehicle_variant_id(name),
+                    model:cat_models!model_id(name, brand:cat_brands!brand_id(name, logo_svg))
                 `
                 )
-                .eq('type', 'SKU')
                 .eq('status', 'ACTIVE');
 
             if (skuError) throw skuError;
@@ -90,11 +84,14 @@ export const DealerPricelist = ({
 
             const skuIds = (skuData || []).map((item: any) => item.id).filter(Boolean);
 
-            // 4. Fetch Base Prices from cat_skus_linear (Published SOT)
-            const priceCol = `price_${defaultStateCode.toLowerCase()}`;
-            const { data: linearRows } =
+            // 4. Fetch base prices from canonical state pricing table
+            const { data: priceRows } =
                 skuIds.length > 0
-                    ? await supabase.from('cat_skus_linear').select(`unit_json, ${priceCol}`).eq('status', 'ACTIVE')
+                    ? await supabase
+                          .from('cat_price_state_mh')
+                          .select('sku_id, ex_showroom, rto_total_state, ins_gross_premium, on_road_price')
+                          .eq('state_code', defaultStateCode)
+                          .in('sku_id', skuIds)
                     : { data: [] as any[] };
 
             const ruleMap = new Map(rulesData?.map(r => [r.vehicle_color_id, r]));
@@ -103,25 +100,24 @@ export const DealerPricelist = ({
                 string,
                 { price: number; rto: number; insurance: number; onRoad: number; district?: string | null }
             >();
-            (linearRows || []).forEach((row: any) => {
-                const pm = row[priceCol];
-                const unitId = row.unit_json?.id;
-                if (unitId && pm && skuIds.includes(unitId)) {
-                    priceMap.set(unitId, {
-                        price: Number(pm.ex_showroom) || 0,
-                        rto: Number(pm.rto_total) || 0,
-                        insurance: Number(pm.insurance_total) || 0,
-                        onRoad: Number(pm.on_road_price) || Number(pm.ex_showroom) || 0,
+            (priceRows || []).forEach((row: any) => {
+                const skuId = row.sku_id;
+                if (skuId && skuIds.includes(skuId)) {
+                    priceMap.set(skuId, {
+                        price: Number(row.ex_showroom) || 0,
+                        rto: Number(row.rto_total_state) || 0,
+                        insurance: Number(row.ins_gross_premium) || 0,
+                        onRoad: Number(row.on_road_price) || Number(row.ex_showroom) || 0,
                         district: 'ALL',
                     });
                 }
             });
 
             const formatted: SKU[] = (skuData || []).map((item: any) => {
-                const color = item.specs?.Color || item.name;
-                const variant = item.parent?.name || '';
-                const model = item.parent?.parent?.name || '';
-                const brand = item.parent?.parent?.brand;
+                const color = item.color_name || item.name;
+                const variant = item.vehicle_variant?.name || '';
+                const model = item.model?.name || '';
+                const brand = item.model?.brand;
 
                 const rule = ruleMap.get(item.id);
                 const priceRecord = priceMap.get(item.id);

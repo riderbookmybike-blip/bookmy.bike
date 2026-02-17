@@ -191,7 +191,29 @@ export default function PricingPage() {
 
             const [priceRes, offerRes] = await Promise.all([
                 // Authoritative SOT for pricing: MHz state table
-                supabase.from('cat_price_mh').select('*').eq('state_code', activeStateCode),
+                supabase
+                    .from('cat_price_state_mh')
+                    .select(
+                        `
+                        sku_id, state_code,
+                        ex_showroom, ex_showroom_basic:ex_factory, ex_showroom_gst_amount:ex_factory_gst_amount, ex_showroom_total:ex_showroom, gst_rate, hsn_code,
+                        on_road_price,
+                        rto_default_type,
+                        rto_registration_fee_state, rto_registration_fee_bh, rto_registration_fee_company,
+                        rto_smartcard_charges_state, rto_smartcard_charges_bh, rto_smartcard_charges_company,
+                        rto_postal_charges_state, rto_postal_charges_bh, rto_postal_charges_company,
+                        rto_roadtax_rate_state, rto_roadtax_rate_bh, rto_roadtax_rate_company,
+                        rto_roadtax_amount_state, rto_roadtax_amount_bh, rto_roadtax_amount_company,
+                        rto_roadtaxcess_rate_state:rto_roadtax_cess_rate_state, rto_roadtaxcess_rate_bh:rto_roadtax_cess_rate_bh, rto_roadtaxcess_rate_company:rto_roadtax_cess_rate_company,
+                        rto_roadtaxcessamount_state:rto_roadtax_cess_amount_state, rto_roadtaxcessamount_bh:rto_roadtax_cess_amount_bh, rto_roadtaxcessamount_company:rto_roadtax_cess_amount_company,
+                        rto_total_state, rto_total_bh, rto_total_company,
+                        ins_od_base:ins_own_damage_premium_amount, ins_od_total:ins_own_damage_total_amount, ins_tp_base:ins_liability_only_premium_amount, ins_tp_total:ins_liability_only_total_amount,
+                        ins_sum_mandatory_insurance, ins_sum_mandatory_insurance_gst_amount, ins_total:ins_gross_premium, ins_gst_rate,
+                        addon_pa_amount:addon_personal_accident_cover_amount, addon_pa_gstamount:addon_personal_accident_cover_gst_amount, addon_pa_total:addon_personal_accident_cover_total_amount,
+                        publish_stage, is_popular, published_at, updated_at
+                        `
+                    )
+                    .eq('state_code', activeStateCode),
                 tenantSlug !== 'aums'
                     ? supabase
                           .from('cat_price_dealer')
@@ -228,19 +250,22 @@ export default function PricingPage() {
                 if (!skuId) return;
                 priceMap.set(skuId, {
                     price: Number(row.ex_showroom) || 0,
-                    rto: Number(row.rto_total) || 0,
+                    rto: Number(row.rto_total_state) || 0,
                     rto_data: {
-                        STATE: Number(row.rto_state_total || 0),
-                        BH: Number(row.rto_bh_total || 0),
-                        COMPANY: Number(row.rto_company_total || 0),
+                        STATE: Number(row.rto_total_state || 0),
+                        BH: Number(row.rto_total_bh || 0),
+                        COMPANY: Number(row.rto_total_company || 0),
                         default: row.rto_default_type || 'STATE',
                     },
                     insurance: Number(row.ins_total) || 0,
                     insurance_data: {
-                        base_total: Number(row.ins_base_total || 0),
+                        base_total:
+                            Number(row.ins_total || 0) ||
+                            Number(row.ins_sum_mandatory_insurance || 0) +
+                                Number(row.ins_sum_mandatory_insurance_gst_amount || 0),
                         od: Number(row.ins_od_total || 0),
                         tp: Number(row.ins_tp_total || 0),
-                        pa: Number(row.ins_pa || 0),
+                        pa: Number(row.addon_pa_total ?? 0),
                     },
                     onRoad: Number(row.on_road_price) || 0,
                     district: 'ALL',
@@ -378,7 +403,7 @@ export default function PricingPage() {
         setLastEditTime(Date.now());
     };
 
-    // AUMS: Update publish_stage in cat_skus_linear
+    // AUMS: Update publish_stage in canonical pricing state table flow
     const handleUpdatePublishStage = (skuId: string, stage: string) => {
         const displayStateMap: Record<string, SKUPriceRow['displayState']> = {
             DRAFT: 'Draft',

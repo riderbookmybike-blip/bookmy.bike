@@ -324,7 +324,7 @@ export function mapCatalogItems(
                             pricingSource = dealerStudioId ? `${dealerLocation} • ${dealerStudioId}` : dealerLocation;
                         }
 
-                        // 2. Find Location/Distance match from cat_skus_linear
+                        // 2. Find location/distance match from state pricing rows
                         if (effectivePrices.length > 0) {
                             // A. Exact District/Point Match
                             if (userLat && userLng) {
@@ -371,8 +371,8 @@ export function mapCatalogItems(
                             }
                         }
 
-                        // 3. Calculate Final Prices with Improved Fallback
-                        // Try: cat_skus_linear on_road_price -> ex_showroom -> Base Fallback
+                        // 3. Calculate final prices with fallback
+                        // Try: published on_road_price -> ex_showroom -> base fallback
                         let baseExShowroom = 0;
                         let onRoadTotal = 0;
 

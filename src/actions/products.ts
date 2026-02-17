@@ -11,8 +11,8 @@ import { revalidatePath } from 'next/cache';
  * - publishPrices.ts (previewPrices function)
  * - catalog_pricing_architecture.md (KI documentation)
  *
- * The key insight: The Pricing Ledger needs SKU-level data (type='SKU')
- * joined with cat_skus_linear via unit_json->>id, not via parent joins.
+ * Pricing Ledger uses SKU-level data (type='SKU') and canonical state pricing
+ * from cat_price_state_mh.
  */
 
 export async function getPricingLedger(tenantId: string) {
@@ -21,45 +21,23 @@ export async function getPricingLedger(tenantId: string) {
     // STATE CODE - Default to MH for now (proper logic would use tenant settings)
     const stateCode = 'MH';
 
-    // 1. Fetch SKUs with their hierarchy (Parent=UNIT, Grandparent=VARIANT, Great-grandparent=PRODUCT)
+    // 1. Fetch SKUs with canonical V2 joins
     const { data: skus, error } = await supabase
-        .from('cat_items')
+        .from('cat_skus')
         .select(
             `
             id,
             name,
-            type,
             status,
-            specs,
             price_base,
-            parent:parent_id (
-                id,
-                name,
-                type,
-                specs,
-                position,
-                    parent:parent_id (
-                    id,
-                    name,
-                    type,
-                    specs,
-                    brand_id,
-                    brand:cat_brands (id, name),
-                    category,
-                    parent:parent_id (
-                        id,
-                        name,
-                        type,
-                        specs,
-                        brand_id,
-                        brand:cat_brands (id, name),
-                        category
-                    )
-                )
-            )
+            color_name,
+            sku_type,
+            model:cat_models!model_id(id, name, product_type, engine_cc, brand:cat_brands!brand_id(id, name)),
+            vehicle_variant:cat_variants_vehicle!vehicle_variant_id(id, name),
+            accessory_variant:cat_variants_accessory!accessory_variant_id(id, name),
+            service_variant:cat_variants_service!service_variant_id(id, name)
         `
         )
-        .eq('type', 'SKU')
         .eq('status', 'ACTIVE')
         .order('name');
 
@@ -76,32 +54,31 @@ export async function getPricingLedger(tenantId: string) {
     // 2. Get SKU IDs for batch price fetch
     const skuIds = skus.map((s: any) => s.id);
 
-    // 3. Fetch prices for all these SKUs from cat_skus_linear (SOT)
-    const priceColumn = `price_${stateCode.toLowerCase()}`;
-    const { data: linearData, error: linearError } = await supabase
-        .from('cat_skus_linear')
-        .select(`unit_json, ${priceColumn}`)
-        .eq('status', 'ACTIVE');
+    // 3. Fetch canonical state prices for all SKUs from cat_price_state_mh
+    const { data: priceRows, error: priceError } = await supabase
+        .from('cat_price_state_mh')
+        .select(
+            'sku_id, ex_showroom, on_road_price, rto_total_state, ins_gross_premium, published_at, state_code, publish_stage'
+        )
+        .eq('state_code', stateCode)
+        .in('sku_id', skuIds);
 
-    if (linearError) {
-        console.error('getPricingLedger - Linear prices fetch error:', JSON.stringify(linearError, null, 2));
+    if (priceError) {
+        console.error('getPricingLedger - price fetch error:', JSON.stringify(priceError, null, 2));
     }
 
-    // 4. Create price lookup map from cat_skus_linear JSONB
+    // 4. Create lookup map from cat_price_state_mh rows
     const priceMap = new Map<string, any>();
-    (linearData || []).forEach((row: any) => {
-        const priceMh = row[priceColumn];
-        const unitId = row.unit_json?.id;
-        if (unitId && priceMh) {
-            priceMap.set(unitId, {
-                ex_showroom_price: Number(priceMh.ex_showroom) || 0,
-                rto_total: Number(priceMh.rto_total) || 0,
-                insurance_total: Number(priceMh.insurance_total) || 0,
-                on_road_price: Number(priceMh.on_road_price) || 0,
-                published_at: priceMh.published_at,
-                state_code: stateCode,
-            });
-        }
+    (priceRows || []).forEach((row: any) => {
+        priceMap.set(row.sku_id, {
+            ex_showroom_price: Number(row.ex_showroom) || 0,
+            rto_total: Number(row.rto_total_state) || 0,
+            insurance_total: Number(row.ins_gross_premium) || 0,
+            on_road_price: Number(row.on_road_price) || 0,
+            published_at: row.published_at,
+            state_code: row.state_code || stateCode,
+            publish_stage: row.publish_stage || 'DRAFT',
+        });
     });
 
     // 5. Fetch dealer rules if tenantId provided
@@ -124,38 +101,27 @@ export async function getPricingLedger(tenantId: string) {
 
     // 6. Map to VariantSku interface expected by frontend
     const mappedSkus = skus.map((sku: any) => {
-        const variant = sku.parent || {};
-        // In 4-level hierarchy: SKU → UNIT → VARIANT → PRODUCT
-        // variant.parent could be VARIANT (if 3-level) or VARIANT (if 4-level)
-        const grandparent = variant.parent || {};
-        const greatGrandparent = grandparent.parent || {};
-        // Family = PRODUCT level (prefer great-grandparent if available)
-        const family = greatGrandparent?.id ? greatGrandparent : grandparent;
-        const brand = family.brand || grandparent.brand || {};
+        const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant || {};
+        const model = sku.model || {};
+        const brand = model.brand || {};
         const price = priceMap.get(sku.id);
         const rule = dealerRulesMap.get(sku.id);
 
-        // Category normalization: DB 'VEHICLE' -> UI 'vehicles'
-        let category = (family.category || grandparent.category || 'VEHICLE').toLowerCase();
+        // Category normalization
+        let category = String(model.product_type || sku.sku_type || 'VEHICLE').toLowerCase();
         // Pluralize for UI filter compatibility
         if (category === 'vehicle') category = 'vehicles';
         else if (category === 'accessory') category = 'accessories';
         else if (category === 'service') category = 'services';
 
-        // Get engine_cc: walk full hierarchy SKU → UNIT → VARIANT → PRODUCT
-        const engineCc =
-            sku.specs?.engine_cc ||
-            variant.specs?.engine_cc ||
-            grandparent.specs?.engine_cc ||
-            greatGrandparent?.specs?.engine_cc ||
-            110; // Default
+        const engineCc = Number(model.engine_cc || 110);
 
         return {
             id: sku.id,
             variantName: variant.name || sku.name,
-            modelName: family.name || '',
+            modelName: model.name || '',
             makeName: brand.name || '',
-            colorName: sku.name,
+            colorName: sku.color_name || sku.name,
             exShowroom: price?.ex_showroom_price || sku.price_base || 0,
             offerAmount: rule?.offer_amount || 0,
             basePrice: sku.price_base || 0,
@@ -205,9 +171,9 @@ export async function updatePricingLedgerOffer(id: string, amount: number, tenan
 export async function updatePricingLedgerStatus(id: string, status: string) {
     const supabase = await createClient();
 
-    // Update the SKU status in cat_items
+    // Update the SKU status in cat_skus
     const { error } = await supabase
-        .from('cat_items')
+        .from('cat_skus')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', id);
 

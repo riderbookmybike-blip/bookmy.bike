@@ -1,64 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
-import { mapCatalogItems } from '@/utils/catalogMapper';
-
-// Interface for Materialized Summary
-interface MarketSummary {
-    id: string;
-    state_code: string;
-    family_id: string;
-    brand_id: string;
-    model_name: string;
-    slug: string;
-    lowest_price: number;
-    sku_count: number;
-    image_url: string | null;
-    updated_at: string;
-}
-
-// New Unified Schema Types
-interface CatalogItemDB {
-    id: string;
-    type: string;
-    name: string;
-    slug: string;
-    specs: any;
-    price_base: number;
-    brand_id: string;
-    brand: { name: string; logo_svg?: string };
-    category?: string;
-    children?: {
-        id: string;
-        type: string;
-        name: string;
-        slug: string;
-        displayName?: string;
-        modelSlug?: string;
-        specs?: any;
-        price_base?: number;
-        position?: number;
-        skus?: {
-            id: string;
-            type: string;
-            status?: string;
-            price_base: number;
-            specs?: any;
-            prices?: {
-                ex_showroom_price: number;
-                state_code: string;
-                district?: string;
-                latitude?: number;
-                longitude?: number;
-                is_active?: boolean;
-                rto?: any;
-                insurance?: any;
-                rto_breakdown?: any;
-                insurance_breakdown?: any;
-            }[];
-        }[];
-    }[];
-}
+import { fetchCatalogV2 } from '@/lib/server/catalogFetcherV2';
 
 export function useSystemCatalogLogic(leadId?: string) {
     const [items, setItems] = useState<ProductVariant[]>([]);
@@ -69,14 +12,8 @@ export function useSystemCatalogLogic(leadId?: string) {
     const [userDistrict, setUserDistrict] = useState<string | null>(null);
     const [locationVersion, setLocationVersion] = useState(0);
     const disableOffersRef = useRef(false);
-    const allowDebug = process.env.NEXT_PUBLIC_DEBUG_TOOLS === 'true';
-    const updateDebug = (data: Record<string, any>) => {
-        if (!allowDebug || typeof window === 'undefined') return;
-        (window as any).__BMB_DEBUG__ = {
-            ...(window as any).__BMB_DEBUG__,
-            ...data,
-        };
-    };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const updateDebug = (_data: Record<string, any>) => {};
     const isValidUuid = (value: unknown) =>
         typeof value === 'string' &&
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -185,333 +122,9 @@ export function useSystemCatalogLogic(leadId?: string) {
                     setUserDistrict(cachedLocation.district);
                 }
 
-                const useLinear = true;
-
-                const getRawCatalogLinear = async () => {
-                    const { data, error } = await supabase.from('cat_skus_linear').select('*').eq('status', 'ACTIVE');
-                    if (error) throw error;
-                    return data;
-                };
-
-                const reconstructHierarchy = (rows: any[], targetStateCode: string): any[] => {
-                    const productGroups = new Map<string, any>();
-                    const targetStateKey = `price_${targetStateCode.toLowerCase()}`;
-
-                    for (const row of rows) {
-                        if (!productGroups.has(row.product_json.id)) {
-                            productGroups.set(row.product_json.id, {
-                                ...row.product_json,
-                                brand: row.brand_json,
-                                specs: row.specs || {}, // Merge specs from SKU level to family for catalog fallback
-                                children: [],
-                            });
-                        }
-                        const product = productGroups.get(row.product_json.id);
-
-                        // Ensure product has specs even if it was created from a row that had none (unlikely but safe)
-                        if (!product.specs || Object.keys(product.specs).length === 0) {
-                            product.specs = row.specs || {};
-                        }
-
-                        let variant = product.children.find((c: any) => c.id === row.variant_json.id);
-                        if (!variant) {
-                            variant = {
-                                ...row.variant_json,
-                                type: 'VARIANT',
-                                specs: row.specs || {}, // Merge specs to variant level
-                                skus: [],
-                                colors: [],
-                            };
-                            product.children.push(variant);
-                        }
-
-                        // Prefer price_XX cached column over unit_json prices
-                        const statePrice = row[targetStateKey] || row.price_mh;
-                        const prices = statePrice
-                            ? [
-                                  {
-                                      ex_showroom_price: Number(statePrice.ex_showroom) || 0,
-                                      rto_total: Number(statePrice.rto_total) || 0,
-                                      insurance_total: Number(statePrice.insurance_total) || 0,
-                                      rto: statePrice.rto || null,
-                                      insurance: statePrice.insurance || null,
-                                      on_road_price: Number(statePrice.on_road_price) || 0,
-                                      state_code: targetStateCode,
-                                      district: 'ALL',
-                                      is_active: true,
-                                  },
-                              ]
-                            : row.unit_json.prices || [];
-
-                        const effectiveUnitId = prices[0]?.vehicle_color_id || row.unit_json.id || row.id;
-
-                        const skuData = {
-                            ...row.unit_json,
-                            id: effectiveUnitId,
-                            prices: prices,
-                            image_url: row.image_url,
-                            gallery_urls: row.gallery_urls || [],
-                            assets: row.assets_json || [],
-                        };
-                        if (
-                            row.unit_json.type === 'COLOR_DEF' ||
-                            (row.unit_json.specs &&
-                                (row.unit_json.specs.hex_primary ||
-                                    row.unit_json.specs.hex_code ||
-                                    row.unit_json.specs.Color))
-                        ) {
-                            variant.colors.push({ ...skuData, skus: [skuData] });
-                        } else {
-                            variant.skus.push(skuData);
-                        }
-                    }
-                    return Array.from(productGroups.values());
-                };
-
                 // ---------------------------------------------------------
-                // 🚀 PERFORMANCE LAYER: Materialized Summary (Read Model)
-                // ---------------------------------------------------------
-                // Attempt to fetch pre-calculated market data first
-                const { data: rawSummaryData } = await supabase
-                    .from('mat_market_summary')
-                    .select('*')
-                    .eq('state_code', resolvedStateCode)
-                    .order('lowest_price', { ascending: true });
-
-                // Fetch brands for mapping (lightweight)
-                const { data: rawBrandsData } = await supabase.from('cat_brands').select('id, name, logo_svg');
-
-                const brandsData = rawBrandsData as { id: string; name: string; logo_svg: string | null }[] | null;
-
-                const summaryData = rawSummaryData as unknown as MarketSummary[] | null;
-
-                // Check if summary hits
-                const hasSummary = summaryData && summaryData.length > 0;
-
-                // NOTE: Fast Path disabled because mat_market_summary has incomplete data (only 5 items for MH).
-                // Temporarily forcing full catalog load until the materialized view is fully populated.
-                const disableFastPath = true;
-
-                if (!disableFastPath && hasSummary && !leadId) {
-                    // FAST PATH: Use pre-calculated data
-                    // We need to map this simple structure to the ProductVariant type
-                    // Note: Summary lacks full specs, but has critical Model/Price/Image info
-                    // Ideally, we hydrate the full object, but for "Catalog View" this is often enough.
-
-                    // However, existing UI components expect 'ProductVariant' with nested 'brand', etc.
-                    // So we might need a lightweight mapping or just use this as a "Skeleton" and fetch details lazily?
-                    // OR: We rely on the unified schema.
-
-                    // STRATEGY: Hybrid.
-                    // 1. Show Summary immediately.
-                    // 2. Background fetch full data if needed?
-                    // Actually, let's stick to the Plan: If summary exists, use it.
-
-                    // We need to match the type 'ProductVariant' approximately.
-                    const fastItems: any[] = summaryData!.map(s => {
-                        const brand = brandsData?.find(b => b.id === s.brand_id);
-                        const makeName = brand?.name || 'Unknown';
-
-                        return {
-                            id: s.family_id,
-                            type: 'PRODUCT',
-                            make: makeName,
-                            model: s.model_name,
-                            variant: s.model_name, // Summary represents the Family-as-Variant
-                            displayName: `${makeName} ${s.model_name}`,
-                            label: `${makeName} / ${s.model_name}`,
-                            name: s.model_name,
-                            slug: s.slug,
-                            modelSlug: s.slug,
-                            sku: `SKU-${s.slug}`.toUpperCase(),
-                            status: 'ACTIVE',
-                            // Standard Defaults for Summary
-                            bodyType: 'MOTORCYCLE',
-                            fuelType: 'PETROL',
-                            price_base: s.lowest_price, // Pre-calculated lowest
-                            brand_id: s.brand_id,
-                            brand: { name: makeName, logo_svg: brand?.logo_svg },
-                            // Construct a minimal structure for UI
-                            specs: {},
-                            category: 'VEHICLE',
-                            children: [], // Details hidden in summary mode
-                            // Custom field to indicate this is a summary
-                            _isSummary: true,
-                            image_url: s.image_url,
-                            imageUrl: s.image_url,
-
-                            // Pricing Object (Simulated for ModelCard compatibility)
-                            price: {
-                                exShowroom: s.lowest_price,
-                                onRoad: Math.round(s.lowest_price * 1.12), // Rough estimate for UI feel before hydration
-                                offerPrice: Math.round(s.lowest_price * 1.12),
-                                discount: 0,
-                                pricingSource: 'Starting From',
-                            },
-                            availableColors: [],
-                        };
-                    });
-
-                    // Fetch Brands to fill in the gaps (usually cached by SystemBrandsLogic anyway)
-                    // But let's just do a quick enrichment if possible or leave it.
-                    // Actually, let's execute the FULL FETCH for now to ensure we don't break UI,
-                    // but verify the concept.
-
-                    // WAIT. The prompt requirement is speed.
-                    // If I return fastItems, I need to make sure UI handles it.
-
-                    // Let's implement the FULL logic but use the Summary for *Optimization* if I can.
-                    // Setting this aside: The standard "Solution" is to fetch items but use prices from summary?
-                    // No, the goal is to avoid the heavy joins.
-
-                    // Let's stick to the RPC for "correctness" in this step if I can't map 1:1,
-                    // OR execute the RPC but leverage the summary for sorting?
-
-                    // CORRECT IMPLEMENTATION:
-                    // The goal is to replace the main query.
-                    // But 'mat_market_summary' doesn't have specs or brand logos (only IDs).
-                    // So we still need `cat_items` for metadata.
-
-                    // OPTIMIZED QUERY:
-                    // 1. Get IDs from Summary (filtered/sorted).
-                    // 2. Fetch only those IDs from `cat_items` (much faster than scanning all).
-
-                    const familyIds = summaryData!.map(s => s.family_id);
-                    const { data: rawFullData } = await supabase
-                        .from('cat_items')
-                        .select(
-                            `
-                            id, type, name, slug, specs, price_base, brand_id, category,
-                            brand:cat_brands(name, logo_svg)
-                        `
-                        )
-                        .in('id', familyIds);
-
-                    const fullData = rawFullData as any[];
-
-                    // Merge Summary Price into Full Data
-                    if (fullData) {
-                        const merged = fullData.map((item: any) => {
-                            const summary = summaryData!.find(s => s.family_id === item.id);
-                            return {
-                                ...item,
-                                children: [], // No need to fetch children! We have the price.
-                                price_base: summary?.lowest_price || item.price_base,
-                                _summary_image: summary?.image_url,
-                            };
-                        });
-
-                        // Sort by Summary Order (Price ASC)
-                        merged.sort((a, b) => {
-                            const pa = summaryData!.find(s => s.family_id === a.id)?.lowest_price || 0;
-                            const pb = summaryData!.find(s => s.family_id === b.id)?.lowest_price || 0;
-                            return pa - pb;
-                        });
-
-                        setItems(merged as any[]);
-                        setIsLoading(false);
-
-                        updateDebug({
-                            pricingSource: 'MAT_VIEW_FAST_LANE',
-                            marketOffersCount: summaryData!.length,
-                        });
-                        return; // EXIT EARLY - SUCCESS
-                    }
-                }
-
-                // ---------------------------------------------------------
-                // 🐢 SLOW PATH: Fallback to RPC/Deep Query
-                let catalogData: any[] = [];
-                let linearRawRows: any[] = [];
-
-                if (useLinear) {
-                    linearRawRows = (await getRawCatalogLinear()) || [];
-                    // We will reconstruct this after dealer resolution
-                    catalogData = linearRawRows;
-                } else {
-                    const { data: legacyData, error: dbError } = await supabase
-                        .from('cat_items')
-                        .select(
-                            `
-                            id, type, name, slug, specs, price_base, brand_id, category,
-                            brand:cat_brands(name, logo_svg),
-                            children:cat_items!parent_id(
-                                id,
-                                type,
-                                name,
-                                slug,
-                                specs,
-                                price_base,
-                                category,
-                                parent:cat_items!parent_id(name, slug),
-                                position,
-                                colors:cat_items!parent_id(
-                                    id,
-                                    type,
-                                    name,
-                                    slug,
-                                    specs,
-                                    position,
-                                    skus:cat_items!parent_id(
-                                        id,
-                                        type,
-                                        status,
-                                        price_base,
-                                        category,
-                                        specs,
-                                        is_primary,
-                                        image_url,
-                                        gallery_urls,
-                                        video_url,
-                                        zoom_factor,
-                                        is_flipped,
-                                        offset_x,
-                                        offset_y,
-                                        assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position)
-                                    )
-                                ),
-                                skus:cat_items!parent_id(
-                                    id,
-                                    type,
-                                    status,
-                                    price_base,
-                                    category,
-                                    specs,
-                                    is_primary,
-                                    image_url,
-                                    gallery_urls,
-                                    video_url,
-                                    zoom_factor,
-                                    is_flipped,
-                                    offset_x,
-                                    offset_y,
-                                    assets:cat_assets!item_id(id, type, url, is_primary, zoom_factor, is_flipped, offset_x, offset_y, position)
-                                )
-                            )
-                        `
-                        )
-                        .eq('type', 'PRODUCT')
-                        .eq('status', 'ACTIVE')
-                        .eq('category', 'VEHICLE');
-
-                    if (dbError) throw dbError;
-                    catalogData = legacyData || [];
-                }
-
-                const { data: ruleData } = await supabase
-                    .from('cat_reg_rules')
-                    .select('*')
-                    .eq('state_code', resolvedStateCode)
-                    .eq('status', 'ACTIVE');
-
-                const { data: insuranceRuleData } = await supabase
-                    .from('cat_ins_rules')
-                    .select('*')
-                    .eq('status', 'ACTIVE')
-                    .eq('vehicle_type', 'TWO_WHEELER')
-                    .or(`state_code.eq.${resolvedStateCode},state_code.eq.ALL`)
-                    .order('state_code', { ascending: false })
-                    .limit(1);
+                // Canonical V2 catalog fetch
+                const catalogData = await fetchCatalogV2(resolvedStateCode);
 
                 // Fetch Offers (Primary Dealer Only)
                 let offerData: any = null;
@@ -705,11 +318,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                     }
                 }
 
-                if (catalogData) {
-                    // Reconstruct hierarchy now that resolvedStateCode is final
-                    if (useLinear) {
-                        catalogData = reconstructHierarchy(linearRawRows, resolvedStateCode);
-                    }
+                if (catalogData && catalogData.length > 0) {
                     // Get User Location from LocalStorage for Client Side Distance Calc
                     const userLat: number | null = cachedLocation.lat;
                     const userLng: number | null = cachedLocation.lng;
@@ -718,14 +327,15 @@ export function useSystemCatalogLogic(leadId?: string) {
                     // Offers affect pricing deltas, not whether a model card appears.
                     const hasEligibility = false;
 
-                    const mappedItems = mapCatalogItems(catalogData, ruleData || [], insuranceRuleData || [], {
-                        stateCode: resolvedStateCode,
-                        userLat,
-                        userLng,
-                        userDistrict: resolvedUserDistrict,
-                        offers: offerData || [],
-                        requireEligibility: hasEligibility,
-                    });
+                    const mappedItems = catalogData.map((item: any) => ({
+                        ...item,
+                        price: {
+                            ...item.price,
+                            pricingSource:
+                                item.price?.pricingSource || `${resolvedUserDistrict || 'ALL'}, ${resolvedStateCode}`,
+                            isEstimate: false,
+                        },
+                    }));
 
                     let enrichedItems = mappedItems;
 
@@ -735,29 +345,38 @@ export function useSystemCatalogLogic(leadId?: string) {
                             .filter(Boolean) as string[];
 
                         if (primarySkuIds.length > 0) {
-                            // Published SOT: Read directly from cat_skus_linear JSONB
-                            const priceCol = `price_${(resolvedStateCode || 'MH').toLowerCase()}`;
+                            // Published SOT: Read directly from state pricing table (canonical)
+                            const { data: priceRows, error: priceError } = await supabase
+                                .from('cat_price_state_mh')
+                                .select(
+                                    `
+                                    sku_id,
+                                    ex_showroom,
+                                    on_road_price,
+                                    rto_total_state,
+                                    ins_gross_premium,
+                                    publish_stage
+                                    `
+                                )
+                                .in('sku_id', primarySkuIds)
+                                .eq('state_code', resolvedStateCode)
+                                .eq('publish_stage', 'PUBLISHED');
 
-                            // Safe Select: If state is not MH, we need to be careful as price_ka etc might not exist yet
-                            const selectStr =
-                                resolvedStateCode === 'MH' ? 'unit_json, price_mh' : 'unit_json, price_mh, *';
-
-                            const { data: linearRows } = await supabase
-                                .from('cat_skus_linear')
-                                .select(selectStr)
-                                .eq('status', 'ACTIVE');
+                            if (priceError) {
+                                throw priceError;
+                            }
 
                             const pricingMap = new Map<string, any>();
-                            (linearRows || []).forEach((row: any) => {
-                                // Try state column, fallback to price_mh
-                                const pm = row[priceCol] || row.price_mh;
-                                const unitId = row.unit_json?.id;
-                                if (unitId && pm && primarySkuIds.includes(unitId)) {
-                                    pricingMap.set(unitId, {
-                                        ex_showroom: Number(pm.ex_showroom) || 0,
-                                        rto_total: Number(pm.rto_total) || 0,
-                                        insurance_total: Number(pm.insurance_total) || 0,
-                                        final_on_road: Number(pm.on_road_price) || Number(pm.ex_showroom) || 0,
+                            (priceRows || []).forEach((row: any) => {
+                                const skuId = row?.sku_id;
+                                if (skuId && primarySkuIds.includes(skuId)) {
+                                    const exShowroom = Number(row.ex_showroom) || 0;
+                                    const onRoad = Number(row.on_road_price) || exShowroom;
+                                    pricingMap.set(skuId, {
+                                        ex_showroom: exShowroom,
+                                        rto_total: Number(row.rto_total_state) || 0,
+                                        insurance_total: Number(row.ins_gross_premium) || 0,
+                                        final_on_road: onRoad,
                                         location: { district: 'ALL', state_code: resolvedStateCode },
                                     });
                                 }
@@ -806,19 +425,14 @@ export function useSystemCatalogLogic(leadId?: string) {
                         marketOffersCount: (offerData as any[])?.length || 0,
                     });
 
-                    if (useLinear) {
-                        setSkuCount(linearRawRows.length);
+                    const { count: skuTotal, error: skuError } = await supabase
+                        .from('cat_skus')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('status', 'ACTIVE');
+                    if (skuError) {
+                        console.error('Database error fetching sku count:', JSON.stringify(skuError, null, 2));
                     } else {
-                        const { count: skuTotal, error: skuError } = await supabase
-                            .from('cat_items')
-                            .select('id', { count: 'exact', head: true })
-                            .eq('type', 'SKU')
-                            .eq('status', 'ACTIVE');
-                        if (skuError) {
-                            console.error('Database error fetching sku count:', JSON.stringify(skuError, null, 2));
-                        } else {
-                            setSkuCount(skuTotal || 0);
-                        }
+                        setSkuCount(skuTotal || 0);
                     }
                 } else {
                     setItems([]);

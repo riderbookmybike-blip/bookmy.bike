@@ -118,8 +118,8 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
             onUpdate(updatedList);
 
             const newSlug = `${family.slug}-color-${normalizedName.toLowerCase()}`.replace(/ /g, '-');
-            const { error } = await supabase
-                .from('cat_items')
+            const { error } = await (supabase as any)
+                .from('cat_skus')
                 .update({
                     name: normalizedName,
                     slug: newSlug,
@@ -186,8 +186,8 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
                 position: nextPosition,
             };
 
-            const { data, error: dbError } = await supabase
-                .from('cat_items')
+            const { data, error: dbError } = await (supabase as any)
+                .from('cat_skus')
                 .upsert(payload, { onConflict: 'slug' })
                 .select()
                 .single();
@@ -241,7 +241,7 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
             setIsReorderSaving(true);
             await Promise.all(
                 updatedList.map((item: any) =>
-                    supabase.from('cat_items').update({ position: item.position }).eq('id', item.id)
+                    (supabase as any).from('cat_skus').update({ position: item.position }).eq('id', item.id)
                 )
             );
             setShowReorderSaved(true);
@@ -307,7 +307,10 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
             const supabase = createClient();
             const color = existingColors.find((c: any) => c.id === activeColorId);
             const newSpecs = { ...color.specs, hex_primary: tempPrimary, hex_secondary: tempSecondary };
-            const { error } = await supabase.from('cat_items').update({ specs: newSpecs }).eq('id', activeColorId);
+            const { error } = await (supabase as any)
+                .from('cat_skus')
+                .update({ specs: newSpecs })
+                .eq('id', activeColorId);
 
             if (error) throw error;
             toast.success(`Color hex updated (${activeColorId.slice(0, 8)})`);
@@ -393,9 +396,9 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
             });
 
             if (applyVideosToAll) {
-                // Update cat_items for all colors (specs)
+                // Update cat_skus for all colors (specs)
                 const updatePromises = updatedList.map((item: any) =>
-                    supabase.from('cat_items').update({ specs: item.specs }).eq('id', item.id)
+                    (supabase as any).from('cat_skus').update({ specs: item.specs }).eq('id', item.id)
                 );
                 await Promise.all(updatePromises);
 
@@ -408,9 +411,9 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
             } else {
                 const updatedColor = updatedList.find((c: any) => c.id === activeColorId);
 
-                // Update cat_items
-                const { error: itemError } = await supabase
-                    .from('cat_items')
+                // Update cat_skus
+                const { error: itemError } = await (supabase as any)
+                    .from('cat_skus')
                     .update({
                         specs: updatedColor.specs,
                         zoom_factor: zoomFactor,
@@ -1067,7 +1070,7 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
                     }}
                     onConfirm={async () => {
                         const supabase = createClient();
-                        const { error } = await supabase.from('cat_items').delete().eq('id', colorToDelete.id);
+                        const { error } = await (supabase as any).from('cat_skus').delete().eq('id', colorToDelete.id);
                         if (error) {
                             toast.error(`Failed to delete ${l2Label.toLowerCase()}`);
                         } else {

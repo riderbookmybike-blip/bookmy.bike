@@ -189,7 +189,7 @@ export async function generateStaticParams() {
         const { families } = await getSitemapData();
         const params: any[] = [];
 
-        families?.forEach(family => {
+        families?.forEach((family: any) => {
             const make = (family.brand as any)?.name?.toLowerCase().replace(/\s+/g, '-') || 'unknown';
             const model = family.slug || family.name.toLowerCase().replace(/\s+/g, '-');
 
@@ -302,65 +302,84 @@ export default async function Page({ params, searchParams }: Props) {
 
     console.log('PDP Debug: Pricing Context:', pricingContext);
 
-    // 2. Fetch Variant from Unified Catalog
-    // Slug convention: variant slug = "{product-slug}-{variant-name}"
-    // e.g., "fascino-125-fi-hybrid-disc"
-    // The [model] URL param IS the product slug, so we can construct directly.
-    const possibleSlugs = [
-        `${resolvedParams.model}-${resolvedParams.variant}`, // "fascino-125-fi-hybrid-disc" (primary)
-        resolvedParams.variant, // "disc" (simple fallback)
-    ];
-
-    const { data: variantItem, error } = await supabase
-        .from('cat_items')
-        .select(
-            `
-            id, name, slug, price_base, specs, parent_id,
-            brand:cat_brands(name, slug),
-            parent:cat_items!parent_id(name, slug)
-        `
-        )
-        .in('slug', possibleSlugs)
-        .eq('type', 'VARIANT')
+    // 2. Fetch Variant + SKUs from V2 catalog tables
+    const { data: modelRow, error: modelError } = await (supabase as any)
+        .from('cat_models')
+        .select('id, brand_id, name, slug, brand:cat_brands!brand_id(name, slug), fuel_type, engine_cc')
+        .eq('slug', resolvedParams.model)
+        .eq('status', 'ACTIVE')
         .maybeSingle();
 
-    let resolvedVariant = variantItem as unknown as CatalogItem | null;
-    let fetchError: any = error;
+    const { data: modelSkus, error: skuError } = modelRow?.id
+        ? await (supabase as any)
+              .from('cat_skus')
+              .select(
+                  `
+                id,
+                name,
+                slug,
+                sku_type,
+                price_base,
+                is_primary,
+                primary_image,
+                color_name,
+                hex_primary,
+                hex_secondary,
+                finish,
+                colour_id,
+                vehicle_variant_id,
+                accessory_variant_id,
+                service_variant_id,
+                vehicle_variant:cat_variants_vehicle!vehicle_variant_id(id, name, slug, status),
+                accessory_variant:cat_variants_accessory!accessory_variant_id(id, name, slug, status),
+                service_variant:cat_variants_service!service_variant_id(id, name, slug, status),
+                assets:cat_assets!item_id(id, type, url, is_primary, position)
+            `
+              )
+              .eq('model_id', modelRow.id)
+              .eq('status', 'ACTIVE')
+        : ({ data: null, error: modelError } as any);
 
-    if (!resolvedVariant) {
-        // Fallback: try linear catalog by names (make/model/variant)
-        const normalizedModel = resolvedParams.model.replace(/-/g, ' ');
-        const normalizedVariant = resolvedParams.variant.replace(/-/g, ' ');
+    const possibleVariantSlugs = new Set([resolvedParams.variant, `${resolvedParams.model}-${resolvedParams.variant}`]);
 
-        const { data: linearRow, error: linearError } = await (supabase as any)
-            .from('cat_skus_linear')
-            .select(
-                'id, sku_code, brand_name, product_name, variant_name, unit_name, brand_json, product_json, variant_json, unit_json'
-            )
-            .ilike('product_name', normalizedModel)
-            .ilike('variant_name', normalizedVariant)
-            .limit(1)
-            .maybeSingle();
+    const normalizedSkus = (modelSkus || []).map((sku: any) => {
+        const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
+        return {
+            ...sku,
+            variant,
+            variant_slug: variant?.slug,
+            variant_name: variant?.name,
+            variant_id: variant?.id,
+        };
+    });
 
-        if (linearRow) {
-            const row = linearRow as any;
-            resolvedVariant = {
-                id: row.variant_json?.id || row.id,
-                name: row.variant_name,
-                slug: row.variant_name?.toLowerCase().replace(/\s+/g, '-'),
-                price_base: row.unit_json?.price_base || 0,
-                specs: row.variant_json?.specs || {},
-                parent_id: row.product_json?.id,
-                brand: { name: row.brand_name, slug: row.brand_name?.toLowerCase().replace(/\s+/g, '-') },
-                parent: {
-                    name: row.product_name,
-                    slug: row.product_name?.toLowerCase().replace(/\s+/g, '-'),
-                } as any,
-            } as any;
-        } else {
-            fetchError = linearError || error || { message: 'No matching variant in cat_items or cat_skus_linear' };
-        }
-    }
+    const variantSkus = normalizedSkus.filter((sku: any) => possibleVariantSlugs.has(String(sku.variant_slug || '')));
+    const activeVariantSkus = variantSkus.length > 0 ? variantSkus : normalizedSkus;
+    const variantSeed = activeVariantSkus[0];
+
+    const resolvedVariant = variantSeed
+        ? ({
+              id: variantSeed.variant_id,
+              name: variantSeed.variant_name,
+              slug: variantSeed.variant_slug,
+              price_base: Number(variantSeed.price_base || 0),
+              specs: {
+                  fuel_type: modelRow?.fuel_type,
+                  engine_cc: modelRow?.engine_cc,
+              },
+              brand: {
+                  name: modelRow?.brand?.name || resolvedParams.make,
+                  slug: modelRow?.brand?.slug || slugify(resolvedParams.make),
+              },
+              parent: {
+                  name: modelRow?.name || resolvedParams.model,
+                  slug: modelRow?.slug || resolvedParams.model,
+              },
+          } as CatalogItem)
+        : null;
+
+    let fetchError: any = skuError || modelError;
+    if (!resolvedVariant) fetchError = fetchError || { message: 'No matching variant in catalog' };
 
     if (!resolvedVariant) {
         console.error('PDP Fetch Error:', fetchError);
@@ -405,20 +424,11 @@ export default async function Page({ params, searchParams }: Props) {
         );
     }
 
-    const item = variantItem as unknown as CatalogItem;
-
-    // Fetch parent PRODUCT specs separately (self-referencing FK join returns children, not parent)
-    let parentSpecs: Record<string, any> = {};
-    if ((item as any).parent_id) {
-        const { data: parentItem } = await supabase
-            .from('cat_items')
-            .select('specs')
-            .eq('id', (item as any).parent_id)
-            .single();
-        if (parentItem?.specs) {
-            parentSpecs = parentItem.specs as Record<string, any>;
-        }
-    }
+    const item = resolvedVariant as CatalogItem;
+    const parentSpecs: Record<string, any> = {
+        fuel_type: modelRow?.fuel_type,
+        engine_cc: modelRow?.engine_cc,
+    };
 
     const makeSlug = (item.brand as any)?.slug || slugify(item.brand?.name || resolvedParams.make || '');
     const modelSlug = item.parent?.slug || slugify(item.parent?.name || resolvedParams.model || '');
@@ -442,111 +452,101 @@ export default async function Page({ params, searchParams }: Props) {
     }
 
     // 2.5 Fetch SKUs EARLY (Needed for Market Offer Filtering)
-    const { data: skus } = await supabase
-        .from('cat_items')
-        .select('id, name, slug, specs, price_base, parent_id')
-        .eq('parent_id', item.id)
-        .eq('type', 'SKU');
+    const colorSkus: any[] = activeVariantSkus.map((sku: any) => ({
+        id: sku.id,
+        name: sku.name,
+        slug: sku.slug,
+        price_base: Number(sku.price_base || 0),
+        is_primary: Boolean(sku.is_primary),
+        image_url: sku.primary_image || null,
+        assets: sku.assets || [],
+        parent_id: sku.colour_id || sku.variant_id || item.id,
+        specs: {
+            Color: sku.color_name || sku.name,
+            color: sku.color_name || sku.name,
+            hex_primary: sku.hex_primary,
+            hex_secondary: sku.hex_secondary,
+            finish: sku.finish,
+        },
+    }));
 
-    const { data: colorDefs } = await supabase
-        .from('cat_items')
-        .select('id, name, slug, specs, position, image_url, is_primary')
-        .eq('parent_id', item.id)
-        .eq('type', 'UNIT')
-        .order('position', { ascending: true });
-
-    let colorSkus: any[] = [];
-    if (colorDefs && colorDefs.length > 0) {
-        const colorDefIds = colorDefs.map((c: any) => c.id);
-        const { data: colorSkuRows } = await supabase
-            .from('cat_items')
-            .select(
-                'id, name, slug, specs, price_base, parent_id, is_primary, image_url, assets:cat_assets!item_id(id, type, url, is_primary, position)'
-            )
-            .in('parent_id', colorDefIds)
-            .eq('type', 'SKU');
-        colorSkus = colorSkuRows || [];
-    }
+    const skus = colorSkus;
+    const colorDefs = colorSkus.map((sku: any) => ({
+        id: sku.parent_id,
+        name: sku.specs?.color || sku.name,
+        slug: slugify(sku.specs?.color || sku.name || sku.id),
+        specs: {
+            color: sku.specs?.color || sku.name,
+            hex_primary: sku.specs?.hex_primary,
+            hex_secondary: sku.specs?.hex_secondary,
+        },
+        position: 0,
+        image_url: sku.image_url,
+        is_primary: sku.is_primary,
+    }));
 
     const allSkus = [...(skus || []), ...colorSkus];
 
-    // 2.6 Fetch Prices from cat_skus_linear (Authoritative SOT)
+    // 2.6 Fetch Prices from canonical state pricing table
     const skuIds = allSkus.map((s: any) => s.id);
     let publishedPriceData: any = null;
-    const priceCol = `price_${stateCode.toLowerCase()}`;
-
     if (skuIds.length > 0) {
         // Authoritative SOT for MH: dedicated state table with columns
-        const isMh = stateCode.toUpperCase() === 'MH';
+        const { data: mhRows } = await (supabase as any)
+            .from('cat_price_state_mh')
+            .select(
+                `
+                    sku_id, state_code,
+                    ex_showroom, ex_showroom_basic:ex_factory, ex_showroom_gst_amount:ex_factory_gst_amount, ex_showroom_total:ex_showroom, gst_rate, hsn_code,
+                    on_road_price,
+                    rto_default_type,
+                    rto_registration_fee_state, rto_registration_fee_bh, rto_registration_fee_company,
+                    rto_smartcard_charges_state, rto_smartcard_charges_bh, rto_smartcard_charges_company,
+                    rto_postal_charges_state, rto_postal_charges_bh, rto_postal_charges_company,
+                    rto_roadtax_rate_state, rto_roadtax_rate_bh, rto_roadtax_rate_company,
+                    rto_roadtax_amount_state, rto_roadtax_amount_bh, rto_roadtax_amount_company,
+                    rto_roadtaxcess_rate_state:rto_roadtax_cess_rate_state, rto_roadtaxcess_rate_bh:rto_roadtax_cess_rate_bh, rto_roadtaxcess_rate_company:rto_roadtax_cess_rate_company,
+                    rto_roadtaxcessamount_state:rto_roadtax_cess_amount_state, rto_roadtaxcessamount_bh:rto_roadtax_cess_amount_bh, rto_roadtaxcessamount_company:rto_roadtax_cess_amount_company,
+                    rto_total_state, rto_total_bh, rto_total_company,
+                    ins_od_base:ins_own_damage_premium_amount, ins_od_total:ins_own_damage_total_amount, ins_tp_base:ins_liability_only_premium_amount, ins_tp_total:ins_liability_only_total_amount,
+                    ins_sum_mandatory_insurance, ins_sum_mandatory_insurance_gst_amount, ins_total:ins_gross_premium, ins_gst_rate,
+                    addon_pa_amount:addon_personal_accident_cover_amount, addon_pa_gstamount:addon_personal_accident_cover_gst_amount, addon_pa_total:addon_personal_accident_cover_total_amount,
+                    published_at, updated_at
+                `
+            )
+            .in('sku_id', skuIds)
+            .eq('state_code', stateCode)
+            .order('updated_at', { ascending: false });
 
-        if (isMh) {
-            const { data: mhRows } = await (supabase as any)
-                .from('cat_price_mh')
-                .select('*')
-                .in('sku_id', skuIds)
-                .order('updated_at', { ascending: false });
+        const matchingRow = (mhRows || []).find((row: any) => Number(row.rto_total_state) > 0);
+        const priceRow = matchingRow || (mhRows || [])[0];
 
-            const matchingRow = (mhRows || []).find((row: any) => Number(row.rto_state_total) > 0);
-            const priceRow = matchingRow || (mhRows || [])[0];
-
-            if (priceRow) {
-                publishedPriceData = {
-                    vehicle_color_id: priceRow.sku_id,
-                    ex_showroom_price: Number(priceRow.ex_showroom) || 0,
-                    rto_total: Number(priceRow.rto_state_total) || 0,
-                    insurance_total: Number(priceRow.ins_total) || 0,
-                    on_road_price: Number(priceRow.on_road_price) || 0,
-                    rto: {
-                        STATE: { total: Number(priceRow.rto_state_total) },
-                        BH: { total: Number(priceRow.rto_bh_total) },
-                        COMPANY: { total: Number(priceRow.rto_company_total) },
-                        default: priceRow.rto_default_type || 'STATE',
-                    },
-                    insurance: {
-                        base_total: Number(priceRow.ins_base_total),
-                        od: { total: Number(priceRow.ins_od_total) },
-                        tp: { total: Number(priceRow.ins_tp_total) },
-                        pa: Number(priceRow.ins_pa),
-                    },
-                    state_code: stateCode,
-                    district: 'ALL',
-                    published_at: priceRow.published_at,
-                };
-            }
-        } else {
-            // Fallback for other states: use cat_skus_linear JSONB
-            const { data: linearRows } = await (supabase as any)
-                .from('cat_skus_linear')
-                .select(`unit_json, ${priceCol}`)
-                .eq('status', 'ACTIVE');
-
-            const matchingRow = ((linearRows || []) as any[]).find((row: any) => {
-                const unitId = row.unit_json?.id;
-                const pm = row[priceCol];
-                return unitId && skuIds.includes(unitId) && pm && Number(pm.rto_total) > 0;
-            });
-            const priceRow =
-                matchingRow ||
-                ((linearRows || []) as any[]).find((row: any) => {
-                    const unitId = row.unit_json?.id;
-                    return unitId && skuIds.includes(unitId) && row[priceCol];
-                });
-
-            if (priceRow) {
-                const pm = priceRow[priceCol];
-                publishedPriceData = {
-                    vehicle_color_id: priceRow.unit_json?.id,
-                    ex_showroom_price: pm.ex_showroom,
-                    rto_total: pm.rto_total,
-                    insurance_total: pm.insurance_total,
-                    on_road_price: pm.on_road_price,
-                    rto: pm.rto,
-                    insurance: pm.insurance,
-                    state_code: stateCode,
-                    district: 'ALL',
-                    published_at: pm.published_at,
-                };
-            }
+        if (priceRow) {
+            publishedPriceData = {
+                vehicle_color_id: priceRow.sku_id,
+                ex_showroom_price: Number(priceRow.ex_showroom) || 0,
+                rto_total: Number(priceRow.rto_total_state) || 0,
+                insurance_total: Number(priceRow.ins_total) || 0,
+                on_road_price: Number(priceRow.on_road_price) || 0,
+                rto: {
+                    STATE: { total: Number(priceRow.rto_total_state) },
+                    BH: { total: Number(priceRow.rto_total_bh) },
+                    COMPANY: { total: Number(priceRow.rto_total_company) },
+                    default: priceRow.rto_default_type || 'STATE',
+                },
+                insurance: {
+                    base_total:
+                        Number(priceRow.ins_total || 0) ||
+                        Number(priceRow.ins_sum_mandatory_insurance || 0) +
+                            Number(priceRow.ins_sum_mandatory_insurance_gst_amount || 0),
+                    od: { total: Number(priceRow.ins_od_total) },
+                    tp: { total: Number(priceRow.ins_tp_total) },
+                    pa: Number(priceRow.addon_pa_total ?? 0),
+                },
+                state_code: stateCode,
+                district: 'ALL',
+                published_at: priceRow.published_at,
+            };
         }
     }
 
@@ -566,34 +566,74 @@ export default async function Page({ params, searchParams }: Props) {
         .order('state_code', { ascending: false }) // Prioritize specific state over ALL
         .limit(1);
 
-    // Fetch Accessories & Services
-    // Only fetch SKU-type items (final products), not PRODUCT/VARIANT hierarchy items
-    const { data: accessoriesData } = await supabase
-        .from('cat_items')
-        .select('*, brand:cat_brands(name), category, image_url')
-        .eq('category', 'ACCESSORY')
-        .eq('type', 'SKU') // Only final SKUs, not PRODUCT or VARIANT
+    // Fetch accessories from canonical V2 tables
+    const { data: accessorySkus } = await (supabase as any)
+        .from('cat_skus')
+        .select(
+            `
+            id, name, price_base, primary_image, color_name, finish, status, sku_type,
+            brand:cat_brands!brand_id(name),
+            model:cat_models!model_id(id, name),
+            accessory_variant:cat_variants_accessory!accessory_variant_id(id, name, slug, status)
+            `
+        )
+        .eq('sku_type', 'ACCESSORY')
         .eq('status', 'ACTIVE');
 
-    // Batch-fetch parent hierarchy for product grouping (SKU → VARIANT → PRODUCT)
-    const accParentIds = [...new Set((accessoriesData || []).map((a: any) => a.parent_id).filter(Boolean))];
+    const accessoryIds = (accessorySkus || []).map((a: any) => a.id).filter(Boolean);
+    const { data: suitableForRows } =
+        accessoryIds.length > 0
+            ? await (supabase as any)
+                  .from('cat_suitable_for')
+                  .select('sku_id, target_brand_id, target_model_id, target_variant_id')
+                  .in('sku_id', accessoryIds)
+            : ({ data: [] } as any);
+
+    const suitableForMap = new Map<string, any[]>();
+    (suitableForRows || []).forEach((row: any) => {
+        if (!suitableForMap.has(row.sku_id)) suitableForMap.set(row.sku_id, []);
+        suitableForMap.get(row.sku_id)!.push(row);
+    });
+
+    const accessoriesData = (accessorySkus || []).map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        price_base: a.price_base,
+        image_url: a.primary_image,
+        category: 'ACCESSORY',
+        brand: a.brand,
+        parent_id: a.accessory_variant?.id || null,
+        inclusion_type: 'OPTIONAL',
+        specs: {
+            suitable_for: '',
+            color: a.color_name || '',
+            finish: a.finish || '',
+            max_qty: 1,
+        },
+        __compat: suitableForMap.get(a.id) || [],
+        __variant_name: a.accessory_variant?.name || '',
+        __product_name: a.model?.name || '',
+    }));
+
     let accVariantMap = new Map<string, any>();
     let accProductMap = new Map<string, any>();
-    if (accParentIds.length > 0) {
-        const { data: accVariants } = await supabase
-            .from('cat_items')
-            .select('id, name, parent_id, image_url')
-            .in('id', accParentIds);
-        (accVariants || []).forEach((v: any) => accVariantMap.set(v.id, v));
-        const accGrandparentIds = [...new Set((accVariants || []).map((v: any) => v.parent_id).filter(Boolean))];
-        if (accGrandparentIds.length > 0) {
-            const { data: accProducts } = await supabase
-                .from('cat_items')
-                .select('id, name, image_url')
-                .in('id', accGrandparentIds);
-            (accProducts || []).forEach((p: any) => accProductMap.set(p.id, p));
+    (accessorySkus || []).forEach((a: any) => {
+        if (a.accessory_variant?.id) {
+            accVariantMap.set(a.accessory_variant.id, {
+                id: a.accessory_variant.id,
+                name: a.accessory_variant.name || '',
+                parent_id: a.model?.id || null,
+                image_url: a.primary_image || null,
+            });
         }
-    }
+        if (a.model?.id) {
+            accProductMap.set(a.model.id, {
+                id: a.model.id,
+                name: a.model.name || '',
+                image_url: null,
+            });
+        }
+    });
 
     const { data: servicesData } = await supabase.from('cat_services').select('*').eq('status', 'ACTIVE');
 
@@ -758,7 +798,6 @@ export default async function Page({ params, searchParams }: Props) {
     // 3.5 Fetch Accessory Rules (Dealer Pricing)
     // NOW VALID: We use the winningDealerId to fetch specific rules
     let accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();
-    const accessoryIds = (accessoriesData || []).map((a: any) => a.id);
 
     if (accessoryIds.length > 0 && winningDealerId) {
         const { data: rules } = await supabase
@@ -958,23 +997,24 @@ export default async function Page({ params, searchParams }: Props) {
     const productMake = product.make;
     const productModel = product.model;
     const productVariant = product.variant;
+    const currentBrandId = modelRow?.brand_id || null;
+    const currentModelId = modelRow?.id || null;
+    const currentVariantId = item.id || null;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const accessories = (accessoriesData || [])
         .filter((a: any) => {
-            // STRICT LOGIC: Accessories MUST pass suitability check.
-            // Dealer rules only enhance pricing/bundling, not visibility.
-            // An accessory shows if:
-            // 1. It matches suitable_for for this vehicle (brand/model/variant)
-            // 2. OR it's tagged as Universal
-            const matchesSuitability = matchesAccessoryCompatibility(
-                a.specs?.suitable_for,
-                productMake,
-                productModel,
-                productVariant
-            );
-
-            return matchesSuitability;
+            // Canonical suitability from cat_suitable_for; fallback to legacy text suitability matcher.
+            const rows = Array.isArray(a.__compat) ? a.__compat : [];
+            if (rows.length > 0) {
+                return rows.some((r: any) => {
+                    const brandOk = !r.target_brand_id || r.target_brand_id === currentBrandId;
+                    const modelOk = !r.target_model_id || r.target_model_id === currentModelId;
+                    const variantOk = !r.target_variant_id || r.target_variant_id === currentVariantId;
+                    return brandOk && modelOk && variantOk;
+                });
+            }
+            return matchesAccessoryCompatibility(a.specs?.suitable_for, productMake, productModel, productVariant);
         })
         .map((a: any) => {
             const rule = accessoryRules.get(a.id);

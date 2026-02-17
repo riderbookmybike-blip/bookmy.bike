@@ -30,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // 2. Family & Variant pages
     const productRoutes: any[] = [];
-    families?.forEach(family => {
+    families?.forEach((family: any) => {
         const brandSlug = (family.brand as any)?.name?.toLowerCase().replace(/\s+/g, '-') || 'unknown';
         const modelSlug = family.slug || family.name.toLowerCase().replace(/\s+/g, '-');
 

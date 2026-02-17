@@ -74,7 +74,6 @@ export function useSystemPDPLogic({
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const allowDebug = process.env.NEXT_PUBLIC_DEBUG_TOOLS === 'true';
 
     const colorFromQuery = searchParams.get('color');
     const isValidColor = colorFromQuery && colors.some(c => c.id === colorFromQuery);
@@ -145,28 +144,6 @@ export function useSystemPDPLogic({
             }
         }
     }, [initialAccessories]);
-
-    // Runtime Debug Persistence
-    useEffect(() => {
-        if (!allowDebug || typeof window === 'undefined') return;
-        if (typeof window !== 'undefined') {
-            window.__BMB_DEBUG__ = {
-                ...window.__BMB_DEBUG__,
-                pricingSource: pricingReady ? 'SERVER_RPC' : 'MISSING_SERVER',
-                district: registrationRule?.district || 'GLOBAL',
-                stateCode: registrationRule?.state_code || 'NOT_SET',
-                schemeId: initialFinance?.scheme?.id || 'NONE',
-                schemeName: initialFinance?.scheme?.name || undefined,
-                bankName: initialFinance?.bank?.name || undefined,
-                financeLogic: initialFinance?.logic || (initialFinance ? 'RESOLVED_DEFAULT' : 'NOT_RESOLVED'),
-                leadId: searchParams.get('leadId') || undefined,
-                dealerId: searchParams.get('dealerId') || undefined,
-                tenantId: product?.dealership_id || product?.make || 'NOT_SET',
-                pageId: `${product?.make}/${product?.model}/${product?.variant}`,
-                userId: typeof window !== 'undefined' ? localStorage.getItem('userId') || 'GUEST' : 'GUEST',
-            };
-        }
-    }, [registrationRule, initialFinance, searchParams, pricingReady, product]);
 
     useEffect(() => {
         if (hasManualRegType) return;
@@ -311,20 +288,6 @@ export function useSystemPDPLogic({
 
     // SOT: base_total = od + tp + GST (excludes addons)
     const baseInsurance = pricingReady ? Number(insuranceJson?.base_total || 0) : 0;
-
-    // ⚠️ TEMP DIAGNOSTICS - Remove after debugging Financial Summary ₹0 bug
-    if (allowDebug && typeof window !== 'undefined' && pricingReady) {
-        console.log('[SystemPDPLogic DIAG]', {
-            serverPricing: !!serverPricing,
-            fallbackPricingSource: serverPricing ? 'serverPricing' : 'initialPrice.breakdown',
-            rtoJson,
-            rtoByType,
-            rtoEstimates,
-            insuranceJson,
-            baseInsurance,
-            pricingReady,
-        });
-    }
 
     const insuranceBreakdown = pricingReady
         ? fallbackPricing?.insurance_breakdown || [

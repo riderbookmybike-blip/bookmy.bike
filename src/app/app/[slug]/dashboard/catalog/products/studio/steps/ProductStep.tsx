@@ -158,8 +158,8 @@ export default function ProductStep({
                 let suffix = 1;
                 // Ensure global uniqueness (cat_items.slug has unique constraint)
                 while (true) {
-                    const { data: existing } = await supabase
-                        .from('cat_items')
+                    const { data: existing } = await (supabase as any)
+                        .from('cat_models')
                         .select('id')
                         .eq('slug', slug)
                         .maybeSingle();
@@ -196,8 +196,8 @@ export default function ProductStep({
 
             if (familyData?.id) {
                 // UPDATE existing record
-                const result = await supabase
-                    .from('cat_items')
+                const result = await (supabase as any)
+                    .from('cat_models')
                     .update(payload)
                     .eq('id', familyData.id)
                     .select()
@@ -206,7 +206,7 @@ export default function ProductStep({
                 error = result.error;
             } else {
                 // INSERT new record
-                const result = await supabase.from('cat_items').insert(payload).select().maybeSingle();
+                const result = await (supabase as any).from('cat_models').insert(payload).select().maybeSingle();
                 data = result.data;
                 error = result.error;
             }
@@ -218,8 +218,8 @@ export default function ProductStep({
                 } = await supabase.auth.getSession();
 
                 if (familyData?.id) {
-                    const fetchResult = await supabase
-                        .from('cat_items')
+                    const fetchResult = await (supabase as any)
+                        .from('cat_models')
                         .select('id')
                         .eq('id', familyData.id)
                         .maybeSingle();
@@ -232,10 +232,9 @@ export default function ProductStep({
                     }
                     throw new Error('Product update blocked. Please refresh and try again.');
                 } else {
-                    const fetchResult = await supabase
-                        .from('cat_items')
+                    const fetchResult = await (supabase as any)
+                        .from('cat_models')
                         .select('id')
-                        .eq('type', 'PRODUCT')
                         .eq('slug', generatedSlug)
                         .maybeSingle();
                     if (fetchResult.error) throw fetchResult.error;
@@ -890,12 +889,10 @@ export default function ProductStep({
                             if (applyToAll && familyData?.id) {
                                 const supabase = createClient();
                                 // Fetch all SKUs for this family
-                                const { data: allSkus } = await supabase
-                                    .from('cat_items')
+                                const { data: allSkus } = await (supabase as any)
+                                    .from('cat_skus')
                                     .select('id, specs')
-                                    .eq('brand_id', brand.id)
-                                    .eq('brand_id', brand.id)
-                                    .eq('type', 'SKU');
+                                    .eq('brand_id', brand.id);
 
                                 // Filter locally for family (since family_id is not a direct column, parent_id links to variant, variant links to family)
                                 // Actually, we can just use the catalogItems from state or fetch variants first.
@@ -906,25 +903,23 @@ export default function ProductStep({
 
                                 // Better: Update all SKUs that belong to this family.
                                 // Find variants of this family first.
-                                const { data: variants } = await supabase
-                                    .from('cat_items')
+                                const { data: variants } = await (supabase as any)
+                                    .from('cat_variants_vehicle')
                                     .select('id')
-                                    .eq('parent_id', familyData.id)
-                                    .eq('type', 'VARIANT');
+                                    .eq('model_id', familyData.id);
 
                                 if (variants && variants.length > 0) {
-                                    const variantIds = variants.map(v => v.id);
-                                    const { data: skusToUpdate } = await supabase
-                                        .from('cat_items')
+                                    const variantIds = variants.map((v: any) => v.id);
+                                    const { data: skusToUpdate } = await (supabase as any)
+                                        .from('cat_skus')
                                         .select('id, specs')
-                                        .in('parent_id', variantIds)
-                                        .eq('type', 'SKU');
+                                        .in('vehicle_variant_id', variantIds);
 
                                     if (skusToUpdate) {
-                                        const updates = skusToUpdate.map(sku => {
+                                        const updates = skusToUpdate.map((sku: any) => {
                                             const skuSpecs = sku.specs as any;
-                                            return supabase
-                                                .from('cat_items')
+                                            return (supabase as any)
+                                                .from('cat_skus')
                                                 .update({
                                                     video_url: videos[0] || null,
                                                     specs: {

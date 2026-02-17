@@ -4,7 +4,7 @@
  * Source of truth — shared between client and server.
  */
 export interface IndianState {
-    code: string; // 2-letter state code (matches cat_skus_linear.price_{code} columns)
+    code: string; // 2-letter state code (matches pricing state_code values, e.g. MH, KA)
     name: string; // Full display name
 }
 

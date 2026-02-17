@@ -127,8 +127,8 @@ export default function ReviewStep({ brand, family, variants, colors, allColors,
 
         const newHistory = [historyEntry, ...(sku.history || [])].slice(0, 20);
 
-        const { data, error } = await supabase
-            .from('cat_items')
+        const { data, error } = await (supabase as any)
+            .from('cat_skus')
             .update({
                 [field]: value,
                 updated_by: user?.id,

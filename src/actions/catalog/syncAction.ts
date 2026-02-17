@@ -11,7 +11,7 @@
  * 2. Link downloaded assets to cat_assets with sha256.
  * 3. Provide dry-run mode for QA.
  * 4. Field-level merge with "never overwrite" protection.
- * 5. Dual-write to cat_skus_linear (Phase 1).
+ * 5. Legacy linear sync helper retained for backward compatibility only.
  */
 
 import { createClient as createServerClient } from '@/lib/supabase/server';
@@ -102,11 +102,10 @@ export async function buildSyncPlan(params: {
     const { models, brandId, matchOverrides, mode = 'ITEM' } = params;
     const supabase = await createServerClient();
 
-    const { data: existingFamilies } = await supabase
-        .from('cat_items')
-        .select('id, name, slug, specs, type, parent_id, price_base, status')
-        .eq('brand_id', brandId)
-        .eq('type', 'PRODUCT');
+    const { data: existingFamilies } = await (supabase as any)
+        .from('cat_models')
+        .select('id, name, slug, specs, price_base, status')
+        .eq('brand_id', brandId);
 
     const familyByExternalId = new Map<string, any>();
     const familyByName = new Map<string, any>();
@@ -162,7 +161,7 @@ export async function buildSyncPlan(params: {
             (overrideId ? familyById.get(overrideId) : null) ||
             familyByExternalId.get(model.provenance.external_id) ||
             familyByName.get(model.name.toLowerCase()) ||
-            existingFamilies?.find(f => normalize(f.name) === normalizedModelName);
+            existingFamilies?.find((f: any) => normalize(f.name) === normalizedModelName);
 
         const diffs = computeDiffs(existing?.specs || {}, modelSpecs);
         const action: SyncAction = existing
@@ -173,11 +172,10 @@ export async function buildSyncPlan(params: {
 
         let existingVariants: any[] = [];
         if (existing) {
-            const { data } = await supabase
-                .from('cat_items')
-                .select('id, name, slug, specs, type, parent_id, status, position')
-                .eq('parent_id', existing.id)
-                .eq('type', 'VARIANT');
+            const { data } = await (supabase as any)
+                .from('cat_variants_vehicle')
+                .select('id, name, slug, specs, status, position')
+                .eq('model_id', existing.id);
             existingVariants = data || [];
         }
 
@@ -200,11 +198,10 @@ export async function buildSyncPlan(params: {
 
             let existingColors: any[] = [];
             if (existingVar) {
-                const { data } = await supabase
-                    .from('cat_items')
-                    .select('id, name, slug, specs, type, parent_id, status, position')
-                    .eq('parent_id', existingVar.id)
-                    .in('type', ['UNIT', 'SKU']);
+                const { data } = await (supabase as any)
+                    .from('cat_skus')
+                    .select('id, name, slug, hex_primary, hex_secondary, status, position')
+                    .eq('vehicle_variant_id', existingVar.id);
                 existingColors = data || [];
             }
 
@@ -319,12 +316,10 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
                 } else {
                     const slug = generateSlug(family.provenance.brand_slug, family.name);
                     const specs = mergeSpecs({}, family.diffs, family.provenance);
-                    const { data, error } = await supabase
-                        .from('cat_items')
+                    const { data, error } = await (supabase as any)
+                        .from('cat_models')
                         .insert({
                             brand_id: plan.brand_id,
-                            category: (family.provenance as any)?.category || 'VEHICLE',
-                            type: 'PRODUCT',
                             name: family.name,
                             slug,
                             status: 'INACTIVE',
@@ -344,8 +339,8 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
             } else if (family.action === 'UPDATE' && familyId) {
                 if (!dryRun) {
                     const specs = mergeSpecs(family.existing_specs || {}, family.diffs, family.provenance);
-                    const { error } = await supabase
-                        .from('cat_items')
+                    const { error } = await (supabase as any)
+                        .from('cat_models')
                         .update({ specs: specs as any })
                         .eq('id', familyId);
                     if (error) result.errors.push(`Family update "${family.name}": ${error.message}`);
@@ -385,15 +380,7 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
         }
     }
 
-    // ─── Phase 1 Dual-Write: Post-Sync Refresh ────────────────────────────
-    if (result.success && !dryRun) {
-        try {
-            await refreshLinearCatalogForBrand(supabase, plan.brand_id);
-        } catch (e: any) {
-            result.errors.push(`Linear Catalog Sync Error: ${e.message}`);
-            // Note: We don't fail the whole sync yet, but we log the error.
-        }
-    }
+    // Legacy linear dual-write intentionally disabled.
 
     if (result.errors.length > 0) result.success = false;
     return result;
@@ -425,19 +412,33 @@ async function syncChild(
         } else {
             const slug = generateSlug(item.provenance.brand_slug, item.name);
             const specs = mergeSpecs({}, item.diffs, item.provenance);
-            const { data, error } = await supabase
-                .from('cat_items')
-                .insert({
-                    parent_id: parentId,
-                    brand_id: plan.brand_id,
-                    type: item.type,
-                    name: item.name,
-                    slug,
-                    status: 'INACTIVE',
-                    specs: specs as any,
-                })
-                .select('id')
-                .single();
+            const { data, error } =
+                item.type === 'VARIANT'
+                    ? await supabase
+                          .from('cat_variants_vehicle' as any)
+                          .insert({
+                              model_id: parentId,
+                              brand_id: plan.brand_id,
+                              name: item.name,
+                              slug,
+                              status: 'INACTIVE',
+                              specs: specs as any,
+                          } as any)
+                          .select('id')
+                          .single()
+                    : await supabase
+                          .from('cat_skus' as any)
+                          .insert({
+                              vehicle_variant_id: parentId,
+                              brand_id: plan.brand_id,
+                              name: item.name,
+                              slug,
+                              status: 'INACTIVE',
+                              hex_primary: (specs as any)?.hex_primary || null,
+                              hex_secondary: (specs as any)?.hex_secondary || null,
+                          } as any)
+                          .select('id')
+                          .single();
 
             if (error) {
                 result.errors.push(`${item.type} "${item.name}": ${error.message}`);
@@ -450,8 +451,9 @@ async function syncChild(
     } else if (item.action === 'UPDATE' && itemId) {
         if (!dryRun) {
             const specs = mergeSpecs(item.existing_specs || {}, item.diffs, item.provenance);
-            const { error } = await supabase
-                .from('cat_items')
+            const targetTable = item.type === 'VARIANT' ? 'cat_variants_vehicle' : 'cat_skus';
+            const { error } = await (supabase as any)
+                .from(targetTable)
                 .update({ specs: specs as any })
                 .eq('id', itemId);
             if (error) result.errors.push(`${item.type} update "${item.name}": ${error.message}`);
@@ -599,7 +601,7 @@ function matchItem(existingItems: any[], externalId: string, name: string): any 
 }
 
 /**
- * Link downloaded assets to a cat_items record via cat_assets.
+ * Link downloaded assets to a cat_skus record via cat_assets.
  */
 export async function linkAssets(params: {
     itemId: string;
@@ -655,154 +657,8 @@ export async function linkAssets(params: {
 }
 
 /**
- * Phase 1 Dual-Write Helper: Re-flattens a brand's SKUs into cat_skus_linear.
+ * Deprecated no-op: linear table sync is retired.
  */
-export async function refreshLinearCatalogForBrand(supabase: any, brandId: string) {
-    const { data: allItems, error: itemsError } = await supabase.from('cat_items').select('*').eq('brand_id', brandId);
-
-    if (itemsError) throw itemsError;
-
-    const { data: brand, error: brandError } = await supabase.from('cat_brands').select('*').eq('id', brandId).single();
-
-    if (brandError) throw brandError;
-
-    // Fetch existing price_mh from cat_skus_linear to preserve during sync (SOT is now in cat_skus_linear itself)
-    const { data: existingLinear, error: existingLinearError } = await supabase
-        .from('cat_skus_linear')
-        .select('sku_code, price_mh')
-        .eq('brand_id', brandId);
-
-    if (existingLinearError) throw existingLinearError;
-
-    // Build a map of existing price_mh by sku_code for preservation during upsert
-    const existingPriceMhMap = new Map<string, any>();
-    (existingLinear || []).forEach((row: any) => {
-        if (row.price_mh) existingPriceMhMap.set(row.sku_code, row.price_mh);
-    });
-
-    const { data: assets, error: assetsError } = await supabase.from('cat_assets').select('*');
-
-    if (assetsError) throw assetsError;
-
-    const itemsMap = new Map(allItems.map((i: any) => [i.id, i]));
-
-    const assetsMap = new Map();
-    assets.forEach((a: any) => {
-        if (!assetsMap.has(a.item_id)) assetsMap.set(a.item_id, []);
-        assetsMap.get(a.item_id).push(a);
-    });
-
-    const leafNodes = allItems.filter((i: any) => i.type === 'SKU' || i.type === 'UNIT');
-
-    const linearRows = [];
-
-    for (const leaf of leafNodes as any[]) {
-        let current: any = leaf;
-        let unit: any = null;
-        let variant: any = null;
-        let product: any = null;
-
-        // Traverse upwards to find parents
-        let pId = current.parent_id;
-        while (pId) {
-            const parent: any = itemsMap.get(pId);
-            if (!parent) break;
-
-            if (parent.type === 'UNIT') unit = parent;
-            else if (parent.type === 'VARIANT') variant = parent;
-            else if (parent.type === 'PRODUCT') product = parent;
-
-            pId = parent.parent_id;
-        }
-
-        if (!product) continue;
-
-        const effectiveVariant = variant || product;
-        const effectiveUnit = { ...(unit || leaf) };
-
-        const galleryUrls = (
-            leaf.gallery_urls ||
-            unit?.gallery_urls ||
-            variant?.gallery_urls ||
-            product.gallery_urls ||
-            []
-        ).slice(0, 20);
-
-        // Merge specs hierarchically: Product -> Variant -> Unit -> Leaf
-        const rawSpecs = {
-            ...(product as any).specs,
-            ...(effectiveVariant as any).specs,
-            ...(unit as any)?.specs,
-            ...(leaf as any).specs,
-        };
-        const normalizedSpecs = normalizeSpecsForLinear(rawSpecs);
-
-        const skuCode =
-            leaf.sku_code ||
-            (leaf.type === 'SKU' ? `SKU-${leaf.id.substring(0, 8)}` : `UNIT-${leaf.id.substring(0, 8)}`);
-
-        const row = {
-            sku_code: skuCode,
-            brand_id: brandId,
-            brand_name: brand.name,
-            type_name: (product as any).category || 'VEHICLE',
-            product_name: product.name,
-            variant_name: effectiveVariant.name,
-            unit_name: effectiveUnit.name,
-            price_base: leaf.price_base || 0,
-            status: leaf.status === 'DRAFT' ? 'INACTIVE' : (leaf.status as any),
-            image_url: leaf.image_url || unit?.image_url || variant?.image_url || product.image_url,
-            gallery_urls: galleryUrls,
-            assets_json: assetsMap.get(leaf.id) || [],
-            specs: normalizedSpecs,
-            brand_json: brand,
-            product_json: product,
-            variant_json: effectiveVariant,
-            unit_json: effectiveUnit,
-            checksum_md5: '',
-            // PRESERVE existing price_mh (SOT) — never overwrite during sync
-            price_mh: existingPriceMhMap.get(skuCode) || null,
-        };
-
-        // Enforce allowed spec keys/units and gallery cap at app-layer; DB CHECK will also enforce
-        try {
-            validateCatalogRow({
-                sku_code: row.sku_code,
-                brand_name: row.brand_name,
-                type_name: row.type_name,
-                product_name: row.product_name,
-                variant_name: row.variant_name,
-                unit_name: row.unit_name,
-                price_base: row.price_base,
-                status: row.status,
-                specs: normalizedSpecs,
-                gallery: row.gallery_urls?.map((url: string) => ({ url })),
-            });
-        } catch (e: any) {
-            console.error('Spec/gallery validation failed for', row.sku_code, e?.message);
-            throw new Error(`Validation failed for ${row.sku_code}: ${e?.message}`);
-        }
-
-        row.specs = normalizedSpecs;
-
-        const canonicalState = JSON.stringify({
-            brand: row.brand_json,
-            product: row.product_json,
-            variant: row.variant_json,
-            unit: row.unit_json,
-            price: row.price_base,
-            assets: row.assets_json,
-        });
-        row.checksum_md5 = crypto.createHash('md5').update(canonicalState).digest('hex');
-
-        linearRows.push(row);
-    }
-
-    if (linearRows.length > 0) {
-        const { error: upsertError } = await supabase
-            .from('cat_skus_linear')
-            .upsert(linearRows, { onConflict: 'sku_code' });
-
-        if (upsertError) throw upsertError;
-    }
+export async function refreshLinearCatalogForBrand(_supabase: any, _brandId: string) {
+    return;
 }

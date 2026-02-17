@@ -10,7 +10,6 @@ import '@/styles/slider-enhanced.css';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { SourceDebugger } from '@/components/common/SourceDebugger';
 import {
     ShieldCheck,
     Zap,
@@ -241,8 +240,6 @@ export function DesktopPDP({
     serviceability,
 }: DesktopPDPProps) {
     const params = useSearchParams();
-    const isDebug = params.get('debug') === 'true';
-    const metadata = product?._debugSource;
     const { language } = useI18n();
     // Configuration Constants
     const REFERRAL_BONUS = 5000; // Member referral discount amount
@@ -1503,13 +1500,6 @@ export function DesktopPDP({
                             {/* Product Identity Mini */}
                             <div className="flex items-center gap-4 min-w-0">
                                 <div className="w-14 h-14 relative flex items-center justify-center bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 group overflow-hidden shadow-sm">
-                                    {isDebug && (
-                                        <SourceDebugger
-                                            source={metadata?.imageUrl}
-                                            field="Product Image"
-                                            position="top-right"
-                                        />
-                                    )}
                                     <Image
                                         src={getProductImage()}
                                         alt={displayModel}
@@ -1523,24 +1513,10 @@ export function DesktopPDP({
                                         {displayMake}
                                     </div>
                                     <div className="flex flex-wrap items-baseline gap-2 mt-1 min-w-0">
-                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight leading-none truncate relative">
-                                            {isDebug && (
-                                                <SourceDebugger
-                                                    source={metadata?.name}
-                                                    field="Model Name"
-                                                    position="top-right"
-                                                />
-                                            )}
+                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight leading-none truncate leading-none">
                                             {displayModel}
                                         </span>
-                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none relative">
-                                            {isDebug && (
-                                                <SourceDebugger
-                                                    source={metadata?.variant}
-                                                    field="Variant"
-                                                    position="top-right"
-                                                />
-                                            )}
+                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">
                                             {displayVariant}
                                         </span>
                                     </div>
@@ -1609,15 +1585,8 @@ export function DesktopPDP({
                                     )}
                                     <p
                                         key={displayOnRoad}
-                                        className="text-xl font-black text-[#FFD700] font-mono leading-none animate-in fade-in zoom-in-95 duration-500 relative"
+                                        className="text-xl font-black text-[#FFD700] font-mono leading-none animate-in fade-in zoom-in-95 duration-500"
                                     >
-                                        {isDebug && (
-                                            <SourceDebugger
-                                                source={metadata?.onRoad}
-                                                field="On-Road Price"
-                                                position="top-right"
-                                            />
-                                        )}
                                         ₹{displayOnRoad.toLocaleString()}
                                     </p>
                                 </div>
@@ -1674,9 +1643,6 @@ export function DesktopPDP({
                     {/* Visual Section (50%) */}
                     <motion.div variants={itemVariants} className="w-full lg:w-1/2 min-w-0">
                         <div className="relative">
-                            {isDebug && (
-                                <SourceDebugger source={metadata?.imageUrl} field="Main Visuals" position="top-left" />
-                            )}
                             <VisualsRow
                                 colors={colors}
                                 selectedColor={selectedColor}
@@ -1693,9 +1659,6 @@ export function DesktopPDP({
                     {/* Pricing Summary (25%) */}
                     <motion.div variants={itemVariants} className="w-full lg:w-1/4">
                         <div className="relative">
-                            {isDebug && (
-                                <SourceDebugger source={metadata?.onRoad} field="Pricing Engine" position="top-right" />
-                            )}
                             <PricingCard
                                 product={product}
                                 variantName={displayVariant}
@@ -1881,9 +1844,6 @@ export function DesktopPDP({
                         transition={{ delay: 0.8, duration: 0.6 }}
                     >
                         <div className="relative">
-                            {isDebug && (
-                                <SourceDebugger source={metadata?.specs} field="Technical Specs" position="top-right" />
-                            )}
                             <TechSpecsSection
                                 specs={product.specs}
                                 modelName={displayModel}

@@ -97,12 +97,11 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
         }
         const fetchModels = async () => {
             const supabase = createClient();
-            const { data } = await supabase
-                .from('cat_items')
+            const { data } = await (supabase as any)
+                .from('cat_models')
                 .select('id, name')
                 .eq('brand_id', selectedBrandId)
-                .eq('type', 'PRODUCT')
-                .eq('status', 'ACTIVE') // Ensure we only get active models
+                .eq('status', 'ACTIVE')
                 .order('name');
             if (data) setModels(data);
         };
@@ -117,11 +116,10 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
         }
         const fetchVariants = async () => {
             const supabase = createClient();
-            const { data } = await supabase
-                .from('cat_items')
+            const { data } = await (supabase as any)
+                .from('cat_variants_vehicle')
                 .select('id, name')
-                .eq('parent_id', selectedModelId)
-                .eq('type', 'VARIANT')
+                .eq('model_id', selectedModelId)
                 .eq('status', 'ACTIVE')
                 .order('name');
             if (data) setVariantsList(data);
@@ -132,23 +130,22 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
     // Fetch state prices + compatibility when editing a SKU
     const fetchSkuDetails = async (skuId: string) => {
         const supabase = createClient();
-        // Fetch state prices from cat_skus_linear JSONB columns
-        const allPriceCols = INDIAN_STATES.map(s => `price_${s.code.toLowerCase()}`);
-        const { data: linearRow } = await supabase
-            .from('cat_skus_linear')
-            .select(`unit_json, ${allPriceCols.join(', ')}`)
-            .eq('unit_json->>id', skuId)
-            .limit(1)
-            .maybeSingle();
-        if (linearRow) {
+        // Fetch state prices from canonical state pricing table
+        const allStateCodes = INDIAN_STATES.map(s => s.code);
+        const { data: priceRows } = await supabase
+            .from('cat_price_state_mh')
+            .select('state_code, ex_showroom')
+            .eq('sku_id', skuId)
+            .in('state_code', allStateCodes);
+        if (priceRows && priceRows.length > 0) {
             const priceMap: Record<string, number> = {};
             const states: string[] = [];
-            INDIAN_STATES.forEach((s: any) => {
-                const col = `price_${s.code.toLowerCase()}`;
-                const pm = (linearRow as any)[col];
-                if (pm && Number(pm.ex_showroom) > 0) {
-                    priceMap[s.code] = Number(pm.ex_showroom);
-                    states.push(s.code);
+            (priceRows || []).forEach((row: any) => {
+                const code = row.state_code;
+                const exShowroom = Number(row.ex_showroom) || 0;
+                if (code && exShowroom > 0) {
+                    priceMap[code] = exShowroom;
+                    states.push(code);
                 }
             });
             setStatePrices(priceMap);
@@ -185,8 +182,8 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                             parts.push(brand?.name || 'Unknown Brand');
                         }
                         if (c.target_family_id) {
-                            const { data: fam } = await supabase
-                                .from('cat_items')
+                            const { data: fam } = await (supabase as any)
+                                .from('cat_models')
                                 .select('name')
                                 .eq('id', c.target_family_id)
                                 .single();
@@ -196,8 +193,8 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                             parts.push('(All Models)');
                         }
                         if (c.target_variant_id) {
-                            const { data: v } = await supabase
-                                .from('cat_items')
+                            const { data: v } = await (supabase as any)
+                                .from('cat_variants_vehicle')
                                 .select('name')
                                 .eq('id', c.target_variant_id)
                                 .single();
@@ -321,7 +318,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                     },
                 };
 
-                const { error } = await supabase.from('cat_items').update(payload).eq('id', sku.id);
+                const { error } = await (supabase as any).from('cat_skus').update(payload).eq('id', sku.id);
                 if (error) throw error;
 
                 successCount++;
@@ -370,7 +367,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
             const supabase = createClient();
 
             if (exists) {
-                const { error } = await supabase.from('cat_items').delete().eq('id', exists.id);
+                const { error } = await (supabase as any).from('cat_skus').delete().eq('id', exists.id);
                 if (error) throw error;
                 onUpdate(existingSkus.filter((s: any) => s.id !== exists.id));
                 toast.success('SKU removed');
@@ -418,8 +415,8 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                     video_url: inherited.videos[0] || null,
                 };
 
-                const { data, error } = await supabase
-                    .from('cat_items')
+                const { data, error } = await (supabase as any)
+                    .from('cat_skus')
                     .upsert(payload, { onConflict: 'slug' })
                     .select()
                     .single();
@@ -449,13 +446,9 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
         try {
             const supabase = createClient();
             // Rule: Only one SKU can be primary for this specific variant row
-            await supabase
-                .from('cat_items')
-                .update({ is_primary: false })
-                .eq('parent_id', sku.parent_id)
-                .eq('type', 'SKU');
-            const { data, error } = await supabase
-                .from('cat_items')
+            await (supabase as any).from('cat_skus').update({ is_primary: false }).eq('parent_id', sku.parent_id);
+            const { data, error } = await (supabase as any)
+                .from('cat_skus')
                 .update({ is_primary: true })
                 .eq('id', sku.id)
                 .select()
@@ -542,8 +535,8 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                 zoom_factor: zoomFactor || 1.1,
             };
 
-            const { data, error } = await supabase
-                .from('cat_items')
+            const { data, error } = await (supabase as any)
+                .from('cat_skus')
                 .update(payload)
                 .eq('id', activeMediaSku.id)
                 .select()
@@ -569,8 +562,8 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                 if (otherSkus.length > 0) {
                     const updatePromises = otherSkus.map(async (s: any) => {
                         const newSpecs = { ...s.specs, video_urls: videos, pdf_urls: pdfs };
-                        await supabase
-                            .from('cat_items')
+                        await (supabase as any)
+                            .from('cat_skus')
                             .update({
                                 video_url: videos[0] || null,
                                 specs: newSpecs,
@@ -606,7 +599,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
 
     const updatePrice = async (skuId: string, price: number) => {
         const supabase = createClient();
-        await supabase.from('cat_items').update({ price_base: price }).eq('id', skuId);
+        await (supabase as any).from('cat_skus').update({ price_base: price }).eq('id', skuId);
         onUpdate(existingSkus.map((s: any) => (s.id === skuId ? { ...s, price_base: price } : s)));
     };
 
@@ -615,7 +608,9 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
         if (skusToUpdate.length === 0) return;
         const supabase = createClient();
         await Promise.all(
-            skusToUpdate.map((sku: any) => supabase.from('cat_items').update({ price_base: price }).eq('id', sku.id))
+            skusToUpdate.map((sku: any) =>
+                (supabase as any).from('cat_skus').update({ price_base: price }).eq('id', sku.id)
+            )
         );
         onUpdate(existingSkus.map((s: any) => (s.parent_id === variantId ? { ...s, price_base: price } : s)));
         setFocusedSkuId(null);
@@ -1243,9 +1238,9 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                         const primaryState = selectedStates[0] || DEFAULT_STATE_CODE;
                                         const basePrice = statePrices[primaryState] || editingSku.price_base || 0;
 
-                                        // 2. Update cat_items (specs, price_base, inclusion_type)
-                                        const { error } = await supabase
-                                            .from('cat_items')
+                                        // 2. Update cat_skus (specs, price_base, inclusion_type)
+                                        const { error } = await (supabase as any)
+                                            .from('cat_skus')
                                             .update({
                                                 specs: editingSku.specs,
                                                 price_base: basePrice,
@@ -1254,7 +1249,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                             .eq('id', editingSku.id);
                                         if (error) throw error;
 
-                                        // 3. Upsert state prices into cat_skus_linear JSONB columns
+                                        // 3. Upsert state prices into canonical state pricing table
                                         const effectivePrices: Record<string, number> = {};
                                         selectedStates.forEach(code => {
                                             const val = statePrices[code];
@@ -1265,17 +1260,16 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                             }
                                         });
 
-                                        // Build per-state JSONB update payload
-                                        const stateUpdatePayload: Record<string, any> = {};
-                                        Object.entries(effectivePrices).forEach(([code, price]) => {
-                                            const col = `price_${code.toLowerCase()}`;
-                                            stateUpdatePayload[col] = { ex_showroom: price, status: 'ACTIVE' };
-                                        });
-                                        if (Object.keys(stateUpdatePayload).length > 0) {
+                                        const stateRows = Object.entries(effectivePrices).map(([code, price]) => ({
+                                            sku_id: editingSku.id,
+                                            state_code: code,
+                                            ex_showroom: price,
+                                            publish_stage: 'DRAFT',
+                                        }));
+                                        if (stateRows.length > 0) {
                                             const { error: priceErr } = await supabase
-                                                .from('cat_skus_linear')
-                                                .update(stateUpdatePayload)
-                                                .eq('unit_json->>id', editingSku.id);
+                                                .from('cat_price_state_mh' as any)
+                                                .upsert(stateRows as any, { onConflict: 'sku_id,state_code' });
                                             if (priceErr) console.error('State price upsert warning:', priceErr);
                                         }
 

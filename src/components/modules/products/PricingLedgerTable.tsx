@@ -93,7 +93,7 @@ interface PricingLedgerTableProps {
     onUpdateOffer: (skuId: string, offer: number) => void;
     onUpdateInclusion: (skuId: string, type: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE') => void;
     onUpdateStatus: (skuId: string, status: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | 'RELAUNCH') => void;
-    onUpdatePublishStage?: (skuId: string, stage: string) => void; // AUMS: update cat_skus_linear publish_stage
+    onUpdatePublishStage?: (skuId: string, stage: string) => void; // AUMS: update canonical pricing publish_stage
     onUpdateLocalStatus?: (skuId: string, isActive: boolean) => void;
     onUpdatePopular?: (skuId: string, isPopular: boolean) => void;
     onSaveAll?: () => void;
@@ -2258,7 +2258,7 @@ export default function PricingLedgerTable({
                                                                                             isAums &&
                                                                                             onUpdatePublishStage
                                                                                         ) {
-                                                                                            // AUMS: Update publish_stage in cat_skus_linear
+                                                                                            // AUMS: Update publish_stage in canonical pricing flow
                                                                                             const stageMap: Record<
                                                                                                 string,
                                                                                                 string
@@ -2295,7 +2295,7 @@ export default function PricingLedgerTable({
                                                                                                 opt === 'Active'
                                                                                             );
                                                                                         } else {
-                                                                                            // Fallback: Update status in cat_items
+                                                                                            // Fallback: Update status in cat_skus
                                                                                             const statusMap: Record<
                                                                                                 string,
                                                                                                 | 'ACTIVE'

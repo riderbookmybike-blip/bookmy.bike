@@ -10,7 +10,6 @@ import {
 } from '@/lib/crm/contextHardening';
 import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
-import { serverLog } from '@/lib/debug/logger';
 import { createOrLinkMember } from './members';
 import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
 
@@ -299,28 +298,16 @@ export async function getCustomerHistory(customerId: string) {
 
 export async function getCatalogModels() {
     const supabase = await createClient();
-    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
+    const { data, error } = await supabase
+        .from('cat_models' as any)
+        .select('name')
+        .eq('status', 'ACTIVE');
 
-    if (useLinear) {
-        const { data, error } = await supabase.from('cat_skus_linear').select('product_name').eq('status', 'ACTIVE');
-        if (error) {
-            console.error('Error fetching catalog models from linear:', error);
-            return [];
-        }
-        return [...new Set(data.map(i => i.product_name))];
-    } else {
-        const { data, error } = await supabase
-            .from('cat_items')
-            .select('name')
-            .eq('type', 'PRODUCT')
-            .eq('status', 'ACTIVE');
-
-        if (error) {
-            console.error('Error fetching catalog models:', error);
-            return [];
-        }
-        return data.map(i => i.name);
+    if (error) {
+        console.error('Error fetching catalog models:', error);
+        return [];
     }
+    return (data as any[]).map(i => i.name);
 }
 
 // Helper to format text as Title Case
@@ -349,16 +336,7 @@ export async function createLeadAction(data: {
     source?: string;
 }) {
     const interestModel = data.interest_model || data.model || 'GENERAL_ENQUIRY';
-    const startTime = Date.now();
     const authUser = await getAuthUser();
-
-    await serverLog({
-        component: 'CRM',
-        action: 'createLeadAction',
-        status: 'START',
-        message: `Registering new identity for ${data.customer_phone}`,
-        payload: { phone: data.customer_phone, name: data.customer_name },
-    });
 
     // Strict sanitation
     const strictPhone = toAppStorageFormat(data.customer_phone);
@@ -510,15 +488,6 @@ export async function createLeadAction(data: {
                 console.error('[DEBUG] crm_audit_log insert failed:', auditError);
             }
 
-            await serverLog({
-                component: 'CRM',
-                action: 'createLeadAction',
-                status: 'INFO',
-                message: `Duplicate lead attempt detected; using existing lead ${existingLead.id}`,
-                payload: { existingLeadId: existingLead.id, customerId },
-                duration_ms: Date.now() - startTime,
-            });
-
             return { success: true, leadId: existingLead.id, duplicate: true };
         }
 
@@ -564,38 +533,14 @@ export async function createLeadAction(data: {
 
         if (error) {
             console.error('[DEBUG] crm_leads insertion failed:', error);
-            await serverLog({
-                component: 'CRM',
-                action: 'createLeadAction',
-                status: 'ERROR',
-                message: `Lead insertion failed: ${error.message}`,
-                error: error,
-                duration_ms: Date.now() - startTime,
-            });
             return { success: false, message: error.message };
         }
 
         console.log('[DEBUG] Lead created successfully:', lead.id);
-        await serverLog({
-            component: 'CRM',
-            action: 'createLeadAction',
-            status: 'SUCCESS',
-            message: `Identity Registered Successfully: ${lead.customer_name}`,
-            payload: { leadId: lead.id },
-            duration_ms: Date.now() - startTime,
-        });
         revalidatePath('/app/[slug]/leads', 'page');
         return { success: true, leadId: lead.id };
     } catch (error) {
         console.error('[DEBUG] Lead creation process CRASHED:', error);
-        await serverLog({
-            component: 'CRM',
-            action: 'createLeadAction',
-            status: 'ERROR',
-            message: error instanceof Error ? error.message : 'Process Crashed',
-            error: error,
-            duration_ms: Date.now() - startTime,
-        });
         return {
             success: false,
             message:
@@ -1481,57 +1426,31 @@ export async function getQuotePdpUrl(quoteId: string) {
         return { success: false, error: 'Quote or Variant not found' };
     }
 
-    // 2. Resolve Slugs
-    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
+    // 2. Resolve slugs from canonical V2 tables first
+    const { data: skuRow } = await (supabase as any)
+        .from('cat_skus')
+        .select(
+            `
+            id,
+            model:cat_models!model_id(slug, brand:cat_brands!brand_id(slug)),
+            vehicle_variant:cat_variants_vehicle!vehicle_variant_id(slug),
+            accessory_variant:cat_variants_accessory!accessory_variant_id(slug),
+            service_variant:cat_variants_service!service_variant_id(slug)
+        `
+        )
+        .eq('id', quote.variant_id)
+        .maybeSingle();
 
-    if (useLinear) {
-        const { data: linearRow, error: linearError } = await supabase
-            .from('cat_skus_linear')
-            .select('brand_json, product_json, variant_json')
-            .eq('variant_id', quote.variant_id)
-            .limit(1)
-            .maybeSingle();
+    const modelSlug = skuRow?.model?.slug;
+    const brandSlug = skuRow?.model?.brand?.slug;
+    const variantSlug =
+        skuRow?.vehicle_variant?.slug || skuRow?.accessory_variant?.slug || skuRow?.service_variant?.slug;
 
-        if (linearError || !linearRow) {
-            console.error('getQuotePdpUrl Linear Error:', linearError);
-            return { success: false, error: 'Product data not found in linear catalog' };
-        }
-
-        const brandSlug = (linearRow.brand_json as any).slug;
-        const modelSlug = (linearRow.product_json as any).slug;
-        const variantSlug = (linearRow.variant_json as any).slug;
-
-        if (!brandSlug || !modelSlug || !variantSlug) {
-            return { success: false, error: 'Incomplete slugs in linear catalog' };
-        }
-
+    if (brandSlug && modelSlug && variantSlug) {
         return { success: true, url: `/app/${brandSlug}/${modelSlug}/${variantSlug}/quote` };
-    } else {
-        // Legacy fallback
-        const { data: variant, error: variantError } = await supabase
-            .from('cat_items')
-            .select('slug, parent_id')
-            .eq('id', quote.variant_id)
-            .single();
-
-        if (variantError || !variant || !variant.parent_id) {
-            return { success: false, error: 'Variant not found' };
-        }
-
-        const { data: model, error: modelError } = await supabase
-            .from('cat_items')
-            .select('slug, brand_id')
-            .eq('id', variant.parent_id)
-            .single();
-
-        if (modelError || !model || !model.brand_id) {
-            return { success: false, error: 'Model not found' };
-        }
-
-        const { data: brand } = await supabase.from('cat_brands').select('slug').eq('id', model.brand_id).single();
-
-        return { success: true, url: `/app/${brand?.slug}/${model.slug}/${variant.slug}/quote` };
     }
+
+    return { success: false, error: 'Variant slugs not found in canonical catalog' };
 }
 
 // --- QUOTE EDITOR DASHBOARD ACTIONS ---
@@ -1753,7 +1672,7 @@ export async function getQuoteById(
     const pricingSnapshot: any = commercials.pricing_snapshot || {};
     const dealerFromPricing = pricingSnapshot?.dealer || commercials?.dealer || null;
 
-    // Fetch high-fidelity pricing from cat_skus_linear (SOT)
+    // Fetch high-fidelity pricing from canonical state pricing table
     const pricingClient = await createClient();
     let highFidelityPricing = null;
     const colorId = q.color_id || q.vehicle_sku_id || pricingSnapshot?.color_id;
@@ -1761,21 +1680,55 @@ export async function getQuoteById(
     const district = commercials.location?.district || pricingSnapshot?.location?.district;
 
     if (colorId && stateCode) {
-        const priceCol = `price_${stateCode.toLowerCase()}`;
-        const { data: linearRow } = await pricingClient
-            .from('cat_skus_linear')
-            .select(`unit_json, ${priceCol}`)
-            .eq('unit_json->>id', colorId)
-            .eq('status', 'ACTIVE')
-            .limit(1)
+        const { data: priceRow } = await pricingClient
+            .from('cat_price_state_mh')
+            .select(
+                `
+                gst_rate, hsn_code, ins_gst_rate,
+                rto_registration_fee_state, rto_smartcard_charges_state, rto_postal_charges_state, rto_roadtax_amount_state, rto_roadtax_cess_amount_state, rto_total_state,
+                rto_registration_fee_bh, rto_smartcard_charges_bh, rto_postal_charges_bh, rto_roadtax_amount_bh, rto_roadtax_cess_amount_bh, rto_total_bh,
+                rto_registration_fee_company, rto_smartcard_charges_company, rto_postal_charges_company, rto_roadtax_amount_company, rto_roadtax_cess_amount_company, rto_total_company,
+                ins_own_damage_total_amount, ins_liability_only_total_amount
+                `
+            )
+            .eq('sku_id', colorId)
+            .eq('state_code', stateCode)
             .maybeSingle();
-        const pm = (linearRow as any)?.[priceCol];
-        if (pm) {
+        if (priceRow) {
             highFidelityPricing = {
-                gst_rate: pm.gst_rate,
-                rto: pm.rto,
-                hsn_code: pm.hsn_code,
-                insurance: pm.insurance,
+                gst_rate: Number((priceRow as any).gst_rate || 0),
+                hsn_code: (priceRow as any).hsn_code,
+                rto: {
+                    STATE: {
+                        registrationFee: Number((priceRow as any).rto_registration_fee_state || 0),
+                        smartCardCharges: Number((priceRow as any).rto_smartcard_charges_state || 0),
+                        postalCharges: Number((priceRow as any).rto_postal_charges_state || 0),
+                        roadTax: Number((priceRow as any).rto_roadtax_amount_state || 0),
+                        cessAmount: Number((priceRow as any).rto_roadtax_cess_amount_state || 0),
+                        total: Number((priceRow as any).rto_total_state || 0),
+                    },
+                    BH: {
+                        registrationFee: Number((priceRow as any).rto_registration_fee_bh || 0),
+                        smartCardCharges: Number((priceRow as any).rto_smartcard_charges_bh || 0),
+                        postalCharges: Number((priceRow as any).rto_postal_charges_bh || 0),
+                        roadTax: Number((priceRow as any).rto_roadtax_amount_bh || 0),
+                        cessAmount: Number((priceRow as any).rto_roadtax_cess_amount_bh || 0),
+                        total: Number((priceRow as any).rto_total_bh || 0),
+                    },
+                    COMPANY: {
+                        registrationFee: Number((priceRow as any).rto_registration_fee_company || 0),
+                        smartCardCharges: Number((priceRow as any).rto_smartcard_charges_company || 0),
+                        postalCharges: Number((priceRow as any).rto_postal_charges_company || 0),
+                        roadTax: Number((priceRow as any).rto_roadtax_amount_company || 0),
+                        cessAmount: Number((priceRow as any).rto_roadtax_cess_amount_company || 0),
+                        total: Number((priceRow as any).rto_total_company || 0),
+                    },
+                },
+                insurance: {
+                    gst_rate: Number((priceRow as any).ins_gst_rate || 18),
+                    od: { total: Number((priceRow as any).ins_own_damage_total_amount || 0) },
+                    tp: { total: Number((priceRow as any).ins_liability_only_total_amount || 0) },
+                },
             };
         }
     }
@@ -2039,12 +1992,16 @@ export async function getQuoteById(
         }
     }
 
-    // Resolve vehicle image: fallback to cat_items if not stored on quote
+    // Resolve vehicle image: fallback to cat_skus if not stored on quote
     let vehicleImageUrl = q.vehicle_image || commercials.image_url || null;
     if (!vehicleImageUrl) {
         const skuId = q.vehicle_sku_id || q.color_id || q.variant_id;
         if (skuId) {
-            const { data: catItem } = await adminClient.from('cat_items').select('image_url').eq('id', skuId).single();
+            const { data: catItem } = await (adminClient as any)
+                .from('cat_skus')
+                .select('image_url')
+                .eq('id', skuId)
+                .single();
             vehicleImageUrl = catItem?.image_url || null;
         }
     }
@@ -3227,47 +3184,29 @@ export async function getQuoteMarketplaceUrl(
         return { success: false, error: 'No SKU ID found' };
     }
 
-    const { data: sku, error: skuError } = await supabase
-        .from('cat_items')
-        .select('slug, parent_id')
+    const { data: sku, error: skuError } = await (supabase as any)
+        .from('cat_skus')
+        .select(
+            `
+            id,
+            model:cat_models!model_id(slug, brand:cat_brands!brand_id(slug)),
+            vehicle_variant:cat_variants_vehicle!vehicle_variant_id(slug),
+            accessory_variant:cat_variants_accessory!accessory_variant_id(slug),
+            service_variant:cat_variants_service!service_variant_id(slug)
+        `
+        )
         .eq('id', skuId)
-        .single();
+        .maybeSingle();
 
-    if (skuError || !sku || !sku.parent_id) {
+    if (skuError || !sku) {
         return { success: false, error: 'SKU not found' };
     }
 
-    // Get variant
-    const { data: variant, error: variantError } = await supabase
-        .from('cat_items')
-        .select('slug, parent_id')
-        .eq('id', sku.parent_id)
-        .single();
-
-    if (variantError || !variant || !variant.parent_id) {
+    const brandSlug = sku.model?.brand?.slug;
+    const modelSlug = sku.model?.slug;
+    const variantSlug = sku.vehicle_variant?.slug || sku.accessory_variant?.slug || sku.service_variant?.slug;
+    if (!brandSlug || !modelSlug || !variantSlug) {
         return { success: false, error: 'Variant not found' };
-    }
-
-    // Get model
-    const { data: model, error: modelError } = await supabase
-        .from('cat_items')
-        .select('slug, brand_id')
-        .eq('id', variant.parent_id)
-        .single();
-
-    if (modelError || !model || !model.brand_id) {
-        return { success: false, error: 'Model not found' };
-    }
-
-    // Get brand
-    const { data: brand, error: brandError } = await supabase
-        .from('cat_brands')
-        .select('slug')
-        .eq('id', model.brand_id)
-        .single();
-
-    if (brandError || !brand) {
-        return { success: false, error: 'Brand not found' };
     }
 
     const commercials = quote.commercials || {};
@@ -3280,7 +3219,7 @@ export async function getQuoteMarketplaceUrl(
         studioId: quote.studio_id || '',
     });
 
-    const url = `/store/${brand.slug}/${model.slug}/${variant.slug}?${params.toString()}`;
+    const url = `/store/${brandSlug}/${modelSlug}/${variantSlug}?${params.toString()}`;
     return { success: true, url };
 }
 
@@ -3316,7 +3255,7 @@ export async function getQuoteByDisplayId(
     const commercials: any = (quote.commercials as any) || {};
     const pricingSnapshot: any = commercials.pricing_snapshot || {};
 
-    // Fetch high-fidelity pricing from cat_skus_linear (SOT)
+    // Fetch high-fidelity pricing from canonical state pricing table
     let highFidelityPricing = null;
     const colorId = quote.color_id || quote.variant_id || pricingSnapshot?.color_id;
     const stateCode =
@@ -3326,21 +3265,55 @@ export async function getQuoteByDisplayId(
         commercials?.location?.stateCode;
 
     if (colorId && stateCode) {
-        const priceCol = `price_${stateCode.toLowerCase()}`;
-        const { data: linearRow } = await supabase
-            .from('cat_skus_linear')
-            .select(`unit_json, ${priceCol}`)
-            .eq('unit_json->>id', colorId)
-            .eq('status', 'ACTIVE')
-            .limit(1)
+        const { data: priceRow } = await supabase
+            .from('cat_price_state_mh')
+            .select(
+                `
+                gst_rate, hsn_code, ins_gst_rate,
+                rto_registration_fee_state, rto_smartcard_charges_state, rto_postal_charges_state, rto_roadtax_amount_state, rto_roadtax_cess_amount_state, rto_total_state,
+                rto_registration_fee_bh, rto_smartcard_charges_bh, rto_postal_charges_bh, rto_roadtax_amount_bh, rto_roadtax_cess_amount_bh, rto_total_bh,
+                rto_registration_fee_company, rto_smartcard_charges_company, rto_postal_charges_company, rto_roadtax_amount_company, rto_roadtax_cess_amount_company, rto_total_company,
+                ins_own_damage_total_amount, ins_liability_only_total_amount
+                `
+            )
+            .eq('sku_id', colorId)
+            .eq('state_code', stateCode)
             .maybeSingle();
-        const pm = (linearRow as any)?.[priceCol];
-        if (pm) {
+        if (priceRow) {
             highFidelityPricing = {
-                gst_rate: pm.gst_rate,
-                rto: pm.rto,
-                hsn_code: pm.hsn_code,
-                insurance: pm.insurance,
+                gst_rate: Number((priceRow as any).gst_rate || 0),
+                hsn_code: (priceRow as any).hsn_code,
+                rto: {
+                    STATE: {
+                        registrationFee: Number((priceRow as any).rto_registration_fee_state || 0),
+                        smartCardCharges: Number((priceRow as any).rto_smartcard_charges_state || 0),
+                        postalCharges: Number((priceRow as any).rto_postal_charges_state || 0),
+                        roadTax: Number((priceRow as any).rto_roadtax_amount_state || 0),
+                        cessAmount: Number((priceRow as any).rto_roadtax_cess_amount_state || 0),
+                        total: Number((priceRow as any).rto_total_state || 0),
+                    },
+                    BH: {
+                        registrationFee: Number((priceRow as any).rto_registration_fee_bh || 0),
+                        smartCardCharges: Number((priceRow as any).rto_smartcard_charges_bh || 0),
+                        postalCharges: Number((priceRow as any).rto_postal_charges_bh || 0),
+                        roadTax: Number((priceRow as any).rto_roadtax_amount_bh || 0),
+                        cessAmount: Number((priceRow as any).rto_roadtax_cess_amount_bh || 0),
+                        total: Number((priceRow as any).rto_total_bh || 0),
+                    },
+                    COMPANY: {
+                        registrationFee: Number((priceRow as any).rto_registration_fee_company || 0),
+                        smartCardCharges: Number((priceRow as any).rto_smartcard_charges_company || 0),
+                        postalCharges: Number((priceRow as any).rto_postal_charges_company || 0),
+                        roadTax: Number((priceRow as any).rto_roadtax_amount_company || 0),
+                        cessAmount: Number((priceRow as any).rto_roadtax_cess_amount_company || 0),
+                        total: Number((priceRow as any).rto_total_company || 0),
+                    },
+                },
+                insurance: {
+                    gst_rate: Number((priceRow as any).ins_gst_rate || 18),
+                    od: { total: Number((priceRow as any).ins_own_damage_total_amount || 0) },
+                    tp: { total: Number((priceRow as any).ins_liability_only_total_amount || 0) },
+                },
             };
         }
     }
@@ -3541,60 +3514,63 @@ export async function getQuoteByDisplayId(
         const resolved = { brand: '', model: '', variant: '' };
         if (!skuId) return resolved;
 
-        const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
-
-        if (useLinear) {
-            const { data: linearRow } = await supabase
-                .from('cat_skus_linear')
-                .select('brand_name, product_name, variant_name')
-                .eq('variant_id', skuId) // variant_id matches SKU id in linear table for single-unit SKUs
-                .limit(1)
-                .maybeSingle();
-
-            if (linearRow) {
-                resolved.brand = linearRow.brand_name;
-                resolved.model = linearRow.product_name;
-                resolved.variant = linearRow.variant_name;
-                return resolved;
-            }
-        }
-
-        const { data: sku } = await supabase
-            .from('cat_items')
-            .select('id, name, parent_id, type')
+        // Try as SKU first
+        const { data: sku } = await (supabase as any)
+            .from('cat_skus')
+            .select('id, name, vehicle_variant_id')
             .eq('id', skuId)
             .maybeSingle();
 
-        if (!sku) return resolved;
-
-        let variantItem: any = null;
-        if (sku.type === 'VARIANT') {
-            variantItem = sku;
-        } else if (sku.parent_id) {
-            const { data: variant } = await supabase
-                .from('cat_items')
-                .select('id, name, parent_id')
-                .eq('id', sku.parent_id)
+        if (sku?.vehicle_variant_id) {
+            const { data: variant } = await (supabase as any)
+                .from('cat_variants_vehicle')
+                .select('id, name, model_id')
+                .eq('id', sku.vehicle_variant_id)
                 .maybeSingle();
-            variantItem = variant || null;
+            if (variant?.name) resolved.variant = variant.name;
+
+            if (variant?.model_id) {
+                const { data: model } = await (supabase as any)
+                    .from('cat_models')
+                    .select('id, name, brand_id')
+                    .eq('id', variant.model_id)
+                    .maybeSingle();
+                if (model?.name) resolved.model = model.name;
+                if (model?.brand_id) {
+                    const { data: brand } = await supabase
+                        .from('cat_brands')
+                        .select('name')
+                        .eq('id', model.brand_id)
+                        .maybeSingle();
+                    if (brand?.name) resolved.brand = brand.name;
+                }
+            }
+            return resolved;
         }
 
-        if (variantItem?.name) resolved.variant = variantItem.name;
-
-        if (variantItem?.parent_id) {
-            const { data: model } = await supabase
-                .from('cat_items')
-                .select('id, name, brand_id')
-                .eq('id', variantItem.parent_id)
-                .maybeSingle();
-            if (model?.name) resolved.model = model.name;
-            if (model?.brand_id) {
-                const { data: brand } = await supabase
-                    .from('cat_brands')
-                    .select('name')
-                    .eq('id', model.brand_id)
+        // Try as variant
+        const { data: variant } = await (supabase as any)
+            .from('cat_variants_vehicle')
+            .select('id, name, model_id')
+            .eq('id', skuId)
+            .maybeSingle();
+        if (variant?.name) {
+            resolved.variant = variant.name;
+            if (variant.model_id) {
+                const { data: model } = await (supabase as any)
+                    .from('cat_models')
+                    .select('id, name, brand_id')
+                    .eq('id', variant.model_id)
                     .maybeSingle();
-                if (brand?.name) resolved.brand = brand.name;
+                if (model?.name) resolved.model = model.name;
+                if (model?.brand_id) {
+                    const { data: brand } = await supabase
+                        .from('cat_brands')
+                        .select('name')
+                        .eq('id', model.brand_id)
+                        .maybeSingle();
+                    if (brand?.name) resolved.brand = brand.name;
+                }
             }
         }
 
@@ -3620,75 +3596,56 @@ export async function getQuoteByDisplayId(
 
     const itemId = (quote.color_id || quote.variant_id) as string | null;
     if ((!resolvedImageUrl || Object.keys(vehicleSpecs).length === 0 || !itemHex) && itemId) {
-        const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
-
-        if (useLinear) {
-            const { data: linearRow } = await supabase
-                .from('cat_skus_linear')
-                .select('image_url, product_json, variant_json, unit_json')
-                .eq('variant_id', itemId)
-                .limit(1)
-                .maybeSingle();
-
-            if (linearRow) {
-                if (!resolvedImageUrl && linearRow.image_url) {
-                    resolvedImageUrl = linearRow.image_url;
-                }
-                vehicleSpecs = {
-                    ...((linearRow.product_json as any)?.specs || {}),
-                    ...((linearRow.variant_json as any)?.specs || {}),
-                    ...((linearRow.unit_json as any)?.specs || {}),
-                };
-            }
-        }
-
         if (!resolvedImageUrl || Object.keys(vehicleSpecs).length === 0) {
-            const { data: item } = await supabase
-                .from('cat_items')
-                .select('image_url, specs, type, parent_id')
+            // Try cat_skus first
+            const { data: skuItem } = await (supabase as any)
+                .from('cat_skus')
+                .select('image_url, hex_primary, color_name, vehicle_variant_id')
                 .eq('id', itemId)
                 .maybeSingle();
 
-            if (item) {
-                if (!resolvedImageUrl && item.image_url) {
-                    resolvedImageUrl = item.image_url;
+            if (skuItem) {
+                if (!resolvedImageUrl && skuItem.image_url) {
+                    resolvedImageUrl = skuItem.image_url;
                 }
-                if (item.specs) {
-                    // Merge DB specs as source of truth (SKU/Variant/Model)
-                    let modelSpecs: any = {};
-                    let variantSpecs: any = {};
-                    let skuSpecs: any = item.specs || {};
+                // Merge specs from variant and model
+                let modelSpecs: any = {};
+                let variantSpecs: any = {};
 
-                    if (item.type === 'SKU' && item.parent_id) {
-                        const { data: variantItem } = await supabase
-                            .from('cat_items')
-                            .select('specs, parent_id')
-                            .eq('id', item.parent_id)
-                            .maybeSingle();
-                        if (variantItem?.specs) variantSpecs = variantItem.specs;
-
-                        if (variantItem?.parent_id) {
-                            const { data: modelItem } = await supabase
-                                .from('cat_items')
+                if (skuItem.vehicle_variant_id) {
+                    const { data: variantItem } = await (supabase as any)
+                        .from('cat_variants_vehicle')
+                        .select('engine_cc, fuel_capacity, mileage, specs, model_id')
+                        .eq('id', skuItem.vehicle_variant_id)
+                        .maybeSingle();
+                    if (variantItem) {
+                        variantSpecs = {
+                            ...(variantItem.specs || {}),
+                            engine_cc: variantItem.engine_cc,
+                            fuel_capacity: variantItem.fuel_capacity,
+                            mileage: variantItem.mileage,
+                        };
+                        if (variantItem.model_id) {
+                            const { data: modelItem } = await (supabase as any)
+                                .from('cat_models')
                                 .select('specs')
-                                .eq('id', variantItem.parent_id)
+                                .eq('id', variantItem.model_id)
                                 .maybeSingle();
                             if (modelItem?.specs) modelSpecs = modelItem.specs;
                         }
-                    } else if (item.type === 'VARIANT' && item.parent_id) {
-                        const { data: modelItem } = await supabase
-                            .from('cat_items')
-                            .select('specs')
-                            .eq('id', item.parent_id)
-                            .maybeSingle();
-                        if (modelItem?.specs) modelSpecs = modelItem.specs;
                     }
+                }
 
-                    vehicleSpecs = { ...vehicleSpecs, ...modelSpecs, ...variantSpecs, ...skuSpecs };
+                const skuSpecs: any = {
+                    hex_primary: skuItem.hex_primary,
+                    color_name: skuItem.color_name,
+                };
+                vehicleSpecs = { ...vehicleSpecs, ...modelSpecs, ...variantSpecs, ...skuSpecs };
 
+                if (!itemHex) {
+                    itemHex = resolveHex(skuItem.hex_primary) || null;
                     if (!itemHex) {
                         const s = vehicleSpecs as any;
-                        // Check all variants of hex fields in TVS/AUMS data
                         itemHex =
                             resolveHex(s?.color_hex) ||
                             resolveHex(s?.colorHex) ||
@@ -3698,6 +3655,31 @@ export async function getQuoteByDisplayId(
                             resolveHex(s?.ColorHexCode) ||
                             resolveHex(s?.fields?.ColorHexCode);
                     }
+                }
+            } else {
+                // Try as variant
+                const { data: variantItem } = await (supabase as any)
+                    .from('cat_variants_vehicle')
+                    .select('engine_cc, fuel_capacity, mileage, specs, model_id')
+                    .eq('id', itemId)
+                    .maybeSingle();
+                if (variantItem) {
+                    let mSpecs: any = {};
+                    const vSpecs = {
+                        ...(variantItem.specs || {}),
+                        engine_cc: variantItem.engine_cc,
+                        fuel_capacity: variantItem.fuel_capacity,
+                        mileage: variantItem.mileage,
+                    };
+                    if (variantItem.model_id) {
+                        const { data: modelItem } = await (supabase as any)
+                            .from('cat_models')
+                            .select('specs')
+                            .eq('id', variantItem.model_id)
+                            .maybeSingle();
+                        if (modelItem?.specs) mSpecs = modelItem.specs;
+                    }
+                    vehicleSpecs = { ...vehicleSpecs, ...mSpecs, ...vSpecs };
                 }
             }
         }
@@ -3715,11 +3697,10 @@ export async function getQuoteByDisplayId(
         pricingSnapshot?.dealer?.id || pricingSnapshot?.dealer_id || commercials?.dealer_id || quote.studio_id || null;
 
     // PDP Options: Accessories + Services
-    const { data: accessoriesData } = await supabase
-        .from('cat_items')
+    const { data: accessoriesData } = await (supabase as any)
+        .from('cat_skus')
         .select('*, brand:cat_brands(name), category')
         .eq('category', 'ACCESSORY')
-        .eq('type', 'SKU')
         .eq('status', 'ACTIVE');
 
     const { data: servicesData } = await supabase.from('cat_services').select('*').eq('status', 'ACTIVE');
@@ -4600,8 +4581,7 @@ export async function getAlternativeRecommendations(variantId: string) {
                 id,
                 name,
                 image_url,
-                price_base,
-                brand:cat_brands!cat_items_brand_id_fkey(name)
+                price_base
             )
         `
         )
@@ -4615,79 +4595,34 @@ export async function getAlternativeRecommendations(variantId: string) {
             return {
                 id: item.id,
                 name: item.name,
-                brand: item.brand?.name || '',
+                brand: '',
                 price: Number(item.price_base),
                 image: item.image_url,
             };
         });
     }
 
-    // 2. Fallback: Get alternative variants from linear catalog if enabled
-    const useLinear = process.env.NEXT_PUBLIC_USE_LINEAR_CATALOG === 'true';
-
-    if (useLinear) {
-        const { data: currentLinear } = await (adminClient as any)
-            .from('cat_skus_linear')
-            .select('product_id, price_base')
-            .eq('variant_id', variantId)
-            .limit(1)
-            .maybeSingle();
-
-        if (currentLinear && currentLinear.product_id) {
-            const basePrice = Number(currentLinear.price_base) || 0;
-            const minPrice = basePrice * 0.8;
-            const maxPrice = basePrice * 1.2;
-
-            const { data: alternatives } = await (adminClient as any)
-                .from('cat_skus_linear')
-                .select('variant_id, variant_name, brand_name, price_base, image_url')
-                .eq('product_id', currentLinear.product_id)
-                .neq('variant_id', variantId)
-                .gte('price_base', minPrice)
-                .lte('price_base', maxPrice)
-                .limit(3);
-
-            if (alternatives && alternatives.length > 0) {
-                // Return unique variants (cat_skus_linear has SKU rows, so we take the first of each variant)
-                const uniqueVariants = new Map();
-                alternatives.forEach((a: any) => {
-                    if (!uniqueVariants.has(a.variant_id)) {
-                        uniqueVariants.set(a.variant_id, {
-                            id: a.variant_id,
-                            name: a.variant_name,
-                            brand: a.brand_name,
-                            price: Number(a.price_base),
-                            image: a.image_url,
-                        });
-                    }
-                });
-                return Array.from(uniqueVariants.values());
-            }
-        }
-    }
-
-    // 3. Fallback: Get current variant's parent (FAMILY) and price (Legacy)
-    const { data: current, error: currentError } = await adminClient
-        .from('cat_items')
-        .select('parent_id, price_base, brand_id')
+    // 2. Fallback: Get current variant's model and price
+    const { data: current, error: currentError } = await (adminClient as any)
+        .from('cat_variants_vehicle')
+        .select('model_id, price_base')
         .eq('id', variantId)
         .single();
 
-    if (currentError || !current || !current.parent_id) {
+    if (currentError || !current || !current.model_id) {
         console.error('Error fetching current variant for alternatives:', currentError);
         return [];
     }
 
-    // 4. Fallback: Fetch up to 3 sibling variants from the same FAMILY within ±20% price (Legacy)
+    // 3. Fallback: Fetch up to 3 sibling variants from the same model within ±20% price
     const basePrice = Number(current.price_base) || 0;
     const minPrice = basePrice * 0.8;
     const maxPrice = basePrice * 1.2;
 
-    const { data: alternatives, error: altError } = await adminClient
-        .from('cat_items')
-        .select('id, name, image_url, price_base, brand_id')
-        .eq('type', 'VARIANT')
-        .eq('parent_id', current.parent_id)
+    const { data: alternatives, error: altError } = await (adminClient as any)
+        .from('cat_variants_vehicle')
+        .select('id, name, image_url, price_base')
+        .eq('model_id', current.model_id)
         .neq('id', variantId)
         .gte('price_base', minPrice)
         .lte('price_base', maxPrice)
@@ -4701,7 +4636,7 @@ export async function getAlternativeRecommendations(variantId: string) {
     return (alternatives || []).map((a: any) => ({
         id: a.id,
         name: a.name,
-        brand: a.brand_id || '',
+        brand: '',
         price: Number(a.price_base),
         image: a.image_url,
     }));

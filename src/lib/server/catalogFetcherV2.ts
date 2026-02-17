@@ -1,10 +1,10 @@
 /**
  * catalogFetcherV2.ts — V2 Catalog Fetcher
  *
- * Reads from normalized V2 tables (cat_models, cat_variants_*, cat_skus, cat_price_mh)
+ * Reads from normalized V2 tables (cat_models, cat_variants_*, cat_skus, cat_price_state_mh)
  * using proper relational JOINs. No JSONB unpacking needed.
  *
- * This replaces the V1 flow: cat_skus_linear → reconstructHierarchy → mapCatalogItems
+ * This replaces the legacy V1 hierarchy reconstruction flow.
  */
 
 import { withCache } from '../cache/cache';
@@ -79,7 +79,7 @@ interface RawProductRow {
     console_type: string | null;
     bluetooth: boolean | null;
     usb_charging: boolean | null;
-    // Pricing (from cat_price_mh)
+    // Pricing (from cat_price_state_mh)
     ex_showroom: number | null;
     on_road_price: number | null;
     rto_state_total: number | null;
@@ -220,8 +220,10 @@ async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRo
     const skuIds = skus.map((s: any) => s.id);
     const [{ data: pricing }, visitCounts] = await Promise.all([
         adminClient
-            .from('cat_price_mh')
-            .select('sku_id, ex_showroom, on_road_price, rto_state_total, ins_total, publish_stage, is_popular')
+            .from('cat_price_state_mh')
+            .select(
+                'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular'
+            )
             .in('sku_id', skuIds)
             .eq('state_code', stateCode)
             .eq('publish_stage', 'PUBLISHED'),
@@ -304,7 +306,7 @@ async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRo
             // Pricing
             ex_showroom: price?.ex_showroom ?? null,
             on_road_price: price?.on_road_price ?? null,
-            rto_state_total: price?.rto_state_total ?? null,
+            rto_state_total: price?.rto_total_state ?? null,
             ins_total: price?.ins_total ?? null,
             publish_stage: price?.publish_stage ?? null,
             is_popular: price?.is_popular ?? null,
@@ -381,7 +383,7 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
             },
         };
 
-        // Build price from cat_price_mh
+        // Build price from cat_price_state_mh
         const exShowroom = primarySku.ex_showroom ?? primarySku.price_base ?? 0;
         const onRoad = primarySku.on_road_price ?? exShowroom;
 
@@ -432,39 +434,6 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
             offsetX: primarySku.offset_x ?? undefined,
             offsetY: primarySku.offset_y ?? undefined,
             color: primarySku.color_name || undefined,
-            _debugSource: {
-                id: { table: 'cat_skus', logic: 'Primary SKU ID' },
-                imageUrl: { table: 'cat_skus', logic: `Column: primary_image from SKU: ${primarySku.sku_id}` },
-                name: { table: 'cat_models', logic: 'Name from cat_models joined via model_id' },
-                variant: {
-                    table: 'cat_variants_*',
-                    logic: 'Name from type-specific variant table (vehicle/accessory/service)',
-                },
-                exShowroom: {
-                    table: 'cat_price_mh',
-                    logic: `ex_showroom from state table MH. Fallback to SKU price_base: ${primarySku.price_base}`,
-                },
-                onRoad: {
-                    table: 'cat_price_mh',
-                    logic: 'on_road_price from state table MH. Calculated in save/publish actions.',
-                },
-                colors: {
-                    table: 'cat_skus (grouped)',
-                    logic: `Found ${skus.length} sibling SKUs for this variant group. Color data from cat_skus + cat_colours.`,
-                },
-                specs: {
-                    table: 'cat_variants_vehicle',
-                    logic: 'Technical specifications from vehicle variant table.',
-                },
-                emi: {
-                    table: 'Calculation',
-                    logic: '(OnRoad - Downpayment) * ~3.5% (approx monthly interest/repayment factor)',
-                },
-                bcoins: {
-                    table: 'Calculation',
-                    logic: '13 Coins = ₹1000 INR conversion on On-Road/Offer Price',
-                },
-            },
         };
 
         result.push(variant);

@@ -42,27 +42,77 @@ export default function UnifiedCatalogPage() {
         setIsLoading(true);
         const supabase = createClient();
 
-        // 1. Fetch Families with nested children for the list
-        const { data, error } = await supabase
-            .from('cat_items')
-            .select(
-                `
-                *,
-                brand:cat_brands(id, name, logo_svg),
-                colors:cat_items!parent_id(id, name, type, specs, position, status),
-                variants:cat_items!parent_id(
-                    id, name, type, position, status,
-                    children:cat_items!parent_id(
-                        id, name, type, specs, slug, status, position,
-                        skus:cat_items!parent_id(id, name, type, specs, slug, status, position)
-                    )
-                )
-            `
-            )
-            .eq('type', 'PRODUCT')
+        // 1. Fetch models (families)
+        const { data: models } = await (supabase as any)
+            .from('cat_models')
+            .select('*, brand:cat_brands(id, name, logo_svg)')
             .order('created_at', { ascending: false });
 
-        if (data) setItems(data as any);
+        if (!models || models.length === 0) {
+            setItems([]);
+            setIsLoading(false);
+            return;
+        }
+
+        const modelIds = models.map((m: any) => m.id);
+
+        // 2. Fetch variants for all models
+        const { data: variants } = await (supabase as any)
+            .from('cat_variants_vehicle')
+            .select('id, name, model_id, status, position, specs, slug')
+            .in('model_id', modelIds);
+
+        const variantIds = (variants || []).map((v: any) => v.id);
+
+        // 3. Fetch SKUs for all variants
+        const { data: skus } = await (supabase as any)
+            .from('cat_skus')
+            .select('id, name, vehicle_variant_id, status, position, specs, slug, hex_primary, color_name, image_url')
+            .in('vehicle_variant_id', variantIds.length > 0 ? variantIds : ['__none__']);
+
+        // 4. Assemble hierarchy: model → variants → skus (matching old cat_items structure)
+        const assembled = models.map((model: any) => {
+            const modelVariants = (variants || []).filter((v: any) => v.model_id === model.id);
+            const modelSkus = (skus || []).filter((s: any) =>
+                modelVariants.some((v: any) => v.id === s.vehicle_variant_id)
+            );
+
+            return {
+                ...model,
+                // "colors" was a flat list of UNIT-type children — in V2 we derive from SKUs
+                colors: modelSkus.map((s: any) => ({
+                    id: s.id,
+                    name: s.color_name || s.name,
+                    type: 'UNIT',
+                    specs: { hex_primary: s.hex_primary, ...(s.specs || {}) },
+                    position: s.position,
+                    status: s.status,
+                })),
+                // "variants" with nested children and skus
+                variants: modelVariants.map((v: any) => ({
+                    ...v,
+                    type: 'VARIANT',
+                    parent_id: model.id,
+                    children: (skus || [])
+                        .filter((s: any) => s.vehicle_variant_id === v.id)
+                        .map((s: any) => ({
+                            ...s,
+                            type: 'SKU',
+                            parent_id: v.id,
+                            skus: [], // SKUs are leaf nodes
+                        })),
+                    skus: (skus || [])
+                        .filter((s: any) => s.vehicle_variant_id === v.id)
+                        .map((s: any) => ({
+                            ...s,
+                            type: 'SKU',
+                            parent_id: v.id,
+                        })),
+                })),
+            };
+        });
+
+        setItems(assembled as any);
         setIsLoading(false);
     };
 

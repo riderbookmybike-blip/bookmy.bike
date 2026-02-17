@@ -49,7 +49,7 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
         return { logs: [], total: 0, error: error.message };
     }
 
-    // Resolve record names from cat_items for better readability
+    // Resolve record names from V2 catalog tables for better readability
     const logs = (data as AuditRow[]) || [];
     const itemIds = new Set<string>();
     logs.forEach(log => {
@@ -61,14 +61,18 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
         }
     });
 
-    // Batch resolve names
+    // Batch resolve names from V2 catalog tables
     const nameMap = new Map<string, string>();
     if (itemIds.size > 0) {
-        const { data: items } = await adminClient
-            .from('cat_items')
-            .select('id, name, type')
-            .in('id', Array.from(itemIds));
-        items?.forEach(item => nameMap.set(item.id, `${item.name} (${item.type})`));
+        const idsArr = Array.from(itemIds);
+        const [skuRes, modelRes] = await Promise.all([
+            (adminClient as any).from('cat_skus').select('id, name').in('id', idsArr),
+            (adminClient as any).from('cat_models').select('id, name').in('id', idsArr),
+        ]);
+        skuRes.data?.forEach((item: any) => nameMap.set(item.id, `${item.name} (SKU)`));
+        modelRes.data?.forEach((item: any) => {
+            if (!nameMap.has(item.id)) nameMap.set(item.id, `${item.name} (Model)`);
+        });
     }
 
     const actorIds = Array.from(new Set(logs.map(l => l.performed_by).filter(Boolean))) as string[];

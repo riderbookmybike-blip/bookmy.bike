@@ -11,7 +11,6 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { Logo } from '@/components/brand/Logo';
 import { can } from '@/lib/auth/rbac';
-import { SystemDebugger } from '@/components/debug/SystemDebugger';
 
 interface SidebarProps {
     role: UserRole;
@@ -325,7 +324,6 @@ export default function Sidebar({
                     </div>
                 </div>
             )}
-            <SystemDebugger />
         </>
     );
 }

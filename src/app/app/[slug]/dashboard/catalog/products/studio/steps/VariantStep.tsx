@@ -104,13 +104,21 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                 ? supabase.from('cat_brands').select('id, name').in('id', Array.from(brandIds))
                 : { data: [] },
             familyIds.size > 0
-                ? supabase.from('cat_items').select('id, name').in('id', Array.from(familyIds))
+                ? (supabase as any).from('cat_models').select('id, name').in('id', Array.from(familyIds))
                 : { data: [] },
-            varIds.size > 0 ? supabase.from('cat_items').select('id, name').in('id', Array.from(varIds)) : { data: [] },
+            varIds.size > 0
+                ? (supabase as any).from('cat_variants_vehicle').select('id, name').in('id', Array.from(varIds))
+                : { data: [] },
         ]);
-        const brandMap = new Map((brandsRes.data || []).map((b: any) => [b.id, b.name]));
-        const familyMap = new Map((familiesRes.data || []).map((f: any) => [f.id, f.name]));
-        const varMap = new Map((varsRes.data || []).map((v: any) => [v.id, v.name]));
+        const brandMap = new Map<string, string>(
+            (brandsRes.data || []).map((b: any) => [String(b.id), String(b.name || '')])
+        );
+        const familyMap = new Map<string, string>(
+            (familiesRes.data || []).map((f: any) => [String(f.id), String(f.name || '')])
+        );
+        const varMap = new Map<string, string>(
+            (varsRes.data || []).map((v: any) => [String(v.id), String(v.name || '')])
+        );
 
         const result: Record<string, string[]> = {};
         allCompat.forEach((c: any) => {
@@ -119,10 +127,10 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                 label = 'UNIVERSAL';
             } else {
                 const parts: string[] = [];
-                if (c.target_brand_id) parts.push(brandMap.get(c.target_brand_id) || '?');
-                if (c.target_family_id) parts.push(familyMap.get(c.target_family_id) || '');
+                if (c.target_brand_id) parts.push(brandMap.get(String(c.target_brand_id)) || '?');
+                if (c.target_family_id) parts.push(familyMap.get(String(c.target_family_id)) || '');
                 else if (c.target_brand_id) parts.push('All');
-                if (c.target_variant_id) parts.push(varMap.get(c.target_variant_id) || '');
+                if (c.target_variant_id) parts.push(varMap.get(String(c.target_variant_id)) || '');
                 label = parts.filter(Boolean).join(' ');
             }
             if (!result[c.item_id]) result[c.item_id] = [];
@@ -139,11 +147,10 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         }
         const fetch = async () => {
             const supabase = createClient();
-            const { data } = await supabase
-                .from('cat_items')
+            const { data } = await (supabase as any)
+                .from('cat_models')
                 .select('id, name')
                 .eq('brand_id', selCompatBrand)
-                .eq('type', 'PRODUCT')
                 .eq('category', 'VEHICLE')
                 .eq('status', 'ACTIVE')
                 .order('name');
@@ -160,11 +167,10 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         }
         const fetch = async () => {
             const supabase = createClient();
-            const { data } = await supabase
-                .from('cat_items')
+            const { data } = await (supabase as any)
+                .from('cat_variants_vehicle')
                 .select('id, name')
-                .eq('parent_id', selCompatModel)
-                .eq('type', 'VARIANT')
+                .eq('model_id', selCompatModel)
                 .eq('status', 'ACTIVE')
                 .order('name');
             if (data) setCompatVariants(data);
@@ -196,8 +202,8 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                             parts.push(brand?.name || 'Unknown Brand');
                         }
                         if (c.target_family_id) {
-                            const { data: fam } = await supabase
-                                .from('cat_items')
+                            const { data: fam } = await (supabase as any)
+                                .from('cat_models')
                                 .select('name')
                                 .eq('id', c.target_family_id)
                                 .single();
@@ -207,8 +213,8 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                             parts.push('(All Models)');
                         }
                         if (c.target_variant_id) {
-                            const { data: v } = await supabase
-                                .from('cat_items')
+                            const { data: v } = await (supabase as any)
+                                .from('cat_variants_vehicle')
                                 .select('name')
                                 .eq('id', c.target_variant_id)
                                 .single();
@@ -421,10 +427,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         if (selectedBrandId) {
             const fetchFamilies = async () => {
                 const supabase = createClient();
-                let query = supabase
-                    .from('cat_items')
-                    .select('id, name, brand_id, brands:cat_brands(name)')
-                    .eq('type', 'PRODUCT');
+                let query = (supabase as any).from('cat_models').select('id, name, brand_id, brands:cat_brands(name)');
 
                 if (selectedBrandId !== 'ALL') {
                     query = query.eq('brand_id', selectedBrandId);
@@ -443,11 +446,10 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         if (selectedFamilyId) {
             const fetchVariants = async () => {
                 const supabase = createClient();
-                const { data } = await supabase
-                    .from('cat_items')
+                const { data } = await (supabase as any)
+                    .from('cat_variants_vehicle')
                     .select('id, name')
-                    .eq('type', 'VARIANT')
-                    .eq('parent_id', selectedFamilyId)
+                    .eq('model_id', selectedFamilyId)
                     .order('name');
                 if (data) setLookupVariants(data);
             };
@@ -498,9 +500,22 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                 hsn_code: family.hsn_code || '',
             };
 
-            const { data, error: dbError } = await supabase
-                .from('cat_items')
-                .upsert(payload, { onConflict: 'slug' })
+            const { data, error: dbError } = await (supabase as any)
+                .from('cat_variants_vehicle')
+                .upsert(
+                    {
+                        name: titleCasedName,
+                        specs: { [l1Label]: titleCasedName },
+                        status: 'ACTIVE',
+                        brand_id: family.brand_id,
+                        category: family.category || 'VEHICLE',
+                        model_id: family.id,
+                        slug: generatedSlug,
+                        position: nextPosition,
+                        hsn_code: family.hsn_code || '',
+                    },
+                    { onConflict: 'slug' }
+                )
                 .select()
                 .single();
 
@@ -552,7 +567,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
             setIsReorderSaving(true);
             await Promise.all(
                 updatedList.map((item: any) =>
-                    supabase.from('cat_items').update({ position: item.position }).eq('id', item.id)
+                    (supabase as any).from('cat_variants_vehicle').update({ position: item.position }).eq('id', item.id)
                 )
             );
             setShowReorderSaved(true);
@@ -575,7 +590,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         if (!confirm(`Are you sure you want to delete this ${l1Label.toLowerCase()}?`)) return;
         try {
             const supabase = createClient();
-            const { error } = await supabase.from('cat_items').delete().eq('id', id);
+            const { error } = await (supabase as any).from('cat_variants_vehicle').delete().eq('id', id);
             if (error) throw error;
             onUpdate(existingVariants.filter((v: any) => v.id !== id));
             toast.success('Variant deleted');
@@ -1054,8 +1069,8 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                             onUpdate(updatedList);
 
                             const supabase = createClient();
-                            await supabase
-                                .from('cat_items')
+                            await (supabase as any)
+                                .from('cat_variants_vehicle')
                                 .update({ specs: updatedSpecs })
                                 .eq('id', activeMediaVariant.id);
                         }}
@@ -1265,8 +1280,8 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                         };
 
                                         // 2. Update Database
-                                        const { error } = await supabase
-                                            .from('cat_items')
+                                        const { error } = await (supabase as any)
+                                            .from('cat_variants_vehicle')
                                             .update({
                                                 name: nameTitle,
                                                 slug: newSlug,

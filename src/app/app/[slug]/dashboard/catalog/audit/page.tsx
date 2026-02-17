@@ -71,8 +71,12 @@ const ACTION_CONFIG: Record<
 };
 
 const TABLE_LABELS: Record<string, string> = {
-    cat_items: 'Catalog Item',
+    cat_items: 'Catalog Item (Legacy)',
+    cat_skus: 'SKU',
+    cat_models: 'Model',
+    cat_variants_vehicle: 'Vehicle Variant',
     cat_price_state: 'Price State',
+    cat_price_state_mh: 'Price MH',
 };
 
 function formatValue(val: any): string {
@@ -261,8 +265,12 @@ export default function AuditLogPage() {
                         className="appearance-none pl-3 pr-7 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[10px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide focus:border-emerald-500 outline-none transition-all cursor-pointer"
                     >
                         <option value="ALL">All Tables</option>
-                        <option value="cat_items">Catalog Items</option>
-                        <option value="cat_price_state">Price State</option>
+                        <option value="cat_skus">SKUs</option>
+                        <option value="cat_models">Models</option>
+                        <option value="cat_variants_vehicle">Vehicle Variants</option>
+                        <option value="cat_items">Catalog Items (Legacy)</option>
+                        <option value="cat_price_state_mh">Price MH</option>
+                        <option value="cat_price_state">Price State (Legacy)</option>
                     </select>
                     <ChevronDown
                         size={10}

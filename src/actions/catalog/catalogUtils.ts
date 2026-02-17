@@ -122,7 +122,7 @@ export function getCategoryForField(field: string): string {
 }
 
 /**
- * Step-down structural keys into the strict { value, unit } format required by cat_skus_linear.
+ * Step-down structural keys into strict { value, unit } format for normalized catalog specs.
  */
 export function normalizeSpecsForLinear(rawSpecs: Record<string, any>): Record<string, any> {
     const specs: Record<string, any> = {};

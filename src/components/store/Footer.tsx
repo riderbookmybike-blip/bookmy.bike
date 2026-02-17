@@ -6,7 +6,6 @@ import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper, ArrowRight } 
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 import { motion } from 'framer-motion';
-import { SystemDebugger } from '@/components/debug/SystemDebugger';
 
 export const Footer = () => {
     const { brands } = useSystemBrandsLogic();
@@ -220,14 +219,7 @@ export const Footer = () => {
                                 </p>
                                 <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest flex items-center gap-1">
                                     Engineered with
-                                    <SystemDebugger
-                                        trigger={
-                                            <Heart
-                                                size={10}
-                                                className="text-red-500 fill-red-500 animate-pulse cursor-pointer hover:scale-125 transition-transform"
-                                            />
-                                        }
-                                    />
+                                    <Heart size={10} className="text-red-500 fill-red-500 animate-pulse" />
                                     in India.
                                 </div>
                             </div>

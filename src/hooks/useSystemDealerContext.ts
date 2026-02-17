@@ -212,91 +212,50 @@ export function useSystemDealerContext({
                 };
 
                 if (activeSku) {
-                    // SSPP v1.5: PRIORITIZE cat_skus_linear (Published SOT)
                     const activeStateCode = stateCode || 'MH';
-                    const priceCol = `price_${activeStateCode.toLowerCase()}`;
-                    const { data: linearRow } = await supabase
-                        .from('cat_skus_linear')
-                        .select(`unit_json, ${priceCol}`)
-                        .eq('unit_json->>id', activeSku)
-                        .eq('status', 'ACTIVE')
-                        .limit(1)
+                    const { data: priceRow } = await supabase
+                        .from('cat_price_state_mh')
+                        .select(
+                            `
+                            sku_id,
+                            ex_showroom,
+                            on_road_price,
+                            rto_default_type,
+                            rto_total_state,
+                            rto_total_bh,
+                            rto_total_company,
+                            ins_gst_rate,
+                            ins_sum_mandatory_insurance,
+                            ins_sum_mandatory_insurance_gst_amount,
+                            ins_gross_premium,
+                            ins_own_damage_premium_amount,
+                            ins_liability_only_premium_amount
+                            `
+                        )
+                        .eq('sku_id', activeSku)
+                        .eq('state_code', activeStateCode)
+                        .eq('publish_stage', 'PUBLISHED')
                         .maybeSingle();
 
-                    const priceMh = (linearRow as any)?.[priceCol];
-
-                    if (priceMh && Number(priceMh.rto_total) > 0) {
-                        // SOT: Read structured JSON from cat_skus_linear price column
-                        const hasRtoJson =
-                            priceMh.rto && typeof priceMh.rto === 'object' && priceMh.rto.STATE !== undefined;
-                        const hasInsJson =
-                            priceMh.insurance &&
-                            typeof priceMh.insurance === 'object' &&
-                            priceMh.insurance.base_total !== undefined;
-
-                        const rtoData = hasRtoJson
-                            ? priceMh.rto
-                            : {
-                                  STATE: parseFloat(priceMh.rto_total),
-                                  BH: null,
-                                  COMPANY: null,
-                                  default: 'STATE',
-                              };
-
-                        const insData = hasInsJson
-                            ? priceMh.insurance
-                            : {
-                                  od: Number(priceMh.insurance_breakdown?.odPremium || 0),
-                                  tp: Number(priceMh.insurance_breakdown?.tpPremium || 0),
-                                  gst_rate: 18,
-                                  base_total: parseFloat(priceMh.insurance_total),
-                                  addons: [],
-                              };
-
-                        // Legacy breakdown for UI compatibility
-                        const legacyRtoBreakdown =
-                            typeof priceMh.rto_breakdown === 'object' && priceMh.rto_breakdown
-                                ? Object.entries(priceMh.rto_breakdown).map(([label, amount]) => ({
-                                      label,
-                                      amount: Number(amount),
-                                  }))
-                                : [];
-
-                        const legacyInsBreakdown =
-                            typeof priceMh.insurance_breakdown === 'object' && priceMh.insurance_breakdown
-                                ? [
-                                      {
-                                          label: 'OD Premium',
-                                          amount: Number(priceMh.insurance_breakdown.odPremium || 0),
-                                          componentId: 'od',
-                                      },
-                                      {
-                                          label: 'TP Premium',
-                                          amount: Number(priceMh.insurance_breakdown.tpPremium || 0),
-                                          componentId: 'tp',
-                                      },
-                                      {
-                                          label: 'Zero Depreciation',
-                                          amount: Number(
-                                              priceMh.insurance_breakdown.addons?.zeroDep ||
-                                                  priceMh.insurance_breakdown.zeroDep ||
-                                                  0
-                                          ),
-                                          componentId: 'zeroDep',
-                                      },
-                                      {
-                                          label: 'GST',
-                                          amount: Number(priceMh.insurance_breakdown.gst || 0),
-                                          componentId: 'gst',
-                                      },
-                                  ].filter(i => i.amount > 0)
-                                : [];
-
+                    if (priceRow && Number(priceRow.rto_total_state) > 0) {
                         const pricingSnap = {
                             success: true,
-                            ex_showroom: parseFloat(priceMh.ex_showroom),
-                            rto: rtoData,
-                            insurance: insData,
+                            ex_showroom: Number(priceRow.ex_showroom),
+                            rto: {
+                                STATE: Number(priceRow.rto_total_state || 0),
+                                BH: Number(priceRow.rto_total_bh || 0),
+                                COMPANY: Number(priceRow.rto_total_company || 0),
+                                default: priceRow.rto_default_type || 'STATE',
+                            },
+                            insurance: {
+                                od: Number(priceRow.ins_own_damage_premium_amount || 0),
+                                tp: Number(priceRow.ins_liability_only_premium_amount || 0),
+                                gst_rate: Number(priceRow.ins_gst_rate || 18),
+                                base_total:
+                                    Number(priceRow.ins_sum_mandatory_insurance || 0) +
+                                    Number(priceRow.ins_sum_mandatory_insurance_gst_amount || 0),
+                                addons: [],
+                            },
                             dealer: {
                                 offer: 0,
                                 name: null,
@@ -304,7 +263,7 @@ export function useSystemDealerContext({
                                 studio_id: null,
                                 is_serviceable: true,
                             },
-                            final_on_road: parseFloat(priceMh.on_road_price),
+                            final_on_road: Number(priceRow.on_road_price || priceRow.ex_showroom || 0),
                             location: {
                                 district: 'ALL',
                                 state_code: activeStateCode,
@@ -312,11 +271,11 @@ export function useSystemDealerContext({
                             meta: {
                                 vehicle_color_id: activeSku,
                                 engine_cc: (product.specs as any)?.engine_cc || 110,
-                                idv: Math.round(parseFloat(priceMh.ex_showroom) * 0.95),
+                                idv: Math.round(Number(priceRow.ex_showroom || 0) * 0.95),
                                 calculated_at: new Date().toISOString(),
                             },
-                            rto_breakdown: legacyRtoBreakdown,
-                            insurance_breakdown: legacyInsBreakdown,
+                            rto_breakdown: [],
+                            insurance_breakdown: [],
                         };
                         applyPricing(pricingSnap);
                     }

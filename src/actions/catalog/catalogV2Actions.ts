@@ -478,7 +478,7 @@ export async function updateSku(id: string, updates: Partial<CatalogSku>) {
 
 export async function deleteSku(id: string) {
     // Delete dependent pricing rows first (FK NO ACTION constraint)
-    const { error: pricingError } = await adminClient.from('cat_price_mh').delete().eq('sku_id', id);
+    const { error: pricingError } = await adminClient.from('cat_price_state_mh').delete().eq('sku_id', id);
     if (pricingError) throw new Error(`deleteSku pricing cleanup failed: ${pricingError.message}`);
 
     const { error } = await adminClient.from('cat_skus').delete().eq('id', id);
@@ -492,7 +492,7 @@ export async function deleteSku(id: string) {
 
 export async function getPricing(skuId: string, stateCode: string = 'MH') {
     const { data, error } = await adminClient
-        .from('cat_price_mh')
+        .from('cat_price_state_mh')
         .select('*')
         .eq('sku_id', skuId)
         .eq('state_code', stateCode)
@@ -509,7 +509,11 @@ export async function listPricingForModel(modelId: string) {
     if (!skus || skus.length === 0) return [];
 
     const skuIds = skus.map(s => s.id);
-    const { data, error } = await adminClient.from('cat_price_mh').select('*').in('sku_id', skuIds).order('state_code');
+    const { data, error } = await adminClient
+        .from('cat_price_state_mh')
+        .select('*')
+        .in('sku_id', skuIds)
+        .order('state_code');
 
     if (error) throw new Error(`listPricingForModel failed: ${error.message}`);
     return data;
@@ -519,13 +523,8 @@ export async function upsertPricing(payload: {
     sku_id: string;
     state_code: string;
     ex_showroom: number;
-    // RTO state
-    rto_state_road_tax?: number;
-    rto_state_cess?: number;
-    rto_state_postal?: number;
-    rto_state_smart_card?: number;
-    rto_state_registration?: number;
-    rto_state_total?: number;
+    // RTO total (canonical)
+    rto_total_state?: number;
     // Insurance
     ins_od_base?: number;
     ins_od_gst?: number;
@@ -533,7 +532,6 @@ export async function upsertPricing(payload: {
     ins_tp_base?: number;
     ins_tp_gst?: number;
     ins_tp_total?: number;
-    ins_pa?: number;
     ins_total?: number;
     // Metadata
     publish_stage?: string;
@@ -541,18 +539,31 @@ export async function upsertPricing(payload: {
     // Computed
     on_road_price?: number;
 }) {
+    const { ins_od_base, ins_od_gst, ins_od_total, ins_tp_base, ins_tp_gst, ins_tp_total, ...rest } = payload;
+
     // Ensure required numeric fields default to 0
     const insTotal = payload.ins_total ?? 0;
-    const rtoTotal = payload.rto_state_total ?? 0;
+    const rtoTotal = payload.rto_total_state ?? 0;
     const onRoad = payload.on_road_price ?? payload.ex_showroom + rtoTotal + insTotal;
 
     const { data, error } = await adminClient
-        .from('cat_price_mh')
+        .from('cat_price_state_mh')
         .upsert(
             {
-                ...payload,
-                ins_total: insTotal,
-                rto_state_total: rtoTotal,
+                id: crypto.randomUUID(),
+                ...rest,
+                ex_factory: payload.ex_showroom,
+                ex_factory_gst_amount: 0,
+                logistics_charges: 0,
+                logistics_charges_gst_amount: 0,
+                ins_own_damage_premium_amount: ins_od_base,
+                ins_own_damage_gst_amount: ins_od_gst,
+                ins_own_damage_total_amount: ins_od_total,
+                ins_liability_only_premium_amount: ins_tp_base,
+                ins_liability_only_gst_amount: ins_tp_gst,
+                ins_liability_only_total_amount: ins_tp_total,
+                ins_gross_premium: insTotal,
+                rto_total_state: rtoTotal,
                 on_road_price: onRoad,
                 publish_stage: payload.publish_stage || 'DRAFT',
             },

@@ -81,6 +81,7 @@ interface RTOBreakdown {
 
 interface RTOTypeBreakdown extends RTOBreakdown {
     total: number;
+    cessRate?: number;
 }
 
 interface RTOJSON {
@@ -173,6 +174,7 @@ async function calculateRTO(
         // Extract breakdown totals
         let roadTax = 0;
         let cessAmount = 0;
+        let cessRate = 0;
         let registrationCharges = 300;
         let smartCardCharges = 200;
         let postalCharges = 70;
@@ -182,6 +184,11 @@ async function calculateRTO(
                 roadTax += item.amount;
             } else if (item.label.toLowerCase().includes('cess')) {
                 cessAmount += item.amount;
+                const meta = String(item.meta || '');
+                const match = meta.match(/([0-9]+(?:\.[0-9]+)?)%\s*Surcharge/i);
+                if (match) {
+                    cessRate = Number(match[1]);
+                }
             } else if (item.label.toLowerCase().includes('registration')) {
                 registrationCharges = item.amount;
             } else if (item.label.toLowerCase().includes('smart')) {
@@ -191,6 +198,11 @@ async function calculateRTO(
             }
         }
 
+        // Fallback: if meta parsing fails, derive cess % from road-tax base.
+        if (!cessRate && roadTax > 0 && cessAmount > 0) {
+            cessRate = (cessAmount * 100) / roadTax;
+        }
+
         return {
             total: result.totalAmount,
             roadTax: roadTax + cessAmount,
@@ -198,6 +210,7 @@ async function calculateRTO(
             smartCardCharges,
             postalCharges,
             cessAmount,
+            cessRate,
         };
     };
 
@@ -444,21 +457,18 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
             // ... (rest of the SKU processing loop remains unchanged)
             // 1. Get SKU details for calculation (using adminClient)
             const { data: sku } = await adminClient
-                .from('cat_items')
+                .from('cat_skus')
                 .select(
                     `
-          id, 
-          specs,
-          parent:parent_id(
-            specs,
-            parent:parent_id(
-              id,
-              specs,
-              parent:parent_id(
-                id,
-                specs
-              )
-            )
+          id,
+          price_base,
+          model:cat_models!model_id(
+            id,
+            brand_id,
+            engine_cc,
+            fuel_type,
+            item_tax_rate,
+            hsn_code
           )
         `
                 )
@@ -470,23 +480,15 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                 continue;
             }
 
-            // Get brand ID from family (great-grandparent for 4-level hierarchy)
-            const grandparent = (sku.parent as any)?.parent;
-            const greatGrandparent = grandparent?.parent;
-            const brandId = greatGrandparent?.id || grandparent?.id;
-            // Walk full hierarchy: SKU → UNIT → VARIANT → PRODUCT → fallback
-            const engineCC =
-                (sku.specs as any)?.engine_cc ||
-                (sku.parent as any)?.specs?.engine_cc ||
-                grandparent?.specs?.engine_cc ||
-                greatGrandparent?.specs?.engine_cc ||
-                110;
+            const brandId = (sku as any)?.model?.brand_id;
+            const engineCC = (sku as any)?.model?.engine_cc || 110;
 
-            // 2. Get current ex-showroom from cat_price_mh (PRIMARY SOT for MH)
-            const priceTable = `cat_price_${stateCode.toLowerCase()}`;
+            // 2. Get current ex-showroom from primary state table (MH canonical)
+            const priceTable =
+                stateCode.toUpperCase() === 'MH' ? 'cat_price_state_mh' : `cat_price_${stateCode.toLowerCase()}`;
             const { data: priceRow } = await (adminClient as any)
                 .from(priceTable)
-                .select('ex_showroom, is_popular')
+                .select('id, ex_showroom, on_road_price, is_popular, gst_rate, hsn_code')
                 .eq('sku_id', skuId)
                 .eq('state_code', stateCode)
                 .single();
@@ -504,30 +506,46 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                 exShowroom = Number(skuWithPrice?.price_base || 0);
 
                 if (exShowroom === 0) {
-                    errors.push(`No price_base found for SKU ${skuId} (checked cat_price_mh and cat_skus)`);
+                    errors.push(`No price_base found for SKU ${skuId} (checked pricing table and cat_skus)`);
                     continue;
                 }
             }
 
             // 3. Calculate RTO and Insurance with granular breakdowns
-            // Get SKU's GST rate from item_tax_rate
-            const { data: skuTax } = await adminClient
-                .from('cat_items')
-                .select('item_tax_rate')
-                .eq('id', skuId)
-                .single();
-            const gstRatePercent = (skuTax as any)?.item_tax_rate || 18;
-
-            // Get fuel type from specs
-            const fuelType =
-                (sku.specs as any)?.fuel_type ||
-                (sku.parent as any)?.specs?.fuel_type ||
-                grandparent?.specs?.fuel_type ||
-                greatGrandparent?.specs?.fuel_type ||
-                'PETROL';
+            // GST + HSN source of truth: cat_models (fallback only if missing)
+            const modelGstRate = Number((sku as any)?.model?.item_tax_rate);
+            const gstRatePercent =
+                Number.isFinite(modelGstRate) && modelGstRate > 0
+                    ? modelGstRate
+                    : Number(priceRow?.gst_rate || (Number(engineCC) > 350 ? 40 : 18));
+            const modelHsnCode = String((sku as any)?.model?.hsn_code || '').trim();
+            const fuelType = (sku as any)?.model?.fuel_type || 'PETROL';
 
             const rtoResult = await calculateRTO(exShowroom, stateCode, engineCC, fuelType);
             const insuranceResult = await calculateInsurance(exShowroom, brandId, stateCode, engineCC, gstRatePercent);
+
+            const round2 = (n: number) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+            const exShowroomTotal = round2(exShowroom);
+            const exShowroomBasic = round2(exShowroomTotal / (1 + gstRatePercent / 100));
+            const exShowroomGstAmount = round2(exShowroomTotal - exShowroomBasic);
+            const paBaseAmount = Number(insuranceResult.json.pa || 0);
+            const paGstAmount = round2((paBaseAmount * Number(insuranceResult.json.gst_rate || 0)) / 100);
+            const paTotalAmount = round2(paBaseAmount + paGstAmount);
+
+            const stateCess = Number(rtoResult.json.STATE.cessAmount || 0);
+            const bhCess = Number(rtoResult.json.BH.cessAmount || 0);
+            const companyCess = Number(rtoResult.json.COMPANY.cessAmount || 0);
+            const stateRegistration = Number(rtoResult.json.STATE.registrationCharges || 0);
+            const bhRegistration = Number(rtoResult.json.BH.registrationCharges || 0);
+            const companyRegistration = Number(rtoResult.json.COMPANY.registrationCharges || 0);
+
+            // RoadTax in publisher JSON can include cess in some flows; split defensively.
+            const stateTax = Math.max(0, Number(rtoResult.json.STATE.roadTax || 0) - stateCess);
+            const bhTax = Math.max(0, Number(rtoResult.json.BH.roadTax || 0) - bhCess);
+            const companyTax = Math.max(0, Number(rtoResult.json.COMPANY.roadTax || 0) - companyCess);
+
+            const taxRate = (taxAmount: number) =>
+                exShowroomTotal > 0 ? round2((taxAmount * 100) / exShowroomTotal) : 0;
 
             // Calculate new on-road price using STATE RTO and base insurance
             const newOnRoad = exShowroom + rtoResult.json.STATE.total + insuranceResult.json.base_total;
@@ -541,36 +559,64 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
             // 6. SOT: Save to dedicated state-level table with flat columns
             const { error: priceError } = await (adminClient as any).from(priceTable).upsert(
                 {
+                    id: priceRow?.id || uuid(),
                     sku_id: skuId,
                     state_code: stateCode,
                     ex_showroom: exShowroom,
+                    ex_factory: exShowroomBasic,
+                    ex_factory_gst_amount: exShowroomGstAmount,
+                    logistics_charges: 0,
+                    logistics_charges_gst_amount: 0,
+                    gst_rate: Number(gstRatePercent),
+                    hsn_code: modelHsnCode || priceRow?.hsn_code || null,
                     on_road_price: newOnRoad,
-                    // RTO State
-                    rto_total: Number(rtoResult.json.STATE.total),
+                    // RTO (normalized naming)
                     rto_default_type: rtoResult.json.default,
-                    rto_state_road_tax: Number(rtoResult.json.STATE.roadTax),
-                    rto_state_cess: Number(rtoResult.json.STATE.cessAmount || 0),
-                    rto_state_postal: Number(rtoResult.json.STATE.postalCharges),
-                    rto_state_smart_card: Number(rtoResult.json.STATE.smartCardCharges),
-                    rto_state_registration: Number(rtoResult.json.STATE.registrationCharges),
-                    rto_state_total: Number(rtoResult.json.STATE.total),
-                    // RTO BH
-                    rto_bh_road_tax: Number(rtoResult.json.BH.roadTax),
-                    rto_bh_total: Number(rtoResult.json.BH.total),
-                    // RTO Company
-                    rto_company_road_tax: Number(rtoResult.json.COMPANY.roadTax),
-                    rto_company_total: Number(rtoResult.json.COMPANY.total),
+                    rto_smartcard_charges_state: Number(rtoResult.json.STATE.smartCardCharges || 0),
+                    rto_smartcard_charges_bh: Number(rtoResult.json.BH.smartCardCharges || 0),
+                    rto_smartcard_charges_company: Number(rtoResult.json.COMPANY.smartCardCharges || 0),
+                    rto_postal_charges_state: Number(rtoResult.json.STATE.postalCharges || 0),
+                    rto_postal_charges_bh: Number(rtoResult.json.BH.postalCharges || 0),
+                    rto_postal_charges_company: Number(rtoResult.json.COMPANY.postalCharges || 0),
+                    rto_registration_fee_state: Number(stateRegistration),
+                    rto_registration_fee_bh: Number(bhRegistration),
+                    rto_registration_fee_company: Number(companyRegistration),
+                    rto_roadtax_rate_state: taxRate(stateTax),
+                    rto_roadtax_rate_bh: taxRate(bhTax),
+                    rto_roadtax_rate_company: taxRate(companyTax),
+                    rto_roadtax_amount_state: Number(stateTax),
+                    rto_roadtax_amount_bh: Number(bhTax),
+                    rto_roadtax_amount_company: Number(companyTax),
+                    rto_roadtax_cess_rate_state: Number(rtoResult.json.STATE.cessRate || 0),
+                    rto_roadtax_cess_rate_bh: Number(rtoResult.json.BH.cessRate || 0),
+                    rto_roadtax_cess_rate_company: Number(rtoResult.json.COMPANY.cessRate || 0),
+                    rto_roadtax_cess_amount_state: stateCess,
+                    rto_roadtax_cess_amount_bh: bhCess,
+                    rto_roadtax_cess_amount_company: companyCess,
+                    rto_total_state: Number(rtoResult.json.STATE.total || 0),
+                    rto_total_bh: Number(rtoResult.json.BH.total || 0),
+                    rto_total_company: Number(rtoResult.json.COMPANY.total || 0),
                     // Insurance
-                    ins_od_base: Number(insuranceResult.json.od.base),
-                    ins_od_total: Number(insuranceResult.json.od.total),
-                    ins_tp_base: Number(insuranceResult.json.tp.base),
-                    ins_tp_total: Number(insuranceResult.json.tp.total),
-                    ins_pa: Number(insuranceResult.json.pa),
-                    ins_total: Number(insuranceResult.total),
-                    ins_base_total: Number(insuranceResult.json.base_total),
-                    ins_net_premium: Number(insuranceResult.json.net_premium),
-                    ins_gst_total: Number(insuranceResult.json.gst),
+                    ins_own_damage_premium_amount: Number(insuranceResult.json.od.base),
+                    ins_own_damage_gst_amount: Number(insuranceResult.json.od.gst),
+                    ins_own_damage_total_amount: Number(insuranceResult.json.od.total),
+                    ins_liability_only_premium_amount: Number(insuranceResult.json.tp.base),
+                    ins_liability_only_gst_amount: Number(insuranceResult.json.tp.gst),
+                    ins_liability_only_total_amount: Number(insuranceResult.json.tp.total),
+                    ins_sum_mandatory_insurance:
+                        Number(insuranceResult.json.od.base) + Number(insuranceResult.json.tp.base),
+                    ins_sum_mandatory_insurance_gst_amount:
+                        Number(insuranceResult.json.od.gst) + Number(insuranceResult.json.tp.gst),
+                    ins_gross_premium:
+                        Number(insuranceResult.json.od.base) +
+                        Number(insuranceResult.json.tp.base) +
+                        Number(insuranceResult.json.od.gst) +
+                        Number(insuranceResult.json.tp.gst),
                     ins_gst_rate: Number(insuranceResult.json.gst_rate),
+                    addon_personal_accident_cover_amount: paBaseAmount,
+                    addon_personal_accident_cover_gst_amount: paGstAmount,
+                    addon_personal_accident_cover_total_amount: paTotalAmount,
+                    addon_personal_accident_cover_default: true,
                     // Status & Audit
                     publish_stage: 'PUBLISHED',
                     is_popular: priceRow?.is_popular ?? false,
@@ -581,11 +627,11 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
             );
 
             if (priceError) {
-                errors.push(`Publish failed for ${skuId} (cat_price_mh): ${priceError.message}`);
+                errors.push(`Publish failed for ${skuId} (${priceTable}): ${priceError.message}`);
                 continue;
             }
 
-            // NOTE: cat_skus_linear sync is removed here as per user preference (Column-based SOT).
+            // NOTE: Legacy linear sync is removed here; canonical source is column-based pricing tables.
 
             // 6. Auto-adjust dealer offers if price increased
             let dealersAdjusted = 0;
@@ -677,11 +723,11 @@ export async function previewPrices(skuIds: string[], stateCode: string) {
 
     for (const skuId of skuIds) {
         const { data: sku } = await supabase
-            .from('cat_items')
+            .from('cat_skus')
             .select(
                 `
-        id, name, specs,
-        parent:parent_id(specs, parent:parent_id(id, specs, parent:parent_id(id, specs)))
+        id, name,
+        model:cat_models!model_id(id, brand_id, engine_cc)
       `
             )
             .eq('id', skuId)
@@ -689,10 +735,11 @@ export async function previewPrices(skuIds: string[], stateCode: string) {
 
         if (!sku) continue;
 
-        const previewPriceTable = `cat_price_${stateCode.toLowerCase()}`;
+        const previewPriceTable =
+            stateCode.toUpperCase() === 'MH' ? 'cat_price_state_mh' : `cat_price_${stateCode.toLowerCase()}`;
         const { data: priceRow, error: priceError } = await (supabase as any)
             .from(previewPriceTable)
-            .select('ex_showroom, on_road_price, rto_total, ins_total')
+            .select('ex_showroom, on_road_price, rto_total_state, ins_gross_premium')
             .eq('sku_id', skuId)
             .eq('state_code', stateCode)
             .single();
@@ -701,23 +748,15 @@ export async function previewPrices(skuIds: string[], stateCode: string) {
             ? {
                   ex_showroom_price: Number(priceRow.ex_showroom) || 0,
                   on_road_price: Number(priceRow.on_road_price) || 0,
-                  rto_total: Number(priceRow.rto_total) || 0,
-                  insurance_total: Number(priceRow.ins_total) || 0,
+                  rto_total: Number(priceRow.rto_total_state) || 0,
+                  insurance_total: Number(priceRow.ins_gross_premium) || 0,
               }
             : null;
 
         if (priceError || !price) continue;
 
-        const gpPreview = (sku.parent as any)?.parent;
-        const ggpPreview = gpPreview?.parent;
-        const brandId = ggpPreview?.id || gpPreview?.id;
-        // Walk full hierarchy: SKU → UNIT → VARIANT → PRODUCT → fallback
-        const engineCC =
-            (sku.specs as any)?.engine_cc ||
-            (sku.parent as any)?.specs?.engine_cc ||
-            gpPreview?.specs?.engine_cc ||
-            ggpPreview?.specs?.engine_cc ||
-            110;
+        const brandId = (sku as any)?.model?.brand_id;
+        const engineCC = (sku as any)?.model?.engine_cc || 110;
 
         const rtoResult = await calculateRTO(price.ex_showroom_price, stateCode, engineCC);
         const insuranceResult = await calculateInsurance(price.ex_showroom_price, brandId, stateCode, engineCC);

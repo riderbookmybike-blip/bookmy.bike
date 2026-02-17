@@ -13,7 +13,6 @@ import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { useSearchParams } from 'next/navigation';
-import { SourceDebugger } from '@/components/common/SourceDebugger';
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
     const fullStars = Math.floor(rating);
@@ -215,8 +214,6 @@ export const ProductCard = ({
 
     // SSPP v1: B-Coin Integration
     const params = useSearchParams();
-    const isDebug = params.get('debug') === 'true';
-    const metadata = v._debugSource;
 
     // bcoinTotal is the alternative currency view (13 Coins = 1000 INR)
     const bcoinTotal = coinsNeededForPrice(offerPrice);
@@ -354,13 +351,6 @@ export const ProductCard = ({
                                 <h3
                                     className={`${isTv ? 'text-2xl' : 'text-3xl'} font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none`}
                                 >
-                                    {isDebug && (
-                                        <SourceDebugger
-                                            source={metadata?.name}
-                                            field="Model Name"
-                                            position="top-right"
-                                        />
-                                    )}
                                     {displayModel}
                                 </h3>
                                 <div
@@ -375,9 +365,6 @@ export const ProductCard = ({
                                 </div>
                             </div>
                             <p className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest relative">
-                                {isDebug && (
-                                    <SourceDebugger source={metadata?.variant} field="Variant" position="top-right" />
-                                )}
                                 {displayVariant} • <span className="text-brand-primary">{displayColor}</span>
                             </p>
                         </div>
@@ -448,14 +435,7 @@ export const ProductCard = ({
                                 </p>
                                 <div className="flex flex-col">
                                     <div className="flex items-baseline gap-3">
-                                        <span className="text-3xl font-black text-slate-900 dark:text-white leading-none tracking-tight relative">
-                                            {isDebug && (
-                                                <SourceDebugger
-                                                    source={metadata?.exShowroom}
-                                                    field="Ex-Showroom"
-                                                    position="top-left"
-                                                />
-                                            )}
+                                        <span className="text-3xl font-black text-slate-900 dark:text-white leading-none tracking-tight">
                                             ₹{basePrice.toLocaleString('en-IN')}
                                         </span>
                                         {bestOffer ? (
@@ -499,13 +479,6 @@ export const ProductCard = ({
                                     EMI
                                 </p>
                                 <div className="h-10 relative">
-                                    {isDebug && (
-                                        <SourceDebugger
-                                            source={metadata?.emi}
-                                            field="Monthly Finance"
-                                            position="top-left"
-                                        />
-                                    )}
                                     <div className="flex flex-col">
                                         <p className="text-3xl font-black text-brand-primary drop-shadow-[0_0_8px_rgba(244,176,0,0.2)] leading-none">
                                             {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
@@ -826,14 +799,9 @@ export const ProductCard = ({
                     </div>
 
                     <div className="flex flex-col mt-1">
-                        <div className="flex items-center gap-2 relative">
-                            {isDebug && (
-                                <SourceDebugger source={metadata?.variant} field="Variant" position="top-right" />
-                            )}
-                            <p className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-full text-left">
-                                {displayVariant}
-                            </p>
-                        </div>
+                        <p className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-full text-left">
+                            {displayVariant}
+                        </p>
                         {v.suitableFor && (
                             <div className="flex flex-wrap gap-1 mt-2">
                                 {v.suitableFor
@@ -940,14 +908,7 @@ export const ProductCard = ({
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <div className="flex flex-col gap-1 relative">
-                                {isDebug && (
-                                    <SourceDebugger
-                                        source={metadata?.onRoad}
-                                        field="On-Road Price"
-                                        position="top-right"
-                                    />
-                                )}
+                            <div className="flex flex-col gap-1">
                                 <span
                                     className={`${showOClubPrompt ? 'text-lg md:text-xl line-through text-slate-400' : 'text-[22px] md:text-3xl font-black'} italic text-slate-900 dark:text-white leading-none`}
                                 >
@@ -1034,14 +995,7 @@ export const ProductCard = ({
 
                         <div className="flex flex-col items-end">
                             <div className="flex items-baseline">
-                                <span className="text-[22px] md:text-3xl font-black text-emerald-600 dark:text-emerald-500 italic leading-none relative">
-                                    {isDebug && (
-                                        <SourceDebugger
-                                            source={metadata?.emi}
-                                            field="Monthly Finance"
-                                            position="top-left"
-                                        />
-                                    )}
+                                <span className="text-[22px] md:text-3xl font-black text-emerald-600 dark:text-emerald-500 italic leading-none">
                                     {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
                                 </span>
                                 <span className="text-slate-300 dark:text-white/15 text-lg font-light select-none mx-1">
