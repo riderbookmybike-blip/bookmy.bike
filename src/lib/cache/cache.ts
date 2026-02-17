@@ -1,6 +1,3 @@
-import { unstable_cache } from 'next/cache';
-import { headers } from 'next/headers';
-
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 interface CacheOptions {
@@ -13,8 +10,19 @@ interface CacheOptions {
  * In development, it executes the function directly.
  */
 export async function withCache<T>(fn: () => Promise<T>, keyParts: string[], options: CacheOptions = {}): Promise<T> {
-    const headerList = await headers();
-    const noCache = headerList.get('x-no-cache') === '1';
+    // Client bundles cannot import server-only modules like `next/headers`.
+    if (typeof window !== 'undefined') {
+        return fn();
+    }
+
+    let noCache = false;
+    try {
+        const { headers } = await import('next/headers');
+        const headerList = await headers();
+        noCache = headerList.get('x-no-cache') === '1';
+    } catch {
+        // If request headers are unavailable in this execution context, keep default noCache=false.
+    }
 
     if (!IS_PROD || noCache) {
         // Bypass cache in development or when requested via header
@@ -22,6 +30,7 @@ export async function withCache<T>(fn: () => Promise<T>, keyParts: string[], opt
     }
 
     // Wrap in unstable_cache for production
+    const { unstable_cache } = await import('next/cache');
     const cachedFn = unstable_cache(async () => fn(), keyParts, options);
 
     return cachedFn();

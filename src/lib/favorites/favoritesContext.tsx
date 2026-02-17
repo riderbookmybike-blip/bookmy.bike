@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 export interface FavoriteItem {
     id: string;
@@ -22,6 +22,15 @@ interface FavoritesContextType {
 }
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
+const FALLBACK_FAVORITES_CONTEXT: FavoritesContextType = {
+    favorites: [],
+    addFavorite: () => {},
+    removeFavorite: () => {},
+    toggleFavorite: () => {},
+    isFavorite: () => false,
+    clearFavorites: () => {},
+};
+let hasWarnedMissingProvider = false; // eslint-disable-line react-hooks/globals
 
 export const FavoritesProvider = ({ children }: { children: React.ReactNode }) => {
     const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
@@ -71,7 +80,9 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
     const clearFavorites = () => setFavorites([]);
 
     return (
-        <FavoritesContext.Provider value={{ favorites, addFavorite, removeFavorite, toggleFavorite, isFavorite, clearFavorites }}>
+        <FavoritesContext.Provider
+            value={{ favorites, addFavorite, removeFavorite, toggleFavorite, isFavorite, clearFavorites }}
+        >
             {children}
         </FavoritesContext.Provider>
     );
@@ -80,7 +91,12 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 export const useFavorites = () => {
     const context = useContext(FavoritesContext);
     if (context === undefined) {
-        throw new Error('useFavorites must be used within a FavoritesProvider');
+        if (!hasWarnedMissingProvider) {
+            // eslint-disable-next-line react-hooks/globals
+            hasWarnedMissingProvider = true;
+            console.warn('useFavorites called without FavoritesProvider; using fallback no-op context.');
+        }
+        return FALLBACK_FAVORITES_CONTEXT;
     }
     return context;
 };

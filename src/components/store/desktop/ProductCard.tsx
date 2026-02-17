@@ -488,7 +488,7 @@ export const ProductCard = ({
                                                 {emiValue !== null ? `x${activeTenure}` : 'Finance unavailable'}
                                             </p>
                                             {showBcoinBadge && (
-                                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-brand-primary/10 rounded-md border border-brand-primary/20">
+                                                <div className="flex items-center gap-1">
                                                     <Logo variant="icon" size={10} />
                                                     <span className="text-[10px] font-black text-brand-primary italic">
                                                         {bcoinTotal.toLocaleString('en-IN')}
@@ -915,17 +915,9 @@ export const ProductCard = ({
                                     ₹{offerPrice.toLocaleString('en-IN')}
                                 </span>
                                 {showOClubPrompt && (
-                                    <div className="flex items-center gap-2 group/oclub">
-                                        <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
-                                            ₹{(offerPrice - bcoinAdjustment).toLocaleString('en-IN')}
-                                        </span>
-                                        <div className="flex items-center gap-1 bg-brand-primary/10 px-2 py-0.5 rounded-full border border-brand-primary/20">
-                                            <Logo variant="icon" size={14} />
-                                            <span className="text-[10px] font-black text-brand-primary uppercase tracking-tighter italic">
-                                                B-Club
-                                            </span>
-                                        </div>
-                                    </div>
+                                    <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
+                                        ₹{(offerPrice - bcoinAdjustment).toLocaleString('en-IN')}
+                                    </span>
                                 )}
                             </div>
 

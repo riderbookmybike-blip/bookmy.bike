@@ -6,6 +6,7 @@ import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { ProductVariant } from '@/types/productMaster';
 import { useSearchParams } from 'next/navigation';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
+import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 
 interface SystemCatalogRouterProps {
     initialItems: ProductVariant[];
@@ -33,7 +34,13 @@ function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalog
 function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
-    const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic(leadId || undefined);
+    const {
+        items: clientItems,
+        isLoading: isClientLoading,
+        needsLocation,
+        resolvedStudioId,
+        resolvedDealerName,
+    } = useSystemCatalogLogic(leadId || undefined);
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
@@ -46,10 +53,17 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatal
             items={currentItems}
             isLoading={loading}
             mode="default"
+            needsLocation={needsLocation}
+            resolvedStudioId={resolvedStudioId}
+            resolvedDealerName={resolvedDealerName}
         />
     );
 }
 
 export default function SystemCatalogRouter(props: SystemCatalogRouterProps) {
-    return props.mode === 'smart' ? <SmartCatalogRouter {...props} /> : <DefaultCatalogRouter {...props} />;
+    return (
+        <FavoritesProvider>
+            {props.mode === 'smart' ? <SmartCatalogRouter {...props} /> : <DefaultCatalogRouter {...props} />}
+        </FavoritesProvider>
+    );
 }

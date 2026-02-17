@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
-import { fetchCatalogV2 } from '@/lib/server/catalogFetcherV2';
+import { getAllProducts } from '@/actions/product';
 
 export function useSystemCatalogLogic(leadId?: string) {
     const [items, setItems] = useState<ProductVariant[]>([]);
@@ -11,6 +11,10 @@ export function useSystemCatalogLogic(leadId?: string) {
     const [stateCode, setStateCode] = useState('MH');
     const [userDistrict, setUserDistrict] = useState<string | null>(null);
     const [locationVersion, setLocationVersion] = useState(0);
+    const [needsLocation, setNeedsLocation] = useState(false);
+    const [resolvedDealerIdState, setResolvedDealerIdState] = useState<string | null>(null);
+    const [resolvedStudioId, setResolvedStudioId] = useState<string | null>(null);
+    const [resolvedDealerName, setResolvedDealerName] = useState<string | null>(null);
     const disableOffersRef = useRef(false);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const updateDebug = (_data: Record<string, any>) => {};
@@ -113,7 +117,12 @@ export function useSystemCatalogLogic(leadId?: string) {
 
                 let resolvedStateCode = cachedLocation.stateCode || stateCode;
                 let resolvedUserDistrict = cachedLocation.district || userDistrict;
-                if (!resolvedStateCode) resolvedStateCode = 'MH';
+                if (!resolvedStateCode) {
+                    setNeedsLocation(true);
+                    setIsLoading(false);
+                    return;
+                }
+                setNeedsLocation(false);
 
                 if (cachedLocation.stateCode && cachedLocation.stateCode !== stateCode) {
                     setStateCode(cachedLocation.stateCode);
@@ -124,7 +133,10 @@ export function useSystemCatalogLogic(leadId?: string) {
 
                 // ---------------------------------------------------------
                 // Canonical V2 catalog fetch
-                const catalogData = await fetchCatalogV2(resolvedStateCode);
+                const { products: catalogData, error: catalogError } = await getAllProducts(resolvedStateCode);
+                if (catalogError) {
+                    throw new Error(catalogError);
+                }
 
                 // Fetch Offers (Primary Dealer Only)
                 let offerData: any = null;
@@ -226,8 +238,18 @@ export function useSystemCatalogLogic(leadId?: string) {
                     }
                 }
 
-                // Align resolvedStateCode to Dealer Location if found
+                // Fetch dealer info (studio_id, name) + align state code
                 if (resolvedDealerId) {
+                    const { data: dealerInfo } = await supabase
+                        .from('id_tenants')
+                        .select('studio_id, name')
+                        .eq('id', resolvedDealerId)
+                        .single();
+                    setResolvedDealerIdState(resolvedDealerId);
+                    setResolvedStudioId(dealerInfo?.studio_id || null);
+                    setResolvedDealerName(dealerInfo?.name || null);
+
+                    // Align state code from dealer location
                     const { data: dealerLoc } = await supabase
                         .from('id_locations')
                         .select('state')
@@ -238,7 +260,6 @@ export function useSystemCatalogLogic(leadId?: string) {
                         .maybeSingle();
 
                     if (dealerLoc?.state) {
-                        // Very basic normalization for the client side
                         const stateName = dealerLoc.state.toUpperCase();
                         const stateMap: Record<string, string> = { MAHARASHTRA: 'MH', KARNATAKA: 'KA', DELHI: 'DL' };
                         const matchedCode = stateMap[stateName] || stateName.substring(0, 2);
@@ -461,5 +482,14 @@ export function useSystemCatalogLogic(leadId?: string) {
         fetchItems();
     }, [leadId, locationVersion]);
 
-    return { items, isLoading, error, skuCount };
+    return {
+        items,
+        isLoading,
+        error,
+        skuCount,
+        needsLocation,
+        resolvedDealerId: resolvedDealerIdState,
+        resolvedStudioId,
+        resolvedDealerName,
+    };
 }

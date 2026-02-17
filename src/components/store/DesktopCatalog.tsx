@@ -37,6 +37,7 @@ import { ProductCard } from './desktop/ProductCard';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { CatalogGridSkeleton } from './CatalogSkeleton';
 import { getSelfMemberLocation, updateSelfMemberLocation } from '@/actions/members';
+import { resolveIpLocation } from '@/actions/resolveIpLocation';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
@@ -48,6 +49,9 @@ interface DesktopCatalogProps {
     leadId?: string;
     basePath?: string;
     mode?: 'default' | 'smart';
+    needsLocation?: boolean;
+    resolvedStudioId?: string | null;
+    resolvedDealerName?: string | null;
 }
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
@@ -74,6 +78,9 @@ export const DesktopCatalog = ({
     leadId,
     basePath = '/store',
     mode = 'default',
+    needsLocation = false,
+    resolvedStudioId = null,
+    resolvedDealerName = null,
 }: DesktopCatalogProps) => {
     // Prefer client-resolved items when available, otherwise SSR
     const isLoading = externalLoading;
@@ -163,6 +170,36 @@ export const DesktopCatalog = ({
         const checkCurrentServiceability = async () => {
             if (typeof window === 'undefined') return;
             const supabase = createClient();
+            const applyIpFallback = async () => {
+                try {
+                    const ipLocation = await resolveIpLocation();
+                    if (ipLocation.stateCode) {
+                        const payload = {
+                            stateCode: ipLocation.stateCode,
+                            district: ipLocation.district || 'ALL',
+                            manuallySet: false,
+                            source: 'IP',
+                        };
+                        setServiceability({
+                            status: 'serviceable',
+                            location: payload.district,
+                            district: payload.district,
+                            stateCode: payload.stateCode,
+                        });
+                        localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+                        try {
+                            await setLocationCookie(payload);
+                        } catch (err) {
+                            console.error('[Location] Cookie set failed:', err);
+                        }
+                        window.dispatchEvent(new Event('locationChanged'));
+                        return true;
+                    }
+                } catch (err) {
+                    console.error('[Location] IP fallback failed:', err);
+                }
+                return false;
+            };
 
             // Tier 1: Logic Removed (Legacy Aadhaar Pincode causing 404s)
 
@@ -448,13 +485,20 @@ export const DesktopCatalog = ({
                             });
                         } catch (err) {
                             console.error('[Location] DB lookup error:', err);
-                            setServiceability({ status: 'unset' });
+                            const resolvedByIp = await applyIpFallback();
+                            if (!resolvedByIp) {
+                                setServiceability({ status: 'unset' });
+                                setIsLocationPickerOpen(true);
+                            }
                         }
                     },
-                    err => {
+                    async err => {
                         console.error('[Location] Geolocation error:', err.code, err.message);
-                        // Set unset so user sees the prompt with button
-                        setServiceability({ status: 'unset' });
+                        const resolvedByIp = await applyIpFallback();
+                        if (!resolvedByIp) {
+                            setServiceability({ status: 'unset' });
+                            setIsLocationPickerOpen(true);
+                        }
                     },
                     {
                         enableHighAccuracy: true,
@@ -463,8 +507,12 @@ export const DesktopCatalog = ({
                     }
                 );
             } else {
-                console.log('[Location] Geolocation not available, defaulting to MH');
-                setServiceability({ status: 'serviceable', location: 'MAHARASHTRA', district: 'ALL', stateCode: 'MH' });
+                console.log('[Location] Geolocation not available, trying IP fallback');
+                const resolvedByIp = await applyIpFallback();
+                if (!resolvedByIp) {
+                    setServiceability({ status: 'unset' });
+                    setIsLocationPickerOpen(true);
+                }
             }
         };
         checkCurrentServiceability();
@@ -761,11 +809,42 @@ export const DesktopCatalog = ({
         return smartFilteredResults;
     }, [isSmart, results, smartFilteredResults, smartColor, explodedVariant]);
 
-    // Location gate removed: location resolves silently in background
+    // Location gate: catalog stays in DOM for SEO, but overlaid with modal when location missing
+    const showLocationGate = needsLocation || serviceability.status === 'unset';
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans">
-            <div className="flex-1 page-container pt-0 pb-10 md:pb-16">
+        <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans relative">
+            {/* Location Gate — SEO-safe: catalog HTML stays in DOM, overlay blocks interaction */}
+            {showLocationGate && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center">
+                    {/* Backdrop blur */}
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+                    {/* Modal */}
+                    <div className="relative z-10 w-full max-w-md mx-4 rounded-3xl border border-white/20 bg-white dark:bg-slate-900 shadow-2xl p-8 text-center space-y-5">
+                        <div className="mx-auto w-14 h-14 rounded-full bg-[#F4B000]/15 flex items-center justify-center">
+                            <MapPin size={28} className="text-[#F4B000]" />
+                        </div>
+                        <h2 className="text-xl font-black uppercase tracking-wide text-slate-900 dark:text-white">
+                            Location Required
+                        </h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                            Nearest dealership aur accurate pricing ke liye aapki location zaroori hai.
+                            <br />
+                            <span className="text-xs text-slate-400">GPS allow karein ya pincode enter karein.</span>
+                        </p>
+                        <button
+                            onClick={() => setIsLocationPickerOpen(true)}
+                            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#F4B000] px-6 py-3.5 text-sm font-black text-black uppercase tracking-widest shadow-lg shadow-[#F4B000]/20 hover:scale-[1.02] transition-all"
+                        >
+                            <MapPin size={16} />
+                            Set Location
+                        </button>
+                    </div>
+                </div>
+            )}
+            <div
+                className={`flex-1 page-container pt-0 pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
+            >
                 <header
                     className="hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-300"
                     style={{ top: 'var(--header-h)', marginTop: '16px' }}

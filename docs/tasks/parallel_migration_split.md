@@ -167,3 +167,17 @@ Within active migration scope (`src/actions src/lib src/app/store src/components
 | `cat_items` references in `/store` = 0 | ✅ Done |
 | `cat_items` references in active migration scope | ✅ Done (0 refs) |
 | Typecheck passes | ✅ Done (exit 0) |
+
+## Location Gate Update (Implementation Plan Alignment)
+
+Implemented from `implementation_plan.md.resolved` (Phase 1 criticals):
+1. Added server action `src/actions/resolveIpLocation.ts` for IP-based state resolution via request headers.
+2. Updated `src/components/store/DesktopCatalog.tsx` geolocation failure paths:
+   1. Try IP fallback before marking location as `unset`.
+   2. If IP fallback fails, enforce hard location gate (`serviceability.status === 'unset'`) and open `LocationPicker`.
+3. Removed silent "default MH" fallback in no-geolocation path for this flow.
+
+Current status:
+1. `no location => no catalog grid` enforced in `DesktopCatalog`.
+2. `ip success => state-level serviceability` now unblocks catalog.
+3. Typecheck clean after changes.
