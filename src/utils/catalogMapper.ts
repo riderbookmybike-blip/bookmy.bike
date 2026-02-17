@@ -547,6 +547,7 @@ export function mapCatalogItems(
                                         )
                                     ).toUpperCase(),
                                     isPrimary: Boolean(sku.is_primary),
+                                    position: color?.position ?? 999,
                                 });
                             });
                         }
@@ -581,7 +582,7 @@ export function mapCatalogItems(
                         }
 
                         return Array.from(colorsMap.values()).sort(
-                            (a: any, b: any) => Number(b.isPrimary) - Number(a.isPrimary)
+                            (a: any, b: any) => (a.position ?? 999) - (b.position ?? 999)
                         );
                     })(),
 

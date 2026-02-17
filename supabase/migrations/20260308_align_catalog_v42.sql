@@ -3,13 +3,13 @@
 
 BEGIN;
 
--- 1) Create cat_pricing (multi-state) if it does not exist yet.
+-- 1) Create cat_price_mh (state table with state_code retained for compatibility) if it does not exist yet.
 DO $$
 BEGIN
   IF to_regclass('public.cat_skus') IS NOT NULL
-     AND to_regclass('public.cat_pricing') IS NULL THEN
+     AND to_regclass('public.cat_price_mh') IS NULL THEN
     EXECUTE $ddl$
-      CREATE TABLE public.cat_pricing (
+      CREATE TABLE public.cat_price_mh (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         sku_id UUID NOT NULL REFERENCES public.cat_skus(id) ON DELETE CASCADE,
         state_code TEXT NOT NULL DEFAULT 'MH',
@@ -72,9 +72,9 @@ END$$;
 
 DO $$
 BEGIN
-  IF to_regclass('public.cat_pricing') IS NOT NULL THEN
-    EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS uq_cat_pricing_sku_state ON public.cat_pricing (sku_id, state_code)';
-    EXECUTE 'CREATE INDEX IF NOT EXISTS ix_cat_pricing_publish_stage ON public.cat_pricing (publish_stage)';
+  IF to_regclass('public.cat_price_mh') IS NOT NULL THEN
+    EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS uq_cat_price_mh_sku_state ON public.cat_price_mh (sku_id, state_code)';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS ix_cat_price_mh_publish_stage ON public.cat_price_mh (publish_stage)';
   END IF;
 END$$;
 

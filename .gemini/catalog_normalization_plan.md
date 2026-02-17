@@ -29,7 +29,7 @@
 1. **Zero JSONB** — पूरे catalog में कहीं भी
 2. **`cat_specifications`** = Master Blueprint for all specs
 3. **Media सिर्फ SKU level पर** — Brand पर सिर्फ logo
-4. **कोई table DROP नहीं** — rename to `_v1_archive`
+4. **कोई table DROP नहीं** — rename to `_v1_archive`. *(Columns CAN be dropped after cutover, e.g., deprecated JSONB cols.)*
 5. **SKU Matrix = universal** — Variant × SKU (all product types)
 6. **7-step Studio flow** — same for all types, labels change dynamically
 7. **“Suitable For” = single term** — vehicle compatibility managed via `cat_suitable_for` junction table. No "fitment", no "compatibility" word soup.
@@ -68,11 +68,12 @@ WHERE table_schema = 'public'
 ORDER BY table_name, column_name;
 ```
 
-### 🔒 Canonical Naming Contract (DB + Code + UI)
+### 🔒 Canonical Naming Contract (DB + Code only)
 1. **Use only:** `Brand -> Model -> Variant -> SKU`
 2. **Do not use aliases:** `Product`, `Family`, `Unit`, `Color_Def`, `Fitment`, `Compatibility`
 3. `product_type` stays only as technical enum (`VEHICLE|ACCESSORY|SERVICE`) for behavior, not naming.
 4. Accessory/Service differences are handled by metadata (`sku_type`, `cat_suitable_for`) not by changing hierarchy terms.
+5. UI labels are separate and type-specific via `HIERARCHY_LABELS` (allowed).
 
 ### 📘 One-Word SOT Glossary (Project-wide)
 1. `Brand` = brand entity
@@ -81,12 +82,13 @@ ORDER BY table_name, column_name;
 4. `SKU` = purchasable unit
 5. `Suitable For` = vehicle applicability
 
-### ⛔ Banned Terms (use SOT only)
+### ⛔ Banned Terms (DB + Code scope)
 1. `Product` -> use `Model`
 2. `Family` -> use `Model`
-3. `Plan` / `Tier` (as hierarchy names) -> use `Variant` / `SKU`
+3. `Plan` / `Tier` (as DB/code hierarchy names) -> use `Variant` / `SKU`
 4. `Fitment` / `Compatibility` -> use `Suitable For`
-5. `Unit` / `Sub-Variant` / `Colour` / `Tier` / `Plan` (as hierarchy names) -> use **`SKU`**
+5. `Unit` / `Sub-Variant` / `Colour` / `Tier` / `Plan` (as DB/code hierarchy names) -> use **`SKU`**
+6. UI labels `Product/Plan/Tier/Colour/Sub-Variant` are allowed only in rendering layer.
 
 > PR gate checklist: `docs/catalog_naming_sot_checklist.md`
 
@@ -100,7 +102,7 @@ ORDER BY table_name, column_name;
 | `cat_price_state` → `cat_price_state_archive` | 188 | `cat_pricing` (flat, multi-state) | ✅ Archived |
 | `cat_brands` | shared | `cat_brands` (same, JSONB cols to drop) | ✅ Shared |
 
-> ⚠️ **App code currently uses old tables.** Phase 4 will update all code references.
+> ⚠️ **App code currently uses old tables for reads.** V2 Server Actions + Fetcher done (Phase 2). Studio UI rewrite in progress.
 > ⚠️ Old `supabase/migrations/` files are historical — they document the evolution. Do NOT edit/delete them.
 
 ---
@@ -152,6 +154,8 @@ BookMyBike → Extended Warranty → 2 Year Comprehensive → Platinum
 
 Every product type has 2 dimensions that combine to create unique purchasable items:
 
+> ℹ️ **Note:** Column headings below ("Colour", "Plan", "Tier") are **UI labels only** — DB/code always uses `Variant` and `SKU`.
+
 | Type | Example | Variant (Rows) | SKU (Columns) | SKU = Cell |
 |------|---------|----------------|---------------|------------|
 | **Vehicle** | TVS Jupiter | Disc, Drum, SmartXonnect | Starlight Blue, Coral Red | Disc × Starlight Blue |
@@ -183,36 +187,41 @@ Each cell = separate physical product, separate inventory, separate price, separ
 
 ---
 
-## 📊 Studio Flow — Same 7 Steps, Labels Change
+## 📊 Studio Flow — 7 Steps, Labels Change
 
 ```
-Step 1: Brand & Type     ← Select category + brand (merged step)
-Step 2: [Model Level]    ← Dynamic label per type
-Step 3: [Variant Level]  ← Dynamic label per type
-Step 4: [Unit Level]     ← Dynamic label per type
-Step 5: SKU Matrix       ← Variant × SKU grid (universal)
-Step 6: Review
-Step 7: Publish
+Step 1: Type             ← Select category (Vehicle/Accessory/Service) + brand (filtered by type)
+Step 2: [Model Level]    ← Dynamic label per type (Model / Product / Service)
+Step 3: [Variant Level]  ← Dynamic label per type (Variants)
+Step 4: Colour Pool      ← Model-level colour palette (cat_colours) — VEHICLE only
+Step 5: SKU Matrix       ← Create + manage SKUs (Cards ↔ Matrix toggle view)
+Step 6: Review           ← Full tree summary before going live
+Step 7: Activate         ← Set model to ACTIVE
 ```
 
-| Step | Vehicle | Accessory | Service |
-|------|---------|-----------|---------|
-| 1 | Brand & Type | Brand & Type | Brand & Type |
-| 2 | **Model** (Jupiter) | **Model** (Helmet) | **Model** (Warranty) |
-| 3 | **Variant** (Disc, Drum) | **Variant** (Half Face, Full Face) | **Variant** (Gold, Silver) |
-| 4 | **SKU** (Blue, Red) | **SKU** (Blue, Red / Activa) | **SKU** (1yr, 2yr) |
-| 5 | SKU Matrix | SKU Matrix | SKU Matrix |
+> ℹ️ **Step 5 has two views:** Cards (CRUD per variant) and Matrix (Variant × SKU bird's-eye grid with inline price editing). Both are tabs within one step — no redundancy.
+
+> ℹ️ **Below are UI-only display labels.** DB/code uses canonical `Variant`/`SKU` throughout.
+
+| Step | Vehicle (UI Label) | Accessory (UI Label) | Service (UI Label) |
+|------|---------|-----------|---------| 
+| 1 | Type (+ Brand) | Type (+ Brand) | Type (+ Brand) |
+| 2 | **Model** (Jupiter) | **Product** (Helmet) | **Service** (Extended Warranty) |
+| 3 | **Variants** (Disc, Drum) | **Variants** (Half Face, Full Face) | **Plans** (2yr Comprehensive, 1yr Basic) |
+| 4 | **Colour Pool** (model palette) | — (skip if N/A) | — (skip if N/A) |
+| 5 | **SKU Matrix** (Cards ↔ Matrix) | **SKU Matrix** | **SKU Matrix** |
 | 6 | Review | Review | Review |
-| 7 | Publish | Publish | Publish |
+| 7 | Activate | Activate | Activate |
 
-> **Key:** Step 4 "Unit" dimension is flexible:
-> - Vehicle → always colours (hex codes, finish)
-> - Accessory → could be colours (helmet) OR vehicle-specific (crash guard, Suitable For via cat_suitable_for) OR sizes
+> **Key:** Step 4 Colour Pool is defined at the model level (`cat_colours`).
+> Step 5 SKUs link to colours via `colour_id` FK. Cards view for CRUD, Matrix view for coverage + pricing.
+> - Vehicle → colours from pool (hex codes, finish)
+> - Accessory → could be colours (helmet) OR vehicle-specific (crash guard, Suitable For) OR sizes
 > - Service → duration / coverage level
 
 ---
 
-## 📋 8 Tables — Full Details
+## 📋 9 Tables — Full Details
 
 ---
 
@@ -329,6 +338,23 @@ Step 7: Publish
 
 > **2 JSONB columns हटाने हैं, बाकी table ठीक है।**
 
+#### Current State (12 columns — includes 2 deprecated JSONB)
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | |
+| `name` | TEXT | "HONDA", "TVS" |
+| `slug` | TEXT UNIQUE | "honda", "tvs" |
+| `logo_url` | TEXT | **Only media on brand** |
+| `logo_svg` | TEXT | Inline SVG |
+| `website_url` | TEXT | |
+| `brand_category` | TEXT | VEHICLE \| ACCESSORY \| SERVICE |
+| `is_active` | BOOLEAN | |
+| `brand_logos` | ~~JSONB~~ | ⚠️ **Deprecated — to be dropped** |
+| `specifications` | ~~JSONB~~ | ⚠️ **Deprecated — to be dropped** |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+#### Target State (10 columns — after JSONB column drop)
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | UUID PK | |
@@ -342,7 +368,7 @@ Step 7: Publish
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-**DROP:** `brand_logos` (JSONB), `specifications` (JSONB)
+**Column DROP (not table DROP):** `brand_logos` (JSONB), `specifications` (JSONB) — per principle #4, tables are never dropped, but deprecated columns CAN be dropped after cutover.
 
 ---
 
@@ -365,7 +391,7 @@ Step 7: Publish
 | `hsn_code` | TEXT | GST HSN code |
 | `item_tax_rate` | NUMERIC(4,2) | default 18 |
 | `position` | INTEGER | Display order |
-| `status` | TEXT | ACTIVE \| INACTIVE \| ARCHIVED |
+| `status` | TEXT | DRAFT \| ACTIVE (lifecycle gate-controlled) |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -377,6 +403,7 @@ Step 7: Publish
 
 > **हर column `cat_specifications` registry से driven.**
 > NUMBER → NUMERIC/INTEGER, ENUM → TEXT + CHECK, value stored WITHOUT suffix.
+> ⚠️ Actual DB = **42 columns** (verified 17-Feb-2026)
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -385,7 +412,7 @@ Step 7: Publish
 | `name` | TEXT NOT NULL | "Disc SmartXonnect" |
 | `slug` | TEXT | Parent-scoped unique via index `(model_id, slug)` |
 | `position` | INTEGER | |
-| `status` | TEXT | |
+| `status` | TEXT | DRAFT \| ACTIVE |
 | — **ENGINE** | — | — |
 | `engine_type` | TEXT | "Single Cylinder, 4-Stroke" |
 | `displacement` | NUMERIC(6,1) | 113.3 |
@@ -406,32 +433,35 @@ Step 7: Publish
 | `kerb_weight` | INTEGER | 106 (kg) |
 | `seat_height` | INTEGER | 770 (mm) |
 | `ground_clearance` | INTEGER | 163 (mm) |
-| `ground_reach` | INTEGER | |
-| `seat_length` | INTEGER | |
 | `wheelbase` | INTEGER | 1275 (mm) |
-| `vehicle_length` | INTEGER | 1848 |
-| `vehicle_width` | INTEGER | 665 |
-| `vehicle_height` | INTEGER | 1158 |
 | `fuel_capacity` | NUMERIC(4,1) | 5.1 (L) |
-| — **FEATURES** | — | — |
-| `wheel_type` | TEXT | CHECK IN (ALLOY, SPOKE, TUBELESS_ALLOY) |
-| `tyre_front` | TEXT | |
-| `tyre_rear` | TEXT | |
-| `under_seat_storage` | INTEGER | 33 (L) |
-| `front_leg_space` | TEXT | |
-| `glove_box` | BOOLEAN | |
 | — **ELECTRICAL** | — | — |
-| `headlamp` | TEXT | CHECK IN (HALOGEN, LED, PROJECTOR_LED) |
-| `tail_lamp` | TEXT | CHECK IN (BULB, LED) |
 | `console_type` | TEXT | CHECK IN (ANALOG, DIGITAL, ...) |
-| `battery` | TEXT | |
+| `led_headlamp` | BOOLEAN | true = LED headlamp |
+| `led_tail_lamp` | BOOLEAN | true = LED tail lamp |
 | `usb_charging` | BOOLEAN | |
-| `navigation` | TEXT | CHECK IN (NONE, BLUETOOTH, SMARTXONNECT, ...) |
+| `bluetooth` | BOOLEAN | |
+| `navigation` | BOOLEAN | |
+| `ride_modes` | TEXT | e.g. "Eco, City, Sport" |
+| — **TYRES** | — | — |
+| `front_tyre` | TEXT | |
+| `rear_tyre` | TEXT | |
+| `tyre_type` | TEXT | e.g. "Tubeless" |
+| — **EV** | — | — |
+| `battery_type` | TEXT | |
+| `battery_capacity` | TEXT | |
+| `range_km` | INTEGER | |
+| `charging_time` | TEXT | |
+| `motor_power` | TEXT | |
 | — **Meta** | — | — |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-**44 columns. Zero JSONB.**
+**42 columns. Zero JSONB.**
+
+> ⚠️ **Planned but NOT in DB yet** (add via ALTER if needed later):
+> `ground_reach`, `seat_length`, `vehicle_length`, `vehicle_width`, `vehicle_height`,
+> `under_seat_storage`, `front_leg_space`, `glove_box`, `wheel_type`, `battery` (text)
 
 ---
 
@@ -445,14 +475,13 @@ Step 7: Publish
 | `slug` | TEXT | Parent-scoped unique via index `(model_id, slug)` |
 | `position` | INTEGER | |
 | `status` | TEXT | |
-| `suitable_for` | TEXT | "Jupiter, Activa" — vehicle compat hint |
 | `material` | TEXT | |
 | `weight` | INTEGER | grams |
 | `finish` | TEXT | CHECK IN (GLOSS, MATTE, CHROME, CARBON) |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-**12 columns. Zero JSONB.**
+**11 columns. Zero JSONB.**
 
 ---
 
@@ -698,7 +727,7 @@ cat_pricing        → ex_showroom: 1200, state_code: 'MH' (sku_id: blue-id)
 | `cat_recommendations` | ✅ Keep | |
 | `cat_raw_items` | ✅ Keep | Raw staging |
 
-**⚠️ कोई table DROP नहीं — सिर्फ rename to `_v1_archive`**
+**⚠️ कोई table DROP नहीं — सिर्फ rename to `_v1_archive`** *(Deprecated columns CAN be dropped.)*
 
 ---
 
@@ -715,47 +744,84 @@ cat_pricing        → ex_showroom: 1200, state_code: 'MH' (sku_id: blue-id)
 7. CREATE cat_skus                        ✅
 8. CREATE cat_pricing (multi-state)       ✅
 9. CREATE cat_suitable_for (Suitable For)✅
-10. ALTER cat_brands — DROP 2 JSONB cols   ⏳
+10. ALTER cat_brands — DROP 2 JSONB cols (`brand_logos`, `specifications`)  ⏳ NOT DONE
 ```
 
-> ⚠️ **STALE DUPLICATE REMOVED** — See below for current execution plan.
+### Phase 2: Seed V2 Tables ✅ DONE
+```
+Seed 5 models (Jupiter 125, Activa 6G, Jupiter 110, Unicorn, XL 100)
+Seed variants + SKUs for all 5 models (58 total SKUs)
+```
 
----
+### Phase 3: Seed Pricing ✅ DONE
+```
+Populate cat_pricing for all 58 SKUs (MH state)
+RTO + Insurance breakdowns with arithmetic integrity verified
+```
+
+### Phase 4: Testing ✅ PASSED
+```
+Data pipeline, pricing integrity, specs, RLS, constraints, TypeScript — all passed
+(See detailed results in "✅ What's Already Done" section below)
+```
+
+### Phase 5: Archive Old Tables ⏳ PENDING
+```
+Rename legacy tables to _v1_archive
+Drop deprecated JSONB columns from cat_brands
+```
+
+### Phase 6: cat_colours — Colour as First-Class Entity ⏳ PENDING
+```
+(See detailed plan in Phase 6 section below)
+```
 
 ## 📊 Final Summary
 
-| # | Table | Cols | JSONB | Status | Hierarchy Level |
-|---|-------|:----:|:-----:|--------|----------------|
-| 1 | `cat_specifications` | 22 | ❌ | ✅ Created + Seeded (60 specs) | Blueprint |
-| 2 | `cat_brands` | 10 | ❌ | 🔧 Existing | Brand |
+| # | Table | Cols | JSONB | Current State | Target State | Hierarchy Level |
+|---|-------|:----:|:-----:|---------------|--------------|----------------|
+| 1 | `cat_specifications` | 21 | ❌ | ✅ Created + Seeded (60 specs) | Done | Blueprint |
+| 2 | `cat_brands` | 12 → 10 | ⚠️ 2 JSONB remain | 🔧 Existing — `brand_logos`, `specifications` JSONB NOT dropped yet | DROP 2 JSONB cols (Phase 5) | Brand |
 | 3 | `cat_models` | 15 | ❌ | ✅ Created | Model |
-| 4 | `cat_variants_vehicle` | 42 | ❌ | ✅ Created | Variant |
+| 4 | `cat_variants_vehicle` | 42 | ❌ | ✅ Created (10 planned cols deferred) | Variant |
 | 5 | `cat_variants_accessory` | 11 | ❌ | ✅ Created | Variant |
 | 6 | `cat_variants_service` | 11 | ❌ | ✅ Created | Variant |
-| 7 | `cat_skus` | 36 | ❌ | ✅ Created | SKU |
+| 7 | `cat_skus` | 37 | ❌ | ✅ Created | SKU |
 | 8 | `cat_pricing` | 55 | ❌ | ✅ Created | Pricing |
 | 9 | `cat_suitable_for` | 6 | ❌ | ✅ Created | Suitable For |
-| **Total** | **9 tables** | **~208** | **Zero** | | |
+| **Total** | **9 tables** | **~208** | **Pending cleanup (brand JSONB)** | | |
 
 ---
 
-## 🔧 Code Constant — Hierarchy Labels (Canonical)
+## 🔧 Code Constant — Hierarchy Labels (Two Layers)
 
+### Layer 1: Database & Code — Canonical (universal)
+```
+Tables:     cat_brands → cat_models → cat_variants_* → cat_skus
+Variables:  brand       model        variant           sku
+Columns:    brand_id    model_id     variant_id        sku_id
+```
+> सब jagah same names. कोई confusion नहीं.
+
+### Layer 2: UI / Display — Type-Specific (user-facing)
 ```typescript
 // src/lib/constants/catalogLabels.ts
 export const HIERARCHY_LABELS = {
-  VEHICLE:   { model: 'Model', variant: 'Variant', sku: 'SKU' },
-  ACCESSORY: { model: 'Model', variant: 'Variant', sku: 'SKU' },
-  SERVICE:   { model: 'Model', variant: 'Variant', sku: 'SKU' },
+  VEHICLE:   { model: 'Model',   variant: 'Variant', sku: 'Colour' },
+  ACCESSORY: { model: 'Product', variant: 'Variant', sku: 'Sub-Variant' },
+  SERVICE:   { model: 'Service', variant: 'Plan',    sku: 'Tier' },
 } as const;
 
 // Usage in Studio:
 // const labels = HIERARCHY_LABELS[product_type];
-// Step 2: <h2>Add {labels.model}</h2>     → "Add Model"
-// Step 3: <h2>Add {labels.variant}</h2>   → "Add Variant"
-// Step 4: <h2>Add {labels.sku}</h2>       → "Add SKU"
-// Step 5: SKU Matrix                       → Variant × SKU
+// Step 2: <h2>Add {labels.model}</h2>     → "Add Model" / "Add Product" / "Add Service"
+// Step 3: <h2>Add {labels.variant}</h2>   → "Add Variant" / "Add Variant" / "Add Plan"
+// Step 4: <h2>Add {labels.sku}</h2>        → "Add Colour" / "Add Sub-Variant" / "Add Tier"
+// Step 5: SKU Matrix                       → Variant × Colour / Variant × Sub-Variant / Plan × Tier
 ```
+
+> UI mein user ko context ke hisaab se label dikhe — Vehicle mein "Colour", Accessory mein "Sub-Variant", Service mein "Tier".
+> Lekin code mein hamesha `model`, `variant`, `sku` hi use hoga.
 
 ---
 
@@ -925,7 +991,279 @@ VALUES ('new-sku-id', 'bajaj-id', 'pulsar-ns200-model-id');
 | DB: `cat_skus_linear` still active (247 rows, JSONB) | ⚠️ Legacy — archive in Phase 5 |
 | DB: `cat_items` still active (406 rows) | ⚠️ Legacy — archive in Phase 5 |
 | Legacy data migration | ⏭️ SKIPPED — fresh seed approach |
-| Code + UI update (fetchers, mappers, studio) | ⏳ Phase 2 ← NEXT |
-| Fresh data seeding (SQL scripts per product) | ⏳ Phase 3 |
-| Testing | ⏳ Phase 4 |
+| **Code: V2 Server Actions** (`catalogV2Actions.ts`) | ✅ Phase 2 — DONE |
+| **Code: V2 Fetcher** (`catalogFetcherV2.ts`) | ✅ Phase 2 — DONE |
+| **Code: Hierarchy Labels** (`catalogLabels.ts`) — UI labels per type | ✅ Phase 2 — DONE |
+| **Code: Studio V2 UI** — 8 files, 2336 lines | ✅ Phase 2 — DONE |
+| &ensp;└ `studio-v2/page.tsx` — Orchestrator (406L) | ✅ |
+| &ensp;└ `steps/BrandStepV2.tsx` — Category + Brand (250L) | ✅ |
+| &ensp;└ `steps/ModelStepV2.tsx` — CRUD cat_models (394L) | ✅ |
+| &ensp;└ `steps/VariantStepV2.tsx` — Accordion specs (385L) | ✅ |
+| &ensp;└ `steps/SKUStepV2.tsx` — Colour/Sub-Variant/Tier (355L) | ✅ |
+| &ensp;└ `steps/MatrixStepV2.tsx` — Cross-ref table (192L) | ✅ |
+| &ensp;└ `steps/ReviewStepV2.tsx` — Validation + tree (237L) | ✅ |
+| &ensp;└ `steps/PublishStepV2.tsx` — Activate model (117L) | ✅ |
+| **Entry Point**: Catalog page "Studio V2" button added | ✅ Phase 2 — DONE |
+| DB: `emission_standard` constraint fixed: added `BS-VI` | ✅ Done |
+| **Seed: TVS Jupiter 125** — 1 model, 4 variants, 13 SKUs | ✅ Phase 3 — DONE |
+| &ensp;└ Model: Jupiter 125 (124.8cc, SCOOTER, BS-VI) | ✅ |
+| &ensp;└ Variants: Drum Alloy, Disc, DT SXC, SmartXonnect | ✅ |
+| &ensp;└ SKUs: 3 + 5 + 2 + 3 = 13 colour SKUs (all ACTIVE) | ✅ |
+| Fresh data seeding (remaining products) | ⏳ Phase 3 — IN PROGRESS |
+| **Seed: Jupiter 125 Pricing (MH)** — 13 rows, full RTO+Insurance breakdown | ✅ Phase 3 — DONE |
+| **Seed: Activa 6G Pricing (MH)** — 18 rows (3 variants × 6 colors), full RTO+Insurance | ✅ Phase 3 — DONE |
+| **Seed: Jupiter 110 Pricing (MH)** — 9 rows (5 variants), full RTO+Insurance | ✅ Phase 3 — DONE |
+| &ensp;└ Drum (3), Drum Alloy (2), Drum SXC (1), Disc SXC (2), Special Ed (1) | ✅ |
+| **Seed: Unicorn Pricing (MH)** — 3 rows (1 variant × 3 colors), full RTO+Insurance | ✅ Phase 3 — DONE |
+| **Seed: XL 100 Pricing (MH)** — 15 rows (5 variants), full RTO+Insurance | ✅ Phase 3 — DONE |
+| &ensp;└ Strategy: JSONB→flat via `::numeric::int` cast, join on variant+color | ✅ |
+| &ensp;└ Integrity: `on_road_price = ex_showroom + rto_total + ins_total` — 0 diff all rows | ✅ |
+| `cat_pricing` population (all V2 models) | ✅ Phase 3 — DONE (58 total rows) |
+| **Phase 4 — Testing** | ✅ PASSED |
+| &ensp;└ TEST 1: Data pipeline (58 SKUs, all ACTIVE, all with pricing) | ✅ |
+| &ensp;└ TEST 2: Pricing integrity (`on_road = ex_showroom + rto + ins`) — 0 diff all rows | ✅ |
+| &ensp;└ TEST 3: Variant specs completeness — displacement, brake, transmission filled | ✅ |
+| &ensp;└ TEST 4: RLS — `cat_pricing` has public SELECT, no new security advisories | ✅ |
+| &ensp;└ TEST 5: Constraints — PK, FK, CHECK (ex_showroom > 0, on_road >= ex, publish_stage enum) | ✅ |
+| &ensp;└ TEST 6: TypeScript `tsc --noEmit` — zero errors | ✅ |
+| &ensp;└ NOTE: V2 Fetcher (`catalogFetcherV2.ts`) built, not yet wired to catalog page | ℹ️ |
+| &ensp;└ NOTE: Jupiter 125 missing images (0/13), all others have images | ℹ️ |
+| &ensp;└ NOTE: Activa + Unicorn missing `max_power`, `mileage`, `fuel_capacity`, `kerb_weight` specs | ℹ️ |
 | Archive old tables | ⏳ Phase 5 |
+
+---
+
+## Phase 6: `cat_colours` — Colour as First-Class Entity
+
+### 🎯 Objective
+Extract colour data from `cat_skus` into a dedicated `cat_colours` table at the model level.
+SKU becomes a pure **cross-product** of `Variant × Colour` via dual FKs.
+
+### 📐 Target Schema
+
+```
+cat_brands (1)
+  └── cat_models (N)
+        ├── cat_variants_vehicle (N)    — FK: model_id
+        ├── cat_colours (N)             — FK: model_id  ← NEW
+        └── cat_skus (N×M)             — FK: variant_id + colour_id
+```
+
+**Entity purpose:**
+| Entity | What it represents | Example |
+|--------|--------------------|---------|
+| `cat_models` | A vehicle model | Jupiter 110 |
+| `cat_variants_vehicle` | A variant/trim level | Drum, Drum Alloy, SmartXonnect |
+| `cat_colours` | A colour option for a model | Starlight Blue Gloss, Meteor Red |
+| `cat_skus` | One buyable product = Variant × Colour | Jupiter Drum × Starlight Blue |
+
+---
+
+### 🗄️ Step 1: Create `cat_colours` Table
+
+```sql
+CREATE TABLE public.cat_colours (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    model_id        UUID NOT NULL REFERENCES public.cat_models(id) ON DELETE CASCADE,
+    name            TEXT NOT NULL,            -- "Starlight Blue Gloss"
+    hex_primary     TEXT,                     -- "#1B3F8B"
+    hex_secondary   TEXT,                     -- nullable, dual-tone
+    finish          TEXT CHECK (finish IN ('GLOSS','MATTE','METALLIC','CHROME')),
+    position        INT DEFAULT 0,
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(model_id, name)                   -- no duplicate colour names per model
+);
+
+-- RLS: public read, admin write
+ALTER TABLE public.cat_colours ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read cat_colours" ON public.cat_colours
+    FOR SELECT USING (true);
+```
+
+| Challenge | Solution |
+|-----------|----------|
+| **Duplicate colour names across variants** — "Starlight Blue Gloss" appears in 3 variants but is ONE colour | `UNIQUE(model_id, name)` constraint ensures one colour entry per model, referenced by many SKUs |
+| **What about same colour name across models?** — Honda also has "Meteor Red" | Constraint is per-model (`model_id + name`), so Honda Activa "Meteor Red" ≠ TVS Jupiter "Meteor Red". This is correct — they have different hex codes |
+| **Finish might be NULL** — some legacy data may not have it | Column is nullable. Can backfill later via UI |
+
+---
+
+### 🔗 Step 2: Add `colour_id` FK to `cat_skus`
+
+```sql
+ALTER TABLE public.cat_skus
+    ADD COLUMN colour_id UUID REFERENCES public.cat_colours(id) ON DELETE SET NULL;
+
+-- Optional: composite unique to prevent duplicate SKUs
+-- ALTER TABLE public.cat_skus 
+--     ADD CONSTRAINT unique_variant_colour UNIQUE(vehicle_variant_id, colour_id);
+```
+
+| Challenge | Solution |
+|-----------|----------|
+| **`ON DELETE SET NULL` vs `CASCADE`** — what if a colour is deleted? | `SET NULL` is safer. SKU doesn't get deleted, just loses its colour reference. Admin can reassign. `CASCADE` would silently delete SKUs (dangerous) |
+| **Composite unique constraint** — should we enforce unique `(variant_id, colour_id)`? | **Defer for now**. Some edge cases: "Special Edition" variants may have exclusive colours OR the same variant might have two entries for the same colour (e.g., different finish years). Add constraint later after data is stable |
+| **Existing columns `color_name`, `hex_primary`, `hex_secondary`, `finish` on `cat_skus`** — redundant now | **Keep as denormalized cache** for Phase 6. Drop in Phase 7 after all consumers migrate to JOIN. This avoids breaking 26+ files at once |
+
+---
+
+### 📦 Step 3: Migrate Existing Data
+
+**Strategy:** Extract unique colours from existing `cat_skus` → INSERT into `cat_colours` → backfill `colour_id` on `cat_skus`
+
+```sql
+-- Step 3a: Extract unique colours per model
+INSERT INTO cat_colours (model_id, name, hex_primary, hex_secondary, finish, position)
+SELECT DISTINCT ON (model_id, color_name)
+    model_id,
+    color_name,
+    hex_primary,
+    hex_secondary,
+    finish,
+    ROW_NUMBER() OVER (PARTITION BY model_id ORDER BY position) - 1
+FROM cat_skus
+WHERE color_name IS NOT NULL
+  AND status = 'ACTIVE'
+ORDER BY model_id, color_name, position;
+
+-- Step 3b: Backfill colour_id on existing SKUs
+UPDATE cat_skus s
+SET colour_id = c.id
+FROM cat_colours c
+WHERE c.model_id = s.model_id
+  AND c.name = s.color_name;
+```
+
+| Challenge | Solution |
+|-----------|----------|
+| **Same colour name, different hex across variants** — e.g., "Midnight Black" could have slightly different hex in Drum vs SmartXonnect | `DISTINCT ON (model_id, color_name)` picks one. Hex differences should be normalized anyway (one hex per colour name per model). If genuinely different, they should be different colour names |
+| **SKUs with NULL `color_name`** — accessories/services won't have colours | Skip them in migration (`WHERE color_name IS NOT NULL`). `colour_id` stays NULL for non-vehicle SKUs. This is correct by design |
+| **Colour names with inconsistent casing** — "starlight blue" vs "Starlight Blue Gloss" | Pre-migration audit: `SELECT model_id, LOWER(color_name), COUNT(*) FROM cat_skus GROUP BY 1,2 HAVING COUNT(DISTINCT color_name) > 1`. Fix casing before migration |
+| **Position ordering** — colours within a model need consistent sort order | `ROW_NUMBER() OVER (PARTITION BY model_id)` generates 0-based position. Can reorder in UI later |
+
+---
+
+### 🔧 Step 4: Code Changes — Impact Analysis
+
+**26 files reference `color_name`/`hex_primary` from SKU-level data:**
+
+#### Layer 1: V2 Direct Consumers (Phase 6 scope)
+| File | What uses | Change needed |
+|------|-----------|---------------|
+| `catalogFetcherV2.ts` | `s.color_name`, `s.hex_primary` in `RawProductRow` | Add JOIN to `cat_colours` via `colour_id`. Read from colour entity |
+| `catalogV2Actions.ts` | `CatalogSku.color_name` type + `createSku()` | Add `listColours()`, `createColour()`, `updateColour()`, `deleteColour()` actions. Update `createSku()` to accept `colour_id` |
+| `SKUStepV2.tsx` | Creates SKU with `color_name` inline | **Reworked entirely** — becomes Colour Pool step |
+| `MatrixStepV2.tsx` | Read-only grid by SKU name | **Reworked entirely** — becomes Variant × Colour checkbox matrix |
+| `ReviewStepV2.tsx` | Displays `sku.hex_primary`, `sku.color_name` | Read from joined `colour` data or keep denormalized cache |
+
+#### Layer 2: V1 Consumers (NOT in Phase 6 scope — keep working via denormalized columns)
+| File | What uses | Phase 6 action |
+|------|-----------|----------------|
+| `catalogFetcher.ts` (V1) | `specs.hex_primary` from `cat_items` | **No change** — V1 path doesn't touch `cat_skus` |
+| `catalogMapper.ts` | `sku.specs?.hex_primary` from `cat_items` JSONB | **No change** — V1 mapper |
+| `crm.ts` | `commercials.hex_primary` from quote snapshot | **No change** — reads from stored JSONB, not live colour |
+| `QuoteEditorWrapper.tsx` | `q.commercials?.color_name` | **No change** — reads from quote, not catalogue |
+| `BookingEditorWrapper.tsx` | `color_name` from booking | **No change** — snapshot data |
+| `syncAction.ts` | `hex_primary` during V1→V2 sync | Minimal update — also write `colour_id` during sync |
+| `scraperAction.ts` | `hex_primary` during scrape ingest | Minimal update — also create colour if needed |
+| `ProductClient.tsx` (PDP) | `hex_primary` from V1 `ProductVariant` type | **No change** — V1 type |
+| `SystemCatalogLogic.ts` | Colour logic for CRM | **No change** — uses V1 data |
+| V1 Studio steps | `UnitStep.tsx`, `MatrixStep.tsx`, `ReviewStep.tsx` | **No change** — V1 studio |
+| `catalog/products/page.tsx` | Admin list `hex_primary` | **No change** — V1 `cat_items` |
+| `catalog/audit/page.tsx` | Audit view | **No change** |
+
+| Challenge | Solution |
+|-----------|----------|
+| **26 files reference colour data** — too many to change at once | **Two-layer strategy**: V2 consumers (5 files) migrate to `cat_colours` JOIN. V1 consumers (21 files) keep using existing denormalized data. Zero breakage |
+| **`catalogFetcherV2.ts` needs JOIN** — currently reads `hex_primary` directly from SKU select | Add `colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish)` to the PostgREST nested select. Fallback to SKU-level `hex_primary` if `colour_id` is NULL |
+| **`createSku()` currently sets `color_name`** — consumers expect this | Keep writing `color_name` + `hex_primary` to SKU (denormalized cache) PLUS set `colour_id`. This is the **bridge period** strategy |
+| **TypeScript types** — need `cat_colours` in `supabase.ts` | Regenerate types via `generate_typescript_types` after migration |
+
+---
+
+### 🎨 Step 5: Studio V2 UI Rework
+
+**Current flow (7 steps):**
+```
+Brand → Model → Variants → Colours/SKUs → Matrix (readonly) → Review → Publish
+```
+
+**New flow (7 steps, same count, better UX):**
+```
+Brand → Model → Variants → Colour Pool → SKU Matrix → Review → Publish
+                                ↑ NEW          ↑ REWORKED
+```
+
+#### Step 4 NEW: Colour Pool
+- Shows all colours defined for this model (from `cat_colours`)
+- Add/edit/delete colours (name, hex picker, finish dropdown)
+- No variant association here — just the palette
+- UI: Grid of colour cards with swatch, name, hex code
+
+#### Step 5 REWORKED: SKU Matrix
+- **Rows** = Variants (from `cat_variants_vehicle`)
+- **Columns** = Colours (from `cat_colours`)
+- **Cells** = Checkbox (☑️/☐)
+  - ☑️ Checked → SKU exists for this Variant×Colour
+  - ☐ Unchecked → No SKU
+- **Toggle logic:**
+  - Check a cell → `createSku({ variant_id, colour_id, ... })` auto-generates SKU
+  - Uncheck → `deleteSku()` or mark INACTIVE
+- **Inline price edit** on checked cells (same as current matrix)
+- **Bulk actions:** "Select All" column header toggles a colour across all variants
+
+| Challenge | Solution |
+|-----------|----------|
+| **Orphan colours** — colour defined but zero SKUs assigned | Show ⚠️ warning badge: "0 variants" in Colour Pool. Blocking validation before Publish: "2 colours have no variants assigned — remove or assign them" |
+| **Colour in some variants but not all** — this is valid (e.g., "Midnight Black" only in Disc SmartXonnect) | Normal case. Matrix shows partial row — unchecked cells are just unchecked. This is the whole point of the matrix |
+| **Auto-generate SKU name** — when checking a cell, what's the SKU name? | Auto: `{colour_name}` as name. SKU code: `{model_slug}-{variant_slug}-{colour_slug}`. Both can be edited after creation |
+| **Auto-generate `price_base`** — what price for a new SKU? | Default to model's base price or 0. Admin edits in matrix or Review step |
+| **Media (images) per SKU** — each colour has different images | Images stay on `cat_skus` (per-SKU), NOT on `cat_colours`. A colour swatch is model-level, but product photos are SKU-level (same colour may look different on different variants). This is already correct in the schema |
+| **360° shared media** — `media_shared` flag on SKU | Keep on `cat_skus`. If `media_shared = true`, SKU shares 360° assets with primary SKU of same variant. No change needed |
+| **Mobile UX** — matrix may be too wide on mobile | Horizontal scroll + sticky first column (variant names). Already implemented in current MatrixStepV2 |
+| **Deleting a colour from pool** — what happens to its SKUs? | `ON DELETE SET NULL` on FK. Show confirmation dialog: "This will disconnect X SKUs from this colour. Continue?" Optionally offer "Delete colour AND its SKUs" |
+
+---
+
+### 📋 Step 6: Validation & Testing
+
+| Test | What to verify |
+|------|----------------|
+| **Schema integrity** | `cat_colours` has correct columns, UNIQUE constraint, FK to models |
+| **Data migration** | All existing colours extracted. `colour_id` backfilled on all vehicle SKUs with colour data |
+| **No orphan SKUs** | `SELECT COUNT(*) FROM cat_skus WHERE color_name IS NOT NULL AND colour_id IS NULL` = 0 |
+| **Referential integrity** | `SELECT * FROM cat_skus WHERE colour_id NOT IN (SELECT id FROM cat_colours)` = 0 |
+| **V2 fetcher** | `catalogFetcherV2.ts` JOINs colour data correctly. Marketplace shows correct colours |
+| **V1 not broken** | V1 catalog, CRM, quotes, bookings — all unchanged. `tsc --noEmit` passes |
+| **Studio V2 Colour Pool** | Can create, edit, delete colours. Hex picker works. Orphan warning shows |
+| **Studio V2 Matrix** | Checkbox creates/removes SKUs. Price editing works. Bulk select works |
+| **RLS** | `cat_colours` is publicly readable. No new security advisories |
+| **TypeScript** | Regenerated types include `cat_colours`. `tsc --noEmit` passes |
+
+---
+
+### 📅 Execution Order
+
+| Phase | Task | Dependencies |
+|-------|------|-------------|
+| 6.1 | Create `cat_colours` table + RLS | None |
+| 6.2 | Add `colour_id` FK to `cat_skus` | 6.1 |
+| 6.3 | Migrate existing colour data | 6.2 |
+| 6.4 | Regenerate TypeScript types | 6.3 |
+| 6.5 | Add CRUD actions for `cat_colours` in `catalogV2Actions.ts` | 6.4 |
+| 6.6 | Update `catalogFetcherV2.ts` to JOIN `cat_colours` | 6.4 |
+| 6.7 | Build Colour Pool step (Studio V2 Step 4) | 6.5 |
+| 6.8 | Rework Matrix step (Studio V2 Step 5) | 6.5, 6.7 |
+| 6.9 | Validation & testing | All above |
+| 6.10 | `tsc --noEmit` + build verification | 6.9 |
+
+### ⚠️ Risk Register
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| V1 consumers break | Low | High | Denormalized cache columns kept. Zero V1 code changes |
+| Colour data inconsistency during migration | Medium | Medium | Pre-migration audit query. Fix casing/duplicates before INSERT |
+| Orphan colours accumulate over time | Medium | Low | UI warning + optional cleanup action in Colour Pool |
+| Matrix UI performance with many variants × colours | Low | Low | Max ~10 variants × ~20 colours = 200 cells. Fine |
+| `ON DELETE SET NULL` leaves dangling SKUs | Low | Medium | Confirmation dialog. Option to cascade-delete related SKUs |

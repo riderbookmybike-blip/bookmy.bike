@@ -167,38 +167,31 @@ export default function PricingPage() {
     const fetchSKUsAndPrices = async () => {
         setLoading(true);
         try {
+            // V2 Catalog Fetch: SKU -> Variant -> Model -> Brand
             const { data: skuData, error: skuError } = await supabase
-                .from('cat_items')
+                .from('cat_skus')
                 .select(
                     `
-                    id, name, slug, specs, price_base, parent_id, inclusion_type, status, position,
-                    parent:parent_id (
-                        id, name, type, specs, position,
-                        parent:parent_id (
-                            id, name, type, price_base, specs, position,
-                            parent:parent_id (
-                                id, name, type, price_base, specs,
-                                category,
-                                brand:cat_brands(id, name, logo_svg)
-                            ),
-                            category,
-                            brand:cat_brands(id, name, logo_svg)
-                        )
-                    )
+                    id, name, slug, position, status,
+                    hex_primary, hex_secondary, color_name, finish,
+                    model:cat_models!model_id (
+                        id, name, slug, position, status, product_type,
+                        brand:cat_brands!brand_id (id, name, logo_svg)
+                    ),
+                    vehicle_variant:cat_variants_vehicle!vehicle_variant_id (id, name, slug, position),
+                    accessory_variant:cat_variants_accessory!accessory_variant_id (id, name, slug, position),
+                    service_variant:cat_variants_service!service_variant_id (id, name, slug, position)
                 `
                 )
-                .eq('type', 'SKU')
                 .order('position', { ascending: true, nullsFirst: false });
 
             if (skuError) throw skuError;
 
             const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode ?? 'MH';
-            const priceColumn = `price_${activeStateCode.toLowerCase()}`;
 
-            const [linearRes, offerRes, stockRes] = await Promise.all([
-                // Do not filter by status here; pricing JSON can exist on non-ACTIVE linear rows too.
-                // Filtering caused calculated RTO/Insurance to appear "not saved" in ledger.
-                supabase.from('cat_skus_linear').select(`id, unit_json, ex_showroom_mh, ${priceColumn}`),
+            const [priceRes, offerRes] = await Promise.all([
+                // Authoritative SOT for pricing: MHz state table
+                supabase.from('cat_price_mh').select('*').eq('state_code', activeStateCode),
                 tenantSlug !== 'aums'
                     ? supabase
                           .from('cat_price_dealer')
@@ -206,17 +199,13 @@ export default function PricingPage() {
                           .eq('state_code', activeStateCode)
                           .eq('tenant_id', tenantId as string)
                     : Promise.resolve({ data: [] as any, error: null as any }),
-                Promise.resolve({ data: [] as any, error: null as any }),
             ]);
 
-            const { data: linearData, error: linearError } = linearRes;
-            if (linearError) throw linearError;
+            const { data: priceData, error: priceError } = priceRes;
+            if (priceError) throw priceError;
 
             const { data: offerData, error: offerError } = offerRes as any;
             if (offerError) console.error('Offer Fetch Error:', offerError);
-
-            const { data: stockData, error: stockError } = stockRes;
-            if (stockError) console.error('Stock Fetch Error:', stockError);
 
             const priceMap = new Map<
                 string,
@@ -234,24 +223,31 @@ export default function PricingPage() {
                     isPopular?: boolean;
                 }
             >();
-            (linearData || []).forEach((row: any) => {
-                const priceMh = row[priceColumn] || {};
-                const skuId = row.id;
+            (priceData || []).forEach((row: any) => {
+                const skuId = row.sku_id;
                 if (!skuId) return;
-                const exShowroomFromColumn =
-                    activeStateCode.toUpperCase() === 'MH' ? Number(row.ex_showroom_mh || 0) : 0;
                 priceMap.set(skuId, {
-                    price: exShowroomFromColumn > 0 ? exShowroomFromColumn : Number(priceMh.ex_showroom) || 0,
-                    rto: Number(priceMh.rto_total) || 0,
-                    rto_data: priceMh.rto,
-                    insurance: Number(priceMh.insurance_total) || 0,
-                    insurance_data: priceMh.insurance,
-                    onRoad: Number(priceMh.on_road_price) || Number(priceMh.ex_showroom) || 0,
+                    price: Number(row.ex_showroom) || 0,
+                    rto: Number(row.rto_total) || 0,
+                    rto_data: {
+                        STATE: Number(row.rto_state_total || 0),
+                        BH: Number(row.rto_bh_total || 0),
+                        COMPANY: Number(row.rto_company_total || 0),
+                        default: row.rto_default_type || 'STATE',
+                    },
+                    insurance: Number(row.ins_total) || 0,
+                    insurance_data: {
+                        base_total: Number(row.ins_base_total || 0),
+                        od: Number(row.ins_od_total || 0),
+                        tp: Number(row.ins_tp_total || 0),
+                        pa: Number(row.ins_pa || 0),
+                    },
+                    onRoad: Number(row.on_road_price) || 0,
                     district: 'ALL',
-                    publishedAt: priceMh.published_at,
-                    publishStage: priceMh.publish_stage || 'DRAFT',
-                    updatedAt: priceMh.updated_at,
-                    isPopular: priceMh.is_popular || false,
+                    publishedAt: row.published_at,
+                    publishStage: row.publish_stage || 'DRAFT',
+                    updatedAt: row.updated_at,
+                    isPopular: row.is_popular || false,
                 });
             });
 
@@ -265,98 +261,59 @@ export default function PricingPage() {
                 activeMap.set(o.vehicle_color_id, o.is_active);
             });
 
-            const { data: brandDeltas, error: deltaError } = await supabase
-                .from('cat_regional_configs')
-                .select('brand_id, delta_percentage')
-                .eq('state_code', activeStateCode);
-
-            const brandDeltaMap = new Map();
-            brandDeltas?.forEach(d => brandDeltaMap.set(d.brand_id, d.delta_percentage));
-
             const formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
-                const parent1 = Array.isArray(sku.parent) ? sku.parent[0] : sku.parent;
-                const parent2 = parent1 ? (Array.isArray(parent1.parent) ? parent1.parent[0] : parent1.parent) : null;
-                const parent3 = parent2 ? (Array.isArray(parent2.parent) ? parent2.parent[0] : parent2.parent) : null;
-
-                // Resolve Hierarchy: Product -> Variant -> Unit -> SKU
-                let family = null;
-                let variant = null;
-                let unit = null;
-
-                if (parent1?.type === 'UNIT') {
-                    unit = parent1;
-                    variant = parent2;
-                    family = parent3;
-                } else if (parent1?.type === 'VARIANT') {
-                    variant = parent1;
-                    family = parent2;
-                } else if (parent1?.type === 'PRODUCT') {
-                    family = parent1;
-                }
-
-                const brand = family ? (Array.isArray(family.brand) ? family.brand[0] : family.brand) : null;
-                const familyCategory = family?.category || 'VEHICLE';
-
-                const statePrice = priceMap.get(sku.id)?.price;
-                const pricingRule = (offerData || []).find((o: any) => o.vehicle_color_id === sku.id);
-                const stateOffer = pricingRule?.offer_amount || offerMap.get(sku.id) || 0;
-                const stateInclusion = pricingRule?.inclusion_type || sku.inclusion_type || 'OPTIONAL';
-                const localIsActive = activeMap.has(sku.id) ? activeMap.get(sku.id) : false;
-
-                const basePrice = 0;
-                const brandDelta = brandDeltaMap.get(brand?.id) || 0;
+                const model = sku.model;
+                const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
+                const brand = model?.brand;
+                const productType = model?.product_type || 'VEHICLE';
 
                 const priceRecord = priceMap.get(sku.id);
+                const statePrice = priceRecord?.price;
+                const pricingRule = (offerData || []).find((o: any) => o.vehicle_color_id === sku.id);
+                const stateOffer = pricingRule?.offer_amount || offerMap.get(sku.id) || 0;
+                const stateInclusion = pricingRule?.inclusion_type || 'OPTIONAL';
+                const localIsActive = activeMap.has(sku.id) ? activeMap.get(sku.id) : false;
+
                 const publishedAt = priceRecord?.publishedAt;
                 const updatedAt = priceRecord?.updatedAt;
                 const publishStage = (priceRecord?.publishStage || 'DRAFT') as SKUPriceRow['publishStage'];
-                const resolvedStatus = sku.status || 'INACTIVE';
+                const resolvedStatus = (sku.status || 'INACTIVE') as any;
+
                 let displayState: SKUPriceRow['displayState'] = 'Draft';
                 if (tenantSlug !== 'aums') {
                     displayState = resolvedStatus === 'ACTIVE' && localIsActive ? 'Live' : 'Inactive';
                 } else {
-                    // AUMS uses publish_stage from cat_skus_linear pricing, not sku.status from cat_items
                     if (publishStage === 'PUBLISHED') displayState = 'Published';
                     else if (publishStage === 'UNDER_REVIEW') displayState = 'In Review';
                     else if (publishStage === 'LIVE') displayState = 'Live';
                     else if (publishStage === 'INACTIVE') displayState = 'Inactive';
-                    else displayState = 'Draft'; // Default for DRAFT or null
+                    else displayState = 'Draft';
                 }
 
                 const finalPrice = statePrice !== undefined ? statePrice : 0;
-
                 const finalInclusionType = stateInclusion as 'MANDATORY' | 'OPTIONAL' | 'BUNDLE';
 
-                // Determine item type from family category
+                // Determine item type from model product_type
                 let itemType: 'vehicles' | 'accessories' | 'service' = 'vehicles';
-                const tempCat = familyCategory.toUpperCase();
-
-                if (tempCat === 'ACCESSORY') itemType = 'accessories';
-                else if (tempCat === 'SERVICE') itemType = 'service';
-
-                const categoryLabel =
-                    tempCat ||
-                    (itemType === 'vehicles' ? 'VEHICLE' : itemType === 'accessories' ? 'ACCESSORY' : 'SERVICE');
-                const subCategoryLabel = 'General';
+                if (productType === 'ACCESSORY') itemType = 'accessories';
+                else if (productType === 'SERVICE') itemType = 'service';
 
                 return {
                     id: sku.id,
                     brand: brand?.name || (itemType === 'vehicles' ? 'UNKNOWN' : 'GENERAL'),
                     brandId: brand?.id,
                     brandLogo: brand?.logo_svg,
-                    category: categoryLabel,
-                    subCategory: subCategoryLabel,
-                    model: family?.name || sku.name || 'UNKNOWN',
-                    modelId: family?.id,
+                    category: productType,
+                    subCategory: 'General',
+                    model: model?.name || 'UNKNOWN',
+                    modelId: model?.id,
                     variant: variant?.name || '',
-                    color:
-                        sku.specs?.color ||
-                        unit?.name ||
-                        (variant?.name
-                            ? sku.name.replace(new RegExp(`^.*${variant.name}\\s*[-–]?\\s*`, 'i'), '')
-                            : sku.name),
-                    engineCc: parseInt(sku.specs?.engine_cc || family?.specs?.engine_cc || '0'),
-                    suitableFor: sku.specs?.suitable_for || '',
+                    color: sku.color_name || sku.name,
+                    finish: sku.finish || '',
+                    hex_primary: sku.hex_primary,
+                    hex_secondary: sku.hex_secondary,
+                    engineCc: 0,
+                    suitableFor: '',
                     exShowroom: finalPrice,
                     offerAmount: stateOffer,
                     inclusionType: finalInclusionType,
@@ -365,11 +322,11 @@ export default function PricingPage() {
                     originalOfferAmount: stateOffer,
                     originalInclusionType: finalInclusionType,
                     stockCount: 0,
-                    status: sku.status || 'INACTIVE',
-                    originalStatus: sku.status || 'INACTIVE',
+                    status: resolvedStatus as any,
+                    originalStatus: resolvedStatus as any,
                     localIsActive: localIsActive,
-                    position: sku.position || 999,
-                    variantPosition: variant?.position || 999,
+                    position: sku.position || 0,
+                    variantPosition: variant?.position || 0,
                     originalLocalIsActive: localIsActive,
                     publishedAt: publishedAt,
                     updatedAt: updatedAt,
@@ -387,8 +344,6 @@ export default function PricingPage() {
             });
 
             formattedSkus.sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model));
-
-            // RPC removed - all pricing data now comes from cat_skus_linear (Published SOT)
 
             setSkus(formattedSkus);
         } catch (error: any) {

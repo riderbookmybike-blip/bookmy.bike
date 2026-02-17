@@ -80,6 +80,9 @@ interface SKUPriceRow {
     variantPosition?: number;
     isPopular?: boolean;
     originalIsPopular?: boolean;
+    finish?: string;
+    hex_primary?: string;
+    hex_secondary?: string;
 }
 
 interface PricingLedgerTableProps {
@@ -1673,10 +1676,30 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            <td className="px-3 py-1.5 min-w-[80px]">
-                                                <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase leading-relaxed">
-                                                    {sku.color}
-                                                </span>
+                                            <td className="px-3 py-1.5 min-w-[120px]">
+                                                <div className="flex items-center gap-2">
+                                                    {sku.hex_primary && (
+                                                        <div
+                                                            className="w-3 h-3 rounded-full border border-slate-200 dark:border-white/10 shrink-0 shadow-sm"
+                                                            style={{
+                                                                background: sku.hex_secondary
+                                                                    ? `linear-gradient(135deg, ${sku.hex_primary} 50%, ${sku.hex_secondary} 50%)`
+                                                                    : sku.hex_primary,
+                                                            }}
+                                                            title={sku.hex_primary}
+                                                        />
+                                                    )}
+                                                    <div className="flex flex-col gap-0 text-left">
+                                                        <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight">
+                                                            {sku.color}
+                                                        </span>
+                                                        {sku.finish && (
+                                                            <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">
+                                                                {sku.finish}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </td>
 
                                             {activeCategory === 'vehicles' && (

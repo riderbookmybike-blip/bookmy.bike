@@ -16,6 +16,7 @@ export interface ProductVariant {
     powerUnit: 'CC' | 'KW';
     segment: string;
     rating: number;
+    popularityScore?: number;
     price: {
         exShowroom: number;
         onRoad: number;
@@ -41,6 +42,7 @@ export interface ProductVariant {
         offsetX?: number;
         offsetY?: number;
         finish?: string;
+        position?: number;
     }>;
     imageUrl: string;
     zoomFactor?: number;

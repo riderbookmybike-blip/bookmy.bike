@@ -13,20 +13,29 @@ interface SystemCatalogRouterProps {
     mode?: 'default' | 'smart';
 }
 
-export default function SystemCatalogRouter({
-    initialItems,
-    basePath = '/store',
-    mode = 'default',
-}: SystemCatalogRouterProps) {
+function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
+    const filters = useCatalogFilters(initialItems);
 
+    return (
+        <DesktopCatalog
+            filters={filters}
+            leadId={leadId || undefined}
+            basePath={basePath}
+            items={initialItems}
+            isLoading={false}
+            mode="smart"
+        />
+    );
+}
+
+function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
+    const searchParams = useSearchParams();
+    const leadId = searchParams.get('leadId');
     const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic(leadId || undefined);
-
-    // Prefer client-resolved items when available
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
     const loading = isClientLoading && currentItems.length === 0;
-
     const filters = useCatalogFilters(currentItems);
 
     return (
@@ -36,7 +45,11 @@ export default function SystemCatalogRouter({
             basePath={basePath}
             items={currentItems}
             isLoading={loading}
-            mode={mode}
+            mode="default"
         />
     );
+}
+
+export default function SystemCatalogRouter(props: SystemCatalogRouterProps) {
+    return props.mode === 'smart' ? <SmartCatalogRouter {...props} /> : <DefaultCatalogRouter {...props} />;
 }

@@ -476,55 +476,77 @@ export default async function Page({ params, searchParams }: Props) {
     const priceCol = `price_${stateCode.toLowerCase()}`;
 
     if (skuIds.length > 0) {
-        const { data: linearRows } = await (supabase as any)
-            .from('cat_skus_linear')
-            .select(`unit_json, ${priceCol}`)
-            .eq('status', 'ACTIVE');
+        // Authoritative SOT for MH: dedicated state table with columns
+        const isMh = stateCode.toUpperCase() === 'MH';
 
-        // Find the first SKU with valid pricing data
-        const matchingRow = ((linearRows || []) as any[]).find((row: any) => {
-            const unitId = row.unit_json?.id;
-            const pm = row[priceCol];
-            return unitId && skuIds.includes(unitId) && pm && Number(pm.rto_total) > 0;
-        });
-        const fallbackRow = !matchingRow
-            ? ((linearRows || []) as any[]).find((row: any) => {
-                  const unitId = row.unit_json?.id;
-                  return unitId && skuIds.includes(unitId) && row[priceCol];
-              })
-            : null;
+        if (isMh) {
+            const { data: mhRows } = await (supabase as any)
+                .from('cat_price_mh')
+                .select('*')
+                .in('sku_id', skuIds)
+                .order('updated_at', { ascending: false });
 
-        const priceRow = matchingRow || fallbackRow;
-        if (priceRow) {
-            const pm = priceRow[priceCol];
-            publishedPriceData = {
-                vehicle_color_id: priceRow.unit_json?.id,
-                ex_showroom_price: pm.ex_showroom,
-                rto_total: pm.rto_total,
-                insurance_total: pm.insurance_total,
-                on_road_price: pm.on_road_price,
-                rto: pm.rto,
-                insurance: pm.insurance,
-                rto_breakdown: pm.rto_breakdown,
-                insurance_breakdown: pm.insurance_breakdown,
-                state_code: stateCode,
-                district: 'ALL',
-                published_at: pm.published_at,
-            };
-            console.info('[PDP Pricing Debug]', {
-                stateCode,
-                district: pricingContext.district || 'ALL',
-                priceSource: `cat_skus_linear.${priceCol}`,
-                matchType: matchingRow ? 'strict_rto_positive' : 'fallback_any_price',
-                skuMatched: priceRow.unit_json?.id || 'NONE',
-                onRoad: pm?.on_road_price,
-                exShowroom: pm?.ex_showroom,
-            });
+            const matchingRow = (mhRows || []).find((row: any) => Number(row.rto_state_total) > 0);
+            const priceRow = matchingRow || (mhRows || [])[0];
+
+            if (priceRow) {
+                publishedPriceData = {
+                    vehicle_color_id: priceRow.sku_id,
+                    ex_showroom_price: Number(priceRow.ex_showroom) || 0,
+                    rto_total: Number(priceRow.rto_state_total) || 0,
+                    insurance_total: Number(priceRow.ins_total) || 0,
+                    on_road_price: Number(priceRow.on_road_price) || 0,
+                    rto: {
+                        STATE: { total: Number(priceRow.rto_state_total) },
+                        BH: { total: Number(priceRow.rto_bh_total) },
+                        COMPANY: { total: Number(priceRow.rto_company_total) },
+                        default: priceRow.rto_default_type || 'STATE',
+                    },
+                    insurance: {
+                        base_total: Number(priceRow.ins_base_total),
+                        od: { total: Number(priceRow.ins_od_total) },
+                        tp: { total: Number(priceRow.ins_tp_total) },
+                        pa: Number(priceRow.ins_pa),
+                    },
+                    state_code: stateCode,
+                    district: 'ALL',
+                    published_at: priceRow.published_at,
+                };
+            }
         } else {
-            console.warn('[PDP Pricing Debug] No cat_skus_linear pricing matched for SKU set', {
-                stateCode,
-                skuCount: skuIds.length,
+            // Fallback for other states: use cat_skus_linear JSONB
+            const { data: linearRows } = await (supabase as any)
+                .from('cat_skus_linear')
+                .select(`unit_json, ${priceCol}`)
+                .eq('status', 'ACTIVE');
+
+            const matchingRow = ((linearRows || []) as any[]).find((row: any) => {
+                const unitId = row.unit_json?.id;
+                const pm = row[priceCol];
+                return unitId && skuIds.includes(unitId) && pm && Number(pm.rto_total) > 0;
             });
+            const priceRow =
+                matchingRow ||
+                ((linearRows || []) as any[]).find((row: any) => {
+                    const unitId = row.unit_json?.id;
+                    return unitId && skuIds.includes(unitId) && row[priceCol];
+                });
+
+            if (priceRow) {
+                const pm = priceRow[priceCol];
+                publishedPriceData = {
+                    vehicle_color_id: priceRow.unit_json?.id,
+                    ex_showroom_price: pm.ex_showroom,
+                    rto_total: pm.rto_total,
+                    insurance_total: pm.insurance_total,
+                    on_road_price: pm.on_road_price,
+                    rto: pm.rto,
+                    insurance: pm.insurance,
+                    state_code: stateCode,
+                    district: 'ALL',
+                    published_at: pm.published_at,
+                };
+            }
         }
     }
 

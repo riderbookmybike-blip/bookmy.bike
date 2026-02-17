@@ -219,6 +219,50 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            cat_colours: {
+                Row: {
+                    created_at: string | null;
+                    finish: string | null;
+                    hex_primary: string | null;
+                    hex_secondary: string | null;
+                    id: string;
+                    model_id: string;
+                    name: string;
+                    position: number | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    finish?: string | null;
+                    hex_primary?: string | null;
+                    hex_secondary?: string | null;
+                    id?: string;
+                    model_id: string;
+                    name: string;
+                    position?: number | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    finish?: string | null;
+                    hex_primary?: string | null;
+                    hex_secondary?: string | null;
+                    id?: string;
+                    model_id?: string;
+                    name?: string;
+                    position?: number | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_colours_model_id_fkey';
+                        columns: ['model_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_models';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             cat_hsn_codes: {
                 Row: {
                     cess_rate: number | null;
@@ -565,6 +609,68 @@ export type Database = {
                     },
                 ];
             };
+            cat_models: {
+                Row: {
+                    body_type: string | null;
+                    brand_id: string;
+                    created_at: string | null;
+                    emission_standard: string | null;
+                    engine_cc: number | null;
+                    fuel_type: string | null;
+                    hsn_code: string | null;
+                    id: string;
+                    item_tax_rate: number | null;
+                    name: string;
+                    position: number | null;
+                    product_type: string;
+                    slug: string | null;
+                    status: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    body_type?: string | null;
+                    brand_id: string;
+                    created_at?: string | null;
+                    emission_standard?: string | null;
+                    engine_cc?: number | null;
+                    fuel_type?: string | null;
+                    hsn_code?: string | null;
+                    id?: string;
+                    item_tax_rate?: number | null;
+                    name: string;
+                    position?: number | null;
+                    product_type: string;
+                    slug?: string | null;
+                    status?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    body_type?: string | null;
+                    brand_id?: string;
+                    created_at?: string | null;
+                    emission_standard?: string | null;
+                    engine_cc?: number | null;
+                    fuel_type?: string | null;
+                    hsn_code?: string | null;
+                    id?: string;
+                    item_tax_rate?: number | null;
+                    name?: string;
+                    position?: number | null;
+                    product_type?: string;
+                    slug?: string | null;
+                    status?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_models_brand_id_fkey';
+                        columns: ['brand_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_brands';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             cat_price_dealer: {
                 Row: {
                     auto_adjusted_at: string | null;
@@ -650,6 +756,188 @@ export type Database = {
                         columns: ['vehicle_model_id'];
                         isOneToOne: false;
                         referencedRelation: 'cat_items';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            cat_price_mh: {
+                Row: {
+                    addon1_default: boolean | null;
+                    addon1_gst: number | null;
+                    addon1_label: string | null;
+                    addon1_price: number | null;
+                    addon1_total: number | null;
+                    addon2_default: boolean | null;
+                    addon2_gst: number | null;
+                    addon2_label: string | null;
+                    addon2_price: number | null;
+                    addon2_total: number | null;
+                    created_at: string | null;
+                    ex_showroom: number;
+                    gst_rate: number | null;
+                    hsn_code: string | null;
+                    id: string;
+                    ins_base_total: number | null;
+                    ins_gst_rate: number | null;
+                    ins_gst_total: number | null;
+                    ins_net_premium: number | null;
+                    ins_od_base: number | null;
+                    ins_od_gst: number | null;
+                    ins_od_total: number | null;
+                    ins_pa: number | null;
+                    ins_total: number;
+                    ins_tp_base: number | null;
+                    ins_tp_gst: number | null;
+                    ins_tp_total: number | null;
+                    is_popular: boolean | null;
+                    on_road_price: number;
+                    publish_stage: string | null;
+                    published_at: string | null;
+                    published_by: string | null;
+                    rto_bh_cess: number | null;
+                    rto_bh_postal: number | null;
+                    rto_bh_registration: number | null;
+                    rto_bh_road_tax: number | null;
+                    rto_bh_smart_card: number | null;
+                    rto_bh_total: number | null;
+                    rto_company_cess: number | null;
+                    rto_company_postal: number | null;
+                    rto_company_registration: number | null;
+                    rto_company_road_tax: number | null;
+                    rto_company_smart_card: number | null;
+                    rto_company_total: number | null;
+                    rto_default_type: string | null;
+                    rto_state_cess: number | null;
+                    rto_state_postal: number | null;
+                    rto_state_registration: number | null;
+                    rto_state_road_tax: number | null;
+                    rto_state_smart_card: number | null;
+                    rto_state_total: number | null;
+                    rto_total: number | null;
+                    sku_id: string;
+                    state_code: string;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    addon1_default?: boolean | null;
+                    addon1_gst?: number | null;
+                    addon1_label?: string | null;
+                    addon1_price?: number | null;
+                    addon1_total?: number | null;
+                    addon2_default?: boolean | null;
+                    addon2_gst?: number | null;
+                    addon2_label?: string | null;
+                    addon2_price?: number | null;
+                    addon2_total?: number | null;
+                    created_at?: string | null;
+                    ex_showroom: number;
+                    gst_rate?: number | null;
+                    hsn_code?: string | null;
+                    id?: string;
+                    ins_base_total?: number | null;
+                    ins_gst_rate?: number | null;
+                    ins_gst_total?: number | null;
+                    ins_net_premium?: number | null;
+                    ins_od_base?: number | null;
+                    ins_od_gst?: number | null;
+                    ins_od_total?: number | null;
+                    ins_pa?: number | null;
+                    ins_total: number;
+                    ins_tp_base?: number | null;
+                    ins_tp_gst?: number | null;
+                    ins_tp_total?: number | null;
+                    is_popular?: boolean | null;
+                    on_road_price: number;
+                    publish_stage?: string | null;
+                    published_at?: string | null;
+                    published_by?: string | null;
+                    rto_bh_cess?: number | null;
+                    rto_bh_postal?: number | null;
+                    rto_bh_registration?: number | null;
+                    rto_bh_road_tax?: number | null;
+                    rto_bh_smart_card?: number | null;
+                    rto_bh_total?: number | null;
+                    rto_company_cess?: number | null;
+                    rto_company_postal?: number | null;
+                    rto_company_registration?: number | null;
+                    rto_company_road_tax?: number | null;
+                    rto_company_smart_card?: number | null;
+                    rto_company_total?: number | null;
+                    rto_default_type?: string | null;
+                    rto_state_cess?: number | null;
+                    rto_state_postal?: number | null;
+                    rto_state_registration?: number | null;
+                    rto_state_road_tax?: number | null;
+                    rto_state_smart_card?: number | null;
+                    rto_state_total?: number | null;
+                    rto_total?: number | null;
+                    sku_id: string;
+                    state_code?: string;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    addon1_default?: boolean | null;
+                    addon1_gst?: number | null;
+                    addon1_label?: string | null;
+                    addon1_price?: number | null;
+                    addon1_total?: number | null;
+                    addon2_default?: boolean | null;
+                    addon2_gst?: number | null;
+                    addon2_label?: string | null;
+                    addon2_price?: number | null;
+                    addon2_total?: number | null;
+                    created_at?: string | null;
+                    ex_showroom?: number;
+                    gst_rate?: number | null;
+                    hsn_code?: string | null;
+                    id?: string;
+                    ins_base_total?: number | null;
+                    ins_gst_rate?: number | null;
+                    ins_gst_total?: number | null;
+                    ins_net_premium?: number | null;
+                    ins_od_base?: number | null;
+                    ins_od_gst?: number | null;
+                    ins_od_total?: number | null;
+                    ins_pa?: number | null;
+                    ins_total?: number;
+                    ins_tp_base?: number | null;
+                    ins_tp_gst?: number | null;
+                    ins_tp_total?: number | null;
+                    is_popular?: boolean | null;
+                    on_road_price?: number;
+                    publish_stage?: string | null;
+                    published_at?: string | null;
+                    published_by?: string | null;
+                    rto_bh_cess?: number | null;
+                    rto_bh_postal?: number | null;
+                    rto_bh_registration?: number | null;
+                    rto_bh_road_tax?: number | null;
+                    rto_bh_smart_card?: number | null;
+                    rto_bh_total?: number | null;
+                    rto_company_cess?: number | null;
+                    rto_company_postal?: number | null;
+                    rto_company_registration?: number | null;
+                    rto_company_road_tax?: number | null;
+                    rto_company_smart_card?: number | null;
+                    rto_company_total?: number | null;
+                    rto_default_type?: string | null;
+                    rto_state_cess?: number | null;
+                    rto_state_postal?: number | null;
+                    rto_state_registration?: number | null;
+                    rto_state_road_tax?: number | null;
+                    rto_state_smart_card?: number | null;
+                    rto_state_total?: number | null;
+                    rto_total?: number | null;
+                    sku_id?: string;
+                    state_code?: string;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_pricing_sku_id_fkey';
+                        columns: ['sku_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_skus';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -971,6 +1259,169 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            cat_skus: {
+                Row: {
+                    accessory_variant_id: string | null;
+                    brand_id: string;
+                    color_name: string | null;
+                    colour_id: string | null;
+                    created_at: string | null;
+                    finish: string | null;
+                    gallery_img_1: string | null;
+                    gallery_img_2: string | null;
+                    gallery_img_3: string | null;
+                    gallery_img_4: string | null;
+                    gallery_img_5: string | null;
+                    gallery_img_6: string | null;
+                    has_360: boolean | null;
+                    hex_primary: string | null;
+                    hex_secondary: string | null;
+                    id: string;
+                    is_flipped: boolean | null;
+                    is_primary: boolean | null;
+                    media_shared: boolean | null;
+                    model_id: string;
+                    name: string;
+                    offset_x: number | null;
+                    offset_y: number | null;
+                    pdf_url_1: string | null;
+                    position: number | null;
+                    price_base: number | null;
+                    primary_image: string | null;
+                    service_variant_id: string | null;
+                    sku_code: string | null;
+                    sku_type: string;
+                    slug: string | null;
+                    status: string | null;
+                    updated_at: string | null;
+                    vehicle_variant_id: string | null;
+                    video_url_1: string | null;
+                    video_url_2: string | null;
+                    zoom_factor: number | null;
+                };
+                Insert: {
+                    accessory_variant_id?: string | null;
+                    brand_id: string;
+                    color_name?: string | null;
+                    colour_id?: string | null;
+                    created_at?: string | null;
+                    finish?: string | null;
+                    gallery_img_1?: string | null;
+                    gallery_img_2?: string | null;
+                    gallery_img_3?: string | null;
+                    gallery_img_4?: string | null;
+                    gallery_img_5?: string | null;
+                    gallery_img_6?: string | null;
+                    has_360?: boolean | null;
+                    hex_primary?: string | null;
+                    hex_secondary?: string | null;
+                    id?: string;
+                    is_flipped?: boolean | null;
+                    is_primary?: boolean | null;
+                    media_shared?: boolean | null;
+                    model_id: string;
+                    name: string;
+                    offset_x?: number | null;
+                    offset_y?: number | null;
+                    pdf_url_1?: string | null;
+                    position?: number | null;
+                    price_base?: number | null;
+                    primary_image?: string | null;
+                    service_variant_id?: string | null;
+                    sku_code?: string | null;
+                    sku_type: string;
+                    slug?: string | null;
+                    status?: string | null;
+                    updated_at?: string | null;
+                    vehicle_variant_id?: string | null;
+                    video_url_1?: string | null;
+                    video_url_2?: string | null;
+                    zoom_factor?: number | null;
+                };
+                Update: {
+                    accessory_variant_id?: string | null;
+                    brand_id?: string;
+                    color_name?: string | null;
+                    colour_id?: string | null;
+                    created_at?: string | null;
+                    finish?: string | null;
+                    gallery_img_1?: string | null;
+                    gallery_img_2?: string | null;
+                    gallery_img_3?: string | null;
+                    gallery_img_4?: string | null;
+                    gallery_img_5?: string | null;
+                    gallery_img_6?: string | null;
+                    has_360?: boolean | null;
+                    hex_primary?: string | null;
+                    hex_secondary?: string | null;
+                    id?: string;
+                    is_flipped?: boolean | null;
+                    is_primary?: boolean | null;
+                    media_shared?: boolean | null;
+                    model_id?: string;
+                    name?: string;
+                    offset_x?: number | null;
+                    offset_y?: number | null;
+                    pdf_url_1?: string | null;
+                    position?: number | null;
+                    price_base?: number | null;
+                    primary_image?: string | null;
+                    service_variant_id?: string | null;
+                    sku_code?: string | null;
+                    sku_type?: string;
+                    slug?: string | null;
+                    status?: string | null;
+                    updated_at?: string | null;
+                    vehicle_variant_id?: string | null;
+                    video_url_1?: string | null;
+                    video_url_2?: string | null;
+                    zoom_factor?: number | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_skus_accessory_variant_id_fkey';
+                        columns: ['accessory_variant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_variants_accessory';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_skus_brand_id_fkey';
+                        columns: ['brand_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_brands';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_skus_colour_id_fkey';
+                        columns: ['colour_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_colours';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_skus_model_id_fkey';
+                        columns: ['model_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_models';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_skus_service_variant_id_fkey';
+                        columns: ['service_variant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_variants_service';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_skus_vehicle_variant_id_fkey';
+                        columns: ['vehicle_variant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_variants_vehicle';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             cat_skus_linear: {
                 Row: {
                     assets_json: Json | null;
@@ -1093,6 +1544,373 @@ export type Database = {
                     unit?: string | null;
                 };
                 Relationships: [];
+            };
+            cat_specifications: {
+                Row: {
+                    allowed_values: string[] | null;
+                    category: string | null;
+                    created_at: string | null;
+                    data_type: string;
+                    description: string | null;
+                    display_label: string;
+                    example_value: string | null;
+                    id: string;
+                    is_active: boolean | null;
+                    is_comparable: boolean | null;
+                    is_filterable: boolean | null;
+                    is_highlighted: boolean | null;
+                    is_required: boolean | null;
+                    max_value: number | null;
+                    min_value: number | null;
+                    position: number | null;
+                    product_types: string[];
+                    spec_key: string;
+                    spec_level: string;
+                    suffix: string | null;
+                    unit: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    allowed_values?: string[] | null;
+                    category?: string | null;
+                    created_at?: string | null;
+                    data_type: string;
+                    description?: string | null;
+                    display_label: string;
+                    example_value?: string | null;
+                    id?: string;
+                    is_active?: boolean | null;
+                    is_comparable?: boolean | null;
+                    is_filterable?: boolean | null;
+                    is_highlighted?: boolean | null;
+                    is_required?: boolean | null;
+                    max_value?: number | null;
+                    min_value?: number | null;
+                    position?: number | null;
+                    product_types?: string[];
+                    spec_key: string;
+                    spec_level: string;
+                    suffix?: string | null;
+                    unit?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    allowed_values?: string[] | null;
+                    category?: string | null;
+                    created_at?: string | null;
+                    data_type?: string;
+                    description?: string | null;
+                    display_label?: string;
+                    example_value?: string | null;
+                    id?: string;
+                    is_active?: boolean | null;
+                    is_comparable?: boolean | null;
+                    is_filterable?: boolean | null;
+                    is_highlighted?: boolean | null;
+                    is_required?: boolean | null;
+                    max_value?: number | null;
+                    min_value?: number | null;
+                    position?: number | null;
+                    product_types?: string[];
+                    spec_key?: string;
+                    spec_level?: string;
+                    suffix?: string | null;
+                    unit?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [];
+            };
+            cat_suitable_for: {
+                Row: {
+                    created_at: string | null;
+                    id: string;
+                    sku_id: string;
+                    target_brand_id: string | null;
+                    target_model_id: string | null;
+                    target_variant_id: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    id?: string;
+                    sku_id: string;
+                    target_brand_id?: string | null;
+                    target_model_id?: string | null;
+                    target_variant_id?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    id?: string;
+                    sku_id?: string;
+                    target_brand_id?: string | null;
+                    target_model_id?: string | null;
+                    target_variant_id?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_suitable_for_sku_id_fkey';
+                        columns: ['sku_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_skus';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_suitable_for_target_brand_id_fkey';
+                        columns: ['target_brand_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_brands';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cat_suitable_for_target_model_id_fkey';
+                        columns: ['target_model_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_models';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            cat_variants_accessory: {
+                Row: {
+                    created_at: string | null;
+                    finish: string | null;
+                    id: string;
+                    material: string | null;
+                    model_id: string;
+                    name: string;
+                    position: number | null;
+                    slug: string | null;
+                    status: string | null;
+                    updated_at: string | null;
+                    weight: number | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    finish?: string | null;
+                    id?: string;
+                    material?: string | null;
+                    model_id: string;
+                    name: string;
+                    position?: number | null;
+                    slug?: string | null;
+                    status?: string | null;
+                    updated_at?: string | null;
+                    weight?: number | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    finish?: string | null;
+                    id?: string;
+                    material?: string | null;
+                    model_id?: string;
+                    name?: string;
+                    position?: number | null;
+                    slug?: string | null;
+                    status?: string | null;
+                    updated_at?: string | null;
+                    weight?: number | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_variants_accessory_model_id_fkey';
+                        columns: ['model_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_models';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            cat_variants_service: {
+                Row: {
+                    coverage_type: string | null;
+                    created_at: string | null;
+                    duration_months: number | null;
+                    id: string;
+                    labor_included: boolean | null;
+                    model_id: string;
+                    name: string;
+                    position: number | null;
+                    slug: string | null;
+                    status: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    coverage_type?: string | null;
+                    created_at?: string | null;
+                    duration_months?: number | null;
+                    id?: string;
+                    labor_included?: boolean | null;
+                    model_id: string;
+                    name: string;
+                    position?: number | null;
+                    slug?: string | null;
+                    status?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    coverage_type?: string | null;
+                    created_at?: string | null;
+                    duration_months?: number | null;
+                    id?: string;
+                    labor_included?: boolean | null;
+                    model_id?: string;
+                    name?: string;
+                    position?: number | null;
+                    slug?: string | null;
+                    status?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_variants_service_model_id_fkey';
+                        columns: ['model_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_models';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            cat_variants_vehicle: {
+                Row: {
+                    air_filter: string | null;
+                    battery_capacity: string | null;
+                    battery_type: string | null;
+                    bluetooth: boolean | null;
+                    braking_system: string | null;
+                    charging_time: string | null;
+                    console_type: string | null;
+                    created_at: string | null;
+                    displacement: number | null;
+                    engine_type: string | null;
+                    front_brake: string | null;
+                    front_suspension: string | null;
+                    front_tyre: string | null;
+                    fuel_capacity: number | null;
+                    ground_clearance: number | null;
+                    id: string;
+                    kerb_weight: number | null;
+                    led_headlamp: boolean | null;
+                    led_tail_lamp: boolean | null;
+                    max_power: string | null;
+                    max_torque: string | null;
+                    mileage: number | null;
+                    model_id: string;
+                    motor_power: string | null;
+                    name: string;
+                    navigation: boolean | null;
+                    num_valves: number | null;
+                    position: number | null;
+                    range_km: number | null;
+                    rear_brake: string | null;
+                    rear_suspension: string | null;
+                    rear_tyre: string | null;
+                    ride_modes: string | null;
+                    seat_height: number | null;
+                    slug: string | null;
+                    start_type: string | null;
+                    status: string | null;
+                    transmission: string | null;
+                    tyre_type: string | null;
+                    updated_at: string | null;
+                    usb_charging: boolean | null;
+                    wheelbase: number | null;
+                };
+                Insert: {
+                    air_filter?: string | null;
+                    battery_capacity?: string | null;
+                    battery_type?: string | null;
+                    bluetooth?: boolean | null;
+                    braking_system?: string | null;
+                    charging_time?: string | null;
+                    console_type?: string | null;
+                    created_at?: string | null;
+                    displacement?: number | null;
+                    engine_type?: string | null;
+                    front_brake?: string | null;
+                    front_suspension?: string | null;
+                    front_tyre?: string | null;
+                    fuel_capacity?: number | null;
+                    ground_clearance?: number | null;
+                    id?: string;
+                    kerb_weight?: number | null;
+                    led_headlamp?: boolean | null;
+                    led_tail_lamp?: boolean | null;
+                    max_power?: string | null;
+                    max_torque?: string | null;
+                    mileage?: number | null;
+                    model_id: string;
+                    motor_power?: string | null;
+                    name: string;
+                    navigation?: boolean | null;
+                    num_valves?: number | null;
+                    position?: number | null;
+                    range_km?: number | null;
+                    rear_brake?: string | null;
+                    rear_suspension?: string | null;
+                    rear_tyre?: string | null;
+                    ride_modes?: string | null;
+                    seat_height?: number | null;
+                    slug?: string | null;
+                    start_type?: string | null;
+                    status?: string | null;
+                    transmission?: string | null;
+                    tyre_type?: string | null;
+                    updated_at?: string | null;
+                    usb_charging?: boolean | null;
+                    wheelbase?: number | null;
+                };
+                Update: {
+                    air_filter?: string | null;
+                    battery_capacity?: string | null;
+                    battery_type?: string | null;
+                    bluetooth?: boolean | null;
+                    braking_system?: string | null;
+                    charging_time?: string | null;
+                    console_type?: string | null;
+                    created_at?: string | null;
+                    displacement?: number | null;
+                    engine_type?: string | null;
+                    front_brake?: string | null;
+                    front_suspension?: string | null;
+                    front_tyre?: string | null;
+                    fuel_capacity?: number | null;
+                    ground_clearance?: number | null;
+                    id?: string;
+                    kerb_weight?: number | null;
+                    led_headlamp?: boolean | null;
+                    led_tail_lamp?: boolean | null;
+                    max_power?: string | null;
+                    max_torque?: string | null;
+                    mileage?: number | null;
+                    model_id?: string;
+                    motor_power?: string | null;
+                    name?: string;
+                    navigation?: boolean | null;
+                    num_valves?: number | null;
+                    position?: number | null;
+                    range_km?: number | null;
+                    rear_brake?: string | null;
+                    rear_suspension?: string | null;
+                    rear_tyre?: string | null;
+                    ride_modes?: string | null;
+                    seat_height?: number | null;
+                    slug?: string | null;
+                    start_type?: string | null;
+                    status?: string | null;
+                    transmission?: string | null;
+                    tyre_type?: string | null;
+                    updated_at?: string | null;
+                    usb_charging?: boolean | null;
+                    wheelbase?: number | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_variants_vehicle_model_id_fkey';
+                        columns: ['model_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_models';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             catalog_audit_log: {
                 Row: {
@@ -2069,10 +2887,13 @@ export type Database = {
                     display_id: string | null;
                     id: string;
                     is_deleted: boolean;
+                    is_reconciled: boolean | null;
                     lead_id: string | null;
                     member_id: string | null;
                     method: string | null;
                     provider_data: Json | null;
+                    reconciled_at: string | null;
+                    reconciled_by: string | null;
                     status: string | null;
                     tenant_id: string | null;
                     transaction_id: string | null;
@@ -2088,10 +2909,13 @@ export type Database = {
                     display_id?: string | null;
                     id?: string;
                     is_deleted?: boolean;
+                    is_reconciled?: boolean | null;
                     lead_id?: string | null;
                     member_id?: string | null;
                     method?: string | null;
                     provider_data?: Json | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
                     transaction_id?: string | null;
@@ -2107,10 +2931,13 @@ export type Database = {
                     display_id?: string | null;
                     id?: string;
                     is_deleted?: boolean;
+                    is_reconciled?: boolean | null;
                     lead_id?: string | null;
                     member_id?: string | null;
                     method?: string | null;
                     provider_data?: Json | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
                     transaction_id?: string | null;

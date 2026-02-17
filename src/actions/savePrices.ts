@@ -14,6 +14,10 @@ interface PricePayload {
     is_active: boolean;
     publish_stage?: string; // AUMS status: DRAFT, UNDER_REVIEW, PUBLISHED, LIVE, INACTIVE
     is_popular?: boolean;
+    hex_primary?: string;
+    hex_secondary?: string;
+    color_name?: string;
+    finish?: string;
 }
 
 interface StatusPayload {
@@ -204,30 +208,43 @@ export async function savePrices(
                     }
                 }
 
-                const existingPrice = existingRow?.[priceColumn] || {};
-                const mergedPrice = {
-                    ...existingPrice,
-                    ex_showroom: p.ex_showroom_price,
-                    publish_stage: resolvedStage,
-                    ...(p.is_popular !== undefined && { is_popular: p.is_popular }),
-                };
+                // SOT: Save to dedicated state-level table with flat columns
+                const { error: priceError } = await adminClient.from('cat_price_mh').upsert(
+                    {
+                        sku_id: p.vehicle_color_id,
+                        state_code: p.state_code,
+                        ex_showroom: p.ex_showroom_price,
+                        publish_stage: resolvedStage,
+                        is_popular: p.is_popular || false,
+                    },
+                    { onConflict: 'sku_id,state_code' }
+                );
 
-                const updatePayload: Record<string, any> = { [priceColumn]: mergedPrice };
-                if (p.state_code.toUpperCase() === 'MH') {
-                    updatePayload.ex_showroom_mh = p.ex_showroom_price;
+                if (priceError) {
+                    console.error('[savePrices] cat_price_mh upsert error:', priceError);
+                    return { success: false, error: priceError.message };
                 }
 
-                const { error: linearError } = await (adminClient as any)
-                    .from('cat_skus_linear')
-                    .update(updatePayload)
-                    .eq('id', existingRow.id);
+                // Update color metadata in cat_skus if provided
+                if (p.color_name || p.hex_primary || p.hex_secondary || p.finish) {
+                    const { error: skuUpdateError } = await adminClient
+                        .from('cat_skus')
+                        .update({
+                            color_name: p.color_name,
+                            hex_primary: p.hex_primary,
+                            hex_secondary: p.hex_secondary,
+                            finish: p.finish,
+                        })
+                        .eq('id', p.vehicle_color_id);
 
-                if (linearError) {
-                    console.error('[savePrices] cat_skus_linear update error:', linearError);
-                    return { success: false, error: linearError.message };
+                    if (skuUpdateError) {
+                        console.warn('[savePrices] cat_skus update warning:', skuUpdateError);
+                        // We don't fail the whole operation if just color metadata fails to sync
+                    }
                 }
 
-                // cat_price_state secondary write REMOVED — cat_skus_linear is now the sole SOT
+                // NOTE: We no longer sync to cat_skus_linear JSONB here as per user preference.
+                // The marketplace will be updated to read from cat_price_mh.
             }
 
             // Push Invalidation: Trigger revalidation for each unique district

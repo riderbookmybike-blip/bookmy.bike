@@ -745,15 +745,7 @@ export const ProductCard = ({
                                 <div className="flex items-center min-h-[1.25rem] flex-nowrap">
                                     <div className="flex items-center gap-2 cursor-default">
                                         {[...swatches]
-                                            .sort((a, b) => {
-                                                const order = (f: string | undefined) =>
-                                                    f?.toUpperCase() === 'GLOSSY'
-                                                        ? 0
-                                                        : f?.toUpperCase() === 'MATTE'
-                                                          ? 2
-                                                          : 1;
-                                                return order(a.finish) - order(b.finish);
-                                            })
+                                            .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
                                             .map((c, i) => (
                                                 <div
                                                     key={i}

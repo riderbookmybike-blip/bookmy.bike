@@ -101,7 +101,7 @@ async function ensureLinearRowForSku(skuId: string, seedExShowroom?: number): Pr
         specs: (sku as any).specs || {},
         // Strict mode: no fallback to cat_items.price_base. Seed only from supplied ex-showroom.
         price_base: Number(seedExShowroom) > 0 ? Number(seedExShowroom) : 0,
-        ex_showroom_mh: Number(seedExShowroom) > 0 ? Number(seedExShowroom) : null,
+        // ex_showroom_mh removed from linear table
         checksum_md5: `seed-${(sku as any).id}`,
         status: 'ACTIVE',
     });
@@ -183,22 +183,17 @@ export async function calculatePricingBySkuIds(
             };
         }
         if (item.exShowroom && item.exShowroom > 0) {
-            const { data: existing } = await (adminClient as any)
-                .from('cat_skus_linear')
-                .select(`id, ex_showroom_mh, ${priceColumn}`)
-                .eq('id', item.skuId)
-                .maybeSingle();
-            const prev = existing?.[priceColumn] || {};
-            const missingJsonEx = !prev?.ex_showroom || Number(prev.ex_showroom) <= 0;
-            const missingMhCol = Number(existing?.ex_showroom_mh || 0) <= 0;
-            if (missingJsonEx || (stateCode.toUpperCase() === 'MH' && missingMhCol)) {
-                const updatePayload: Record<string, any> = {
-                    [priceColumn]: { ...prev, ex_showroom: Number(item.exShowroom) },
-                };
-                if (stateCode.toUpperCase() === 'MH') {
-                    updatePayload.ex_showroom_mh = Number(item.exShowroom);
-                }
-                await (adminClient as any).from('cat_skus_linear').update(updatePayload).eq('id', item.skuId);
+            // Seed into MH state table instead of linear column
+            if (stateCode.toUpperCase() === 'MH') {
+                await (adminClient as any).from('cat_price_mh').upsert(
+                    {
+                        sku_id: item.skuId,
+                        state_code: stateCode,
+                        ex_showroom: Number(item.exShowroom),
+                        publish_stage: 'DRAFT',
+                    },
+                    { onConflict: 'sku_id,state_code' }
+                );
             }
         }
 

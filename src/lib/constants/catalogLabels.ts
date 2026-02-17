@@ -1,23 +1,25 @@
 /**
  * Catalog Hierarchy Labels per Product Type
  *
- * Each product type has its own vocabulary for the catalog levels:
- * - VEHICLE:   Brand → Model → Variant → Colour
- * - ACCESSORY: Brand → Product → Variant → Sub-Variant (colours OR fitments)
- * - SERVICE:   Brand → Service → Plan → Tier
+ * DATABASE & CODE level — canonical naming (universal):
+ *   cat_brands → cat_models → cat_variants_* → cat_colours → cat_skus
+ *   Variables: brand, model, variant, colour, sku
  *
- * The database table names remain generic (cat_models, cat_variants_*, cat_skus),
- * but the UI displays the correct label based on product_type.
+ * UI/DISPLAY level — type-specific labels (user-facing):
+ *   VEHICLE:   Brand → Model → Variant → Colour Pool → SKU (Variant × Colour)
+ *   ACCESSORY: Brand → Product → Variant → Sub-Variant
+ *   SERVICE:   Brand → Service → Plan → Tier
  *
- * SKU Matrix is universal: Variant × Unit = SKU
- * - Vehicle:   Disc SmartXonnect × Starlight Blue = SKU
+ * Colour Pool is defined at the Model level (cat_colours).
+ * SKU Matrix is universal: Variant × SKU
+ * - Vehicle:   Disc SmartXonnect × Starlight Blue Gloss = SKU
  * - Accessory: Half Face × Blue = SKU  (or Standard × Activa = SKU)
  * - Service:   Gold Plan × 2 Years = SKU
  */
 export const HIERARCHY_LABELS = {
-    VEHICLE: { model: 'Model', variant: 'Variant', sku: 'Colour' },
-    ACCESSORY: { model: 'Product', variant: 'Variant', sku: 'Sub-Variant' },
-    SERVICE: { model: 'Service', variant: 'Plan', sku: 'Tier' },
+    VEHICLE: { model: 'Model', variant: 'Variant', pool: 'Colour', sku: 'SKU' },
+    ACCESSORY: { model: 'Product', variant: 'Variant', pool: 'Sub-Variant', sku: 'Sub-Variant' },
+    SERVICE: { model: 'Service', variant: 'Plan', pool: 'Tier', sku: 'Tier' },
 } as const;
 
 export type ProductType = keyof typeof HIERARCHY_LABELS;

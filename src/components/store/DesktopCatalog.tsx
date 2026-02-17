@@ -607,6 +607,9 @@ export const DesktopCatalog = ({
 
     const results = useMemo(() => {
         const vehicles = Array.isArray(filteredVehicles) ? [...filteredVehicles] : [];
+        if (sortBy === 'popular') {
+            vehicles.sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0));
+        }
         if (sortBy === 'price') {
             vehicles.sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
         }
