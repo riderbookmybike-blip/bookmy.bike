@@ -70,7 +70,7 @@ export default function UnifiedCatalogPage() {
             .select('id, name, vehicle_variant_id, status, position, specs, slug, hex_primary, color_name, image_url')
             .in('vehicle_variant_id', variantIds.length > 0 ? variantIds : ['__none__']);
 
-        // 4. Assemble hierarchy: model → variants → skus (matching old cat_items structure)
+        // 4. Assemble hierarchy: model → variants → skus
         const assembled = models.map((model: any) => {
             const modelVariants = (variants || []).filter((v: any) => v.model_id === model.id);
             const modelSkus = (skus || []).filter((s: any) =>

@@ -71,7 +71,6 @@ const ACTION_CONFIG: Record<
 };
 
 const TABLE_LABELS: Record<string, string> = {
-    cat_items: 'Catalog Item (Legacy)',
     cat_skus: 'SKU',
     cat_models: 'Model',
     cat_variants_vehicle: 'Vehicle Variant',
@@ -268,7 +267,6 @@ export default function AuditLogPage() {
                         <option value="cat_skus">SKUs</option>
                         <option value="cat_models">Models</option>
                         <option value="cat_variants_vehicle">Vehicle Variants</option>
-                        <option value="cat_items">Catalog Items (Legacy)</option>
                         <option value="cat_price_state_mh">Price MH</option>
                         <option value="cat_price_state">Price State (Legacy)</option>
                     </select>

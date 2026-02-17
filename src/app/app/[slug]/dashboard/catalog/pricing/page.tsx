@@ -160,7 +160,10 @@ export default function PricingPage() {
                 vehicleType: r.vehicle_type,
             }));
             setStates(mappedRules);
-            setSelectedStateId(mappedRules[0].id);
+            // Only default to first rule if no state was restored from URL
+            if (!selectedStateId) {
+                setSelectedStateId(mappedRules[0].id);
+            }
         }
     };
 

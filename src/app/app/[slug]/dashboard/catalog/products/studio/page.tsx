@@ -155,22 +155,11 @@ export default function UnifiedStudioPage() {
     };
 
     const fetchFamilyData = async (fId: string) => {
-        const supabase = createClient();
         setIsLoading(true);
 
         try {
-            // Fetch all descendants of the Family using the optimized recursive RPC
-            const { data: items, error: treeError } = await supabase.rpc('get_item_descendants_tree', {
-                root_id: fId,
-            });
-
-            if (treeError) {
-                console.warn('RPC failed, falling back to local pool:', treeError);
-            }
-
-            // Fallback: If RPC failed or returned nothing, try to find items in our pre-fetched local pool
-            // This handles cases where items were just added or the RPC is still propagating.
-            let finalItems = items && (items as any).length > 0 ? items : null;
+            // Legacy RPC removed with cat_items deprecation. Use local pre-fetched pool only.
+            let finalItems: any[] | null = null;
 
             if (!finalItems) {
                 // Find all items in catalogItems that have this family as their ancestor (up to 3 levels)

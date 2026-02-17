@@ -141,6 +141,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                 // Fetch Offers (Primary Dealer Only)
                 let offerData: any = null;
                 let resolvedDealerId: string | null = null;
+                let resolvedDealerDistrict: string | null = null;
 
                 // Removed TEAM session lock from marketplace to unify experience
 
@@ -252,7 +253,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                     // Align state code from dealer location
                     const { data: dealerLoc } = await supabase
                         .from('id_locations')
-                        .select('state')
+                        .select('state, district')
                         .eq('tenant_id', resolvedDealerId)
                         .eq('is_active', true)
                         .order('type', { ascending: false })
@@ -265,6 +266,12 @@ export function useSystemCatalogLogic(leadId?: string) {
                         const matchedCode = stateMap[stateName] || stateName.substring(0, 2);
                         if (matchedCode !== resolvedStateCode) {
                             resolvedStateCode = matchedCode;
+                        }
+                    }
+                    if (dealerLoc?.district) {
+                        resolvedDealerDistrict = dealerLoc.district;
+                        if (!resolvedUserDistrict) {
+                            resolvedUserDistrict = dealerLoc.district;
                         }
                     }
                 }
@@ -353,9 +360,15 @@ export function useSystemCatalogLogic(leadId?: string) {
                         price: {
                             ...item.price,
                             pricingSource:
-                                item.price?.pricingSource || `${resolvedUserDistrict || 'ALL'}, ${resolvedStateCode}`,
+                                item.price?.pricingSource ||
+                                `${resolvedUserDistrict || resolvedDealerDistrict || 'ALL'}, ${resolvedStateCode}`,
                             isEstimate: false,
                         },
+                        studioName: item.studioName || resolvedDealerName || undefined,
+                        dealerId: item.dealerId || resolvedDealerId || undefined,
+                        studioCode: item.studioCode || resolvedStudioId || undefined,
+                        dealerLocation:
+                            item.dealerLocation || resolvedUserDistrict || resolvedDealerDistrict || undefined,
                     }));
 
                     let enrichedItems = mappedItems;
@@ -398,7 +411,10 @@ export function useSystemCatalogLogic(leadId?: string) {
                                         rto_total: Number(row.rto_total_state) || 0,
                                         insurance_total: Number(row.ins_gross_premium) || 0,
                                         final_on_road: onRoad,
-                                        location: { district: 'ALL', state_code: resolvedStateCode },
+                                        location: {
+                                            district: resolvedUserDistrict || resolvedDealerDistrict || 'ALL',
+                                            state_code: resolvedStateCode,
+                                        },
                                     });
                                 }
                             });
@@ -431,8 +447,8 @@ export function useSystemCatalogLogic(leadId?: string) {
                                     studioName: dealerOffer?.dealer_name ?? item.studioName,
                                     dealerId: dealerOffer?.dealer_id ?? item.dealerId,
                                     // Flattened Dealer Context for UI
-                                    studioCode: dealerOffer?.studio_code,
-                                    dealerLocation: dealerOffer?.dealer_location,
+                                    studioCode: dealerOffer?.studio_code ?? item.studioCode,
+                                    dealerLocation: dealerOffer?.dealer_location ?? item.dealerLocation,
                                 };
                             });
                         }

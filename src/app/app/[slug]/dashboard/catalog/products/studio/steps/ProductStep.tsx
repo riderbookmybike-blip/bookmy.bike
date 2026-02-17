@@ -156,7 +156,7 @@ export default function ProductStep({
             const findUniqueSlug = async (candidate: string) => {
                 let slug = candidate;
                 let suffix = 1;
-                // Ensure global uniqueness (cat_items.slug has unique constraint)
+                // Ensure global uniqueness across cat_models.slug
                 while (true) {
                     const { data: existing } = await (supabase as any)
                         .from('cat_models')
