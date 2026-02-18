@@ -7,6 +7,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { createClient } from '@/lib/supabase/client';
 import { usePathname } from 'next/navigation';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 import { AppHeaderShell } from './AppHeaderShell';
 import { ProfileDropdown } from './ProfileDropdown';
@@ -25,6 +26,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null);
     const { theme } = useTheme();
     const pathname = usePathname();
+    const { device } = useBreakpoint();
+    const isPhone = device === 'phone';
 
     useEffect(() => {
         setTimeout(() => setMounted(true), 0);
@@ -41,12 +44,18 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         window.addEventListener('scroll', handleScroll, { passive: true });
         window.addEventListener('showHeader', handleShowHeader);
         window.addEventListener('resize', handleResize);
+
+        // Listen for bottom nav menu toggle
+        const handleMenuToggle = () => setIsSidebarOpen(prev => !prev);
+        window.addEventListener('toggleMobileMenu', handleMenuToggle);
+
         handleResize();
 
         return () => {
             window.removeEventListener('scroll', handleScroll);
             window.removeEventListener('showHeader', handleShowHeader);
             window.removeEventListener('resize', handleResize);
+            window.removeEventListener('toggleMobileMenu', handleMenuToggle);
         };
     }, []);
 
@@ -121,7 +130,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className={`w-10 h-10 rounded-xl transition-all lg:hidden flex items-center justify-center ${mobileMenuButtonClass}`}
+                        className={`w-10 h-10 rounded-xl transition-all lg:hidden ${isPhone ? 'hidden' : 'flex'} items-center justify-center ${mobileMenuButtonClass}`}
                     >
                         {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>

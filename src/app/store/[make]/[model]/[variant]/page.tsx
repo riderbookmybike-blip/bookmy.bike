@@ -303,12 +303,26 @@ export default async function Page({ params, searchParams }: Props) {
     console.log('PDP Debug: Pricing Context:', pricingContext);
 
     // 2. Fetch Variant + SKUs from V2 catalog tables
-    const { data: modelRow, error: modelError } = await (supabase as any)
+    const { data: modelRows, error: modelError } = await (supabase as any)
         .from('cat_models')
-        .select('id, brand_id, name, slug, brand:cat_brands!brand_id(name, slug), fuel_type, engine_cc')
-        .eq('slug', resolvedParams.model)
-        .eq('status', 'ACTIVE')
-        .maybeSingle();
+        .select('id, brand_id, name, slug, brand:cat_brands!brand_id(name, slug), fuel_type, engine_cc, status')
+        .eq('status', 'ACTIVE');
+
+    const modelCandidates = (modelRows || []).filter((m: any) => {
+        const modelSlug = String(m.slug || '');
+        const modelNameSlug = slugify(String(m.name || ''));
+        const brandSlug = String(m.brand?.slug || '');
+        const brandNameSlug = slugify(String(m.brand?.name || ''));
+        const modelMatch =
+            modelSlug === resolvedParams.model ||
+            modelNameSlug === resolvedParams.model ||
+            modelSlug.endsWith(`-${resolvedParams.model}`);
+        const brandMatch =
+            brandSlug === resolvedParams.make || brandNameSlug === resolvedParams.make || resolvedParams.make === '';
+        return modelMatch && brandMatch;
+    });
+
+    const modelRow = modelCandidates[0] || null;
 
     const { data: modelSkus, error: skuError } = modelRow?.id
         ? await (supabase as any)
@@ -340,7 +354,11 @@ export default async function Page({ params, searchParams }: Props) {
               .eq('status', 'ACTIVE')
         : ({ data: null, error: modelError } as any);
 
-    const possibleVariantSlugs = new Set([resolvedParams.variant, `${resolvedParams.model}-${resolvedParams.variant}`]);
+    const possibleVariantSlugs = new Set([
+        resolvedParams.variant,
+        `${resolvedParams.model}-${resolvedParams.variant}`,
+        `${resolvedParams.make}-${resolvedParams.model}-${resolvedParams.variant}`,
+    ]);
 
     const normalizedSkus = (modelSkus || []).map((sku: any) => {
         const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
@@ -353,30 +371,110 @@ export default async function Page({ params, searchParams }: Props) {
         };
     });
 
-    const variantSkus = normalizedSkus.filter((sku: any) => possibleVariantSlugs.has(String(sku.variant_slug || '')));
-    const activeVariantSkus = variantSkus.length > 0 ? variantSkus : normalizedSkus;
-    const variantSeed = activeVariantSkus[0];
+    const variantSkus = normalizedSkus.filter((sku: any) => {
+        const slug = String(sku.variant_slug || '');
+        if (!slug) return false;
+        return (
+            possibleVariantSlugs.has(slug) ||
+            slug.endsWith(`-${resolvedParams.variant}`) ||
+            slugify(String(sku.variant_name || '')) === resolvedParams.variant
+        );
+    });
 
-    const resolvedVariant = variantSeed
-        ? ({
-              id: variantSeed.variant_id,
-              name: variantSeed.variant_name,
-              slug: variantSeed.variant_slug,
-              price_base: Number(variantSeed.price_base || 0),
-              specs: {
-                  fuel_type: modelRow?.fuel_type,
-                  engine_cc: modelRow?.engine_cc,
-              },
-              brand: {
-                  name: modelRow?.brand?.name || resolvedParams.make,
-                  slug: modelRow?.brand?.slug || slugify(resolvedParams.make),
-              },
-              parent: {
-                  name: modelRow?.name || resolvedParams.model,
-                  slug: modelRow?.slug || resolvedParams.model,
-              },
-          } as CatalogItem)
-        : null;
+    const { data: vehicleVariants } = modelRow?.id
+        ? await (supabase as any)
+              .from('cat_variants_vehicle')
+              .select('id, name, slug, status')
+              .eq('model_id', modelRow.id)
+              .eq('status', 'ACTIVE')
+        : ({ data: [] } as any);
+
+    const matchedVariantRow =
+        (vehicleVariants || []).find((v: any) => {
+            const slug = String(v.slug || '');
+            const nameSlug = slugify(String(v.name || ''));
+            return (
+                possibleVariantSlugs.has(slug) ||
+                slug.endsWith(`-${resolvedParams.variant}`) ||
+                nameSlug === resolvedParams.variant
+            );
+        }) || null;
+
+    let activeVariantSkus =
+        variantSkus.length > 0
+            ? variantSkus
+            : matchedVariantRow
+              ? normalizedSkus.filter(
+                    (sku: any) => String(sku.vehicle_variant_id || '') === String(matchedVariantRow.id)
+                )
+              : normalizedSkus;
+
+    if (activeVariantSkus.length === 0 && matchedVariantRow?.id) {
+        const { data: variantScopedSkus } = await (supabase as any)
+            .from('cat_skus')
+            .select(
+                `
+                id,
+                name,
+                slug,
+                sku_type,
+                price_base,
+                is_primary,
+                primary_image,
+                color_name,
+                hex_primary,
+                hex_secondary,
+                finish,
+                colour_id,
+                vehicle_variant_id,
+                accessory_variant_id,
+                service_variant_id,
+                vehicle_variant:cat_variants_vehicle!vehicle_variant_id(id, name, slug, status),
+                accessory_variant:cat_variants_accessory!accessory_variant_id(id, name, slug, status),
+                service_variant:cat_variants_service!service_variant_id(id, name, slug, status),
+                assets:cat_assets!item_id(id, type, url, is_primary, position)
+            `
+            )
+            .eq('vehicle_variant_id', matchedVariantRow.id)
+            .eq('status', 'ACTIVE');
+
+        activeVariantSkus = (variantScopedSkus || []).map((sku: any) => {
+            const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
+            return {
+                ...sku,
+                variant,
+                variant_slug: variant?.slug,
+                variant_name: variant?.name,
+                variant_id: variant?.id,
+            };
+        });
+    }
+    const variantSeed = activeVariantSkus[0] || null;
+
+    const resolvedVariant =
+        variantSeed || matchedVariantRow
+            ? ({
+                  id: variantSeed?.variant_id || matchedVariantRow?.id,
+                  name: variantSeed?.variant_name || matchedVariantRow?.name,
+                  slug:
+                      variantSeed?.variant_slug ||
+                      matchedVariantRow?.slug ||
+                      slugify(String(matchedVariantRow?.name || '')),
+                  price_base: Number(variantSeed?.price_base || 0),
+                  specs: {
+                      fuel_type: modelRow?.fuel_type,
+                      engine_cc: modelRow?.engine_cc,
+                  },
+                  brand: {
+                      name: modelRow?.brand?.name || resolvedParams.make,
+                      slug: modelRow?.brand?.slug || slugify(resolvedParams.make),
+                  },
+                  parent: {
+                      name: modelRow?.name || resolvedParams.model,
+                      slug: modelRow?.slug || resolvedParams.model,
+                  },
+              } as CatalogItem)
+            : null;
 
     let fetchError: any = skuError || modelError;
     if (!resolvedVariant) fetchError = fetchError || { message: 'No matching variant in catalog' };
@@ -431,13 +529,16 @@ export default async function Page({ params, searchParams }: Props) {
     };
 
     const makeSlug = (item.brand as any)?.slug || slugify(item.brand?.name || resolvedParams.make || '');
-    const modelSlug = item.parent?.slug || slugify(item.parent?.name || resolvedParams.model || '');
+    const rawModelSlug = item.parent?.slug || slugify(item.parent?.name || resolvedParams.model || '');
+    const modelSlug = rawModelSlug.startsWith(`${makeSlug}-`) ? rawModelSlug.slice(makeSlug.length + 1) : rawModelSlug;
     const rawVariantSlug = item.slug || slugify(item.name || resolvedParams.variant || '');
     // Strip model prefix from variant slug to get just the variant portion
     // e.g., "fascino-125-fi-hybrid-disc" → "disc"
-    const cleanVariantSlug = rawVariantSlug.startsWith(`${modelSlug}-`)
-        ? rawVariantSlug.slice(modelSlug.length + 1)
-        : rawVariantSlug;
+    const cleanVariantSlug = rawVariantSlug.startsWith(`${rawModelSlug}-`)
+        ? rawVariantSlug.slice(rawModelSlug.length + 1)
+        : rawVariantSlug.startsWith(`${modelSlug}-`)
+          ? rawVariantSlug.slice(modelSlug.length + 1)
+          : rawVariantSlug;
 
     const canonicalPath = `/store/${makeSlug}/${modelSlug}/${cleanVariantSlug}`;
     const currentPath = `/store/${resolvedParams.make}/${resolvedParams.model}/${resolvedParams.variant}`;
@@ -460,7 +561,7 @@ export default async function Page({ params, searchParams }: Props) {
         is_primary: Boolean(sku.is_primary),
         image_url: sku.primary_image || null,
         assets: sku.assets || [],
-        parent_id: sku.colour_id || sku.variant_id || item.id,
+        parent_id: sku.id,
         specs: {
             Color: sku.color_name || sku.name,
             color: sku.color_name || sku.name,

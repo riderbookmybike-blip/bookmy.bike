@@ -15,10 +15,21 @@ interface LeadFormProps {
         pincode: string;
         model?: string;
         dob?: string;
+        selectedDealerId?: string;
     }) => void;
+    showDealerSelect?: boolean;
+    dealerOptions?: Array<{ id: string; name: string }>;
+    initialSelectedDealerId?: string;
 }
 
-export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
+export default function LeadForm({
+    isOpen,
+    onClose,
+    onSubmit,
+    showDealerSelect = false,
+    dealerOptions = [],
+    initialSelectedDealerId = '',
+}: LeadFormProps) {
     const [customerName, setCustomerName] = useState('');
     const [phone, setPhone] = useState('');
     const [pincode, setPincode] = useState('');
@@ -28,6 +39,11 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
     const [catalogModels, setCatalogModels] = useState<string[]>([]);
     const [isCheckingPhone, setIsCheckingPhone] = useState(false);
     const [isExistingCustomer, setIsExistingCustomer] = useState(false);
+    const [selectedDealerId, setSelectedDealerId] = useState(initialSelectedDealerId);
+
+    React.useEffect(() => {
+        setSelectedDealerId(initialSelectedDealerId || '');
+    }, [initialSelectedDealerId, isOpen]);
 
     // Fetch dynamic models on mount
     React.useEffect(() => {
@@ -90,12 +106,18 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
         }
         setIsSubmitting(true);
         try {
+            if (showDealerSelect && !selectedDealerId) {
+                alert('Please select dealership');
+                setIsSubmitting(false);
+                return;
+            }
             await onSubmit({
                 customerName,
                 phone,
                 pincode,
                 model: model || undefined,
-                dob: dob || undefined
+                dob: dob || undefined,
+                selectedDealerId: selectedDealerId || undefined,
             });
             // ONLY reset form if onSubmit succeeded
             setCustomerName('');
@@ -104,6 +126,7 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
             setModel('');
             setDob('');
             setIsExistingCustomer(false);
+            setSelectedDealerId('');
         } catch (error) {
             // Error is already toasted by parent, we just stop here
             // This keeps the states (customerName, phone, etc.) intact
@@ -114,11 +137,7 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
     };
 
     return (
-        <SlideOver
-            isOpen={isOpen}
-            onClose={onClose}
-            title="REGISTER NEW IDENTITY"
-        >
+        <SlideOver isOpen={isOpen} onClose={onClose} title="REGISTER NEW IDENTITY">
             <form onSubmit={handleSubmit} className="space-y-8 p-1">
                 <div className="space-y-6">
                     {/* Phone Number */}
@@ -127,13 +146,16 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                             Mobile Connectivity
                         </label>
                         <div className="relative group">
-                            <Phone className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isCheckingPhone ? 'text-indigo-400 animate-pulse' : 'text-slate-400 group-focus-within:text-indigo-600'}`} size={18} />
+                            <Phone
+                                className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isCheckingPhone ? 'text-indigo-400 animate-pulse' : 'text-slate-400 group-focus-within:text-indigo-600'}`}
+                                size={18}
+                            />
                             <input
                                 required
                                 type="tel"
                                 value={phone}
-                                onChange={(e) => setPhone(normalizeIndianPhone(e.target.value))}
-                                onPaste={(e) => {
+                                onChange={e => setPhone(normalizeIndianPhone(e.target.value))}
+                                onPaste={e => {
                                     const text = e.clipboardData.getData('text');
                                     const normalized = normalizeIndianPhone(text);
                                     if (normalized) {
@@ -160,7 +182,9 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                             </label>
                             {isExistingCustomer && (
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[8px] font-black uppercase bg-emerald-100/50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 px-2 py-0.5 rounded-full tracking-widest animate-in fade-in slide-in-from-right-2">Discovered</span>
+                                    <span className="text-[8px] font-black uppercase bg-emerald-100/50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 px-2 py-0.5 rounded-full tracking-widest animate-in fade-in slide-in-from-right-2">
+                                        Discovered
+                                    </span>
                                     {docCount > 0 && (
                                         <span className="text-[8px] font-black uppercase bg-indigo-100/50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 px-2 py-0.5 rounded-full tracking-widest animate-in fade-in slide-in-from-right-4">
                                             {docCount} Assets Vaulted
@@ -170,12 +194,15 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                             )}
                         </div>
                         <div className="relative group">
-                            <User className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isExistingCustomer ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-indigo-600'}`} size={18} />
+                            <User
+                                className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isExistingCustomer ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-indigo-600'}`}
+                                size={18}
+                            />
                             <input
                                 required
                                 type="text"
                                 value={customerName}
-                                onChange={(e) => setCustomerName(e.target.value)}
+                                onChange={e => setCustomerName(e.target.value)}
                                 placeholder="e.g. ADITYA VERMA"
                                 className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.25rem] text-sm font-black tracking-tight text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/5 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 dark:focus:border-indigo-500/60 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 uppercase italic ${isExistingCustomer ? 'bg-emerald-50/30 dark:bg-emerald-500/10' : ''}`}
                             />
@@ -189,14 +216,17 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                                 PINCODE
                             </label>
                             <div className="relative group">
-                                <MapPin className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isExistingCustomer && pincode ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-indigo-600'}`} size={18} />
+                                <MapPin
+                                    className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isExistingCustomer && pincode ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-indigo-600'}`}
+                                    size={18}
+                                />
                                 <input
                                     required
                                     type="text"
                                     maxLength={6}
                                     pattern="\d{6}"
                                     value={pincode}
-                                    onChange={(e) => setPincode(e.target.value.replace(/\D/g, ''))}
+                                    onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
                                     placeholder="000000"
                                     className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.25rem] text-sm font-black tracking-tight text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/5 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 dark:focus:border-indigo-500/60 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 ${isExistingCustomer && pincode ? 'bg-emerald-50/30 dark:bg-emerald-500/10' : ''}`}
                                 />
@@ -209,12 +239,15 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                                 BIRTH RECORD
                             </label>
                             <div className="relative group">
-                                <Cake className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isExistingCustomer && dob ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-indigo-600'}`} size={18} />
+                                <Cake
+                                    className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isExistingCustomer && dob ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-indigo-600'}`}
+                                    size={18}
+                                />
                                 <input
                                     type="date"
                                     value={dob}
-                                    onChange={(e) => setDob(e.target.value)}
-                                    onPaste={(e) => {
+                                    onChange={e => setDob(e.target.value)}
+                                    onPaste={e => {
                                         const text = e.clipboardData.getData('text');
                                         const parsed = parseDateToISO(text);
                                         if (parsed) {
@@ -228,6 +261,32 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                         </div>
                     </div>
 
+                    {showDealerSelect && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">
+                                Dealership
+                            </label>
+                            <div className="relative group">
+                                <Bike
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600"
+                                    size={18}
+                                />
+                                <select
+                                    required
+                                    value={selectedDealerId}
+                                    onChange={e => setSelectedDealerId(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.25rem] text-sm font-black tracking-tight text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/5 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 dark:focus:border-indigo-500/60 outline-none transition-all"
+                                >
+                                    <option value="">Select dealership</option>
+                                    {dealerOptions.map(d => (
+                                        <option key={d.id} value={d.id}>
+                                            {d.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="pt-8 flex gap-4">
@@ -244,7 +303,8 @@ export default function LeadForm({ isOpen, onClose, onSubmit }: LeadFormProps) {
                         isLoading={isSubmitting}
                         className="flex-[2] h-14 bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white rounded-2xl shadow-2xl shadow-slate-200 dark:shadow-none font-black text-[11px] uppercase tracking-[0.2em] transition-all"
                     >
-                        Create Identity <Send size={16} className="ml-3 group-hover:translate-x-1 transition-transform" />
+                        Create Identity{' '}
+                        <Send size={16} className="ml-3 group-hover:translate-x-1 transition-transform" />
                     </Button>
                 </div>
             </form>

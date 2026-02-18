@@ -1854,8 +1854,11 @@ export function DesktopPDP({
                 )}
             </div>
 
-            <div className="md:hidden fixed bottom-0 inset-x-0 z-[95] pb-[env(safe-area-inset-bottom)]">
-                <div className="mx-4 mb-4 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/90 dark:bg-[#0b0d10]/90 backdrop-blur-2xl shadow-2xl p-3 flex items-center justify-between gap-3">
+            <div
+                className="md:hidden fixed inset-x-0 z-[95]"
+                style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+            >
+                <div className="mx-3 mb-2 rounded-2xl border border-white/10 bg-[#0b0d10]/95 backdrop-blur-xl shadow-2xl p-3 flex items-center justify-between gap-3">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">On-Road</span>
                         <div className="flex items-center gap-2">

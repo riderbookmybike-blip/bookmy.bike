@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getQuotes } from '@/actions/crm';
 import { createClient } from '@/lib/supabase/client';
@@ -31,8 +31,9 @@ export interface Quote {
 }
 
 export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string }) {
-    const { tenantId } = useTenant();
+    const { tenantId, memberships, tenantType, tenantSlug } = useTenant();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const params = useParams();
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
     const { device } = useBreakpoint();
@@ -46,6 +47,45 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     const [searchQuery, setSearchQuery] = useState('');
     const [view, setView] = useState<'grid' | 'list'>('list');
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    const [dealerOptions, setDealerOptions] = useState<Array<{ id: string; name: string }>>([]);
+    const [selectedDealerId, setSelectedDealerId] = useState('');
+    const [showCreateQuoteSelector, setShowCreateQuoteSelector] = useState(false);
+    const isMultiTenantMember = (memberships || []).length > 1;
+    const requiresDealerSelection = tenantType === 'BANK' || isMultiTenantMember;
+
+    useEffect(() => {
+        const action = searchParams.get('action');
+        if (action === 'create') {
+            if (requiresDealerSelection) {
+                setShowCreateQuoteSelector(true);
+            } else {
+                const target = tenantSlug ? `/app/${tenantSlug}/leads?action=create` : '/leads?action=create';
+                router.push(target);
+            }
+        }
+    }, [searchParams, requiresDealerSelection, tenantSlug, router]);
+
+    useEffect(() => {
+        const fromMemberships = (memberships || [])
+            .filter((m: any) => m?.tenants?.type === 'DEALER')
+            .map((m: any) => ({ id: m.tenant_id, name: m.tenants?.name || 'Dealer' }));
+        if (fromMemberships.length > 0) {
+            setDealerOptions(fromMemberships);
+            return;
+        }
+        if (requiresDealerSelection) {
+            (async () => {
+                const supabase = createClient();
+                const { data } = await supabase
+                    .from('id_tenants')
+                    .select('id, name')
+                    .eq('type', 'DEALER')
+                    .eq('status', 'ACTIVE')
+                    .order('name', { ascending: true });
+                setDealerOptions((data as any[]) || []);
+            })();
+        }
+    }, [memberships, requiresDealerSelection]);
 
     const fetchQuotes = useCallback(async () => {
         setIsLoading(true);
@@ -95,7 +135,12 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     }, [initialQuoteId]);
 
     const handleNewQuote = () => {
-        toast.info('Create Quote from Leads module for now');
+        if (requiresDealerSelection) {
+            setShowCreateQuoteSelector(true);
+            return;
+        }
+        const target = slug ? `/app/${slug}/leads?action=create` : '/leads?action=create';
+        router.push(target);
     };
 
     const filteredQuotes = useMemo(
@@ -152,6 +197,53 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     if (!selectedQuoteId) {
         return (
             <div className={`h-full bg-slate-50 dark:bg-[#0b0d10] ${negativeMargin}`}>
+                {showCreateQuoteSelector && (
+                    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                        <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-5 space-y-4">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                Select Dealership
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                For finance or multi-tenant members, choose dealership before quote creation.
+                            </p>
+                            <select
+                                value={selectedDealerId}
+                                onChange={e => setSelectedDealerId(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"
+                            >
+                                <option value="">Select dealership</option>
+                                {dealerOptions.map(d => (
+                                    <option key={d.id} value={d.id}>
+                                        {d.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    onClick={() => setShowCreateQuoteSelector(false)}
+                                    className="px-3 py-2 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (!selectedDealerId) {
+                                            toast.error('Please select dealership');
+                                            return;
+                                        }
+                                        const target = slug
+                                            ? `/app/${slug}/leads?action=create&dealerId=${selectedDealerId}`
+                                            : `/leads?action=create&dealerId=${selectedDealerId}`;
+                                        router.push(target);
+                                    }}
+                                    className="px-3 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white"
+                                >
+                                    Continue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <ModuleLanding
                     title="Quotes"
                     subtitle="Commercial Proposals"

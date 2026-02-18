@@ -679,129 +679,132 @@ export function ProfileDropdown({
                                                 </div>
                                             </div>
 
-                                            {/* Simplified Unified Navigation */}
-                                            <div className="space-y-6 pt-2">
-                                                {/* Account & Profile Section */}
-                                                <div className="space-y-3">
-                                                    <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                                                        <LucideUser size={10} strokeWidth={3} />
-                                                        Account Settings
-                                                    </p>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {[
-                                                            {
-                                                                label: 'Settings',
-                                                                icon: LucideUser,
-                                                                href: '/profile',
-                                                                color: 'text-blue-500',
-                                                                bg: 'bg-blue-500/10',
-                                                            },
-                                                            {
-                                                                label: 'Wishlist',
-                                                                icon: Heart,
-                                                                href: '/wishlist',
-                                                                color: 'text-rose-500',
-                                                                bg: 'bg-rose-500/10',
-                                                            },
-                                                            {
-                                                                label: 'Orders',
-                                                                icon: Package,
-                                                                href: '/orders',
-                                                                color: 'text-orange-500',
-                                                                bg: 'bg-orange-500/10',
-                                                            },
-                                                            {
-                                                                label: 'Inbox',
-                                                                icon: Bell,
-                                                                href: '/notifications',
-                                                                color: 'text-purple-500',
-                                                                bg: 'bg-purple-500/10',
-                                                            },
-                                                        ].map(item => (
-                                                            <a
-                                                                key={item.label}
-                                                                href={item.href}
-                                                                className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
-                                                            >
-                                                                <div
-                                                                    className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
-                                                                >
-                                                                    <item.icon size={16} />
-                                                                </div>
-                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-                                                                    {item.label}
-                                                                </span>
-                                                            </a>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Workspaces Section */}
-                                                {memberships.length > 0 && (
+                                            {/* Simplified Unified Navigation — only for logged-in users */}
+                                            {user && (
+                                                <div className="space-y-6 pt-2">
+                                                    {/* Account & Profile Section */}
                                                     <div className="space-y-3">
-                                                        <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center justify-between">
-                                                            <span className="flex items-center gap-2">
-                                                                <Building2 size={10} strokeWidth={3} />
-                                                                My Workspaces
-                                                            </span>
+                                                        <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                                                            <LucideUser size={10} strokeWidth={3} />
+                                                            Account Settings
                                                         </p>
-                                                        <div className="space-y-1.5">
-                                                            {[...memberships]
-                                                                .filter(m => m.tenants)
-                                                                .sort((a, b) => {
-                                                                    const aIsDealer = a.tenants?.type === 'DEALER';
-                                                                    const bIsDealer = b.tenants?.type === 'DEALER';
-                                                                    if (aIsDealer && !bIsDealer) return -1;
-                                                                    if (!aIsDealer && bIsDealer) return 1;
-                                                                    return (a.tenants?.name || '').localeCompare(
-                                                                        b.tenants?.name || ''
-                                                                    );
-                                                                })
-                                                                .map(m => {
-                                                                    const t = m.tenants;
-                                                                    if (!t) return null;
-                                                                    const isActive = activeTenantId === t.id;
-
-                                                                    return (
-                                                                        <div
-                                                                            key={t.id || t.slug || ''}
-                                                                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all group hover:shadow-md relative overflow-hidden ${
-                                                                                isActive
-                                                                                    ? 'bg-brand-primary/5 border-brand-primary/20 dark:bg-brand-primary/10'
-                                                                                    : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/5'
-                                                                            }`}
-                                                                        >
-                                                                            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center shrink-0 text-slate-400">
-                                                                                {getTenantIcon(t.type || '')}
-                                                                            </div>
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                                                                                    {t.name}
-                                                                                    {isActive && !isUnifiedContext && (
-                                                                                        <span className="ml-2 text-[8px] px-1.5 py-0.5 rounded-full bg-brand-primary text-black font-black uppercase tracking-tighter">
-                                                                                            Active
-                                                                                        </span>
-                                                                                    )}
-                                                                                </h5>
-                                                                                <div className="flex items-center gap-2 mt-0.5">
-                                                                                    <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest">
-                                                                                        {getRoleLabel(m.role || '')}
-                                                                                    </span>
-                                                                                </div>
-                                                                            </div>
-                                                                            <a
-                                                                                href={`/app/${t.slug}/dashboard`}
-                                                                                className="px-3 py-1.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-black text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-black/10"
-                                                                            >
-                                                                                Open
-                                                                            </a>
-                                                                        </div>
-                                                                    );
-                                                                })}
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            {[
+                                                                {
+                                                                    label: 'Settings',
+                                                                    icon: LucideUser,
+                                                                    href: '/profile',
+                                                                    color: 'text-blue-500',
+                                                                    bg: 'bg-blue-500/10',
+                                                                },
+                                                                {
+                                                                    label: 'Wishlist',
+                                                                    icon: Heart,
+                                                                    href: '/wishlist',
+                                                                    color: 'text-rose-500',
+                                                                    bg: 'bg-rose-500/10',
+                                                                },
+                                                                {
+                                                                    label: 'Orders',
+                                                                    icon: Package,
+                                                                    href: '/orders',
+                                                                    color: 'text-orange-500',
+                                                                    bg: 'bg-orange-500/10',
+                                                                },
+                                                                {
+                                                                    label: 'Inbox',
+                                                                    icon: Bell,
+                                                                    href: '/notifications',
+                                                                    color: 'text-purple-500',
+                                                                    bg: 'bg-purple-500/10',
+                                                                },
+                                                            ].map(item => (
+                                                                <a
+                                                                    key={item.label}
+                                                                    href={item.href}
+                                                                    className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
+                                                                >
+                                                                    <div
+                                                                        className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
+                                                                    >
+                                                                        <item.icon size={16} />
+                                                                    </div>
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                        {item.label}
+                                                                    </span>
+                                                                </a>
+                                                            ))}
                                                         </div>
                                                     </div>
-                                                )}
-                                            </div>
+
+                                                    {/* Workspaces Section */}
+                                                    {memberships.length > 0 && (
+                                                        <div className="space-y-3">
+                                                            <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center justify-between">
+                                                                <span className="flex items-center gap-2">
+                                                                    <Building2 size={10} strokeWidth={3} />
+                                                                    My Workspaces
+                                                                </span>
+                                                            </p>
+                                                            <div className="space-y-1.5">
+                                                                {[...memberships]
+                                                                    .filter(m => m.tenants)
+                                                                    .sort((a, b) => {
+                                                                        const aIsDealer = a.tenants?.type === 'DEALER';
+                                                                        const bIsDealer = b.tenants?.type === 'DEALER';
+                                                                        if (aIsDealer && !bIsDealer) return -1;
+                                                                        if (!aIsDealer && bIsDealer) return 1;
+                                                                        return (a.tenants?.name || '').localeCompare(
+                                                                            b.tenants?.name || ''
+                                                                        );
+                                                                    })
+                                                                    .map(m => {
+                                                                        const t = m.tenants;
+                                                                        if (!t) return null;
+                                                                        const isActive = activeTenantId === t.id;
+
+                                                                        return (
+                                                                            <div
+                                                                                key={t.id || t.slug || ''}
+                                                                                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all group hover:shadow-md relative overflow-hidden ${
+                                                                                    isActive
+                                                                                        ? 'bg-brand-primary/5 border-brand-primary/20 dark:bg-brand-primary/10'
+                                                                                        : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/5'
+                                                                                }`}
+                                                                            >
+                                                                                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center shrink-0 text-slate-400">
+                                                                                    {getTenantIcon(t.type || '')}
+                                                                                </div>
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                                                                                        {t.name}
+                                                                                        {isActive &&
+                                                                                            !isUnifiedContext && (
+                                                                                                <span className="ml-2 text-[8px] px-1.5 py-0.5 rounded-full bg-brand-primary text-black font-black uppercase tracking-tighter">
+                                                                                                    Active
+                                                                                                </span>
+                                                                                            )}
+                                                                                    </h5>
+                                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                                        <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest">
+                                                                                            {getRoleLabel(m.role || '')}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <a
+                                                                                    href={`/app/${t.slug}/dashboard`}
+                                                                                    className="px-3 py-1.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-black text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-black/10"
+                                                                                >
+                                                                                    Open
+                                                                                </a>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </motion.div>
                                     </div>
 

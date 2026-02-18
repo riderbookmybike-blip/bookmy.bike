@@ -1,55 +1,39 @@
 import { adminClient } from './src/lib/supabase/admin';
 
 async function analyzeCatalog() {
-    console.log('--- CATALOG HIERARCHY ANALYSIS ---');
+    console.log('--- CATALOG V2 ANALYSIS ---');
 
-    // 1. Get Distinct Types
-    const { data: types, error: typeError } = await adminClient
-        .from('cat_items')
-        .select('type')
-        .then(res => ({
-            data: [...new Set(res.data?.map(i => i.type))],
-            error: res.error,
-        }));
+    // 1. Count canonical V2 levels
+    const { count: modelCount, error: modelCountError } = await adminClient
+        .from('cat_models')
+        .select('*', { count: 'exact', head: true });
+    const { count: variantCount, error: variantCountError } = await adminClient
+        .from('cat_variants_vehicle')
+        .select('*', { count: 'exact', head: true });
+    const { count: skuCount, error: skuCountError } = await adminClient
+        .from('cat_skus')
+        .select('*', { count: 'exact', head: true });
 
-    if (typeError) console.error('Error fetching types:', typeError);
-    else console.log('Current DISTINCT types in cat_items:', types);
+    if (modelCountError || variantCountError || skuCountError) {
+        console.error('Error fetching V2 counts:', modelCountError || variantCountError || skuCountError);
+        return;
+    }
 
-    // 2. Get hierarchy sample
+    console.log(`Counts -> MODELS: ${modelCount}, VEHICLE_VARIANTS: ${variantCount}, SKUS: ${skuCount}`);
+
+    // 2. Get SKU sample
     const { data: sample, error: sampleError } = await adminClient
-        .from('cat_items')
-        .select('id, name, type, parent_id, brand_id')
+        .from('cat_skus')
+        .select('id, sku_code, model_id, variant_id')
         .limit(20);
 
     if (sampleError) console.error('Error fetching sample:', sampleError);
     else {
-        console.log('Hierarchy Sample:');
+        console.log('SKU Sample:');
         sample?.forEach(item => {
-            console.log(`[${item.type}] ${item.name} (Parent: ${item.parent_id})`);
+            console.log(`[SKU] ${item.sku_code} (Model: ${item.model_id}, Variant: ${item.variant_id})`);
         });
     }
-
-    // 3. Count levels
-    const { count: familyCount } = await adminClient
-        .from('cat_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('type', 'FAMILY');
-    const { count: variantCount } = await adminClient
-        .from('cat_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('type', 'VARIANT');
-    const { count: skuCount } = await adminClient
-        .from('cat_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('type', 'SKU');
-    const { count: colorCount } = await adminClient
-        .from('cat_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('type', 'COLOR_DEF');
-
-    console.log(
-        `Counts -> FAMILY: ${familyCount}, VARIANT: ${variantCount}, SKU: ${skuCount}, COLOR_DEF: ${colorCount}`
-    );
 }
 
 analyzeCatalog();

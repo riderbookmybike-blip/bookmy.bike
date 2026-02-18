@@ -15,6 +15,7 @@ import { EliteCircle } from './sections/EliteCircle';
 import { Footer } from './Footer';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
+import { Logo } from '@/components/brand/Logo';
 
 interface StoreDesktopProps {
     variant?: 'default' | 'tv';
@@ -201,7 +202,7 @@ export function DesktopHome() {
         <div className="flex flex-col pb-0 transition-colors duration-500 bg-white dark:bg-black text-slate-900 dark:text-white">
             {/* the hyper-aperture: kinetic chassis extraordinaria */}
             <section
-                className="relative min-h-[100svh] md:h-screen ebook-section overflow-hidden bg-gradient-to-br from-rose-900/60 via-[#0b0d10] to-[#0b0d10] dark:from-rose-950/80 dark:via-black dark:to-black isolate flex flex-col items-center justify-center p-0 px-6 md:px-0"
+                className={`relative min-h-[100svh] md:h-screen ebook-section overflow-hidden bg-gradient-to-br from-rose-900/60 via-[#0b0d10] to-[#0b0d10] dark:from-rose-950/80 dark:via-black dark:to-black isolate flex flex-col items-center justify-center p-0 px-6 md:px-0`}
                 onMouseMove={e => {
                     const xPct = (e.clientX / window.innerWidth) * 100;
                     const x = (e.clientX / window.innerWidth - 0.5) * 30;
@@ -274,43 +275,61 @@ export function DesktopHome() {
 
                 {/* THE KINETIC INTERFACE */}
                 <div className="relative z-50 w-full flex flex-col items-center">
-                    {/* telemetry chip: boot sequence header */}
+                    {/* Circular Rotating EMI Badge */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: -20 }}
-                        animate={{ opacity: 1, scale: 1.1, y: 0 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
                         transition={{ duration: 1.2, ease: 'circOut' }}
-                        className="mb-8 md:mb-12 flex flex-col items-center mt-[8vh] relative z-[60]"
+                        className="mb-8 md:mb-12 mt-[8vh] relative flex items-center justify-center w-40 h-40 sm:w-56 sm:h-56 md:w-72 md:h-72 z-[60]"
                     >
-                        <div className="flex items-center gap-6 px-10 py-2.5 bg-zinc-900/80 border border-white/10 rounded-full backdrop-blur-xl transition-all hover:border-brand-primary/50 group/tele shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden relative">
-                            {/* Shimmer Light Effect */}
+                        {/* Rotating text ring (Clockwise) */}
+                        <motion.svg
+                            viewBox="0 0 100 100"
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+                            className="absolute inset-0 w-full h-full pointer-events-none"
+                        >
+                            <defs>
+                                <path
+                                    id="heroCirclePath"
+                                    d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0"
+                                />
+                            </defs>
+                            <text
+                                className="text-[8.5px] font-black uppercase tracking-[0.6em] fill-white font-[family-name:var(--font-bruno-ace)]"
+                                style={{ opacity: 0.95 }}
+                            >
+                                <textPath
+                                    href="#heroCirclePath"
+                                    startOffset="0%"
+                                    textLength="262"
+                                    lengthAdjust="spacingAndGlyphs"
+                                >
+                                    INDIA&apos;S LOWEST EMI GUARANTEE *&nbsp;
+                                </textPath>
+                            </text>
+                        </motion.svg>
+
+                        {/* Central HUD Core */}
+                        <div className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full bg-transparent border border-white/20 backdrop-blur-3xl flex flex-col items-center justify-center group/tele shadow-[0_0_60px_rgba(0,0,0,0.8)] hover:border-brand-primary/50 transition-all overflow-hidden">
                             <motion.div
                                 animate={{ x: ['-100%', '200%'] }}
-                                transition={{ duration: 6, repeat: Infinity, ease: 'linear', repeatDelay: 1 }}
-                                className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-30deg] pointer-events-none"
+                                transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-30deg] pointer-events-none"
                             />
-
-                            <div className="flex gap-1.5 z-10">
-                                <motion.div
-                                    animate={{ opacity: [1, 0.3, 1] }}
-                                    transition={{ repeat: Infinity, duration: 2 }}
-                                    className="w-1.5 h-1.5 rounded-full bg-brand-primary"
-                                />
-                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white group-hover/tele:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)] z-10 relative">
-                                INDIA&apos;S LOWEST EMI GUARANTEE
-                            </span>
-                            <div className="flex gap-1.5 z-10">
-                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                                <motion.div
-                                    animate={{ opacity: [1, 0.3, 1] }}
-                                    transition={{ repeat: Infinity, duration: 2 }}
-                                    className="w-1.5 h-1.5 rounded-full bg-brand-primary"
-                                />
+                            <div className="z-10 scale-75 sm:scale-90 md:scale-110 group-hover/tele:scale-100 transition-transform duration-500 brightness-110">
+                                <Logo variant="icon" size={64} mode="dark" />
                             </div>
                         </div>
+
+                        {/* Decorative Outer Rings (Counter-Rotating: Anti-clockwise) */}
+                        <div className="absolute inset-0 rounded-full border border-white/10 scale-[0.8] pointer-events-none" />
+                        <motion.div
+                            animate={{ rotate: -360 }}
+                            transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+                            className="absolute inset-0 rounded-full border border-dashed border-white/20 scale-[0.9] pointer-events-none opacity-40"
+                        />
+                        <div className="absolute inset-0 rounded-full border border-white/10 scale-[1.05] pointer-events-none" />
                     </motion.div>
 
                     {/* LIQUID CHROME TYPOGRAPHY */}
@@ -363,7 +382,9 @@ export function DesktopHome() {
                     </div>
 
                     {/* TELEMETRY BENTO: kinetic accordion grid */}
-                    <div className="w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-6 mx-auto place-items-stretch pointer-events-auto">
+                    <div
+                        className={`w-full max-w-[1440px] grid grid-cols-1 md:grid-cols-4 gap-4 px-6 mx-auto place-items-stretch pointer-events-auto`}
+                    >
                         {/* block 1: SKU scanner */}
                         <motion.div
                             layout
@@ -373,7 +394,7 @@ export function DesktopHome() {
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 bg-zinc-900/60 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento h-[220px] flex flex-col justify-center cursor-pointer shadow-xl transition-all duration-500`}
+                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 h-[220px] bg-zinc-900/60 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento flex flex-col justify-center cursor-pointer shadow-xl transition-all duration-500`}
                         >
                             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
                                 <Zap size={24} className="text-brand-primary" />
@@ -436,7 +457,7 @@ export function DesktopHome() {
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/60 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch h-[220px] flex flex-col justify-center cursor-pointer shadow-xl transition-all duration-500`}
+                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 h-[220px] bg-zinc-900/60 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/dispatch flex flex-col justify-center cursor-pointer shadow-xl transition-all duration-500`}
                         >
                             <div className="flex items-center gap-8 relative z-10 w-full h-full">
                                 {/* Left Column: Core Stats (Locked Width) */}
@@ -496,7 +517,7 @@ export function DesktopHome() {
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ scale: 1.02, filter: 'brightness(1.2)' }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 bg-zinc-900/60 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/savings h-[220px] flex flex-col justify-center cursor-pointer shadow-xl transition-all duration-500`}
+                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 h-[220px] bg-zinc-900/60 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-3xl group/savings flex flex-col justify-center cursor-pointer shadow-xl transition-all duration-500`}
                         >
                             <div className="flex items-center gap-8 relative z-10 w-full h-full">
                                 {/* Left Column: Core Stats (Locked Width) */}
@@ -557,7 +578,7 @@ export function DesktopHome() {
                     >
                         <Link
                             href="/store/catalog"
-                            className="group relative h-20 w-96 flex items-center justify-center bg-transparent overflow-visible"
+                            className="group relative h-20 w-full max-w-sm flex items-center justify-center bg-transparent overflow-visible"
                         >
                             {/* animated liquid border */}
                             <svg className="absolute inset-0 w-full h-full overflow-visible">
@@ -598,7 +619,7 @@ export function DesktopHome() {
                             <div className="absolute inset-0 bg-brand-primary/5 rounded-xl scale-95 group-hover:scale-110 opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl" />
                         </Link>
 
-                        <div className="flex gap-12 opacity-30 text-[9px] font-mono tracking-widest">
+                        <div className="hidden md:flex gap-12 opacity-30 text-[9px] font-mono tracking-widest">
                             <span className="flex items-center gap-2">
                                 <div className="w-1 h-1 bg-white rounded-full" /> SECURE_LINK: ENABLED
                             </span>
@@ -615,7 +636,9 @@ export function DesktopHome() {
                 <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black to-transparent z-40" />
             </section>
 
-            <section className="min-h-screen ebook-section relative overflow-hidden bg-gradient-to-bl from-orange-800/60 via-[#0b0d10] to-[#0b0d10] dark:from-orange-950/80 dark:via-black dark:to-black transition-colors duration-500 flex flex-col items-center justify-center">
+            <section
+                className={`min-h-screen ebook-section relative overflow-hidden bg-gradient-to-bl from-orange-800/60 via-[#0b0d10] to-[#0b0d10] dark:from-orange-950/80 dark:via-black dark:to-black transition-colors duration-500 flex flex-col items-center justify-center`}
+            >
                 <div className="max-w-[1440px] mx-auto px-6 relative z-10 w-full">
                     <div className="grid grid-cols-12 gap-8 lg:gap-16 items-center">
                         {/* Left Column: Context (4/12) */}
@@ -638,204 +661,264 @@ export function DesktopHome() {
                             </p>
                         </div>
 
-                        {/* Right Column: 3D Cylindrical Monolith (8/12) */}
-                        <div className="col-span-12 lg:col-span-8 h-[65vh] relative perspective-[2000px] flex items-center justify-end lg:pr-[250px]">
-                            {/* The 3D Drum Container */}
-                            <div
-                                className={`relative w-[220px] h-[400px] preserve-3d transition-transform ${isSnapping ? 'duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]' : 'duration-0 ease-linear'}`}
-                                style={{
-                                    transformStyle: 'preserve-3d',
-                                    transform: `rotateY(${drumRotation}deg)`,
-                                }}
-                            >
-                                {[
-                                    { name: 'APRILIA', color: '#F80000', tagline: 'BE A RACER' },
-                                    { name: 'ATHER', color: '#10C25B', tagline: 'WARP SPEED' },
-                                    { name: 'BAJAJ', color: '#005CAB', tagline: "THE WORLD'S FAVOURITE" },
-                                    { name: 'CHETAK', color: '#D4AF37', tagline: 'LEGEND REBORN' },
-                                    { name: 'HERO', color: '#E11B22', tagline: 'RIDE THE FUTURE' },
-                                    { name: 'HONDA', color: '#CC0000', tagline: 'POWER OF DREAMS' },
-                                    { name: 'KTM', color: '#FF6600', tagline: 'READY TO RACE' },
-                                    { name: 'SUZUKI', color: '#164194', tagline: 'WAY OF LIFE' },
-                                    { name: 'TVS', color: '#1C3E8A', tagline: 'RACING DNA' },
-                                    { name: 'VESPA', color: '#0097DA', tagline: 'LIVE MORE VESPA' },
-                                    { name: 'VIDA', color: '#FF5722', tagline: 'MAKE WAY' },
-                                    { name: 'YAMAHA', color: '#183693', tagline: 'REVS YOUR HEART' },
-                                ].map((brand, i) => {
-                                    const angle = (i * 360) / 12;
-                                    const radius = 375; // Adjusted for a more flush, gap-free drum
+                        {/* Right Column: 3D Cylindrical Monolith (8/12) — Desktop only */}
+                        {
+                            <div className="col-span-12 lg:col-span-8 h-[65vh] relative perspective-[2000px] flex items-center justify-end lg:pr-[250px]">
+                                {/* The 3D Drum Container */}
+                                <div
+                                    className={`relative w-[220px] h-[400px] preserve-3d transition-transform ${isSnapping ? 'duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]' : 'duration-0 ease-linear'}`}
+                                    style={{
+                                        transformStyle: 'preserve-3d',
+                                        transform: `rotateY(${drumRotation}deg)`,
+                                    }}
+                                >
+                                    {[
+                                        { name: 'APRILIA', color: '#F80000', tagline: 'BE A RACER' },
+                                        { name: 'ATHER', color: '#10C25B', tagline: 'WARP SPEED' },
+                                        { name: 'BAJAJ', color: '#005CAB', tagline: "THE WORLD'S FAVOURITE" },
+                                        { name: 'CHETAK', color: '#D4AF37', tagline: 'LEGEND REBORN' },
+                                        { name: 'HERO', color: '#E11B22', tagline: 'RIDE THE FUTURE' },
+                                        { name: 'HONDA', color: '#CC0000', tagline: 'POWER OF DREAMS' },
+                                        { name: 'KTM', color: '#FF6600', tagline: 'READY TO RACE' },
+                                        { name: 'SUZUKI', color: '#164194', tagline: 'WAY OF LIFE' },
+                                        { name: 'TVS', color: '#1C3E8A', tagline: 'RACING DNA' },
+                                        { name: 'VESPA', color: '#0097DA', tagline: 'LIVE MORE VESPA' },
+                                        { name: 'VIDA', color: '#FF5722', tagline: 'MAKE WAY' },
+                                        { name: 'YAMAHA', color: '#183693', tagline: 'REVS YOUR HEART' },
+                                    ].map((brand, i) => {
+                                        const angle = (i * 360) / 12;
+                                        const radius = 375; // Adjusted for a more flush, gap-free drum
 
-                                    const isHovered = hoveredBrand === brand.name;
-                                    const isAnyHovered = hoveredBrand !== null;
+                                        const isHovered = hoveredBrand === brand.name;
+                                        const isAnyHovered = hoveredBrand !== null;
 
-                                    // Calculate if this card is 'front-center' based on drumRotation
-                                    // drumRotation is -angle when a card is centered. So angle + drumRotation should be close to 0 (or multiples of 360)
-                                    const currentAngle = (angle + drumRotation) % 360;
-                                    const normalizedAngle = currentAngle < 0 ? currentAngle + 360 : currentAngle;
-                                    const isAtFront = normalizedAngle < 15 || normalizedAngle > 345;
+                                        // Calculate if this card is 'front-center' based on drumRotation
+                                        // drumRotation is -angle when a card is centered. So angle + drumRotation should be close to 0 (or multiples of 360)
+                                        const currentAngle = (angle + drumRotation) % 360;
+                                        const normalizedAngle = currentAngle < 0 ? currentAngle + 360 : currentAngle;
+                                        const isAtFront = normalizedAngle < 15 || normalizedAngle > 345;
 
-                                    // Find brand data from DB for the icon
-                                    const dbBrand = brands?.find(
-                                        b => b.name.toUpperCase() === brand.name.toUpperCase()
-                                    );
+                                        // Find brand data from DB for the icon
+                                        const dbBrand = brands?.find(
+                                            b => b.name.toUpperCase() === brand.name.toUpperCase()
+                                        );
 
-                                    return (
-                                        <div
-                                            key={brand.name}
-                                            className="absolute inset-0 transition-opacity duration-500 preserve-3d"
-                                            style={{
-                                                transform: `rotateY(${angle}deg) translateZ(${radius}px)`,
-                                                backfaceVisibility: 'hidden',
-                                                zIndex: isHovered && isAtFront ? 50 : 1,
-                                                opacity: isAnyHovered && !isHovered ? 0.1 : 1, // Slightly visible padosi for depth
-                                            }}
-                                        >
-                                            {/* Clickable/Hoverable Hit Area (Static Size) */}
+                                        return (
                                             <div
-                                                onMouseEnter={() => {
-                                                    // Only allow hover expansion if the card is already at the front
-                                                    if (isAtFront) {
-                                                        setHoveredBrand(brand.name);
-                                                    }
-                                                }}
-                                                onMouseLeave={() => setHoveredBrand(null)}
-                                                onClick={() => {
-                                                    if (!isAtFront) {
-                                                        // If side card clicked, bring it to front
-                                                        setIsSnapping(true);
-                                                        commitRotation(-angle);
-                                                        // Release snapping lock after transition completes
-                                                        setTimeout(() => setIsSnapping(false), 1000);
-                                                    } else {
-                                                        // If already focused card clicked, navigate
-                                                        window.location.href = `/store/catalog?brand=${brand.name}`;
-                                                    }
-                                                }}
-                                                className="absolute inset-0 z-40 cursor-pointer"
-                                            />
-
-                                            <div
-                                                className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${
-                                                    isHovered && isAtFront
-                                                        ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
-                                                        : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
-                                                }`}
+                                                key={brand.name}
+                                                className="absolute inset-0 transition-opacity duration-500 preserve-3d"
                                                 style={{
-                                                    transform:
-                                                        isHovered && isAtFront
-                                                            ? 'scale(1.2) translateZ(150px)'
-                                                            : 'none',
-                                                    backgroundColor: isHovered && isAtFront ? brand.color : undefined,
+                                                    transform: `rotateY(${angle}deg) translateZ(${radius}px)`,
                                                     backfaceVisibility: 'hidden',
+                                                    zIndex: isHovered && isAtFront ? 50 : 1,
+                                                    opacity: isAnyHovered && !isHovered ? 0.1 : 1, // Slightly visible padosi for depth
                                                 }}
                                             >
-                                                {/* Ribbed Glass Texture Overlay (Only for inactive cards) */}
-                                                {(!isHovered || !isAtFront) && (
-                                                    <div
-                                                        className="absolute inset-0 opacity-[0.05] pointer-events-none z-10"
-                                                        style={{
-                                                            backgroundImage:
-                                                                'repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(255,255,255,0.1) 8px, rgba(255,255,255,0.1) 9px)',
-                                                        }}
-                                                    />
-                                                )}
-
-                                                {/* Soft Lighting: Provides depth without harsh edge lines */}
-                                                {(!isHovered || !isAtFront) && (
-                                                    <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30 z-20 pointer-events-none transition-opacity duration-700" />
-                                                )}
-
-                                                {/* Subtle Bottom Glow Hint (Brand Specific) */}
+                                                {/* Clickable/Hoverable Hit Area (Static Size) */}
                                                 <div
-                                                    className={`absolute bottom-0 inset-x-0 h-1 z-20 transition-opacity duration-500 blur-sm ${isHovered && isAtFront ? 'opacity-100' : 'opacity-30'}`}
-                                                    style={{ backgroundColor: brand.color }}
+                                                    onMouseEnter={() => {
+                                                        // Only allow hover expansion if the card is already at the front
+                                                        if (isAtFront) {
+                                                            setHoveredBrand(brand.name);
+                                                        }
+                                                    }}
+                                                    onMouseLeave={() => setHoveredBrand(null)}
+                                                    onClick={() => {
+                                                        if (!isAtFront) {
+                                                            // If side card clicked, bring it to front
+                                                            setIsSnapping(true);
+                                                            commitRotation(-angle);
+                                                            // Release snapping lock after transition completes
+                                                            setTimeout(() => setIsSnapping(false), 1000);
+                                                        } else {
+                                                            // If already focused card clicked, navigate
+                                                            window.location.href = `/store/catalog?brand=${brand.name}`;
+                                                        }
+                                                    }}
+                                                    className="absolute inset-0 z-40 cursor-pointer"
                                                 />
 
-                                                {/* Inactive State: Vertical Text - Centered & Standard Rotation */}
-                                                {(!isHovered || !isAtFront) && (
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                                                        <span className="text-4xl font-black uppercase italic tracking-tighter -rotate-90 whitespace-nowrap opacity-40 text-white transition-all duration-500">
-                                                            {brand.name}
-                                                        </span>
-                                                    </div>
-                                                )}
-
-                                                {/* Active State: Full Content */}
                                                 <div
-                                                    className={`absolute inset-0 p-8 flex flex-col justify-between z-30 transition-all duration-500 ${isHovered && isAtFront ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                                                    className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-3xl pointer-events-none ${
+                                                        isHovered && isAtFront
+                                                            ? 'shadow-[0_0_120px_rgba(255,255,255,0.25)] border border-white/20'
+                                                            : 'backdrop-blur-md text-zinc-400 border-y border-white/5'
+                                                    }`}
+                                                    style={{
+                                                        transform:
+                                                            isHovered && isAtFront
+                                                                ? 'scale(1.2) translateZ(150px)'
+                                                                : 'none',
+                                                        backgroundColor:
+                                                            isHovered && isAtFront ? brand.color : undefined,
+                                                        backfaceVisibility: 'hidden',
+                                                    }}
                                                 >
-                                                    <div className="flex justify-between items-start">
-                                                        {/* Brand Icon (Small Top Left) - OPTIONAL: We can keep it or remove it since we have a huge one in center now. Let's keep it minimal or remove. Actually, let's keep the layout clean. Top Right Arrow only. */}
-                                                        <div /> {/* Spacer */}
-                                                        <div className="text-white/60">
-                                                            <ArrowRight className="-rotate-45" size={24} />
-                                                        </div>
-                                                    </div>
+                                                    {/* Ribbed Glass Texture Overlay (Only for inactive cards) */}
+                                                    {(!isHovered || !isAtFront) && (
+                                                        <div
+                                                            className="absolute inset-0 opacity-[0.05] pointer-events-none z-10"
+                                                            style={{
+                                                                backgroundImage:
+                                                                    'repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(255,255,255,0.1) 8px, rgba(255,255,255,0.1) 9px)',
+                                                            }}
+                                                        />
+                                                    )}
 
-                                                    {/* Center section: LARGE Hero Logo */}
-                                                    <div className="flex-1 flex items-center justify-center relative">
-                                                        {dbBrand?.brand_logos?.icon || dbBrand?.logo_svg ? (
-                                                            <div
-                                                                className="w-48 h-48 flex items-center justify-center brightness-0 invert opacity-100 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
-                                                                dangerouslySetInnerHTML={{
-                                                                    __html: sanitizeSvg(
-                                                                        dbBrand?.brand_logos?.icon ||
-                                                                            dbBrand?.logo_svg ||
-                                                                            ''
-                                                                    ),
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-9xl font-black italic text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]">
-                                                                {brand.name[0]}
+                                                    {/* Soft Lighting: Provides depth without harsh edge lines */}
+                                                    {(!isHovered || !isAtFront) && (
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30 z-20 pointer-events-none transition-opacity duration-700" />
+                                                    )}
+
+                                                    {/* Subtle Bottom Glow Hint (Brand Specific) */}
+                                                    <div
+                                                        className={`absolute bottom-0 inset-x-0 h-1 z-20 transition-opacity duration-500 blur-sm ${isHovered && isAtFront ? 'opacity-100' : 'opacity-30'}`}
+                                                        style={{ backgroundColor: brand.color }}
+                                                    />
+
+                                                    {/* Inactive State: Vertical Text - Centered & Standard Rotation */}
+                                                    {(!isHovered || !isAtFront) && (
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                                                            <span className="text-4xl font-black uppercase italic tracking-tighter -rotate-90 whitespace-nowrap opacity-40 text-white transition-all duration-500">
+                                                                {brand.name}
                                                             </span>
-                                                        )}
-                                                    </div>
+                                                        </div>
+                                                    )}
 
-                                                    {/* Bottom section: Tagline & CTA */}
-                                                    <div className="space-y-6">
-                                                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50 leading-none text-center">
-                                                            {brand.tagline}
-                                                        </p>
-                                                        <div className="flex justify-center">
-                                                            <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-brand-primary hover:text-black hover:border-brand-primary transition-all cursor-pointer group/active-btn">
-                                                                {t('Enter Factory')}
-                                                                <ArrowRight
-                                                                    size={14}
-                                                                    className="group-hover/active-btn:translate-x-1 transition-transform"
+                                                    {/* Active State: Full Content */}
+                                                    <div
+                                                        className={`absolute inset-0 p-8 flex flex-col justify-between z-30 transition-all duration-500 ${isHovered && isAtFront ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                                                    >
+                                                        <div className="flex justify-between items-start">
+                                                            {/* Brand Icon (Small Top Left) - OPTIONAL: We can keep it or remove it since we have a huge one in center now. Let's keep it minimal or remove. Actually, let's keep the layout clean. Top Right Arrow only. */}
+                                                            <div /> {/* Spacer */}
+                                                            <div className="text-white/60">
+                                                                <ArrowRight className="-rotate-45" size={24} />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Center section: LARGE Hero Logo */}
+                                                        <div className="flex-1 flex items-center justify-center relative">
+                                                            {dbBrand?.brand_logos?.icon || dbBrand?.logo_svg ? (
+                                                                <div
+                                                                    className="w-48 h-48 flex items-center justify-center brightness-0 invert opacity-100 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
+                                                                    dangerouslySetInnerHTML={{
+                                                                        __html: sanitizeSvg(
+                                                                            dbBrand?.brand_logos?.icon ||
+                                                                                dbBrand?.logo_svg ||
+                                                                                ''
+                                                                        ),
+                                                                    }}
                                                                 />
+                                                            ) : (
+                                                                <span className="text-9xl font-black italic text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]">
+                                                                    {brand.name[0]}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Bottom section: Tagline & CTA */}
+                                                        <div className="space-y-6">
+                                                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50 leading-none text-center">
+                                                                {brand.tagline}
+                                                            </p>
+                                                            <div className="flex justify-center">
+                                                                <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md text-white border border-white/20 px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-brand-primary hover:text-black hover:border-brand-primary transition-all cursor-pointer group/active-btn">
+                                                                    {t('Enter Factory')}
+                                                                    <ArrowRight
+                                                                        size={14}
+                                                                        className="group-hover/active-btn:translate-x-1 transition-transform"
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                {/* Brand Letter Watermark */}
-                                                <div
-                                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${
-                                                        isHovered && isAtFront
-                                                            ? 'text-white/[0.1] scale-100 opacity-100'
-                                                            : 'text-white/[0.02] scale-110 opacity-0'
-                                                    }`}
-                                                >
-                                                    {brand.name[0]}
+                                                    {/* Brand Letter Watermark */}
+                                                    <div
+                                                        className={`absolute -right-4 top-1/2 -translate-y-1/2 text-[12rem] font-black italic uppercase select-none pointer-events-none transition-all duration-1000 ${
+                                                            isHovered && isAtFront
+                                                                ? 'text-white/[0.1] scale-100 opacity-100'
+                                                                : 'text-white/[0.02] scale-110 opacity-0'
+                                                        }`}
+                                                    >
+                                                        {brand.name[0]}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
 
-                            {/* Lighting and Shadow Hints - Refined to remove boxy containers */}
-                            <div className="absolute bottom-[-10%] inset-x-0 h-40 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.03),transparent_70%)] blur-3xl pointer-events-none z-0" />
-                        </div>
+                                {/* Lighting and Shadow Hints - Refined to remove boxy containers */}
+                                <div className="absolute bottom-[-10%] inset-x-0 h-40 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.03),transparent_70%)] blur-3xl pointer-events-none z-0" />
+                            </div>
+                        }
+
+                        {/* Phone Brand Carousel */}
+                        {false && (
+                            <div className="col-span-12 mt-8">
+                                <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 px-1 no-scrollbar">
+                                    {[
+                                        { name: 'APRILIA', color: '#F80000' },
+                                        { name: 'ATHER', color: '#10C25B' },
+                                        { name: 'BAJAJ', color: '#005CAB' },
+                                        { name: 'CHETAK', color: '#D4AF37' },
+                                        { name: 'HERO', color: '#E11B22' },
+                                        { name: 'HONDA', color: '#CC0000' },
+                                        { name: 'KTM', color: '#FF6600' },
+                                        { name: 'SUZUKI', color: '#164194' },
+                                        { name: 'TVS', color: '#1C3E8A' },
+                                        { name: 'VESPA', color: '#0097DA' },
+                                        { name: 'VIDA', color: '#FF5722' },
+                                        { name: 'YAMAHA', color: '#183693' },
+                                    ].map(brand => {
+                                        const dbBrand = brands?.find(b => b.name.toUpperCase() === brand.name);
+                                        return (
+                                            <Link
+                                                key={brand.name}
+                                                href={`/store/catalog?brand=${brand.name}`}
+                                                className="snap-center flex-none w-[100px] flex flex-col items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition-all active:scale-95"
+                                            >
+                                                <div
+                                                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                                                    style={{ backgroundColor: brand.color + '20' }}
+                                                >
+                                                    {dbBrand?.brand_logos?.icon || dbBrand?.logo_svg ? (
+                                                        <div
+                                                            className="w-7 h-7 brightness-0 invert opacity-80 [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
+                                                            dangerouslySetInnerHTML={{
+                                                                __html: sanitizeSvg(
+                                                                    dbBrand?.brand_logos?.icon ||
+                                                                        dbBrand?.logo_svg ||
+                                                                        ''
+                                                                ),
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-lg font-black text-white/80">
+                                                            {brand.name[0]}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-[9px] font-black uppercase tracking-wider text-white/70">
+                                                    {brand.name}
+                                                </span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
 
             {/* How it Works */}
             {/* How it Works Section */}
-            {/* How it Works Section */}
-            <section className="min-h-[100svh] md:h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-amber-700/60 via-[#0b0d10] to-[#0b0d10] dark:from-amber-950/80 dark:via-black dark:to-black text-slate-900 dark:text-white flex flex-col justify-start transition-colors duration-500">
+            <section
+                className={`min-h-[100svh] md:h-screen ebook-section relative overflow-hidden bg-gradient-to-tr from-amber-700/60 via-[#0b0d10] to-[#0b0d10] dark:from-amber-950/80 dark:via-black dark:to-black text-slate-900 dark:text-white flex flex-col justify-start transition-colors duration-500`}
+            >
                 <div className="absolute inset-0 opacity-10 pointer-events-none">
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#FFD700,transparent_70%)]" />
                 </div>
@@ -887,7 +970,7 @@ export function DesktopHome() {
                         </div>
 
                         {/* Right Side: The Monolith Accordion */}
-                        <div className="col-span-12 lg:col-span-7 h-[60vh] flex gap-4">
+                        <div className={`col-span-12 lg:col-span-7 h-[60vh] flex ${''} gap-4`}>
                             {processSteps.map((item, i) => (
                                 <motion.div
                                     key={i}
@@ -900,12 +983,11 @@ export function DesktopHome() {
                                     }`}
                                 >
                                     {/* Inner Content Layout */}
-                                    <div className="absolute inset-0 p-8 flex flex-col justify-between">
+                                    <div className={`absolute inset-0 p-8 flex flex-col justify-between`}>
                                         {/* Header */}
                                         <div
                                             className={`flex items-start w-full ${activeStep === i ? 'justify-between' : 'justify-center'}`}
                                         >
-                                            {/* Icon: Left if Active, Center if Inactive */}
                                             <div
                                                 className={`${activeStep === i ? 'text-brand-primary order-1' : 'text-zinc-600'}`}
                                             >
@@ -914,23 +996,29 @@ export function DesktopHome() {
                                                     { className: 'w-8 h-8 md:w-12 md:h-12' }
                                                 )}
                                             </div>
-
-                                            {/* Step Number: Right if Active, Hidden if Inactive */}
                                             {activeStep === i && (
-                                                <span className="text-xl font-bold tracking-widest text-black order-2">
+                                                <span
+                                                    className={`text-xl font-bold tracking-widest ${false && activeStep !== i ? 'text-white/50' : 'text-black'} order-2`}
+                                                >
                                                     {item.step}
                                                 </span>
                                             )}
                                         </div>
 
-                                        {/* Main Title (Vertical Center when inactive, Horizontal when active) */}
+                                        {/* Title — always visible on phone, vertical text on desktop inactive */}
                                         <div className="relative flex-1 flex flex-col justify-end">
-                                            {activeStep !== i && (
+                                            {!false && (
                                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 whitespace-nowrap">
                                                     <span className="text-4xl sm:text-5xl md:text-6xl font-black uppercase italic tracking-tighter text-white/40">
                                                         {item.title}
                                                     </span>
                                                 </div>
+                                            )}
+
+                                            {false && activeStep !== i && (
+                                                <h3 className="text-xl font-black uppercase italic tracking-tighter text-white/80">
+                                                    {item.title}
+                                                </h3>
                                             )}
 
                                             {activeStep === i && (
@@ -943,15 +1031,19 @@ export function DesktopHome() {
                                                     <p className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
                                                         {item.subtitle}
                                                     </p>
-                                                    <h3 className="text-3xl sm:text-4xl md:text-7xl font-black uppercase italic tracking-tighter leading-[0.9]">
+                                                    <h3
+                                                        className={`text-3xl sm:text-4xl md:text-7xl font-black uppercase italic tracking-tighter leading-[0.9]`}
+                                                    >
                                                         {item.title}
                                                     </h3>
-                                                    <p className="text-lg font-medium text-zinc-600 max-w-md leading-relaxed">
+                                                    <p
+                                                        className={`text-lg font-medium text-zinc-600 max-w-md leading-relaxed`}
+                                                    >
                                                         {item.desc}
                                                     </p>
 
                                                     {/* Action Button Indicator */}
-                                                    <div className="pt-6 flex items-center gap-3 text-brand-primary font-black uppercase tracking-widest text-xs">
+                                                    <div className="pt-4 flex items-center gap-3 text-brand-primary font-black uppercase tracking-widest text-xs">
                                                         {t('Explore')}
                                                         <div className="h-px w-12 bg-brand-primary" />
                                                     </div>
@@ -971,7 +1063,9 @@ export function DesktopHome() {
                 </div>
             </section>
 
-            <section className="min-h-[100svh] md:h-screen ebook-section relative flex flex-col justify-start bg-gradient-to-br from-emerald-100 via-slate-50 to-slate-50 dark:from-emerald-950/80 dark:via-black dark:to-black overflow-hidden">
+            <section
+                className={`min-h-[100svh] md:h-screen ebook-section relative flex flex-col justify-start bg-gradient-to-br from-emerald-100 via-slate-50 to-slate-50 dark:from-emerald-950/80 dark:via-black dark:to-black overflow-hidden`}
+            >
                 {/* Vibrant Background Layer: Silken 'Aurora' cross-fades to avoid the flash */}
                 <div className="absolute inset-0 z-0 pointer-events-none">
                     <div className="absolute inset-0 bg-gradient-to-tr from-emerald-800/50 via-[#0b0d10] to-black" />
@@ -1006,7 +1100,7 @@ export function DesktopHome() {
                         </div>
 
                         {/* Right Side: The Monolith Accordion */}
-                        <div className="col-span-12 lg:col-span-7 h-[60vh] flex flex-col lg:flex-row gap-4">
+                        <div className={`col-span-12 lg:col-span-7 h-[60vh] flex flex-col lg:flex-row gap-4`}>
                             {CATEGORIES.map((cat, i) => (
                                 <Link
                                     key={i}
@@ -1031,8 +1125,10 @@ export function DesktopHome() {
                                                     className={`absolute inset-0 opacity-20 bg-gradient-to-br ${cat.color} to-transparent mix-blend-overlay`}
                                                 />
 
-                                                {/* Interactive Layout Container: Nested vertical sandwich to fix overlap */}
-                                                <div className="absolute inset-0 p-8 md:p-10 flex flex-col justify-between z-20">
+                                                {/* Interactive Layout Container */}
+                                                <div
+                                                    className={`absolute inset-0 p-8 md:p-10 flex flex-col justify-between z-20`}
+                                                >
                                                     {/* Top Header: Title & Meta */}
                                                     <div className="flex justify-between items-start w-full">
                                                         <div
@@ -1048,7 +1144,9 @@ export function DesktopHome() {
                                                                     </span>
                                                                 ))}
                                                             </div>
-                                                            <h3 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-white leading-[0.9]">
+                                                            <h3
+                                                                className={`text-3xl sm:text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-white leading-[0.9]`}
+                                                            >
                                                                 {title}
                                                             </h3>
                                                         </div>
@@ -1062,9 +1160,9 @@ export function DesktopHome() {
 
                                                     {/* THE VEHICLE: Nested in flow between Title and Desc to fix overlap */}
                                                     <div
-                                                        className={`flex-1 flex items-center justify-center transition-all duration-700 ease-out ${activeVibe === i ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+                                                        className={`flex-1 flex items-center justify-center transition-all duration-700 ease-out ${activeVibe === i ? 'opacity-100 scale-100' : 'opacity-0 scale-90'} ${''}`}
                                                     >
-                                                        <div className="relative w-[65%] h-[65%] pointer-events-none">
+                                                        <div className={`relative w-[65%] h-[65%] pointer-events-none`}>
                                                             <Image
                                                                 src={cat.img}
                                                                 alt={title}
@@ -1087,10 +1185,14 @@ export function DesktopHome() {
                                                     <div
                                                         className={`relative z-20 transition-all duration-700 delay-100 ${activeVibe === i ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
                                                     >
-                                                        <p className="text-sm md:text-base font-medium text-zinc-300 leading-relaxed max-w-md">
+                                                        <p
+                                                            className={`text-sm md:text-base font-medium text-zinc-300 leading-relaxed max-w-md`}
+                                                        >
                                                             {desc}
                                                         </p>
-                                                        <div className="mt-8 inline-flex items-center gap-3 px-8 py-4 bg-white text-black rounded-full font-black uppercase tracking-widest text-xs hover:bg-brand-primary transition-colors cursor-pointer group/btn">
+                                                        <div
+                                                            className={`mt-4 ${''} inline-flex items-center gap-3 px-8 py-4 bg-white text-black rounded-full font-black uppercase tracking-widest text-xs hover:bg-brand-primary transition-colors cursor-pointer group/btn`}
+                                                        >
                                                             {t('Explore')} {title}
                                                             <ArrowRight
                                                                 size={16}
@@ -1110,7 +1212,9 @@ export function DesktopHome() {
             </section>
 
             {/* Restored Rider Pulse (Reviews) Section */}
-            <div className="ebook-section min-h-[100svh] md:h-screen flex flex-col justify-start bg-gradient-to-br from-blue-100 via-slate-50 to-slate-50 dark:from-blue-900/50 dark:via-[#0b0d10] dark:to-[#0b0d10]">
+            <div
+                className={`ebook-section min-h-[100svh] md:h-screen flex flex-col justify-start bg-gradient-to-br from-blue-100 via-slate-50 to-slate-50 dark:from-blue-900/50 dark:via-[#0b0d10] dark:to-[#0b0d10]`}
+            >
                 <RiderPulse />
             </div>
 
@@ -1118,7 +1222,9 @@ export function DesktopHome() {
             <EliteCircle />
 
             {/* Integrated Footer as Last Section */}
-            <div className="ebook-section min-h-[100svh] md:h-screen bg-gradient-to-t from-slate-200 via-white to-white dark:from-zinc-950/80 dark:via-black dark:to-black">
+            <div
+                className={`ebook-section min-h-[100svh] md:h-screen bg-gradient-to-t from-slate-200 via-white to-white dark:from-zinc-950/80 dark:via-black dark:to-black`}
+            >
                 <Footer />
             </div>
         </div>

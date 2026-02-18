@@ -9,10 +9,14 @@ import { usePathname } from 'next/navigation';
 import { ColorProvider } from '@/contexts/ColorContext';
 import { getSelfMemberLocation } from '@/actions/members';
 import { setLocationCookie } from '@/actions/locationCookie';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { ShopperBottomNav } from '@/components/store/mobile/ShopperBottomNav';
 import Script from 'next/script';
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const { device } = useBreakpoint();
+    const isPhone = device === 'phone';
 
     useEffect(() => {
         const handleOpenLogin = () => setIsLoginOpen(true);
@@ -124,9 +128,25 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
                     />
                     <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
 
-                    <main className="flex-1 pt-[var(--header-h)]">{children}</main>
+                    <main
+                        className="flex-1 pt-[var(--header-h)]"
+                        style={
+                            isPhone
+                                ? { paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 16px)' }
+                                : undefined
+                        }
+                    >
+                        {children}
+                    </main>
 
-                    {!isLandingPage && <MarketplaceFooter />}
+                    {!isLandingPage &&
+                        !(
+                            isPhone &&
+                            (pathname?.startsWith('/store/catalog') || pathname?.match(/^\/store\/[^/]+\/[^/]+/))
+                        ) && <MarketplaceFooter />}
+
+                    {/* Shopper Bottom HUD (phone only) */}
+                    {isPhone && <ShopperBottomNav />}
 
                     {/* Global Login Sidebar */}
                     <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="RETAIL" />

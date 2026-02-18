@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getLeads } from '@/actions/crm';
 import { createClient } from '@/lib/supabase/client';
@@ -37,8 +37,9 @@ export interface LeadRow {
 }
 
 export default function LeadsPage({ initialLeadId }: { initialLeadId?: string }) {
-    const { tenantId } = useTenant();
+    const { tenantId, memberships, tenantType } = useTenant();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const params = useParams();
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
     const { device } = useBreakpoint();
@@ -53,6 +54,43 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
     const [view, setView] = useState<'grid' | 'list'>('list');
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
+    const [dealerOptions, setDealerOptions] = useState<Array<{ id: string; name: string }>>([]);
+    const [initialSelectedDealerId, setInitialSelectedDealerId] = useState('');
+    const isMultiTenantMember = (memberships || []).length > 1;
+    const requiresDealerSelection = tenantType === 'BANK' || isMultiTenantMember;
+
+    useEffect(() => {
+        const action = searchParams.get('action');
+        const dealerId = searchParams.get('dealerId') || '';
+        setInitialSelectedDealerId(dealerId);
+        if (action === 'create') {
+            setIsLeadFormOpen(true);
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
+        const fromMemberships = (memberships || [])
+            .filter((m: any) => m?.tenants?.type === 'DEALER')
+            .map((m: any) => ({ id: m.tenant_id, name: m.tenants?.name || 'Dealer' }));
+
+        if (fromMemberships.length > 0) {
+            setDealerOptions(fromMemberships);
+            return;
+        }
+
+        if (requiresDealerSelection) {
+            (async () => {
+                const supabase = createClient();
+                const { data } = await supabase
+                    .from('id_tenants')
+                    .select('id, name')
+                    .eq('type', 'DEALER')
+                    .eq('status', 'ACTIVE')
+                    .order('name', { ascending: true });
+                setDealerOptions((data as any[]) || []);
+            })();
+        }
+    }, [memberships, requiresDealerSelection]);
 
     const fetchLeads = useCallback(async () => {
         if (!tenantId) return;
@@ -150,6 +188,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         pincode: string;
         model?: string;
         dob?: string;
+        selectedDealerId?: string;
     }) => {
         if (!tenantId) {
             toast.error('Tenant context missing. Please refresh.');
@@ -164,6 +203,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
             model: formData.model,
             source: 'CRM_MANUAL',
             owner_tenant_id: tenantId,
+            selected_dealer_id: formData.selectedDealerId,
         });
 
         if (!result?.success || !('leadId' in result) || !result.leadId) {
@@ -358,6 +398,9 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                     isOpen={isLeadFormOpen}
                     onClose={() => setIsLeadFormOpen(false)}
                     onSubmit={handleCreateLead}
+                    showDealerSelect={requiresDealerSelection}
+                    dealerOptions={dealerOptions}
+                    initialSelectedDealerId={initialSelectedDealerId}
                 />
             </div>
         );

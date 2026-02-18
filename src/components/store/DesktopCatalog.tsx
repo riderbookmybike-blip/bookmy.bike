@@ -15,7 +15,8 @@ import {
     Bluetooth,
     ArrowRight,
     Menu,
-    Sparkles, // Added Sparkles
+    Sparkles,
+    SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { checkServiceability } from '@/actions/serviceArea';
@@ -34,8 +35,11 @@ import { LocationPicker } from './LocationPicker';
 import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
 import { setLocationCookie } from '@/actions/locationCookie';
 import { ProductCard } from './desktop/ProductCard';
+import { CompactProductCard } from './mobile/CompactProductCard';
+import { MobileFilterDrawer } from './mobile/MobileFilterDrawer';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { CatalogGridSkeleton } from './CatalogSkeleton';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { getSelfMemberLocation, updateSelfMemberLocation } from '@/actions/members';
 import { resolveIpLocation } from '@/actions/resolveIpLocation';
 
@@ -84,6 +88,8 @@ export const DesktopCatalog = ({
 }: DesktopCatalogProps) => {
     // Prefer client-resolved items when available, otherwise SSR
     const isLoading = externalLoading;
+    const { device } = useBreakpoint();
+    const isPhone = device === 'phone';
 
     // Destructure filters from props
     const {
@@ -547,6 +553,47 @@ export const DesktopCatalog = ({
         maxEMI,
     ]);
 
+    // Mobile filter drawer state (separate from desktop mega filter)
+    const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+    const mobileFilterSections = [
+        {
+            title: 'Body Type',
+            options: [...bodyOptions],
+            selected: selectedBodyTypes,
+            onToggle: (v: string) => toggleFilter(setSelectedBodyTypes, v),
+            onReset: () => setSelectedBodyTypes([]),
+        },
+        {
+            title: 'Brand',
+            options: makeOptions,
+            selected: selectedMakes,
+            onToggle: (v: string) => toggleFilter(setSelectedMakes, v),
+            onReset: () => setSelectedMakes([]),
+        },
+        {
+            title: 'Fuel',
+            options: [...fuelOptions],
+            selected: selectedFuels,
+            onToggle: (v: string) => toggleFilter(setSelectedFuels, v),
+            onReset: () => setSelectedFuels([]),
+        },
+        {
+            title: 'Brakes',
+            options: [...brakeOptions],
+            selected: selectedBrakes,
+            onToggle: (v: string) => toggleFilter(setSelectedBrakes, v),
+            onReset: () => setSelectedBrakes([]),
+        },
+        {
+            title: 'Finish',
+            options: [...finishOptions],
+            selected: selectedFinishes,
+            onToggle: (v: string) => toggleFilter(setSelectedFinishes, v),
+            onReset: () => setSelectedFinishes([]),
+        },
+    ];
+
     // Keyboard handlers
     React.useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
@@ -564,6 +611,21 @@ export const DesktopCatalog = ({
             document.body.style.overflow = 'unset';
         }
     }, [isFilterOpen]);
+
+    // Phone search overlay
+    const [phoneSearchOpen, setPhoneSearchOpen] = useState(false);
+    const phoneSearchRef = React.useRef<HTMLInputElement>(null);
+    React.useEffect(() => {
+        const handler = () => {
+            setPhoneSearchOpen(prev => {
+                const next = !prev;
+                if (next) setTimeout(() => phoneSearchRef.current?.focus(), 150);
+                return next;
+            });
+        };
+        window.addEventListener('toggleCatalogSearch', handler);
+        return () => window.removeEventListener('toggleCatalogSearch', handler);
+    }, []);
 
     const FilterGroup = ({
         title,
@@ -843,7 +905,7 @@ export const DesktopCatalog = ({
                 </div>
             )}
             <div
-                className={`flex-1 page-container pt-0 pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
+                className={`flex-1 page-container ${isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
             >
                 <header
                     className="hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-300"
@@ -1023,14 +1085,43 @@ export const DesktopCatalog = ({
                                 </button>
                             )}
                         </div>
-                        <button
-                            onClick={() => setIsFilterOpen(true)}
-                            className="flex items-center justify-center w-11 h-11 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white"
-                        >
-                            <Menu size={16} />
-                        </button>
                     </div>
                 </div>
+
+                {/* Phone Search Overlay */}
+                <AnimatePresence>
+                    {isPhone && phoneSearchOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.2 }}
+                            className="sticky z-[91] mb-4"
+                            style={{ top: 'var(--header-h)' }}
+                        >
+                            <div className="flex items-center gap-2 px-4 py-3 bg-black/40 backdrop-blur-2xl rounded-2xl border border-white/10 mx-1">
+                                <Search size={16} className="text-[#FFD700] shrink-0" />
+                                <input
+                                    ref={phoneSearchRef}
+                                    type="text"
+                                    placeholder="Search brand, product, variant..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="flex-1 bg-transparent text-sm font-bold text-white focus:outline-none placeholder:text-slate-500"
+                                />
+                                <button
+                                    onClick={() => {
+                                        setSearchQuery('');
+                                        setPhoneSearchOpen(false);
+                                    }}
+                                    className="text-slate-400 active:text-white"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Not Serviceable Banner */}
                 {serviceability.status === 'unserviceable' && serviceability.fallbackDistrict && (
@@ -1292,12 +1383,15 @@ export const DesktopCatalog = ({
                             className={`grid ${
                                 viewMode === 'list'
                                     ? 'grid-cols-1 w-full gap-6'
-                                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
+                                    : isPhone
+                                      ? 'grid-cols-1 gap-4 w-full'
+                                      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
                             }`}
                         >
                             {/* Results Grid */}
                             {displayResults.map((v, idx) => {
                                 const key = `${v.id}-${(v as any).color || v.imageUrl || idx}`;
+
                                 return (
                                     <ProductCard
                                         key={key}
@@ -1326,6 +1420,17 @@ export const DesktopCatalog = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Floating Filter FAB — Phone Only */}
+                {isPhone && !isMobileFilterOpen && (
+                    <button
+                        onClick={() => setIsMobileFilterOpen(true)}
+                        className="fixed z-[50] w-11 h-11 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 shadow-lg flex items-center justify-center text-[#FFD700] active:scale-90 transition-all"
+                        style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 12px)', right: '12px' }}
+                    >
+                        <SlidersHorizontal size={18} strokeWidth={2.5} />
+                    </button>
+                )}
 
                 {/* Mega Filter Overlay (Grid View Only) */}
                 {isFilterOpen && viewMode === 'grid' ? (
@@ -1502,6 +1607,23 @@ export const DesktopCatalog = ({
                         </div>
                     </div>
                 ) : null}
+
+                {/* Mobile Filter Drawer + Trigger (phone only) */}
+                {isPhone && (
+                    <>
+                        <MobileFilterDrawer
+                            isOpen={isMobileFilterOpen}
+                            onClose={() => setIsMobileFilterOpen(false)}
+                            sections={mobileFilterSections}
+                            onClearAll={clearAll}
+                            activeFilterCount={activeFilterCount}
+                            downpayment={downpayment}
+                            onDownpaymentChange={setDownpayment}
+                            tenure={tenure}
+                            onTenureChange={setTenure}
+                        />
+                    </>
+                )}
             </div>
 
             <LocationPicker

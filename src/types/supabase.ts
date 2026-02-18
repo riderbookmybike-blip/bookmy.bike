@@ -164,15 +164,7 @@ export type Database = {
                     url?: string;
                     zoom_factor?: number | null;
                 };
-                Relationships: [
-                    {
-                        foreignKeyName: 'cat_assets_item_id_fkey';
-                        columns: ['item_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                ];
+                Relationships: [];
             };
             cat_brands: {
                 Row: {
@@ -395,31 +387,10 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'cat_item_compatibility_item_id_fkey';
-                        columns: ['item_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                    {
                         foreignKeyName: 'cat_item_compatibility_target_brand_id_fkey';
                         columns: ['target_brand_id'];
                         isOneToOne: false;
                         referencedRelation: 'cat_brands';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'cat_item_compatibility_target_family_id_fkey';
-                        columns: ['target_family_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'cat_item_compatibility_target_variant_id_fkey';
-                        columns: ['target_variant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -476,13 +447,6 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                     {
-                        foreignKeyName: 'cat_item_ingestion_sources_item_id_fkey';
-                        columns: ['item_id'];
-                        isOneToOne: true;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                    {
                         foreignKeyName: 'cat_item_ingestion_sources_tenant_id_fkey';
                         columns: ['tenant_id'];
                         isOneToOne: false;
@@ -494,117 +458,6 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            cat_items: {
-                Row: {
-                    brand_id: string;
-                    category: string;
-                    created_at: string | null;
-                    created_by: string | null;
-                    gallery_urls: Json | null;
-                    history: Json | null;
-                    hsn_code: string | null;
-                    id: string;
-                    image_url: string | null;
-                    inclusion_type: string | null;
-                    is_flipped: boolean | null;
-                    is_primary: boolean | null;
-                    item_tax_rate: number | null;
-                    name: string;
-                    offset_x: number | null;
-                    offset_y: number | null;
-                    parent_id: string | null;
-                    position: number | null;
-                    price_base: number | null;
-                    sku_code: string | null;
-                    slug: string | null;
-                    specs: Json | null;
-                    status: string | null;
-                    tenant_id: string | null;
-                    type: string;
-                    updated_at: string | null;
-                    updated_by: string | null;
-                    video_url: string | null;
-                    zoom_factor: number | null;
-                };
-                Insert: {
-                    brand_id: string;
-                    category: string;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    gallery_urls?: Json | null;
-                    history?: Json | null;
-                    hsn_code?: string | null;
-                    id?: string;
-                    image_url?: string | null;
-                    inclusion_type?: string | null;
-                    is_flipped?: boolean | null;
-                    is_primary?: boolean | null;
-                    item_tax_rate?: number | null;
-                    name: string;
-                    offset_x?: number | null;
-                    offset_y?: number | null;
-                    parent_id?: string | null;
-                    position?: number | null;
-                    price_base?: number | null;
-                    sku_code?: string | null;
-                    slug?: string | null;
-                    specs?: Json | null;
-                    status?: string | null;
-                    tenant_id?: string | null;
-                    type: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                    video_url?: string | null;
-                    zoom_factor?: number | null;
-                };
-                Update: {
-                    brand_id?: string;
-                    category?: string;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    gallery_urls?: Json | null;
-                    history?: Json | null;
-                    hsn_code?: string | null;
-                    id?: string;
-                    image_url?: string | null;
-                    inclusion_type?: string | null;
-                    is_flipped?: boolean | null;
-                    is_primary?: boolean | null;
-                    item_tax_rate?: number | null;
-                    name?: string;
-                    offset_x?: number | null;
-                    offset_y?: number | null;
-                    parent_id?: string | null;
-                    position?: number | null;
-                    price_base?: number | null;
-                    sku_code?: string | null;
-                    slug?: string | null;
-                    specs?: Json | null;
-                    status?: string | null;
-                    tenant_id?: string | null;
-                    type?: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                    video_url?: string | null;
-                    zoom_factor?: number | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'catalog_items_brand_id_fkey';
-                        columns: ['brand_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_brands';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'catalog_items_parent_id_fkey';
-                        columns: ['parent_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -749,13 +602,6 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'id_dealer_pricing_rules_vehicle_model_id_fkey';
-                        columns: ['vehicle_model_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -1132,22 +978,7 @@ export type Database = {
                     recommended_variant_id?: string | null;
                     source_variant_id?: string | null;
                 };
-                Relationships: [
-                    {
-                        foreignKeyName: 'cat_recommendations_recommended_variant_id_fkey';
-                        columns: ['recommended_variant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'cat_recommendations_source_variant_id_fkey';
-                        columns: ['source_variant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                ];
+                Relationships: [];
             };
             cat_reg_rules: {
                 Row: {
@@ -1445,81 +1276,6 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                 ];
-            };
-            cat_skus_linear: {
-                Row: {
-                    assets_json: Json | null;
-                    brand_id: string;
-                    brand_json: Json;
-                    brand_name: string;
-                    checksum_md5: string;
-                    created_at: string;
-                    gallery_urls: string[] | null;
-                    id: string;
-                    image_url: string | null;
-                    price_base: number;
-                    price_mh: Json | null;
-                    product_json: Json;
-                    product_name: string;
-                    sku_code: string;
-                    specs: Json;
-                    status: Database['public']['Enums']['sku_status'];
-                    type_name: string;
-                    unit_json: Json;
-                    unit_name: string;
-                    updated_at: string;
-                    variant_json: Json;
-                    variant_name: string;
-                };
-                Insert: {
-                    assets_json?: Json | null;
-                    brand_id: string;
-                    brand_json: Json;
-                    brand_name: string;
-                    checksum_md5: string;
-                    created_at?: string;
-                    gallery_urls?: string[] | null;
-                    id?: string;
-                    image_url?: string | null;
-                    price_base: number;
-                    price_mh?: Json | null;
-                    product_json: Json;
-                    product_name: string;
-                    sku_code: string;
-                    specs?: Json;
-                    status?: Database['public']['Enums']['sku_status'];
-                    type_name: string;
-                    unit_json: Json;
-                    unit_name: string;
-                    updated_at?: string;
-                    variant_json: Json;
-                    variant_name: string;
-                };
-                Update: {
-                    assets_json?: Json | null;
-                    brand_id?: string;
-                    brand_json?: Json;
-                    brand_name?: string;
-                    checksum_md5?: string;
-                    created_at?: string;
-                    gallery_urls?: string[] | null;
-                    id?: string;
-                    image_url?: string | null;
-                    price_base?: number;
-                    price_mh?: Json | null;
-                    product_json?: Json;
-                    product_name?: string;
-                    sku_code?: string;
-                    specs?: Json;
-                    status?: Database['public']['Enums']['sku_status'];
-                    type_name?: string;
-                    unit_json?: Json;
-                    unit_name?: string;
-                    updated_at?: string;
-                    variant_json?: Json;
-                    variant_name?: string;
-                };
-                Relationships: [];
             };
             cat_specifications: {
                 Row: {
@@ -2309,24 +2065,10 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                     {
-                        foreignKeyName: 'crm_bookings_color_id_fkey';
-                        columns: ['color_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                    {
                         foreignKeyName: 'crm_bookings_user_id_fkey';
                         columns: ['user_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_members';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_bookings_variant_id_fkey';
-                        columns: ['variant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
                         referencedColumns: ['id'];
                     },
                     {
@@ -3273,13 +3015,6 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                     {
-                        foreignKeyName: 'fk_quotes_color_protect';
-                        columns: ['color_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
-                    {
                         foreignKeyName: 'fk_quotes_lead_protect';
                         columns: ['lead_id'];
                         isOneToOne: false;
@@ -3312,13 +3047,6 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'fk_quotes_variant_protect';
-                        columns: ['variant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
                         referencedColumns: ['id'];
                     },
                     {
@@ -5281,13 +5009,6 @@ export type Database = {
                         referencedRelation: 'cat_brands';
                         referencedColumns: ['id'];
                     },
-                    {
-                        foreignKeyName: 'mat_market_summary_family_id_fkey';
-                        columns: ['family_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_items';
-                        referencedColumns: ['id'];
-                    },
                 ];
             };
             notifications: {
@@ -5951,46 +5672,6 @@ export type Database = {
                     studio_id: string;
                     vehicle_color_id: string;
                 }[];
-            };
-            get_item_descendants_tree: {
-                Args: { root_id: string };
-                Returns: {
-                    brand_id: string;
-                    category: string;
-                    created_at: string | null;
-                    created_by: string | null;
-                    gallery_urls: Json | null;
-                    history: Json | null;
-                    hsn_code: string | null;
-                    id: string;
-                    image_url: string | null;
-                    inclusion_type: string | null;
-                    is_flipped: boolean | null;
-                    is_primary: boolean | null;
-                    item_tax_rate: number | null;
-                    name: string;
-                    offset_x: number | null;
-                    offset_y: number | null;
-                    parent_id: string | null;
-                    position: number | null;
-                    price_base: number | null;
-                    sku_code: string | null;
-                    slug: string | null;
-                    specs: Json | null;
-                    status: string | null;
-                    tenant_id: string | null;
-                    type: string;
-                    updated_at: string | null;
-                    updated_by: string | null;
-                    video_url: string | null;
-                    zoom_factor: number | null;
-                }[];
-                SetofOptions: {
-                    from: '*';
-                    to: 'cat_items';
-                    isOneToOne: false;
-                    isSetofReturn: true;
-                };
             };
             get_market_best_offers: {
                 Args: { p_district_name: string; p_state_code: string };
