@@ -42,6 +42,7 @@ import { Logo } from '@/components/brand/Logo';
 import { useDealerSession } from '@/hooks/useDealerSession';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getDefaultAvatar, AVATAR_PRESETS } from '@/lib/avatars';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 interface ProfileMembership {
     role: string | null;
@@ -74,6 +75,7 @@ export function ProfileDropdown({
     onOpenChange,
 }: ProfileDropdownProps) {
     const { isUnifiedContext } = useTenant();
+    const { user: authUser } = useAuth();
     const [user, setUser] = useState<User | null>(null);
     const [memberships, setProfileMemberships] = useState<ProfileMembership[]>([]);
     const [internalOpen, setInternalOpen] = useState(false);
@@ -103,9 +105,12 @@ export function ProfileDropdown({
     // Close on click outside is now handled by the Backdrop overlay in the logic below
 
     useEffect(() => {
-        const supabase = createClient();
+        setUser(authUser);
+    }, [authUser]);
 
+    useEffect(() => {
         const loadProfileMemberships = async (userId: string) => {
+            const supabase = createClient();
             const { data: rawProfileMemberships, error } = await supabase.rpc('get_user_memberships', {
                 p_user_id: userId,
             });
@@ -161,36 +166,13 @@ export function ProfileDropdown({
             setProfileMemberships(mapped);
         };
 
-        const fetchData = async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
+        if (authUser?.id) {
+            loadProfileMemberships(authUser.id);
+            return;
+        }
 
-            if (user) {
-                setUser(user);
-                await loadProfileMemberships(user.id);
-            } else {
-                setUser(null);
-                setProfileMemberships([]);
-            }
-        };
-
-        fetchData();
-
-        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (session?.user) {
-                setUser(session.user);
-                loadProfileMemberships(session.user.id);
-            } else {
-                setUser(null);
-                setProfileMemberships([]);
-            }
-        });
-
-        return () => {
-            data.subscription.unsubscribe();
-        };
-    }, []);
+        setProfileMemberships([]);
+    }, [authUser?.id]);
 
     useEffect(() => {
         const handleLocationChange = () => {

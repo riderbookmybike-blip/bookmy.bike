@@ -49,9 +49,6 @@
 ## Next Priority Tasks
 
 ### CAT-001 — Expand Pricing to Other States
-- [ ] Add Delhi (DL) pricing rules and cat_prices data
-- [ ] Add Karnataka (KA) pricing rules and cat_prices data
-- [ ] Re-run parity tests for all 3 states
 
 ### INV-001 — Inventory Management
 - [ ] Enable stock tracking per dealer/location

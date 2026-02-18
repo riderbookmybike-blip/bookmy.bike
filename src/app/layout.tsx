@@ -30,6 +30,7 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { I18nProvider } from '@/components/providers/I18nProvider';
+import { AuthProvider } from '@/components/providers/AuthProvider';
 import { TenantProvider } from '@/lib/tenant/tenantContext';
 import MSG91Initializer from '@/components/auth/MSG91Initializer';
 // import { FaviconProvider } from '@/hooks/useFavicon';
@@ -53,16 +54,18 @@ export default function RootLayout({
                 <AnalyticsScripts />
                 <ThemeProvider>
                     <I18nProvider>
-                        <TenantProvider>
-                            <Suspense fallback={null}>
-                                <AnalyticsProvider>
-                                    <MSG91Initializer />
-                                    {/* <FaviconProvider /> */}
-                                    {children}
-                                    <Toaster position="top-center" richColors />
-                                </AnalyticsProvider>
-                            </Suspense>
-                        </TenantProvider>
+                        <AuthProvider>
+                            <TenantProvider>
+                                <Suspense fallback={null}>
+                                    <AnalyticsProvider>
+                                        <MSG91Initializer />
+                                        {/* <FaviconProvider /> */}
+                                        {children}
+                                        <Toaster position="top-center" richColors />
+                                    </AnalyticsProvider>
+                                </Suspense>
+                            </TenantProvider>
+                        </AuthProvider>
                     </I18nProvider>
                 </ThemeProvider>
             </body>

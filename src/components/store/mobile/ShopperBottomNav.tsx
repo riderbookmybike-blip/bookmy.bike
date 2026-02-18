@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 const TABS = [
     { key: 'home', label: 'Home', icon: Home, href: '/' },
@@ -52,20 +52,9 @@ const ACCOUNT_ITEMS = [
 export function ShopperBottomNav() {
     const pathname = usePathname();
     const router = useRouter();
+    const { user } = useAuth();
     const { favorites } = useFavorites();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [user, setUser] = useState<User | null>(null);
-
-    useEffect(() => {
-        const supabase = createClient();
-        supabase.auth.getUser().then(({ data }) => setUser(data.user));
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-        });
-        return () => subscription.unsubscribe();
-    }, []);
 
     const isTabActive = (href: string) => {
         if (!pathname) return false;

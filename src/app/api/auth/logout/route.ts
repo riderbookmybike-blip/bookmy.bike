@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { resolveCookieDomain } from '@/lib/supabase/cookieDomain';
 
 export async function POST(request: Request) {
     const cookieStore = await cookies();
@@ -54,8 +55,7 @@ export async function POST(request: Request) {
     const response = NextResponse.json({ success: true });
 
     // 2. Explicitly clear our custom middleware cookie
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieDomain = host?.endsWith('.bookmy.bike') ? '.bookmy.bike' : undefined;
+    const cookieDomain = resolveCookieDomain(host || '', process.env.NEXT_PUBLIC_COOKIE_DOMAIN);
 
     response.cookies.set('aums_session', '', {
         path: '/',
@@ -70,12 +70,12 @@ export async function POST(request: Request) {
             response.cookies.set(cookie.name, '', {
                 path: '/',
                 domain: cookieDomain,
-                expires: new Date(0)
+                expires: new Date(0),
             });
             // Safety: Also try clearing without domain in case it was set locally
             response.cookies.set(cookie.name, '', {
                 path: '/',
-                expires: new Date(0)
+                expires: new Date(0),
             });
         }
     });

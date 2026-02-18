@@ -1,15 +1,12 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { resolveCookieDomain } from '@/lib/supabase/cookieDomain';
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const host = request.headers.get('host') || '';
-    const hostname = request.nextUrl.hostname || host.split(':')[0] || '';
     const isHttps = request.nextUrl.protocol === 'https:';
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'bookmy.bike';
-    const isLocalhost = host.includes('localhost') || host.startsWith('127.') || host.startsWith('0.0.0.0');
-    const isRootDomainHost = hostname === rootDomain || hostname.endsWith(`.${rootDomain}`);
-    const cookieDomain = isRootDomainHost ? `.${rootDomain}` : undefined;
+    const cookieDomain = resolveCookieDomain(host, process.env.NEXT_PUBLIC_COOKIE_DOMAIN);
     const userAgent = request.headers.get('user-agent') || '';
 
     // A. BOT PROTECTION FOR API
@@ -79,6 +76,14 @@ export async function proxy(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     const isLegacyDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+    const isHardProtectedPath =
+        pathname === '/profile' || pathname.startsWith('/dashboard/') || pathname.startsWith('/app/');
+
+    if (isHardProtectedPath && !user) {
+        const loginUrl = new URL('/login', request.url);
+        loginUrl.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
+        return NextResponse.redirect(loginUrl);
+    }
 
     if (isLegacyDashboard) {
         if (!user) {
@@ -197,7 +202,9 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+    matcher: [
+        '/((?!_next/static|_next/image|favicon.ico|auth/callback|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff2?)$).*)',
+    ],
 };
 
 export default proxy;
