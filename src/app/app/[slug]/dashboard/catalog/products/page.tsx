@@ -19,7 +19,6 @@ import {
     Bike,
     ShieldCheck,
     Wrench,
-    Layers,
 } from 'lucide-react';
 import { CatalogItem } from '@/types/store';
 import CopyableId from '@/components/ui/CopyableId';
@@ -67,7 +66,9 @@ export default function UnifiedCatalogPage() {
         // 3. Fetch SKUs for all variants
         const { data: skus } = await (supabase as any)
             .from('cat_skus')
-            .select('id, name, vehicle_variant_id, status, position, specs, slug, hex_primary, color_name, image_url')
+            .select(
+                'id, name, vehicle_variant_id, status, position, specs, slug, hex_primary, color_name, primary_image'
+            )
             .in('vehicle_variant_id', variantIds.length > 0 ? variantIds : ['__none__']);
 
         // 4. Assemble hierarchy: model → variants → skus
@@ -622,19 +623,6 @@ export default function UnifiedCatalogPage() {
                                 className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all hover:scale-105"
                             >
                                 <Wrench size={16} /> Service
-                            </button>
-
-                            <div className="h-10 w-[1px] bg-slate-200 dark:bg-white/10 hidden xl:block mx-1" />
-
-                            <button
-                                onClick={() =>
-                                    router.push(
-                                        `/app/${tenantSlug}/dashboard/catalog/products/studio-v2?category=VEHICLE&step=brand`
-                                    )
-                                }
-                                className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 transition-all hover:scale-105"
-                            >
-                                <Layers size={16} /> Studio V2
                             </button>
                         </div>
                     </div>

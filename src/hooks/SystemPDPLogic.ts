@@ -11,11 +11,13 @@ export interface LocalColorConfig {
     class: string;
     image?: string;
     video?: string;
+    assets?: any[];
     dealerOffer?: number;
     pricingOverride?: {
         exShowroom?: number;
         dealerOffer?: number;
         onRoadOverride?: number;
+        priceOverride?: number; // Keep for fallback if needed
     };
 }
 
@@ -77,7 +79,7 @@ export function useSystemPDPLogic({
 
     const colorFromQuery = searchParams.get('color');
     const isValidColor = colorFromQuery && colors.some(c => c.id === colorFromQuery);
-    const initialColor = isValidColor ? colorFromQuery : colors[0]?.id || 'default';
+    const initialColor = isValidColor ? colorFromQuery : colors[0]?.id || '';
 
     const [selectedColor, setSelectedColor] = useState(initialColor);
     const [regType, setRegType] = useState<'STATE' | 'BH' | 'COMPANY'>('STATE');
@@ -85,7 +87,8 @@ export function useSystemPDPLogic({
     const fallbackPricing =
         serverPricing ||
         (initialPrice?.breakdown && typeof initialPrice.breakdown === 'object' ? initialPrice.breakdown : null);
-    const pricingReady = Boolean(
+    // Base check: is pricing data available at all?
+    const pricingDataAvailable = Boolean(
         fallbackPricing?.ex_showroom ||
         fallbackPricing?.final_on_road ||
         initialPrice?.exShowroom ||
@@ -161,11 +164,19 @@ export function useSystemPDPLogic({
 
     // Color Config & Price Override
     const activeColorConfig = colors.find(c => c.id === selectedColor) || colors[0] || ({} as any);
+
+    // SOT Rule §4.3: Reject pricing when selected color cannot map to valid SKU UUID
+    const skuUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const selectedSkuId = typeof activeColorConfig?.skuId === 'string' ? activeColorConfig.skuId : '';
+    const hasValidColorSku = skuUuidRegex.test(selectedSkuId);
+    const pricingReady = pricingDataAvailable && hasValidColorSku;
+    const colorLevelExShowroom =
+        activeColorConfig?.pricingOverride?.exShowroom ??
+        activeColorConfig?.pricingOverride?.priceOverride ??
+        activeColorConfig?.pricingOverride; // Handle case where pricingOverride is just the number (backward compat)
+
     const baseExShowroom = pricingReady
-        ? (fallbackPricing?.ex_showroom ??
-          activeColorConfig.pricingOverride?.exShowroom ??
-          initialPrice?.exShowroom ??
-          0)
+        ? (fallbackPricing?.ex_showroom ?? colorLevelExShowroom ?? initialPrice?.exShowroom ?? product?.basePrice ?? 0)
         : 0;
     const pricingLocationLabel =
         pricingReady &&
@@ -195,14 +206,17 @@ export function useSystemPDPLogic({
 
         // Handle new object format
         if (typeof val === 'object' && 'total' in val) {
-            const b = [
-                { label: 'Road Tax', amount: val.roadTax },
-                { label: 'Reg. Charges', amount: val.registrationCharges },
-                { label: 'Smart Card', amount: val.smartCardCharges },
-                { label: 'Hypothecation', amount: val.hypothecationCharges },
-                { label: 'Postal Charges', amount: val.postalCharges },
-                { label: 'Cess', amount: val.cessAmount },
-            ].filter(x => x.amount > 0);
+            const hasDetails = val.roadTax || val.registrationCharges || val.smartCardCharges;
+            const b = hasDetails
+                ? [
+                      { label: 'Road Tax', amount: val.roadTax },
+                      { label: 'Reg. Charges', amount: val.registrationCharges },
+                      { label: 'Smart Card', amount: val.smartCardCharges },
+                      { label: 'Hypothecation', amount: val.hypothecationCharges },
+                      { label: 'Postal Charges', amount: val.postalCharges },
+                      { label: 'Cess', amount: val.cessAmount },
+                  ].filter(x => x.amount > 0)
+                : [{ label: 'Registration (Estimated)', amount: val.total }];
             return { total: val.total, breakdown: b };
         }
         return null;
@@ -260,7 +274,7 @@ export function useSystemPDPLogic({
     };
 
     // Get RTO for selected type (fallback to STATE if type unavailable)
-    const selectedRtoValue = effectiveRtoValues[regType] ?? effectiveRtoValues.STATE ?? 0;
+    const selectedRtoValue = effectiveRtoValues[regType] || effectiveRtoValues.STATE || 0;
 
     // SSPP v2: Server pricing only (SOT JSON!)
     // Re-assigning rtoEstimates to use the corrected selectedRtoValue
@@ -709,6 +723,7 @@ export function useSystemPDPLogic({
     }, []);
 
     const handleColorChange = (newColorId: string) => {
+        if (!newColorId || !colors.some(c => c.id === newColorId)) return;
         setSelectedColor(newColorId);
         const newParams = new URLSearchParams(searchParams.toString());
         newParams.set('color', newColorId);
@@ -719,6 +734,9 @@ export function useSystemPDPLogic({
         data: {
             colors,
             selectedColor,
+            selectedSkuId,
+            hasValidColorSku,
+            isUnavailable: !hasValidColorSku,
             baseExShowroom,
             rtoEstimates,
             rtoBreakdown,

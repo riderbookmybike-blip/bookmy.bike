@@ -64,13 +64,14 @@ export function EliteCircle() {
     return (
         <section
             id="o-circle"
-            className="relative min-h-screen lg:h-screen ebook-section bg-gradient-to-tr from-indigo-100 via-slate-50 to-white dark:from-indigo-900/60 dark:via-[#0b0d10] dark:to-black flex flex-col items-center justify-center overflow-hidden transition-colors duration-1000"
+            className="relative min-h-screen lg:h-screen ebook-section bg-white flex flex-col items-center justify-center overflow-hidden transition-colors duration-1000"
         >
             {/* VIBRANT ATMOSPHERIC BACKGROUND */}
             <div className="absolute inset-0 z-0 pointer-events-none transition-colors duration-1000">
-                <div className="absolute inset-0 bg-gradient-to-tr from-slate-200 via-slate-50 to-white dark:from-indigo-900/60 dark:via-[#0b0d10] dark:to-black transition-colors duration-1000" />
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[70%] bg-[radial-gradient(circle_at_50%_100%,rgba(99,90,255,0.1),transparent_70%)] dark:bg-[radial-gradient(circle_at_50%_100%,rgba(99,90,255,0.25),transparent_70%)] transition-all duration-1000" />
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05] mix-blend-overlay" />
+                <div className="absolute inset-0 bg-white opacity-100 transition-colors duration-1000" />
+                {/* Standardized 'Bottom-Up' Ruby Soft Tint (Light Theme) */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[80%] bg-[radial-gradient(circle_at_50%_100%,rgba(153,27,27,0.06),transparent_75%)] transition-all duration-1000" />
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-multiply" />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-black/5 dark:from-[#0b0d10] dark:to-black/60 transition-colors duration-1000" />
             </div>
 
@@ -94,10 +95,10 @@ export function EliteCircle() {
                                     {t('The Privilege Tier')}
                                 </h2>
                             </div>
-                            <h1 className="text-5xl md:text-7xl xl:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] text-slate-900 dark:text-white transition-colors">
+                            <h1 className="text-5xl md:text-7xl xl:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] text-slate-900 transition-colors">
                                 {t("THE O'")}
                                 <br />
-                                <span className="text-[#F4B000]">{t('CIRCLE.')}</span>
+                                <span className="text-emerald-600">{t('CIRCLE.')}</span>
                             </h1>
                             <div className="space-y-4 max-w-sm mx-auto lg:mx-0">
                                 <p className="text-lg md:text-xl text-slate-500 dark:text-zinc-400 font-medium leading-relaxed transition-colors">
@@ -126,8 +127,8 @@ export function EliteCircle() {
                                     onClick={() => setActiveStep(i)}
                                     className={`relative rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
                                         activeStep === i
-                                            ? 'flex-[12] lg:flex-[5] bg-white shadow-[0_40px_100px_rgba(0,0,0,0.5),0_0_80px_rgba(255,255,255,0.1)] border-white ring-1 ring-black/5'
-                                            : 'flex-[2] lg:flex-[1] bg-slate-100 dark:bg-black/40 border-slate-200 dark:border-white/5 text-zinc-500 hover:bg-black/60'
+                                            ? 'flex-[12] lg:flex-[5] bg-white shadow-[0_40px_100px_rgba(0,0,0,0.1),0_0_80px_rgba(0,0,0,0.05)] border-slate-200 ring-1 ring-black/5'
+                                            : 'flex-[2] lg:flex-[1] bg-slate-50 border-slate-200 text-zinc-500 hover:bg-slate-100'
                                     }`}
                                 >
                                     {/* INTERNAL CONTENT */}
@@ -150,7 +151,7 @@ export function EliteCircle() {
                                         {activeStep !== i && (
                                             <div className="flex-1 relative">
                                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 lg:-rotate-90 whitespace-nowrap">
-                                                    <span className="text-2xl lg:text-4xl font-black uppercase italic tracking-tighter text-white/20">
+                                                    <span className="text-2xl lg:text-4xl font-black uppercase italic tracking-tighter text-slate-900/40">
                                                         {item.title}
                                                     </span>
                                                 </div>

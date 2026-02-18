@@ -43,12 +43,18 @@ export default function VisualsRow({
     const activeColor = colors.find(c => c.id === selectedColor) || colors[0];
     const activeColorName = activeColor.name;
 
-    // Reset loading state when image changes
+    // Reset loading state when the displayed image URL changes
+    const imgRef = React.useRef<HTMLImageElement | null>(null);
     React.useEffect(() => {
         setImageLoaded(false);
-        // If color changes and we have 360, maybe default to it? Or at least reset state.
         setIs360Active(false);
-    }, [productImage, currentImageIndex, selectedColor]);
+        // Handle browser-cached images that fire onLoad synchronously
+        requestAnimationFrame(() => {
+            if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
+                setImageLoaded(true);
+            }
+        });
+    }, [productImage]);
 
     const v360Assets = assets.filter(a => a.type === '360').sort((a, b) => (a.position || 0) - (b.position || 0));
     const has360 = v360Assets.length > 0;
@@ -130,13 +136,13 @@ export default function VisualsRow({
                         />
                     ) : (
                         <img
+                            ref={imgRef}
                             src={productImage || '/images/categories/scooter_nobg.png'}
                             alt="Product Visual"
                             onLoad={() => setImageLoaded(true)}
                             className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] dark:drop-shadow-[0_60px_100px_rgba(0,0,0,0.9)] transition-opacity duration-500 ${
                                 imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
                             }`}
-                            key={currentImageIndex}
                         />
                     )}
 

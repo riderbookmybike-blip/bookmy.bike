@@ -410,6 +410,8 @@ export function DesktopPDP({
 
     const getProductImage = () => {
         if (activeColorConfig?.image) return activeColorConfig.image;
+        if (activeColorConfig?.image_url) return activeColorConfig.image_url;
+        if (activeColorConfig?.imageUrl) return activeColorConfig.imageUrl;
         if (activeColorConfig?.gallery_urls?.length > 0) return activeColorConfig.gallery_urls[0];
 
         switch (product.bodyType) {

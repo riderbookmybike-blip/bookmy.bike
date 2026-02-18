@@ -32,6 +32,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     }, []);
 
     const isAppRoute = (pathname || '').startsWith('/app/');
+    const isHome = pathname === '/' || pathname === '/store';
 
     // BRANDING INJECTION
     const primaryColor = tenantConfig?.brand?.primaryColor;
@@ -143,9 +144,11 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     // --- REGULAR USER LAYOUT ---
     if (isRegularUser) {
         content = (
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+            <div className="min-h-screen bg-white">
                 <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
-                <main className="pt-20 p-8 md:p-10 max-w-7xl mx-auto">{children}</main>
+                <main className={`${isHome ? 'pt-0' : 'pt-20'} p-0 md:p-0 max-w-none mx-auto overflow-x-hidden`}>
+                    {children}
+                </main>
                 <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="RETAIL" />
             </div>
         );

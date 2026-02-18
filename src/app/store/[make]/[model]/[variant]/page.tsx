@@ -1,15 +1,27 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { resolveLocation, resolveLocationByDistrict } from '@/utils/locationResolver';
+import { resolveLocationByDistrict } from '@/utils/locationResolver';
 import { adminClient } from '@/lib/supabase/admin';
 import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
 import { cookies } from 'next/headers';
 import { resolveFinanceScheme, ViewerContext } from '@/utils/financeResolver';
 import { BankScheme } from '@/types/bankPartner';
-import { resolvePricingContext } from '@/lib/server/pricingContext';
 import { getSitemapData } from '@/lib/server/sitemapFetcher';
+import {
+    isStoreSotV2Enabled,
+    resolveStoreContext,
+    resolveModel,
+    fetchModelSkus,
+    fetchVehicleVariants,
+    matchVariant,
+    resolveActiveSkus,
+    fetchPublishedPricing,
+    getDealerDelta,
+    SKU_SELECT,
+    getPdpSnapshot,
+} from '@/lib/server/storeSot';
 
 type Props = {
     params: Promise<{
@@ -285,7 +297,7 @@ export default async function Page({ params, searchParams }: Props) {
     }
 
     // 1. Resolve Pricing Context (Primary Dealer Only)
-    const pricingContext = await resolvePricingContext({
+    const pricingContext = await resolveStoreContext({
         leadId: resolvedSearchParams.leadId,
         dealerId: resolvedSearchParams.dealer,
         district: resolvedSearchParams.district,
@@ -300,59 +312,16 @@ export default async function Page({ params, searchParams }: Props) {
         location = await resolveLocationByDistrict(resolvedDistrict, stateCode);
     }
 
-    console.log('PDP Debug: Pricing Context:', pricingContext);
+    // ── SOT V2 Feature Flag ──────────────────────────────────
+    const SOT_V2 = isStoreSotV2Enabled();
 
-    // 2. Fetch Variant + SKUs from V2 catalog tables
-    const { data: modelRows, error: modelError } = await (supabase as any)
-        .from('cat_models')
-        .select('id, brand_id, name, slug, brand:cat_brands!brand_id(name, slug), fuel_type, engine_cc, status')
-        .eq('status', 'ACTIVE');
+    // 2. Fetch Variant + SKUs from V2 catalog tables (via shared SOT layer)
+    let modelRow = await resolveModel(resolvedParams.make, resolvedParams.model);
+    const modelError = modelRow ? null : { message: 'Model not found' };
 
-    const modelCandidates = (modelRows || []).filter((m: any) => {
-        const modelSlug = String(m.slug || '');
-        const modelNameSlug = slugify(String(m.name || ''));
-        const brandSlug = String(m.brand?.slug || '');
-        const brandNameSlug = slugify(String(m.brand?.name || ''));
-        const modelMatch =
-            modelSlug === resolvedParams.model ||
-            modelNameSlug === resolvedParams.model ||
-            modelSlug.endsWith(`-${resolvedParams.model}`);
-        const brandMatch =
-            brandSlug === resolvedParams.make || brandNameSlug === resolvedParams.make || resolvedParams.make === '';
-        return modelMatch && brandMatch;
-    });
-
-    const modelRow = modelCandidates[0] || null;
-
-    const { data: modelSkus, error: skuError } = modelRow?.id
-        ? await (supabase as any)
-              .from('cat_skus')
-              .select(
-                  `
-                id,
-                name,
-                slug,
-                sku_type,
-                price_base,
-                is_primary,
-                primary_image,
-                color_name,
-                hex_primary,
-                hex_secondary,
-                finish,
-                colour_id,
-                vehicle_variant_id,
-                accessory_variant_id,
-                service_variant_id,
-                vehicle_variant:cat_variants_vehicle!vehicle_variant_id(id, name, slug, status),
-                accessory_variant:cat_variants_accessory!accessory_variant_id(id, name, slug, status),
-                service_variant:cat_variants_service!service_variant_id(id, name, slug, status),
-                assets:cat_assets!item_id(id, type, url, is_primary, position)
-            `
-              )
-              .eq('model_id', modelRow.id)
-              .eq('status', 'ACTIVE')
-        : ({ data: null, error: modelError } as any);
+    const { skus: modelSkusList, error: skuError } = modelRow?.id
+        ? await fetchModelSkus(modelRow.id)
+        : { skus: [], error: modelError };
 
     const possibleVariantSlugs = new Set([
         resolvedParams.variant,
@@ -360,86 +329,29 @@ export default async function Page({ params, searchParams }: Props) {
         `${resolvedParams.make}-${resolvedParams.model}-${resolvedParams.variant}`,
     ]);
 
-    const normalizedSkus = (modelSkus || []).map((sku: any) => {
-        const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
-        return {
-            ...sku,
-            variant,
-            variant_slug: variant?.slug,
-            variant_name: variant?.name,
-            variant_id: variant?.id,
-        };
-    });
+    const normalizedSkus = modelSkusList;
 
-    const variantSkus = normalizedSkus.filter((sku: any) => {
-        const slug = String(sku.variant_slug || '');
-        if (!slug) return false;
-        return (
-            possibleVariantSlugs.has(slug) ||
-            slug.endsWith(`-${resolvedParams.variant}`) ||
-            slugify(String(sku.variant_name || '')) === resolvedParams.variant
-        );
-    });
+    const vehicleVariants = modelRow?.id ? await fetchVehicleVariants(modelRow.id) : [];
 
-    const { data: vehicleVariants } = modelRow?.id
-        ? await (supabase as any)
-              .from('cat_variants_vehicle')
-              .select('id, name, slug, status')
-              .eq('model_id', modelRow.id)
-              .eq('status', 'ACTIVE')
-        : ({ data: [] } as any);
+    const matchedVariantRow = matchVariant(vehicleVariants, possibleVariantSlugs, resolvedParams.variant);
 
-    const matchedVariantRow =
-        (vehicleVariants || []).find((v: any) => {
-            const slug = String(v.slug || '');
-            const nameSlug = slugify(String(v.name || ''));
-            return (
-                possibleVariantSlugs.has(slug) ||
-                slug.endsWith(`-${resolvedParams.variant}`) ||
-                nameSlug === resolvedParams.variant
-            );
-        }) || null;
-
-    let activeVariantSkus =
-        variantSkus.length > 0
-            ? variantSkus
-            : matchedVariantRow
-              ? normalizedSkus.filter(
-                    (sku: any) => String(sku.vehicle_variant_id || '') === String(matchedVariantRow.id)
-                )
-              : normalizedSkus;
+    // Resolve active SKUs via shared SOT multi-tier fallback
+    let activeVariantSkus = await resolveActiveSkus(
+        normalizedSkus,
+        matchedVariantRow,
+        possibleVariantSlugs,
+        resolvedParams.variant
+    );
 
     if (activeVariantSkus.length === 0 && matchedVariantRow?.id) {
         const { data: variantScopedSkus } = await (supabase as any)
             .from('cat_skus')
-            .select(
-                `
-                id,
-                name,
-                slug,
-                sku_type,
-                price_base,
-                is_primary,
-                primary_image,
-                color_name,
-                hex_primary,
-                hex_secondary,
-                finish,
-                colour_id,
-                vehicle_variant_id,
-                accessory_variant_id,
-                service_variant_id,
-                vehicle_variant:cat_variants_vehicle!vehicle_variant_id(id, name, slug, status),
-                accessory_variant:cat_variants_accessory!accessory_variant_id(id, name, slug, status),
-                service_variant:cat_variants_service!service_variant_id(id, name, slug, status),
-                assets:cat_assets!item_id(id, type, url, is_primary, position)
-            `
-            )
+            .select(SKU_SELECT)
             .eq('vehicle_variant_id', matchedVariantRow.id)
             .eq('status', 'ACTIVE');
 
         activeVariantSkus = (variantScopedSkus || []).map((sku: any) => {
-            const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
+            const variant = sku.vehicle_variant;
             return {
                 ...sku,
                 variant,
@@ -449,9 +361,20 @@ export default async function Page({ params, searchParams }: Props) {
             };
         });
     }
+
+    if (activeVariantSkus.length === 0 && normalizedSkus.length > 0) {
+        activeVariantSkus = normalizedSkus.filter((sku: any) => {
+            const variantSlug = String(sku?.variant_slug || '');
+            return (
+                variantSlug === resolvedParams.variant ||
+                variantSlug.endsWith(`-${resolvedParams.variant}`) ||
+                slugify(String(sku?.variant_name || '')) === resolvedParams.variant
+            );
+        });
+    }
     const variantSeed = activeVariantSkus[0] || null;
 
-    const resolvedVariant =
+    let resolvedVariant =
         variantSeed || matchedVariantRow
             ? ({
                   id: variantSeed?.variant_id || matchedVariantRow?.id,
@@ -478,6 +401,34 @@ export default async function Page({ params, searchParams }: Props) {
 
     let fetchError: any = skuError || modelError;
     if (!resolvedVariant) fetchError = fetchError || { message: 'No matching variant in catalog' };
+
+    let sotPricingSnapshot: any = null;
+
+    // SOT V2 primary path with safe fallback to inline path.
+    if (SOT_V2) {
+        try {
+            const sotSnap = await getPdpSnapshot({
+                make: resolvedParams.make,
+                model: resolvedParams.model,
+                variant: resolvedParams.variant,
+                stateCode,
+            });
+
+            if (sotSnap?.resolvedVariant) {
+                modelRow = sotSnap.model || modelRow;
+                if (Array.isArray(sotSnap.skus) && sotSnap.skus.length > 0) {
+                    activeVariantSkus = sotSnap.skus as any[];
+                }
+                resolvedVariant = sotSnap.resolvedVariant as CatalogItem;
+                sotPricingSnapshot = sotSnap.pricing;
+                fetchError = null;
+            } else {
+                console.warn('[SOT_V2] Primary snapshot unavailable; using inline PDP fetch path.');
+            }
+        } catch (err) {
+            console.error('[SOT_V2] Primary snapshot failed; using inline PDP fetch path.', err);
+        }
+    }
 
     if (!resolvedVariant) {
         console.error('PDP Fetch Error:', fetchError);
@@ -553,23 +504,43 @@ export default async function Page({ params, searchParams }: Props) {
     }
 
     // 2.5 Fetch SKUs EARLY (Needed for Market Offer Filtering)
-    const colorSkus: any[] = activeVariantSkus.map((sku: any) => ({
-        id: sku.id,
-        name: sku.name,
-        slug: sku.slug,
-        price_base: Number(sku.price_base || 0),
-        is_primary: Boolean(sku.is_primary),
-        image_url: sku.primary_image || null,
-        assets: sku.assets || [],
-        parent_id: sku.id,
-        specs: {
-            Color: sku.color_name || sku.name,
-            color: sku.color_name || sku.name,
-            hex_primary: sku.hex_primary,
-            hex_secondary: sku.hex_secondary,
-            finish: sku.finish,
-        },
-    }));
+    const colorSkus: any[] = activeVariantSkus.map((sku: any) => {
+        // Build assets array from gallery_img_* columns (same SOT as Catalog)
+        const galleryUrls = [
+            sku.primary_image,
+            sku.gallery_img_1,
+            sku.gallery_img_2,
+            sku.gallery_img_3,
+            sku.gallery_img_4,
+            sku.gallery_img_5,
+            sku.gallery_img_6,
+        ].filter(Boolean);
+        const assets = galleryUrls.map((url: string, i: number) => ({
+            id: `${sku.id}-img-${i}`,
+            type: 'IMAGE',
+            url,
+            is_primary: i === 0,
+            position: i,
+        }));
+
+        return {
+            id: sku.id,
+            name: sku.name,
+            slug: sku.slug,
+            price_base: Number(sku.price_base || 0),
+            is_primary: Boolean(sku.is_primary),
+            image_url: sku.primary_image || null,
+            assets,
+            parent_id: sku.id,
+            specs: {
+                Color: sku.colour?.name ?? sku.color_name ?? sku.name,
+                color: sku.colour?.name ?? sku.color_name ?? sku.name,
+                hex_primary: sku.colour?.hex_primary ?? sku.hex_primary,
+                hex_secondary: sku.colour?.hex_secondary ?? sku.hex_secondary,
+                finish: sku.colour?.finish ?? sku.finish,
+            },
+        };
+    });
 
     const skus = colorSkus;
     const colorDefs = colorSkus.map((sku: any) => ({
@@ -588,66 +559,23 @@ export default async function Page({ params, searchParams }: Props) {
 
     const allSkus = [...(skus || []), ...colorSkus];
 
-    // 2.6 Fetch Prices from canonical state pricing table
+    // 2.6 Fetch Prices from canonical state pricing table (via shared SOT layer)
     const skuIds = allSkus.map((s: any) => s.id);
-    let publishedPriceData: any = null;
-    if (skuIds.length > 0) {
-        // Authoritative SOT for MH: dedicated state table with columns
-        const { data: mhRows } = await (supabase as any)
-            .from('cat_price_state_mh')
-            .select(
-                `
-                    sku_id, state_code,
-                    ex_showroom, ex_showroom_basic:ex_factory, ex_showroom_gst_amount:ex_factory_gst_amount, ex_showroom_total:ex_showroom, gst_rate, hsn_code,
-                    on_road_price,
-                    rto_default_type,
-                    rto_registration_fee_state, rto_registration_fee_bh, rto_registration_fee_company,
-                    rto_smartcard_charges_state, rto_smartcard_charges_bh, rto_smartcard_charges_company,
-                    rto_postal_charges_state, rto_postal_charges_bh, rto_postal_charges_company,
-                    rto_roadtax_rate_state, rto_roadtax_rate_bh, rto_roadtax_rate_company,
-                    rto_roadtax_amount_state, rto_roadtax_amount_bh, rto_roadtax_amount_company,
-                    rto_roadtaxcess_rate_state:rto_roadtax_cess_rate_state, rto_roadtaxcess_rate_bh:rto_roadtax_cess_rate_bh, rto_roadtaxcess_rate_company:rto_roadtax_cess_rate_company,
-                    rto_roadtaxcessamount_state:rto_roadtax_cess_amount_state, rto_roadtaxcessamount_bh:rto_roadtax_cess_amount_bh, rto_roadtaxcessamount_company:rto_roadtax_cess_amount_company,
-                    rto_total_state, rto_total_bh, rto_total_company,
-                    ins_od_base:ins_own_damage_premium_amount, ins_od_total:ins_own_damage_total_amount, ins_tp_base:ins_liability_only_premium_amount, ins_tp_total:ins_liability_only_total_amount,
-                    ins_sum_mandatory_insurance, ins_sum_mandatory_insurance_gst_amount, ins_total:ins_gross_premium, ins_gst_rate,
-                    addon_pa_amount:addon_personal_accident_cover_amount, addon_pa_gstamount:addon_personal_accident_cover_gst_amount, addon_pa_total:addon_personal_accident_cover_total_amount,
-                    published_at, updated_at
-                `
-            )
-            .in('sku_id', skuIds)
-            .eq('state_code', stateCode)
-            .order('updated_at', { ascending: false });
+    const { snapshot: inlineSnapshot } = await fetchPublishedPricing(skuIds, stateCode);
+    const publishedPriceData: any = sotPricingSnapshot || inlineSnapshot;
 
-        const matchingRow = (mhRows || []).find((row: any) => Number(row.rto_total_state) > 0);
-        const priceRow = matchingRow || (mhRows || [])[0];
-
-        if (priceRow) {
-            publishedPriceData = {
-                vehicle_color_id: priceRow.sku_id,
-                ex_showroom_price: Number(priceRow.ex_showroom) || 0,
-                rto_total: Number(priceRow.rto_total_state) || 0,
-                insurance_total: Number(priceRow.ins_total) || 0,
-                on_road_price: Number(priceRow.on_road_price) || 0,
-                rto: {
-                    STATE: { total: Number(priceRow.rto_total_state) },
-                    BH: { total: Number(priceRow.rto_total_bh) },
-                    COMPANY: { total: Number(priceRow.rto_total_company) },
-                    default: priceRow.rto_default_type || 'STATE',
-                },
-                insurance: {
-                    base_total:
-                        Number(priceRow.ins_total || 0) ||
-                        Number(priceRow.ins_sum_mandatory_insurance || 0) +
-                            Number(priceRow.ins_sum_mandatory_insurance_gst_amount || 0),
-                    od: { total: Number(priceRow.ins_od_total) },
-                    tp: { total: Number(priceRow.ins_tp_total) },
-                    pa: Number(priceRow.addon_pa_total ?? 0),
-                },
-                state_code: stateCode,
-                district: 'ALL',
-                published_at: priceRow.published_at,
-            };
+    // SOT V2 shadow comparison (inline vs shared snapshot) for rollout safety.
+    if (SOT_V2 && sotPricingSnapshot && inlineSnapshot) {
+        const sotEx = Number(sotPricingSnapshot?.ex_showroom_price ?? 0);
+        const inlineEx = Number(inlineSnapshot?.ex_showroom_price ?? 0);
+        if (sotEx > 0 && inlineEx > 0 && Math.abs(sotEx - inlineEx) > 1) {
+            console.warn('[SOT_V2 MISMATCH] ex_showroom', {
+                sotEx,
+                inlineEx,
+                make: resolvedParams.make,
+                model: resolvedParams.model,
+                variant: resolvedParams.variant,
+            });
         }
     }
 
@@ -864,58 +792,29 @@ export default async function Page({ params, searchParams }: Props) {
     let winningDealerId: string | null = pricingContext.dealerId || null;
     let bundleIdsForDealer: Set<string> = new Set();
     const leadId = resolvedSearchParams.leadId;
-
-    // Fetch dealer pricing rules for vehicle SKUs
-    const currentSkuIds = allSkus.map((s: any) => s.id);
-    if (winningDealerId && currentSkuIds.length > 0) {
-        const { data: vehicleRules } = await supabase
-            .from('cat_price_dealer')
-            .select('vehicle_color_id, offer_amount')
-            .in('vehicle_color_id', currentSkuIds)
-            .eq('tenant_id', winningDealerId)
-            .eq('state_code', stateCode)
-            .eq('is_active', true);
-
-        if (vehicleRules) {
-            vehicleRules.forEach((r: any) => {
-                marketOffers[r.vehicle_color_id] = Number(r.offer_amount);
-            });
-        }
-    }
-
-    // Bundle inclusion from dealer rules
-    if (winningDealerId) {
-        const { data: bundleRules } = await supabase
-            .from('cat_price_dealer')
-            .select('vehicle_color_id')
-            .eq('tenant_id', winningDealerId)
-            .eq('state_code', stateCode)
-            .eq('inclusion_type', 'BUNDLE');
-
-        bundleRules?.forEach((r: any) => {
-            if (r.vehicle_color_id) bundleIdsForDealer.add(r.vehicle_color_id);
-        });
-    }
-    // 3.5 Fetch Accessory Rules (Dealer Pricing)
-    // NOW VALID: We use the winningDealerId to fetch specific rules
     let accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();
 
-    if (accessoryIds.length > 0 && winningDealerId) {
-        const { data: rules } = await supabase
-            .from('cat_price_dealer')
-            .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
-            .in('vehicle_color_id', accessoryIds)
-            .eq('tenant_id', winningDealerId) // STRICT DEALER MATCH
-            .eq('state_code', stateCode);
-
-        rules?.forEach((r: any) => {
-            accessoryRules.set(r.vehicle_color_id, {
-                offer: Number(r.offer_amount),
-                inclusion: r.inclusion_type,
-                isActive: r.is_active,
-            });
+    // Resolve dealer delta from shared SOT layer (vehicle offers + bundles + accessories)
+    const currentSkuIds = allSkus.map((s: any) => s.id);
+    if (winningDealerId) {
+        const dealerDelta = await getDealerDelta({
+            dealerId: winningDealerId,
+            stateCode,
+            skuIds: currentSkuIds,
+            accessoryIds,
         });
-        console.log('PDP Debug: Accessory Rules loaded:', accessoryRules.size, 'for dealer:', winningDealerId);
+        marketOffers = dealerDelta.vehicleOffers;
+        bundleIdsForDealer = new Set(dealerDelta.bundleSkuIds);
+        accessoryRules = new Map(
+            Object.entries(dealerDelta.accessoryRules).map(([skuId, rule]) => [
+                skuId,
+                {
+                    offer: Number(rule.offer || 0),
+                    inclusion: rule.inclusion || 'OPTIONAL',
+                    isActive: Boolean(rule.isActive),
+                },
+            ])
+        );
     }
 
     // 4.6 Enrich Server Pricing with Winning Dealer Info
@@ -1018,8 +917,9 @@ export default async function Page({ params, searchParams }: Props) {
                               color?.image_url ||
                               color?.specs?.image_url ||
                               null,
+                          assets: sku?.assets || [], // PASS ASSETS FOR GALLERY
                           video: sku?.video_url || sku?.specs?.video_urls?.[0] || sku?.specs?.video_url || null,
-                          priceOverride: sku?.price_base,
+                          pricingOverride: sku?.price_base ? { exShowroom: sku.price_base } : undefined,
                           dealerOffer: rawOffer,
                           isPrimary: Boolean(sku?.is_primary || color?.is_primary),
                       };
@@ -1060,28 +960,18 @@ export default async function Page({ params, searchParams }: Props) {
                               sku.specs?.primary_image ||
                               sku.specs?.gallery?.[0] ||
                               null,
+                          assets: sku.assets || [], // PASS ASSETS FOR GALLERY
                           video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
-                          priceOverride: sku.price_base,
+                          pricingOverride: sku.price_base ? { exShowroom: sku.price_base } : undefined,
                           dealerOffer: rawOffer,
                           isPrimary: Boolean(sku?.is_primary),
                       };
                   })
                   .sort((a: any, b: any) => Number(b.isPrimary) - Number(a.isPrimary));
 
-    // If no SKUs, make a default One
-    if (colors.length === 0) {
-        colors.push({
-            id: 'default',
-            skuId: 'default',
-            name: 'Standard',
-            hex: '#000000',
-            image: null,
-            video: null,
-            priceOverride: null,
-            dealerOffer: 0,
-            isPrimary: true,
-        });
-    }
+    // SOT Rule §4.3: Do NOT fabricate id:'default'/skuId:'default' for active variant flow.
+    // If no SKUs exist, colors stays empty — SystemPDPLogic will show unavailable state.
+    // (Previously this pushed a synthetic default that leaked ₹0 pricing)
 
     const product = {
         id: item.id,

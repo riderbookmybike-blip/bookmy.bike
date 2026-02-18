@@ -11,6 +11,7 @@ import { withCache } from '../cache/cache';
 import { CACHE_TAGS } from '../cache/tags';
 import { adminClient } from '../supabase/admin';
 import type { ProductVariant, VehicleSpecifications } from '@/types/productMaster';
+import { getCatalogSnapshot } from '@/lib/server/storeSot';
 
 // ============================================================
 // Core Fetcher — Relational JOINs
@@ -122,194 +123,23 @@ async function fetchVariantVisitCounts(days: number = 30): Promise<Map<string, n
 }
 
 /**
- * Fetch full catalog using a database view/function that JOINs all V2 tables.
- * Falls back to manual multi-query if view doesn't exist yet.
+ * Fetch full catalog from shared Store SOT snapshot and enrich with visit counts.
  */
 async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRow[]> {
-    // Strategy: Query cat_skus with embedded joins to models, brands, variants, pricing
-    // Since Supabase PostgREST supports foreign key joins, we use nested selects
+    const [snapshotRows, visitCounts] = await Promise.all([getCatalogSnapshot(stateCode), fetchVariantVisitCounts(30)]);
 
-    const { data: skus, error } = await adminClient
-        .from('cat_skus')
-        .select(
-            `
-            id,
-            sku_code,
-            sku_type,
-            name,
-            slug,
-            status,
-            position,
-            is_primary,
-            price_base,
-            hex_primary,
-            hex_secondary,
-            color_name,
-            finish,
-            primary_image,
-            gallery_img_1,
-            gallery_img_2,
-            gallery_img_3,
-            gallery_img_4,
-            gallery_img_5,
-            gallery_img_6,
-            has_360,
-            zoom_factor,
-            is_flipped,
-            offset_x,
-            offset_y,
-            colour_id,
-            colour:cat_colours!colour_id (
-                id,
-                name,
-                hex_primary,
-                hex_secondary,
-                finish
-            ),
-            model:cat_models!model_id (
-                id,
-                name,
-                slug,
-                product_type,
-                body_type,
-                engine_cc,
-                fuel_type,
-                emission_standard,
-                status,
-                brand:cat_brands!brand_id (
-                    id,
-                    name,
-                    slug,
-                    logo_svg
-                )
-            ),
-            vehicle_variant:cat_variants_vehicle!vehicle_variant_id (
-                id, name, slug, status,
-                displacement, max_power, max_torque, transmission, mileage,
-                front_brake, rear_brake, braking_system,
-                kerb_weight, seat_height, ground_clearance, fuel_capacity,
-                console_type, bluetooth, usb_charging,
-                engine_type, start_type, front_suspension, rear_suspension,
-                front_tyre, rear_tyre, tyre_type,
-                battery_capacity, range_km, charging_time, motor_power
-            ),
-            accessory_variant:cat_variants_accessory!accessory_variant_id (
-                id, name, slug, status,
-                material, weight, finish
-            ),
-            service_variant:cat_variants_service!service_variant_id (
-                id, name, slug, status,
-                duration_months, coverage_type, labor_included
-            )
-        `
-        )
-        .eq('status', 'ACTIVE')
-        .order('position');
-
-    if (error) {
-        console.error('[CatalogV2Fetch] Error:', error.message);
-        return [];
-    }
-
-    if (!skus || skus.length === 0) {
+    if (!snapshotRows || snapshotRows.length === 0) {
         console.debug('[CatalogV2Fetch] No active SKUs found');
         return [];
     }
 
-    // Fetch pricing for these SKUs
-    const skuIds = skus.map((s: any) => s.id);
-    const [{ data: pricing }, visitCounts] = await Promise.all([
-        adminClient
-            .from('cat_price_state_mh')
-            .select(
-                'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular'
-            )
-            .in('sku_id', skuIds)
-            .eq('state_code', stateCode)
-            .eq('publish_stage', 'PUBLISHED'),
-        fetchVariantVisitCounts(30),
-    ]);
-
-    const pricingMap = new Map((pricing || []).map((p: any) => [p.sku_id, p]));
-
     // Flatten into RawProductRow array
-    return skus.map((sku: any) => {
-        const model = sku.model;
-        const brand = model?.brand;
-        const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
-        const price = pricingMap.get(sku.id);
-        const visitKey = `${(model?.slug || '').toLowerCase()}::${(variant?.slug || '').toLowerCase()}`;
+    return snapshotRows.map((row: any) => {
+        const visitKey = `${(row.model_slug || '').toLowerCase()}::${(row.variant_slug || '').toLowerCase()}`;
         const visitCount = visitCounts.get(visitKey) || 0;
 
         return {
-            sku_id: sku.id,
-            sku_code: sku.sku_code,
-            sku_type: sku.sku_type,
-            sku_name: sku.name,
-            sku_slug: sku.slug,
-            sku_status: sku.status,
-            sku_position: sku.position,
-            is_primary: sku.is_primary,
-            price_base: sku.price_base,
-            hex_primary: sku.colour?.hex_primary ?? sku.hex_primary,
-            hex_secondary: sku.colour?.hex_secondary ?? sku.hex_secondary,
-            color_name: sku.colour?.name ?? sku.color_name,
-            finish: sku.colour?.finish ?? sku.finish,
-            primary_image: sku.primary_image,
-            gallery_img_1: sku.gallery_img_1,
-            gallery_img_2: sku.gallery_img_2,
-            gallery_img_3: sku.gallery_img_3,
-            gallery_img_4: sku.gallery_img_4,
-            gallery_img_5: sku.gallery_img_5,
-            gallery_img_6: sku.gallery_img_6,
-            has_360: sku.has_360,
-            zoom_factor: sku.zoom_factor,
-            is_flipped: sku.is_flipped,
-            offset_x: sku.offset_x,
-            offset_y: sku.offset_y,
-            // Model
-            model_id: model?.id,
-            model_name: model?.name,
-            model_slug: model?.slug,
-            product_type: model?.product_type,
-            body_type: model?.body_type,
-            engine_cc: model?.engine_cc,
-            fuel_type: model?.fuel_type,
-            emission_standard: model?.emission_standard,
-            model_status: model?.status,
-            // Brand
-            brand_id: brand?.id,
-            brand_name: brand?.name,
-            brand_slug: brand?.slug,
-            logo_svg: brand?.logo_svg,
-            // Variant
-            variant_id: variant?.id,
-            variant_name: variant?.name,
-            variant_slug: variant?.slug,
-            variant_status: variant?.status,
-            // Vehicle specs (may be null for non-vehicle)
-            displacement: variant?.displacement ?? null,
-            max_power: variant?.max_power ?? null,
-            max_torque: variant?.max_torque ?? null,
-            transmission: variant?.transmission ?? null,
-            mileage: variant?.mileage ?? null,
-            front_brake: variant?.front_brake ?? null,
-            rear_brake: variant?.rear_brake ?? null,
-            braking_system: variant?.braking_system ?? null,
-            kerb_weight: variant?.kerb_weight ?? null,
-            seat_height: variant?.seat_height ?? null,
-            ground_clearance: variant?.ground_clearance ?? null,
-            fuel_capacity: variant?.fuel_capacity ?? null,
-            console_type: variant?.console_type ?? null,
-            bluetooth: variant?.bluetooth ?? null,
-            usb_charging: variant?.usb_charging ?? null,
-            // Pricing
-            ex_showroom: price?.ex_showroom ?? null,
-            on_road_price: price?.on_road_price ?? null,
-            rto_state_total: price?.rto_total_state ?? null,
-            ins_total: price?.ins_total ?? null,
-            publish_stage: price?.publish_stage ?? null,
-            is_popular: price?.is_popular ?? null,
+            ...row,
             visit_count: visitCount,
         } as RawProductRow;
     });

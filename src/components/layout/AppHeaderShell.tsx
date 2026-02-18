@@ -34,16 +34,10 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
 
     // Variant-based background and border styles
     const getBgClass = () => {
-        // Premium behavior: Transparent at top, Glass when scrolled
         if (variant === 'dashboard') {
-            // Dashboard: Clean, solid, professional
-            return 'bg-white dark:bg-[#0B0D10] border-b border-slate-200/60 dark:border-white/5 shadow-sm dark:shadow-none transition-all duration-300';
+            return 'bg-white border-b border-slate-200/60 shadow-sm transition-all duration-300';
         }
-
-        // Marketplace: Premium Dark Glass (both modes)
-        // Light: black @ 40% for darker look with white icons visible
-        // Dark: black @ 30%
-        return 'bg-black/40 dark:bg-black/30 backdrop-blur-[24px] dark:backdrop-blur-[12px] backdrop-saturate-150 border-b border-white/10 dark:border-white/10 shadow-lg dark:shadow-2xl transition-all duration-500';
+        return 'bg-white/70 border-b border-slate-200 backdrop-blur-md shadow-none transition-all duration-500';
     };
 
     const bgClass = getBgClass();

@@ -54,9 +54,9 @@ export const RiderPulse = () => {
                                     {t('The Community Pulse')}
                                 </p>
                             </div>
-                            <h2 className="text-7xl xl:text-9xl font-black uppercase tracking-tighter italic leading-[0.85] text-white drop-shadow-2xl">
+                            <h2 className="text-7xl xl:text-9xl font-black uppercase tracking-tighter italic leading-[0.85] text-slate-900 drop-shadow-2xl">
                                 {t('Rider')} <br />{' '}
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-amber-200">
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-400">
                                     {t('Pulse.')}
                                 </span>
                             </h2>
@@ -67,11 +67,11 @@ export const RiderPulse = () => {
                             whileInView={{ opacity: 1 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.8, delay: 0.2 }}
-                            className="text-xl text-zinc-400 font-medium leading-relaxed max-w-sm border-l-2 border-white/10 pl-6"
+                            className="text-xl text-slate-500 font-medium leading-relaxed max-w-sm border-l-2 border-slate-200 pl-6"
                         >
                             {t('Hear from the riders who defined their own path.')}
                             <br />
-                            <span className="text-white italic">{t('Real stories. Real roads.')}</span>
+                            <span className="text-slate-900 italic">{t('Real stories. Real roads.')}</span>
                         </motion.p>
 
                         {/* Navigation Controls (Moved to Left Column) */}
@@ -88,8 +88,8 @@ export const RiderPulse = () => {
                                     onMouseEnter={() => setActiveReview(i)}
                                     className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between group/card ${
                                         isActive
-                                            ? 'flex-[3] bg-white text-black border-white shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
-                                            : 'flex-[1] bg-black/40 border-white/10 text-zinc-500 hover:bg-black/60'
+                                            ? 'flex-[3] bg-white text-slate-900 border-slate-200 shadow-[0_40px_100px_rgba(0,0,0,0.1)]'
+                                            : 'flex-[1] bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'
                                     }`}
                                 >
                                     {/* Active Gradient Splash */}
@@ -137,7 +137,7 @@ export const RiderPulse = () => {
                                             <div
                                                 className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-all duration-500 ${!isActive ? 'opacity-100' : 'opacity-0'}`}
                                             >
-                                                <span className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-white/30 whitespace-nowrap">
+                                                <span className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-slate-900/40 whitespace-nowrap">
                                                     {m.name}
                                                 </span>
                                             </div>
@@ -155,10 +155,12 @@ export const RiderPulse = () => {
                                                 />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-black uppercase tracking-widest">{m.name}</p>
+                                                <p className="text-xs font-black uppercase tracking-widest text-slate-900">
+                                                    {m.name}
+                                                </p>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
-                                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                                         {m.handle}
                                                     </p>
                                                 </div>

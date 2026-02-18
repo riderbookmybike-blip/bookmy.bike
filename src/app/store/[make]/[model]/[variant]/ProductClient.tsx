@@ -15,6 +15,8 @@ import { useOClubWallet } from '@/hooks/useOClubWallet';
 
 import { InsuranceRule } from '@/types/insurance';
 
+const SKU_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // Dynamic imports for heavy PDP components (bundle optimization)
 const PDPSkeleton = () => (
     <div className="min-h-screen bg-black animate-pulse">
@@ -128,6 +130,8 @@ export default function ProductClient({
 
     const {
         selectedColor,
+        selectedSkuId,
+        hasValidColorSku,
         totalOnRoad,
         selectedAccessories,
         selectedInsuranceAddons,
@@ -201,7 +205,11 @@ export default function ProductClient({
     const handleShareQuote = async () => {
         if (shareInFlightRef.current) return;
         const url = new URL(window.location.href);
-        url.searchParams.set('color', selectedColor);
+        if (selectedColor) {
+            url.searchParams.set('color', selectedColor);
+        } else {
+            url.searchParams.delete('color');
+        }
 
         // Remove legacy pincode if it somehow exists
         url.searchParams.delete('pincode');
@@ -257,9 +265,8 @@ export default function ProductClient({
         }
     };
 
-    // SSPP v1: Map color slug to actual SKU UUID for database operations
-    const colorSkuId =
-        clientColors?.find((c: any) => c.id === selectedColor || c.name === selectedColor)?.skuId || selectedColor;
+    // SSPP v1: Enforce canonical SKU UUID for all persistence actions.
+    const colorSkuId = SKU_UUID_REGEX.test(String(selectedSkuId || '')) ? String(selectedSkuId) : null;
 
     const buildCommercials = () => {
         const resolvedColor =
@@ -442,6 +449,10 @@ export default function ProductClient({
 
     const handleConfirmQuote = async () => {
         if (!leadContext) return;
+        if (!colorSkuId) {
+            toast.error('Selected color SKU is unavailable. Please refresh or choose another color.');
+            return;
+        }
 
         try {
             const commercials = buildCommercials();
@@ -450,7 +461,7 @@ export default function ProductClient({
                 tenant_id: sessionDealerId || product.tenant_id || '', // Ensure tenant_id is available
                 lead_id: leadContext.id,
                 variant_id: product.id,
-                color_id: colorSkuId,
+                color_id: colorSkuId || undefined,
                 commercials,
                 source: 'STORE_PDP',
             });
@@ -469,6 +480,11 @@ export default function ProductClient({
     };
 
     const handleBookingRequest = async () => {
+        if (!colorSkuId) {
+            toast.error('Selected color SKU is unavailable. Please refresh or choose another color.');
+            return;
+        }
+
         const supabase = createClient();
         const {
             data: { user },
@@ -526,7 +542,7 @@ export default function ProductClient({
                             tenant_id: sessionDealerId || product.tenant_id || '',
                             lead_id: (leadResult as any).leadId,
                             variant_id: product.id,
-                            color_id: colorSkuId,
+                            color_id: colorSkuId || undefined,
                             commercials,
                             source: 'STORE_PDP',
                         });
@@ -623,6 +639,28 @@ export default function ProductClient({
         isGated,
     };
 
+    if (!hasValidColorSku) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-black text-white p-8">
+                <div className="max-w-md rounded-3xl border border-amber-400/30 bg-white/5 backdrop-blur-xl p-8 text-center">
+                    <h1 className="text-2xl font-black tracking-tight mb-3">
+                        COLOR SKU <span className="text-amber-400">UNAVAILABLE</span>
+                    </h1>
+                    <p className="text-sm text-slate-300">
+                        This variant does not have a valid purchasable color SKU right now. Try another color or open
+                        catalog again.
+                    </p>
+                    <a
+                        href="/store/catalog"
+                        className="inline-block mt-6 px-5 py-3 rounded-xl border border-white/20 text-xs font-bold uppercase tracking-[0.16em] hover:bg-white/10"
+                    >
+                        Back To Catalog
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
             <DesktopPDP {...commonProps} />
@@ -634,7 +672,7 @@ export default function ProductClient({
                 model={product.model}
                 variant={variantParam}
                 variantId={product.id}
-                colorId={colorSkuId}
+                colorId={colorSkuId || undefined}
                 commercials={buildCommercials()}
                 source="STORE_PDP"
             />

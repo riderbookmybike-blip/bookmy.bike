@@ -27,10 +27,15 @@ const STATE_MAP: Record<string, string> = {
 };
 
 export const normalizeStateCode = (state?: string | null, stateCode?: string | null) => {
-    if (stateCode) return stateCode;
+    const normalize = (value: string) => {
+        const key = value.toUpperCase().trim();
+        if (STATE_MAP[key]) return STATE_MAP[key];
+        if (/^[A-Z]{2}$/.test(key)) return key;
+        return 'MH';
+    };
+    if (stateCode) return normalize(stateCode);
     if (!state) return 'MH';
-    const key = state.toUpperCase();
-    return STATE_MAP[key] || key.substring(0, 2);
+    return normalize(state);
 };
 
 /**
@@ -160,6 +165,20 @@ export async function resolvePricingContext({
             resolvedDistrict = loc.district;
         }
     };
+
+    // If state is not explicit, infer state_code from district itself to avoid bad cookie state pollution.
+    if (!hasExplicitState && resolvedDistrict) {
+        const { data: districtState } = await supabase
+            .from('loc_pincodes')
+            .select('state_code')
+            .ilike('district', resolvedDistrict)
+            .not('state_code', 'is', null)
+            .limit(1)
+            .maybeSingle();
+        if (districtState?.state_code) {
+            stateCode = normalizeStateCode(null, districtState.state_code);
+        }
+    }
 
     // 2) Lead context (High Priority)
     // If leadId is present, the associated lead's tenant dictates pricing.

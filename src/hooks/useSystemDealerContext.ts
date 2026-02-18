@@ -16,6 +16,26 @@ interface UseDealerContextProps {
 
 const DEFAULT_PRICING_DEALER_TENANT_ID = process.env.NEXT_PUBLIC_DEFAULT_PRICING_DEALER_TENANT_ID || '';
 
+const CLIENT_STATE_MAP: Record<string, string> = {
+    MAHARASHTRA: 'MH',
+    KARNATAKA: 'KA',
+    DELHI: 'DL',
+    GUJARAT: 'GJ',
+    TAMIL_NADU: 'TN',
+    TELANGANA: 'TS',
+    UTTAR_PRADESH: 'UP',
+    WEST_BENGAL: 'WB',
+    RAJASTHAN: 'RJ',
+};
+
+const normalizeClientStateCode = (value?: string | null) => {
+    if (!value) return 'MH';
+    const key = String(value).toUpperCase().trim();
+    if (CLIENT_STATE_MAP[key]) return CLIENT_STATE_MAP[key];
+    if (/^[A-Z]{2}$/.test(key)) return key;
+    return 'MH';
+};
+
 // SSPP v2: Server-side calculated pricing structure (SOT JSON)
 interface ServerPricing {
     success: boolean;
@@ -212,11 +232,26 @@ export function useSystemDealerContext({
                 };
 
                 if (activeSku) {
-                    const activeStateCode = stateCode || 'MH';
-                    const { data: priceRow } = await supabase
-                        .from('cat_price_state_mh')
-                        .select(
-                            `
+                    // SOT: Skip base pricing re-fetch if server already provided it
+                    // (prefetchedPricing is authoritative — client only resolves dealer delta)
+                    const prefetchCoversActiveSku =
+                        prefetchedPricing &&
+                        Number(prefetchedPricing.ex_showroom) > 0 &&
+                        String(prefetchedPricing.meta?.vehicle_color_id || '') === String(activeSku);
+
+                    if (prefetchCoversActiveSku) {
+                        console.log(
+                            '[SSPP] Skipping client pricing re-fetch – prefetchedPricing covers activeSku',
+                            activeSku
+                        );
+                    }
+
+                    if (!prefetchCoversActiveSku) {
+                        const activeStateCode = normalizeClientStateCode(stateCode);
+                        let { data: priceRow } = await supabase
+                            .from('cat_price_state_mh')
+                            .select(
+                                `
                             sku_id,
                             ex_showroom,
                             on_road_price,
@@ -231,55 +266,83 @@ export function useSystemDealerContext({
                             ins_own_damage_premium_amount,
                             ins_liability_only_premium_amount
                             `
-                        )
-                        .eq('sku_id', activeSku)
-                        .eq('state_code', activeStateCode)
-                        .eq('publish_stage', 'PUBLISHED')
-                        .maybeSingle();
+                            )
+                            .eq('sku_id', activeSku)
+                            .eq('state_code', activeStateCode)
+                            .eq('publish_stage', 'PUBLISHED')
+                            .maybeSingle();
 
-                    if (priceRow && Number(priceRow.rto_total_state) > 0) {
-                        const pricingSnap = {
-                            success: true,
-                            ex_showroom: Number(priceRow.ex_showroom),
-                            rto: {
-                                STATE: Number(priceRow.rto_total_state || 0),
-                                BH: Number(priceRow.rto_total_bh || 0),
-                                COMPANY: Number(priceRow.rto_total_company || 0),
-                                default: priceRow.rto_default_type || 'STATE',
-                            },
-                            insurance: {
-                                od: Number(priceRow.ins_own_damage_premium_amount || 0),
-                                tp: Number(priceRow.ins_liability_only_premium_amount || 0),
-                                gst_rate: Number(priceRow.ins_gst_rate || 18),
-                                base_total:
-                                    Number(priceRow.ins_sum_mandatory_insurance || 0) +
-                                    Number(priceRow.ins_sum_mandatory_insurance_gst_amount || 0),
-                                addons: [],
-                            },
-                            dealer: {
-                                offer: 0,
-                                name: null,
-                                id: null,
-                                studio_id: null,
-                                is_serviceable: true,
-                            },
-                            final_on_road: Number(priceRow.on_road_price || priceRow.ex_showroom || 0),
-                            location: {
-                                district: 'ALL',
-                                state_code: activeStateCode,
-                            },
-                            meta: {
-                                vehicle_color_id: activeSku,
-                                engine_cc: (product.specs as any)?.engine_cc || 110,
-                                idv: Math.round(Number(priceRow.ex_showroom || 0) * 0.95),
-                                calculated_at: new Date().toISOString(),
-                            },
-                            rto_breakdown: [],
-                            insurance_breakdown: [],
-                        };
-                        applyPricing(pricingSnap);
+                        if (!priceRow && activeStateCode !== 'MH') {
+                            const { data: fallbackPriceRow } = await supabase
+                                .from('cat_price_state_mh')
+                                .select(
+                                    `
+                            sku_id,
+                            ex_showroom,
+                            on_road_price,
+                            rto_default_type,
+                            rto_total_state,
+                            rto_total_bh,
+                            rto_total_company,
+                            ins_gst_rate,
+                            ins_sum_mandatory_insurance,
+                            ins_sum_mandatory_insurance_gst_amount,
+                            ins_gross_premium,
+                            ins_own_damage_premium_amount,
+                            ins_liability_only_premium_amount
+                            `
+                                )
+                                .eq('sku_id', activeSku)
+                                .eq('state_code', 'MH')
+                                .eq('publish_stage', 'PUBLISHED')
+                                .maybeSingle();
+                            priceRow = fallbackPriceRow;
+                        }
+
+                        if (priceRow && Number(priceRow.rto_total_state) > 0) {
+                            const pricingSnap = {
+                                success: true,
+                                ex_showroom: Number(priceRow.ex_showroom),
+                                rto: {
+                                    STATE: Number(priceRow.rto_total_state || 0),
+                                    BH: Number(priceRow.rto_total_bh || 0),
+                                    COMPANY: Number(priceRow.rto_total_company || 0),
+                                    default: priceRow.rto_default_type || 'STATE',
+                                },
+                                insurance: {
+                                    od: Number(priceRow.ins_own_damage_premium_amount || 0),
+                                    tp: Number(priceRow.ins_liability_only_premium_amount || 0),
+                                    gst_rate: Number(priceRow.ins_gst_rate || 18),
+                                    base_total:
+                                        Number(priceRow.ins_sum_mandatory_insurance || 0) +
+                                        Number(priceRow.ins_sum_mandatory_insurance_gst_amount || 0),
+                                    addons: [],
+                                },
+                                dealer: {
+                                    offer: 0,
+                                    name: null,
+                                    id: null,
+                                    studio_id: null,
+                                    is_serviceable: true,
+                                },
+                                final_on_road: Number(priceRow.on_road_price || priceRow.ex_showroom || 0),
+                                location: {
+                                    district: 'ALL',
+                                    state_code: activeStateCode,
+                                },
+                                meta: {
+                                    vehicle_color_id: activeSku,
+                                    engine_cc: (product.specs as any)?.engine_cc || 110,
+                                    idv: Math.round(Number(priceRow.ex_showroom || 0) * 0.95),
+                                    calculated_at: new Date().toISOString(),
+                                },
+                                rto_breakdown: [],
+                                insurance_breakdown: [],
+                            };
+                            applyPricing(pricingSnap);
+                        }
                     }
-                }
+                } // end: if (!prefetchCoversActiveSku)
 
                 // 3. Resolve Market Best Offers OR Specific Dealer Offers
                 let relevantOffers: any[] = [];
@@ -332,9 +395,8 @@ export function useSystemDealerContext({
                             ];
                         }
                     } else {
-                        // No valid SKUs (e.g. only Default) -> Dummy offer to lock dealer
-                        // Use activeSku if valid UUID, else 'default' (which won't match but locks dealer)
-                        const safeSku = activeSku && uuidRegex.test(activeSku) ? activeSku : 'default';
+                        // No valid SKUs (e.g. missing/invalid color mapping) -> keep dealer lock without synthetic SKU.
+                        const safeSku = activeSku && uuidRegex.test(activeSku) ? activeSku : null;
                         relevantOffers = [
                             {
                                 vehicle_color_id: safeSku,
