@@ -188,7 +188,7 @@ export default function PricingPage() {
                         id, name, slug, position, status, product_type,
                         brand:cat_brands!brand_id (id, name, logo_svg)
                     ),
-                    vehicle_variant:cat_variants_vehicle!vehicle_variant_id (id, name, slug, position),
+                    vehicle_variant:cat_variants_vehicle!vehicle_variant_id (id, name, slug, position, displacement, max_power),
                     accessory_variant:cat_variants_accessory!accessory_variant_id (id, name, slug, position),
                     service_variant:cat_variants_service!service_variant_id (id, name, slug, position)
                 `
@@ -347,7 +347,7 @@ export default function PricingPage() {
                     finish: sku.finish || '',
                     hex_primary: sku.hex_primary,
                     hex_secondary: sku.hex_secondary,
-                    engineCc: 0,
+                    engineCc: variant?.displacement || 0,
                     suitableFor: '',
                     exShowroom: finalPrice,
                     offerAmount: stateOffer,

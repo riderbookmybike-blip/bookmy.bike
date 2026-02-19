@@ -624,9 +624,11 @@ export function useSystemPDPLogic({
 
     // Min DP ensures: loanAmount = totalOnRoad - DP + upfront <= maxAllowedLoan
     // => DP >= totalOnRoad + upfront - maxAllowedLoan
-    const minDownPayment = Math.max(0, Math.round(totalOnRoad + totalUpfrontCharges - maxAllowedLoan));
-    const maxDownPayment = Math.round(totalOnRoad * 0.95);
-    const defaultDownPayment = minDownPayment; // Default to minimum (covers upfront)
+    const minDownPayment = 0;
+    // Max DP capped so net loan amount never goes below ₹45,000
+    const MIN_LOAN_AMOUNT = 45000;
+    const maxDownPayment = Math.max(0, Math.round(totalOnRoad - MIN_LOAN_AMOUNT + totalUpfrontCharges));
+    const defaultDownPayment = minDownPayment;
 
     const downPayment =
         userDownPayment !== null

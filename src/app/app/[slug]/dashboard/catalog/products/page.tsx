@@ -58,51 +58,40 @@ export default function UnifiedCatalogPage() {
         // 2. Fetch variants for all models
         const { data: variants } = await (supabase as any)
             .from('cat_variants_vehicle')
-            .select('id, name, model_id, status, position, specs, slug')
+            .select('id, name, model_id, status, position, slug')
             .in('model_id', modelIds);
 
-        const variantIds = (variants || []).map((v: any) => v.id);
-
-        // 3. Fetch SKUs for all variants
+        // 3. Fetch SKUs by model_id (covers all SKU types including those without a variant)
         const { data: skus } = await (supabase as any)
             .from('cat_skus')
             .select(
-                'id, name, vehicle_variant_id, status, position, specs, slug, hex_primary, color_name, primary_image'
+                'id, name, model_id, vehicle_variant_id, status, position, slug, hex_primary, color_name, primary_image'
             )
-            .in('vehicle_variant_id', variantIds.length > 0 ? variantIds : ['__none__']);
+            .in('model_id', modelIds);
 
         // 4. Assemble hierarchy: model → variants → skus
         const assembled = models.map((model: any) => {
             const modelVariants = (variants || []).filter((v: any) => v.model_id === model.id);
-            const modelSkus = (skus || []).filter((s: any) =>
-                modelVariants.some((v: any) => v.id === s.vehicle_variant_id)
-            );
+            const modelSkus = (skus || []).filter((s: any) => s.model_id === model.id);
 
             return {
                 ...model,
-                // "colors" was a flat list of UNIT-type children — in V2 we derive from SKUs
+                // Map product_type → category for filter compatibility
+                category: model.product_type || 'VEHICLE',
+                // Unique color count derived from SKUs (for stats)
                 colors: modelSkus.map((s: any) => ({
                     id: s.id,
                     name: s.color_name || s.name,
                     type: 'UNIT',
-                    specs: { hex_primary: s.hex_primary, ...(s.specs || {}) },
                     position: s.position,
                     status: s.status,
                 })),
-                // "variants" with nested children and skus
+                // Variants with their SKUs
                 variants: modelVariants.map((v: any) => ({
                     ...v,
                     type: 'VARIANT',
                     parent_id: model.id,
-                    children: (skus || [])
-                        .filter((s: any) => s.vehicle_variant_id === v.id)
-                        .map((s: any) => ({
-                            ...s,
-                            type: 'SKU',
-                            parent_id: v.id,
-                            skus: [], // SKUs are leaf nodes
-                        })),
-                    skus: (skus || [])
+                    skus: modelSkus
                         .filter((s: any) => s.vehicle_variant_id === v.id)
                         .map((s: any) => ({
                             ...s,
@@ -203,77 +192,23 @@ export default function UnifiedCatalogPage() {
     const processedSkus = useMemo(() => {
         if (!items) return [];
         let skus = items.flatMap(family => {
-            // Create a map of Color Name -> { Position, Hex } for this family (Global pool)
-            const colorPool = new Map<string, { position: number; hex: string; item: any }>();
-            ((family as any).colors || []).forEach((c: any) => {
-                if (c.name) {
-                    colorPool.set(c.name.toUpperCase(), {
-                        position: c.position !== undefined ? c.position : 999,
-                        hex: c.specs?.hex_primary || c.specs?.hex || '',
-                        item: c,
-                    });
-                }
-            });
-
             return ((family as any).variants || []).flatMap((variant: any) => {
-                const children = variant.children || [];
+                // V2: SKUs are direct children of variant, each with color_name + hex_primary
+                const variantSkus = variant.skus || [];
 
-                // Collect ALL SKUs from this variant's branch
-                const recursiveSkus: any[] = [];
-
-                // Helper to walk down from Variant -> [Color | SKU]
-                const walk = (item: any, inheritedColor: any = null) => {
-                    if (item.type === 'SKU') {
-                        recursiveSkus.push({ sku: item, color: inheritedColor });
-                    } else if (item.type === 'UNIT') {
-                        // If it's a Color, walk its SKU children
-                        (item.skus || []).forEach((s: any) => walk(s, item));
-                    }
-                };
-
-                // Direct children of Variant
-                children.forEach((c: any) => walk(c));
-
-                return recursiveSkus.map(({ sku, color }) => {
+                return variantSkus.map((sku: any) => {
                     const brandName = (family as any).brand?.name || '';
                     const familyName = family.name || '';
                     const skuName = sku.name || '';
                     const variantName = variant.name || '';
 
-                    // Color resolution
-                    let colorName = '';
-                    let colorHex = '';
-                    let colorPosition = 999;
+                    // V2: Color comes directly from SKU fields
+                    const colorName = sku.color_name || skuName;
+                    const colorHex = sku.hex_primary || '';
+                    const colorPosition = sku.position || 999;
 
-                    if (color) {
-                        colorName = color.name || '';
-                        colorHex = color.specs?.hex_primary || color.specs?.hex || '';
-                        colorPosition = color.position !== undefined ? color.position : 999;
-                    } else {
-                        // Fallback to pool/specs for direct SKUs
-                        const rawColorName =
-                            sku.specs?.Unit || sku.specs?.color || skuName.replace(variantName, '').trim();
-                        colorName = rawColorName;
-                        const colorInfo = colorPool.get(colorName?.toUpperCase());
-                        colorPosition = colorInfo?.position || 999;
-                        colorHex = sku.specs?.hex_primary || colorInfo?.hex || '';
-                    }
-
-                    // Asset handling
-                    const colorObj = color || colorPool.get(colorName?.toUpperCase())?.item;
-                    const colorSpecs = colorObj?.specs || {};
-
-                    const skuVideos = sku.specs?.video_urls || (sku.video_url ? [sku.video_url] : []);
-                    const colorVideos = colorSpecs.video_urls || (colorSpecs.video_url ? [colorSpecs.video_url] : []);
-                    const isVideoShared = JSON.stringify(skuVideos) === JSON.stringify(colorVideos);
-
-                    const skuImages = sku.specs?.gallery || (sku.specs?.image_url ? [sku.specs.image_url] : []);
-                    const colorImages = colorSpecs.gallery || (colorSpecs.image_url ? [colorSpecs.image_url] : []);
-                    const isImageShared = JSON.stringify(skuImages) === JSON.stringify(colorImages);
-
-                    const skuPdfs = sku.specs?.pdf_urls || [];
-                    const colorPdfs = colorSpecs.pdf_urls || [];
-                    const isPdfShared = JSON.stringify(skuPdfs) === JSON.stringify(colorPdfs);
+                    // V2: Assets — primary_image is the only image field for now
+                    const hasImage = !!sku.primary_image;
 
                     return {
                         id: sku.id,
@@ -292,12 +227,12 @@ export default function UnifiedCatalogPage() {
                         skuName,
                         skuSlug: sku.slug || '',
                         status: sku.status,
-                        videoCount: skuVideos.length,
-                        isVideoShared,
-                        imageCount: skuImages.length,
-                        isImageShared,
-                        pdfCount: skuPdfs.length,
-                        isPdfShared,
+                        videoCount: 0,
+                        isVideoShared: false,
+                        imageCount: hasImage ? 1 : 0,
+                        isImageShared: false,
+                        pdfCount: 0,
+                        isPdfShared: false,
                         fullSkuName: `${brandName} ${familyName} ${skuName}`.trim(),
                     };
                 });
@@ -597,7 +532,7 @@ export default function UnifiedCatalogPage() {
                             <button
                                 onClick={() =>
                                     router.push(
-                                        `/app/${tenantSlug}/dashboard/catalog/products/studio?category=VEHICLE&step=brand`
+                                        `/app/${tenantSlug}/dashboard/catalog/products/studio-v2?category=VEHICLE&step=type`
                                     )
                                 }
                                 className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
@@ -607,7 +542,7 @@ export default function UnifiedCatalogPage() {
                             <button
                                 onClick={() =>
                                     router.push(
-                                        `/app/${tenantSlug}/dashboard/catalog/products/studio?category=ACCESSORY&step=brand`
+                                        `/app/${tenantSlug}/dashboard/catalog/products/studio-v2?category=ACCESSORY&step=type`
                                     )
                                 }
                                 className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all hover:scale-105"
@@ -617,7 +552,7 @@ export default function UnifiedCatalogPage() {
                             <button
                                 onClick={() =>
                                     router.push(
-                                        `/app/${tenantSlug}/dashboard/catalog/products/studio?category=SERVICE&step=brand`
+                                        `/app/${tenantSlug}/dashboard/catalog/products/studio-v2?category=SERVICE&step=type`
                                     )
                                 }
                                 className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all hover:scale-105"
@@ -702,7 +637,7 @@ export default function UnifiedCatalogPage() {
                                                 key={item.sku.id}
                                                 onClick={() =>
                                                     window.open(
-                                                        `/app/${tenantSlug}/dashboard/catalog/products/studio?familyId=${item.family.id}&brandId=${item.family.brand_id}&step=5`,
+                                                        `/app/${tenantSlug}/dashboard/catalog/products/studio-v2?modelId=${item.family.id}&brandId=${item.family.brand_id}&category=${item.category || 'VEHICLE'}&step=review`,
                                                         '_blank'
                                                     )
                                                 }

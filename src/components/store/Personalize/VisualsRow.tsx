@@ -88,8 +88,15 @@ export default function VisualsRow({
 
     const config360 = get360Config();
 
-    // Mock gallery for now, ensuring we have at least one image
-    const galaxyImages = [productImage, productImage, productImage]; // Placeholder for multiple angles
+    // Build real gallery from assets — only unique images
+    const galleryImages =
+        assets && assets.length > 0
+            ? assets
+                  .filter((a: any) => a.type === 'image' || a.url?.match(/\.(png|jpg|jpeg|webp|avif)$/i))
+                  .map((a: any) => a.url)
+            : [productImage];
+    // Deduplicate
+    const galaxyImages = [...new Set(galleryImages.length > 0 ? galleryImages : [productImage])] as string[];
 
     const nextImage = () => setCurrentImageIndex(prev => (prev + 1) % galaxyImages.length);
     const prevImage = () => setCurrentImageIndex(prev => (prev - 1 + galaxyImages.length) % galaxyImages.length);
@@ -97,13 +104,13 @@ export default function VisualsRow({
     return (
         <div className={`relative ${className}`}>
             {/* 1. Primary Hero Visualizer - 3 Part Layout */}
-            <div className="relative h-[600px] bg-white dark:bg-[#050505] rounded-[4rem] ring-1 ring-slate-100 dark:ring-white/10 overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.08)] dark:shadow-2xl transition-all duration-700 flex flex-col">
-                {/* Atmospheric Background - Golden Spotlight */}
-                <div className="absolute inset-x-0 bottom-0 top-1/2 z-0 bg-gradient-to-t from-[#F4B000]/20 to-transparent opacity-60 blur-3xl rounded-b-[4rem]" />
-                <div className="absolute inset-0 z-0 bg-radial-at-c from-white/10 to-transparent opacity-50" />
+            <div className="relative h-[600px] md:h-full bg-white dark:bg-[#050505] md:bg-transparent md:dark:bg-transparent rounded-[4rem] md:rounded-none ring-1 ring-slate-100 dark:ring-white/10 md:ring-0 overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.08)] dark:shadow-2xl md:shadow-none transition-all duration-700 flex flex-col">
+                {/* Atmospheric Background - Golden Spotlight (mobile only) */}
+                <div className="absolute inset-x-0 bottom-0 top-1/2 z-0 bg-gradient-to-t from-[#F4B000]/20 to-transparent opacity-60 blur-3xl rounded-b-[4rem] md:hidden" />
+                <div className="absolute inset-0 z-0 bg-radial-at-c from-white/10 to-transparent opacity-50 md:hidden" />
 
-                {/* Status Indicator (Top Right) - Glassmorphism */}
-                <div className="absolute top-8 right-8 z-20 flex items-center gap-2 bg-white/10 dark:bg-black/20 border border-white/20 dark:border-white/10 px-4 py-1.5 rounded-full backdrop-blur-xl shadow-lg ring-1 ring-white/20">
+                {/* Status Indicator (Top Right) - mobile only, desktop uses swatch dots */}
+                <div className="absolute top-8 right-8 z-20 flex items-center gap-2 bg-white/10 dark:bg-black/20 border border-white/20 dark:border-white/10 px-4 py-1.5 rounded-full backdrop-blur-xl shadow-lg ring-1 ring-white/20 md:hidden">
                     <div className="w-2 h-2 bg-[#F4B000] rounded-full animate-pulse shadow-[0_0_10px_rgba(244,176,0,0.8)]" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-[#F4B000]">In Stock</span>
                 </div>
@@ -165,27 +172,27 @@ export default function VisualsRow({
                     {/* Gallery Navigation */}
                     <button
                         onClick={prevImage}
-                        className={`absolute left-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white transition-all active:scale-95 hover:scale-110 ${!productImage || productImage.includes('categories/') ? 'hidden' : ''}`}
+                        className={`absolute left-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white transition-all active:scale-95 hover:scale-110 ${galaxyImages.length <= 1 ? 'hidden' : ''}`}
                     >
                         <ChevronLeft size={20} />
                     </button>
                     <button
                         onClick={nextImage}
-                        className={`absolute right-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white transition-all active:scale-95 hover:scale-110 ${!productImage || productImage.includes('categories/') ? 'hidden' : ''}`}
+                        className={`absolute right-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white transition-all active:scale-95 hover:scale-110 ${galaxyImages.length <= 1 ? 'hidden' : ''}`}
                     >
                         <ChevronRight size={20} />
                     </button>
                 </div>
 
                 {/* PART 2: Color Name (10%) */}
-                <div className="flex-shrink-0 h-[50px] z-10 flex items-center justify-center bg-gradient-to-t from-white/50 to-transparent dark:from-[#050505]/50">
+                <div className="flex-shrink-0 h-[50px] z-10 flex items-center justify-center bg-gradient-to-t from-white/50 to-transparent dark:from-[#050505]/50 md:hidden">
                     <p className="text-sm font-black uppercase tracking-[0.4em] text-[#F4B000] animate-in fade-in slide-in-from-bottom-2 duration-700">
                         {activeColorName}
                     </p>
                 </div>
 
                 {/* PART 3: Color Circles (15%) - Independent section */}
-                <div className="flex-shrink-0 h-[70px] z-10 flex items-center justify-center gap-4 px-4 bg-white dark:bg-[#050505] overflow-hidden">
+                <div className="flex-shrink-0 h-[70px] z-10 flex items-center justify-center gap-4 px-4 bg-white dark:bg-[#050505] overflow-hidden md:hidden">
                     {colors.map(color => {
                         const isSelected = selectedColor === color.id;
                         return (

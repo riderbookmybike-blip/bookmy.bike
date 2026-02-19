@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
-import React, { Suspense, useEffect, useRef, useState, useMemo } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import '@/styles/slider-enhanced.css';
@@ -20,6 +20,7 @@ import {
     Wrench,
     Gift,
     ChevronRight,
+    ChevronDown,
     Plus,
     HelpCircle,
     Info,
@@ -29,6 +30,11 @@ import {
     Heart,
     ArrowRight,
     Shield,
+    Wallet,
+    Banknote,
+    Camera,
+    SlidersHorizontal,
+    Edit2,
 } from 'lucide-react';
 import DynamicHeader from './Personalize/DynamicHeader';
 import { formatDisplayIdForUI } from '@/lib/displayId';
@@ -304,6 +310,35 @@ export function DesktopPDP({
     const displayOnRoad = coinPricing?.effectivePrice ?? totalOnRoad;
     const showCoinRate = Number.isFinite(walletCoinsValue);
 
+    // Compute EMI at component level for footer display
+    const footerEmi = (() => {
+        const annualInterest = initialFinance?.scheme?.interestRate ? initialFinance.scheme.interestRate / 100 : 0;
+        const interestType = initialFinance?.scheme?.interestType || 'REDUCING';
+        const allCharges = initialFinance?.scheme?.charges || [];
+        const calcAmt = (charge: any) => {
+            if (charge.type === 'PERCENTAGE') {
+                const basis = charge.calculationBasis === 'LOAN_AMOUNT' ? loanAmount : totalOnRoad;
+                return Math.round(basis * (charge.value / 100));
+            }
+            return charge.value || 0;
+        };
+        const totalUpfront = allCharges
+            .filter((c: any) => c.impact === 'UPFRONT')
+            .reduce((s: number, c: any) => s + calcAmt(c), 0);
+        const totalFunded = allCharges
+            .filter((c: any) => c.impact === 'FUNDED')
+            .reduce((s: number, c: any) => s + calcAmt(c), 0);
+        const netLoan = Math.max(0, displayOnRoad - (userDownPayment || 0));
+        const grossLoan = netLoan + totalFunded + totalUpfront;
+        if (interestType === 'FLAT') {
+            const totalInt = grossLoan * annualInterest * (emiTenure / 12);
+            return Math.round((grossLoan + totalInt) / emiTenure);
+        }
+        const r = annualInterest / 12;
+        if (r === 0) return Math.round(grossLoan / emiTenure);
+        return Math.round((grossLoan * r * Math.pow(1 + r, emiTenure)) / (Math.pow(1 + r, emiTenure) - 1));
+    })();
+
     const {
         handleColorChange,
         handleShareQuote,
@@ -318,6 +353,35 @@ export function DesktopPDP({
         setEmiTenure,
         setUserDownPayment,
     } = handlers;
+
+    // Smooth DP slider animation (click = slow animate, drag = instant)
+    const dpAnimRef = useRef<number | null>(null);
+    const dpClickRef = useRef({ preVal: 0, time: 0, x: 0, targetVal: 0 });
+    const animateDP = useCallback(
+        (fromVal: number, targetVal: number) => {
+            if (dpAnimRef.current) cancelAnimationFrame(dpAnimRef.current);
+            const diff = targetVal - fromVal;
+            if (diff === 0) return;
+            const fullRange = maxDownPayment - minDownPayment;
+            const duration = fullRange > 0 ? (Math.abs(diff) / fullRange) * 10000 : 500; // 0→max = 10s
+            const startTime = performance.now();
+            const step = (now: number) => {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / Math.max(duration, 1), 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = Math.round((fromVal + diff * eased) / 500) * 500;
+                if (setUserDownPayment) setUserDownPayment(current);
+                if (progress < 1) {
+                    dpAnimRef.current = requestAnimationFrame(step);
+                } else {
+                    if (setUserDownPayment) setUserDownPayment(targetVal);
+                    dpAnimRef.current = null;
+                }
+            };
+            dpAnimRef.current = requestAnimationFrame(step);
+        },
+        [maxDownPayment, minDownPayment, setUserDownPayment]
+    );
 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
     const activeColorAssets = activeColorConfig?.assets || [];
@@ -369,7 +433,7 @@ export function DesktopPDP({
     ].filter(Boolean) as string[];
 
     const priceBreakupData = [
-        { label: 'Showroom Price', value: baseExShowroom },
+        { label: 'Ex-Showroom', value: baseExShowroom },
         {
             label: `Registration (${regType})`,
             value: rtoEstimates,
@@ -392,15 +456,20 @@ export function DesktopPDP({
         { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
         { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
-        ...(coinPricing
+        ...(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)
             ? [
                   {
-                      label: 'B-Coin Discount',
-                      value: coinPricing.discount,
+                      label: "O'Club Privileged",
+                      value: totalSavings + (coinPricing?.discount || 0),
                       isDeduction: true,
                       helpText: [
-                          `${coinPricing.coinsUsed} coins applied`,
-                          `Value ₹${coinPricing.discount.toLocaleString('en-IN')}`,
+                          ...savingsHelpLines.slice(0, -1),
+                          ...(coinPricing
+                              ? [
+                                    `Coins: ₹${coinPricing.discount.toLocaleString('en-IN')} (${coinPricing.coinsUsed} coins)`,
+                                ]
+                              : []),
+                          `Total: ₹${(totalSavings + (coinPricing?.discount || 0)).toLocaleString('en-IN')}`,
                       ],
                   },
               ]
@@ -1380,6 +1449,7 @@ export function DesktopPDP({
     const [isVideoOpen, setIsVideoOpen] = useState(false);
     const [mobileConfigOpen, setMobileConfigOpen] = useState<string | null>('ACCESSORIES');
     const [activeConfigTab, setActiveConfigTab] = useState<string | null>('ACCESSORIES');
+    const [heroActiveTab, setHeroActiveTab] = useState<string>('GALLERY');
 
     const configCards = [
         {
@@ -1402,6 +1472,23 @@ export function DesktopPDP({
             icon: Wrench,
         },
         { id: 'WARRANTY', label: 'Warranty', subtext: 'Protect Ride', icon: Gift },
+    ];
+
+    const heroCards = [
+        {
+            id: 'GALLERY',
+            label: 'Gallery',
+            subtext: (() => {
+                const c = displayColor || 'Vehicle Visuals';
+                const finishes = ['Pearl', 'Matte', 'Metallic', 'Gloss'];
+                const f = finishes.find(f => c.toLowerCase().startsWith(f.toLowerCase()));
+                return f ? `${c.replace(new RegExp('^' + f + '\\s*', 'i'), '')} (${f})` : c;
+            })(),
+            icon: Camera,
+        },
+        { id: 'PRICING', label: 'Pricing', subtext: `₹${displayOnRoad.toLocaleString()}`, icon: Wallet },
+        { id: 'FINANCE', label: 'Finance', subtext: '', icon: Banknote },
+        { id: 'FINANCE_SUMMARY', label: 'Summary', subtext: `${emiTenure}mo Plan`, icon: SlidersHorizontal },
     ];
 
     const ActionIcon = ({ icon: Icon, onClick, colorClass = 'text-slate-400 hover:text-brand-primary' }: any) => (
@@ -1490,223 +1577,642 @@ export function DesktopPDP({
                     className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-brand-primary/[0.02] rounded-full blur-[120px]"
                 />
             </div>
-            {/* 1. Sticky PDP Command Bar (Floating Design) */}
-            <div
-                className="hidden md:flex sticky z-[90] w-full justify-center transition-all duration-300 py-0 px-4 mb-4"
-                style={{ top: 'var(--header-h)', marginTop: '16px' }}
-            >
-                <div className="page-container w-full">
-                    <div className="w-full bg-white/60 dark:bg-[#0b0d10]/60 backdrop-blur-3xl border border-slate-200/60 dark:border-white/10 rounded-full h-[var(--header-h)] px-8 flex items-center justify-between shadow-2xl shadow-black/10 ring-1 ring-black/5 dark:ring-white/5">
-                        {/* 1. Left: Product Identity & Actions */}
-                        <div className="flex items-center gap-8 min-w-0">
-                            {/* Product Identity Mini */}
-                            <div className="flex items-center gap-4 min-w-0">
-                                <div className="w-14 h-14 relative flex items-center justify-center bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 group overflow-hidden shadow-sm">
-                                    <Image
-                                        src={getProductImage()}
-                                        alt={displayModel}
-                                        fill
-                                        sizes="56px"
-                                        className="object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 leading-none">
-                                        {displayMake}
-                                    </div>
-                                    <div className="flex flex-wrap items-baseline gap-2 mt-1 min-w-0">
-                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight leading-none truncate leading-none">
-                                            {displayModel}
-                                        </span>
-                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">
-                                            {displayVariant}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                        <div
-                                            className="w-3 h-3 rounded-full border border-white/10 shadow-sm"
-                                            style={{ backgroundColor: activeColorConfig.hex }}
-                                        />
-                                        <span className="text-[9px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase leading-none">
-                                            {displayColor}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+            <div className="page-container pt-4 pb-28 md:pb-28 space-y-6 relative z-10">
+                {/* 1. Hero Row: Image / Pricing / Finance — Horizontal Accordion (Desktop) */}
+                <div className="hidden md:flex flex-row gap-4 h-[720px] overflow-visible">
+                    {heroCards.map((card, idx) => {
+                        const Icon = card.icon;
+                        const isActive = heroActiveTab === card.id;
 
-                            {/* Divider */}
-                            <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
-
-                            {/* Action Icons */}
-                            <div className="flex items-center gap-1">
-                                <ActionIcon
-                                    icon={Youtube}
-                                    onClick={() => setIsVideoOpen(true)}
-                                    colorClass="text-slate-400 hover:text-red-500"
-                                />
-                                <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-1" />
-                                <ActionIcon icon={Download} onClick={() => {}} />
-                                <ActionIcon icon={Share2} onClick={handleShareQuote} />
-                                <ActionIcon
-                                    icon={Heart}
-                                    onClick={handleSaveQuote}
-                                    colorClass="text-slate-400 hover:text-rose-500"
-                                />
-                            </div>
-                        </div>
-
-                        {/* 2. Right: Quote Summary */}
-                        <div className="flex items-center gap-6">
-                            {/* Context Summary */}
-                            {leadContext?.name && (
-                                <div className="hidden xl:flex flex-col items-end pr-6 border-r border-slate-200 dark:border-white/10">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1 text-right">
-                                        Quoting for
-                                    </p>
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase leading-none">
-                                        {leadContext.name}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Price Summary */}
-                            <div className="flex flex-col items-end">
-                                <p className="text-[8px] font-black uppercase tracking-widest text-brand-primary leading-none mb-1 text-right italic">
-                                    Instant Quote
-                                </p>
-                                <div className="flex items-baseline gap-3">
-                                    {totalSavings > 0 && (
-                                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-700">
-                                            <span className="text-xs text-slate-400 dark:text-slate-500 line-through font-mono opacity-70">
-                                                ₹{(totalOnRoad + totalSavings).toLocaleString()}
-                                            </span>
-                                            <span className="text-[10px] bg-[#FFD700]/20 text-[#FFD700] px-1.5 py-0.5 rounded font-black tracking-tighter uppercase whitespace-nowrap border border-[#FFD700]/30">
-                                                SAVE ₹{totalSavings.toLocaleString()}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <p
-                                        key={displayOnRoad}
-                                        className="text-xl font-black text-[#FFD700] font-mono leading-none animate-in fade-in zoom-in-95 duration-500"
-                                    >
-                                        ₹{displayOnRoad.toLocaleString()}
-                                    </p>
-                                </div>
-                                {coinPricing && (
-                                    <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-500 text-right">
-                                        B-Coin: {coinPricing.coinsUsed} used · Save ₹
-                                        {coinPricing.discount.toLocaleString()}
-                                    </p>
-                                )}
-                                {showCoinRate && (
-                                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">
-                                        1 coin = ₹{OCLUB_COIN_VALUE.toFixed(2)}
-                                    </p>
-                                )}
-                                {!coinPricing && showOClubPrompt && (
-                                    <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-500 text-right">
-                                        Signup & get 13 O-Club coins
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* CTA Button */}
-                            <button
-                                onClick={handleBookingRequest}
-                                disabled={
-                                    isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
-                                }
-                                className={`h-10 px-6 font-black text-xs uppercase tracking-widest rounded-full shadow-xl transition-all duration-300 flex items-center gap-2 group relative overflow-hidden
+                        return (
+                            <motion.div
+                                key={card.id}
+                                layout
+                                custom={idx}
+                                variants={configVariants}
+                                initial="hidden"
+                                animate="visible"
+                                onClick={() => setHeroActiveTab(card.id)}
+                                className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
                                     ${
-                                        isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
-                                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
-                                            : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
+                                        isActive
+                                            ? 'flex-[3] bg-white dark:bg-[#0b0d10] border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_40px_80px_rgba(0,0,0,0.5)]'
+                                            : 'flex-[0.5] bg-white/40 dark:bg-white/[0.03] backdrop-blur-xl border-white/60 dark:border-white/5 hover:bg-white/60 dark:hover:bg-white/[0.06] shadow-lg shadow-black/[0.03]'
                                     }`}
                             >
-                                <span className="relative z-10">{isGated ? 'OPEN LEAD FIRST' : 'Get Quote'}</span>
-                                <ArrowRight
-                                    size={14}
-                                    className="relative z-10 group-hover:translate-x-0.5 transition-transform"
-                                />
-                            </button>
-                        </div>
-                    </div>
+                                {/* Header */}
+                                <div
+                                    className={`p-6 items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100 dark:border-white/5' : ''} ${isActive && card.id === 'GALLERY' ? 'grid grid-cols-[auto_1fr_auto]' : 'flex'}`}
+                                >
+                                    {/* Left: Icon + Label + Color Name */}
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
+                                            ${isActive ? 'bg-brand-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-slate-200 dark:bg-white/5 text-slate-400 dark:text-zinc-600'}`}
+                                        >
+                                            <Icon size={20} />
+                                        </div>
+                                        <div
+                                            className={`flex flex-col transition-all duration-500 ${isActive ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 absolute'}`}
+                                        >
+                                            <span className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
+                                                {card.label}
+                                            </span>
+                                            {card.id !== 'FINANCE' && card.id !== 'PRICING' && (
+                                                <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold whitespace-nowrap">
+                                                    {card.subtext}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Center: Color Swatches — Gallery only */}
+                                    {isActive && card.id === 'GALLERY' && (
+                                        <div
+                                            className="flex items-center justify-center gap-3"
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            {colors.map(
+                                                (color: { id: string; name: string; hex: string; class?: string }) => {
+                                                    const isSel = selectedColor === color.id;
+                                                    return (
+                                                        <button
+                                                            key={color.id}
+                                                            onClick={() => handleColorChange(color.id)}
+                                                            className="flex flex-col items-center group/swatch relative"
+                                                            title={color.name}
+                                                        >
+                                                            <div
+                                                                className={`w-7 h-7 rounded-full transition-all duration-300 border-2 ${isSel ? 'border-[#F4B000] scale-110 shadow-[0_0_8px_rgba(255,215,0,0.4)]' : 'border-transparent hover:scale-110'}`}
+                                                            >
+                                                                <div
+                                                                    className="w-full h-full rounded-full border border-black/10 dark:border-white/20 relative overflow-hidden"
+                                                                    style={{ backgroundColor: color.hex }}
+                                                                >
+                                                                    {/* Shimmer gloss effect — enhanced */}
+                                                                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/50 via-white/10 to-transparent" />
+                                                                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/30 to-white/10" />
+                                                                    <div className="absolute inset-[-2px] rounded-full bg-[conic-gradient(from_0deg,transparent_60%,rgba(255,255,255,0.3)_80%,transparent_100%)] animate-[spin_3s_linear_infinite] opacity-40" />
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                }
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Right: YouTube + Favorite — Gallery only */}
+                                    {isActive && card.id === 'GALLERY' && (
+                                        <div
+                                            className="flex items-center justify-end gap-2"
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            <button
+                                                onClick={() => setIsVideoOpen(true)}
+                                                className="w-7 h-7 rounded-full flex items-center justify-center bg-red-600 hover:bg-red-500 transition-all hover:scale-110 shadow-lg"
+                                                title="Watch Video"
+                                            >
+                                                <Youtube size={14} className="text-white" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleSaveQuote()}
+                                                className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-all hover:scale-110 border border-black/10 dark:border-white/20"
+                                                title="Save to Favorites"
+                                            >
+                                                <Heart size={14} className="text-rose-400" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Content Area */}
+                                <div className="flex-1 overflow-hidden relative">
+                                    <AnimatePresence mode="wait">
+                                        {isActive ? (
+                                            <motion.div
+                                                key="content"
+                                                initial={{ opacity: 0, x: 20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -20 }}
+                                                transition={{ duration: 0.4, delay: 0.2 }}
+                                                className={`absolute inset-0 flex flex-col ${card.id === 'GALLERY' ? '' : ''}`}
+                                            >
+                                                {card.id === 'GALLERY' ? (
+                                                    <VisualsRow
+                                                        className="h-full"
+                                                        colors={colors}
+                                                        selectedColor={selectedColor}
+                                                        onColorSelect={handleColorChange}
+                                                        productImage={getProductImage()}
+                                                        assets={activeColorAssets}
+                                                        videoSource={activeColorConfig?.video || ''}
+                                                        isVideoOpen={isVideoOpen}
+                                                        onCloseVideo={() => setIsVideoOpen(false)}
+                                                    />
+                                                ) : (
+                                                    <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col pl-[76px] pr-[76px] pt-2 pb-4">
+                                                        {card.id === 'PRICING' && (
+                                                            <PricingCard
+                                                                product={product}
+                                                                variantName={displayVariant}
+                                                                activeColor={{
+                                                                    name: displayColor || activeColorConfig.name,
+                                                                    hex: activeColorConfig.hex,
+                                                                }}
+                                                                totalOnRoad={displayOnRoad}
+                                                                totalSavings={totalSavings}
+                                                                originalPrice={totalOnRoad + totalSavings}
+                                                                coinPricing={coinPricing}
+                                                                showOClubPrompt={showOClubPrompt}
+                                                                priceBreakup={priceBreakupData}
+                                                                productImage={getProductImage()}
+                                                                pricingSource={
+                                                                    [
+                                                                        initialLocation?.district,
+                                                                        bestOffer?.dealer?.business_name,
+                                                                    ]
+                                                                        .filter(Boolean)
+                                                                        .join(' • ') || data.pricingSource
+                                                                }
+                                                                leadName={leadContext?.name}
+                                                                isGated={isGated}
+                                                            />
+                                                        )}
+                                                        {card.id === 'FINANCE' && (
+                                                            <FinanceCard
+                                                                emi={emi}
+                                                                emiTenure={emiTenure}
+                                                                setEmiTenure={setEmiTenure}
+                                                                downPayment={userDownPayment || 0}
+                                                                setUserDownPayment={setUserDownPayment}
+                                                                minDownPayment={minDownPayment}
+                                                                maxDownPayment={maxDownPayment}
+                                                                totalOnRoad={displayOnRoad}
+                                                                loanAmount={Math.max(
+                                                                    0,
+                                                                    displayOnRoad - (userDownPayment || 0)
+                                                                )}
+                                                                annualInterest={annualInterest}
+                                                                interestType={interestType}
+                                                                schemeId={initialFinance?.scheme?.id}
+                                                                financeCharges={financeCharges}
+                                                                bank={initialFinance?.bank}
+                                                                scheme={initialFinance?.scheme}
+                                                            />
+                                                        )}
+                                                        {card.id === 'FINANCE_SUMMARY' &&
+                                                            (() => {
+                                                                const allCharges =
+                                                                    initialFinance?.scheme?.charges || [];
+                                                                const upfrontCharges = allCharges.filter(
+                                                                    (c: any) => c.impact === 'UPFRONT'
+                                                                );
+                                                                const fundedCharges = allCharges.filter(
+                                                                    (c: any) => c.impact === 'FUNDED'
+                                                                );
+                                                                const calcAmt = (charge: any) => {
+                                                                    if (charge.type === 'PERCENTAGE') {
+                                                                        const basis =
+                                                                            charge.calculationBasis === 'LOAN_AMOUNT'
+                                                                                ? loanAmount
+                                                                                : totalOnRoad;
+                                                                        return Math.round(basis * (charge.value / 100));
+                                                                    }
+                                                                    return charge.value || 0;
+                                                                };
+                                                                const totalUpfront = upfrontCharges.reduce(
+                                                                    (s: number, c: any) => s + calcAmt(c),
+                                                                    0
+                                                                );
+                                                                const totalFunded = fundedCharges.reduce(
+                                                                    (s: number, c: any) => s + calcAmt(c),
+                                                                    0
+                                                                );
+                                                                const netLoan = Math.max(
+                                                                    0,
+                                                                    displayOnRoad - (userDownPayment || 0)
+                                                                );
+                                                                const grossLoan = netLoan + totalFunded + totalUpfront;
+                                                                const marginMoney =
+                                                                    (userDownPayment || 0) + totalUpfront;
+                                                                const monthlyEmi = Math.round(
+                                                                    (() => {
+                                                                        if (interestType === 'FLAT') {
+                                                                            const totalInt =
+                                                                                grossLoan *
+                                                                                annualInterest *
+                                                                                (emiTenure / 12);
+                                                                            return (grossLoan + totalInt) / emiTenure;
+                                                                        }
+                                                                        const r = annualInterest / 12;
+                                                                        if (r === 0) return grossLoan / emiTenure;
+                                                                        return (
+                                                                            (grossLoan *
+                                                                                r *
+                                                                                Math.pow(1 + r, emiTenure)) /
+                                                                            (Math.pow(1 + r, emiTenure) - 1)
+                                                                        );
+                                                                    })()
+                                                                );
+                                                                const totalInterest = Math.max(
+                                                                    0,
+                                                                    Math.round(monthlyEmi * emiTenure - grossLoan)
+                                                                );
+                                                                const totalOutflow = Math.round(
+                                                                    (userDownPayment || 0) +
+                                                                        totalUpfront +
+                                                                        monthlyEmi * emiTenure
+                                                                );
+
+                                                                const Row = ({
+                                                                    label,
+                                                                    value,
+                                                                    accent,
+                                                                    sub,
+                                                                    indent,
+                                                                }: {
+                                                                    label: string;
+                                                                    value: string;
+                                                                    accent?: string;
+                                                                    sub?: string;
+                                                                    indent?: boolean;
+                                                                }) => (
+                                                                    <div
+                                                                        className={`flex justify-between items-start ${indent ? 'pl-4' : ''}`}
+                                                                    >
+                                                                        <div className="flex flex-col">
+                                                                            <span
+                                                                                className={`text-[11px] font-bold uppercase tracking-widest ${indent ? 'text-slate-400 dark:text-slate-500' : 'text-slate-500 dark:text-slate-400'}`}
+                                                                            >
+                                                                                {label}
+                                                                            </span>
+                                                                            {sub && (
+                                                                                <span className="text-[8px] font-bold uppercase tracking-widest text-emerald-500 mt-0.5">
+                                                                                    {sub}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <span
+                                                                            className={`text-[11px] font-mono font-black ${accent || 'text-slate-700 dark:text-slate-300'}`}
+                                                                        >
+                                                                            {value}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+
+                                                                return (
+                                                                    <div className="flex flex-col h-full">
+                                                                        {/* HEADER: Finance Partner */}
+                                                                        <div className="space-y-2 pb-3 border-b border-slate-200/60 dark:border-white/5 shrink-0">
+                                                                            <Row
+                                                                                label="Financier"
+                                                                                value={
+                                                                                    initialFinance?.bank?.name ||
+                                                                                    'Standard'
+                                                                                }
+                                                                            />
+                                                                            <Row
+                                                                                label="Scheme"
+                                                                                value={
+                                                                                    initialFinance?.scheme?.name ||
+                                                                                    'Standard'
+                                                                                }
+                                                                            />
+                                                                            <Row
+                                                                                label="Interest Rate"
+                                                                                value={`${(annualInterest * 100).toFixed(2)}% (${interestType})`}
+                                                                            />
+                                                                        </div>
+
+                                                                        {/* CONTENT: Calculation Flow */}
+                                                                        <div className="flex-1 flex flex-col justify-evenly py-2">
+                                                                            <Row
+                                                                                label="Asset Cost (Net SOT)"
+                                                                                value={`₹${(totalOnRoad + totalSavings).toLocaleString()}`}
+                                                                            />
+                                                                            {(totalSavings > 0 ||
+                                                                                (coinPricing &&
+                                                                                    coinPricing.discount > 0)) && (
+                                                                                <Row
+                                                                                    label="O'Club Privileged"
+                                                                                    value={`-₹${(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}`}
+                                                                                    accent="text-emerald-500"
+                                                                                />
+                                                                            )}
+                                                                            <Row
+                                                                                label="Total Payable"
+                                                                                value={`₹${displayOnRoad.toLocaleString()}`}
+                                                                                accent="text-brand-primary font-black"
+                                                                            />
+
+                                                                            <div className="border-t border-slate-200/60 dark:border-white/5" />
+
+                                                                            <Row
+                                                                                label="Down Payment"
+                                                                                value={`-₹${(userDownPayment || 0).toLocaleString()}`}
+                                                                                accent="text-emerald-500"
+                                                                            />
+                                                                            <Row
+                                                                                label="Net Loan Amount"
+                                                                                value={`₹${netLoan.toLocaleString()}`}
+                                                                            />
+                                                                            {totalFunded > 0 &&
+                                                                                fundedCharges.map(
+                                                                                    (c: any, i: number) => (
+                                                                                        <Row
+                                                                                            key={i}
+                                                                                            label={c.name}
+                                                                                            value={`+₹${calcAmt(c).toLocaleString()}`}
+                                                                                            accent="text-red-400"
+                                                                                        />
+                                                                                    )
+                                                                                )}
+                                                                            {upfrontCharges.map((c: any, i: number) => (
+                                                                                <Row
+                                                                                    key={i}
+                                                                                    label={c.name}
+                                                                                    value={`+₹${calcAmt(c).toLocaleString()}`}
+                                                                                    accent="text-red-400"
+                                                                                />
+                                                                            ))}
+                                                                            <Row
+                                                                                label="Gross Loan Amount"
+                                                                                value={`₹${grossLoan.toLocaleString()}`}
+                                                                                accent="text-brand-primary"
+                                                                            />
+
+                                                                            <div className="border-t border-slate-200/60 dark:border-white/5" />
+
+                                                                            <Row
+                                                                                label="Total Extra Pay"
+                                                                                value={`+₹${totalInterest.toLocaleString()}`}
+                                                                                accent="text-red-400"
+                                                                            />
+                                                                            <Row
+                                                                                label="Total Outflow"
+                                                                                value={`₹${totalOutflow.toLocaleString()}`}
+                                                                                accent="text-brand-primary font-black"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                    </div>
+                                                )}
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div
+                                                key="vertical-label"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                            >
+                                                <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 dark:text-white/10 -rotate-90 whitespace-nowrap">
+                                                    {card.label}
+                                                </span>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                {/* Section 3: Footer — Offer Price (PRICING only, shrink-0) */}
+                                {isActive && card.id === 'PRICING' && (
+                                    <div className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 dark:border-white/5 bg-brand-primary/[0.03] relative z-10">
+                                        <div className="flex justify-between items-end">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-600 dark:text-slate-400">
+                                                        Offer Price
+                                                    </span>
+                                                </div>
+                                                {(() => {
+                                                    const src =
+                                                        [initialLocation?.district, bestOffer?.dealer?.business_name]
+                                                            .filter(Boolean)
+                                                            .join(' • ') || data.pricingSource;
+                                                    return src ? (
+                                                        <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">
+                                                            ({src})
+                                                        </span>
+                                                    ) : null;
+                                                })()}
+                                            </div>
+                                            <div className="text-right flex flex-col items-end">
+                                                {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
+                                                    <span className="text-xs font-bold text-slate-400 dark:text-zinc-600 line-through decoration-red-500/50 decoration-2 mr-1">
+                                                        On Road ₹{(totalOnRoad + totalSavings).toLocaleString()}
+                                                    </span>
+                                                )}
+                                                <span className="text-4xl font-black italic tracking-tighter text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-in zoom-in-95 duration-700">
+                                                    ₹{displayOnRoad.toLocaleString()}
+                                                </span>
+                                                {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
+                                                    <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                                                        ⚡ You Save ₹
+                                                        {(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}
+                                                    </span>
+                                                )}
+                                                {!coinPricing && showOClubPrompt && (
+                                                    <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                                                        Signup & get 13 O-Club coins
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                {/* Section 3: Footer — EMI (FINANCE_SUMMARY only, shrink-0) */}
+                                {isActive && card.id === 'FINANCE_SUMMARY' && (
+                                    <div className="shrink-0 min-h-[118px] pl-[76px] pr-[76px] pt-4 pb-8 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-[#0b0d10] relative z-10">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-600 dark:text-slate-400">
+                                                    Monthly EMI
+                                                </span>
+                                            </div>
+                                            <div className="text-right flex flex-col items-end">
+                                                <span className="text-4xl font-black tracking-tight text-slate-900 dark:text-[#FFD700] font-mono tabular-nums leading-none">
+                                                    ₹{footerEmi.toLocaleString()}
+                                                </span>
+                                                <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                                                    / {emiTenure}mo
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Section 3: Footer — Down Payment (FINANCE only, shrink-0) */}
+                                {isActive && card.id === 'FINANCE' && maxDownPayment > minDownPayment && (
+                                    <div
+                                        className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 dark:border-white/5 bg-brand-primary/[0.03]"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                                Down Payment
+                                            </span>
+                                            <div className="flex items-center gap-0">
+                                                <span className="text-xs font-black font-mono tracking-tight text-brand-primary leading-none">
+                                                    ₹
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    value={userDownPayment || 0}
+                                                    onChange={e => {
+                                                        const val = parseInt(e.target.value);
+                                                        if (!isNaN(val)) {
+                                                            const from = userDownPayment || 0;
+                                                            animateDP(from, val);
+                                                        }
+                                                    }}
+                                                    className="bg-transparent text-xs font-black font-mono tracking-tight text-slate-900 dark:text-white outline-none border-b border-transparent focus:border-brand-primary transition-all p-0"
+                                                    style={{
+                                                        width: `${Math.max(String(userDownPayment || 0).length, 1) * 8 + 4}px`,
+                                                    }}
+                                                />
+                                                <Edit2
+                                                    size={10}
+                                                    className="text-slate-400 hover:text-brand-primary transition-colors cursor-pointer ml-0.5"
+                                                    strokeWidth={3}
+                                                />
+                                            </div>
+                                        </div>
+                                        {(() => {
+                                            const currentDP = userDownPayment || 0;
+                                            const range = maxDownPayment - minDownPayment;
+                                            const fillPct =
+                                                range > 0 ? ((currentDP - minDownPayment) / range) * 100 : 0;
+                                            const dpOfOnRoad =
+                                                displayOnRoad > 0 ? (currentDP / displayOnRoad) * 100 : 0;
+                                            let hue: number;
+                                            if (dpOfOnRoad <= 20) hue = (dpOfOnRoad / 20) * 30;
+                                            else if (dpOfOnRoad <= 40) hue = 30 + ((dpOfOnRoad - 20) / 20) * 50;
+                                            else hue = 80 + Math.min((dpOfOnRoad - 40) / 30, 1) * 60;
+                                            const fillColor = `hsl(${hue}, 80%, 50%)`;
+                                            const trackBg =
+                                                typeof window !== 'undefined' &&
+                                                document.documentElement.classList.contains('dark')
+                                                    ? 'rgba(255,255,255,0.1)'
+                                                    : '#e2e8f0';
+                                            const milestones: React.ReactNode[] = [];
+                                            if (range > 0) {
+                                                // Add all 5K milestone labels below the track
+                                                for (let v = 0; v <= maxDownPayment; v += 5000) {
+                                                    if (v < minDownPayment) v = minDownPayment;
+                                                    const pct = ((v - minDownPayment) / range) * 100;
+                                                    if (pct < 0 || pct > 100) continue;
+                                                    const kVal = v / 1000;
+                                                    const label = v === 0 ? '₹0' : `₹${kVal}K`;
+                                                    milestones.push(
+                                                        <div
+                                                            key={`label-${v}`}
+                                                            className="absolute flex flex-col items-center"
+                                                            style={{
+                                                                left: `${pct}%`,
+                                                                top: '50%',
+                                                                transform: 'translateX(-50%)',
+                                                            }}
+                                                        >
+                                                            <div className="w-[1px] h-[6px] bg-slate-400 dark:bg-white/25 rounded-full" />
+                                                            <span className="text-[6px] font-black text-slate-400 dark:text-white/25 mt-[1px] tabular-nums whitespace-nowrap">
+                                                                {label}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                }
+                                                // Add subtle 1K tick dots
+                                                for (let v = minDownPayment; v <= maxDownPayment; v += 1000) {
+                                                    if (v % 5000 === 0) continue;
+                                                    const pct = ((v - minDownPayment) / range) * 100;
+                                                    if (pct <= fillPct) continue;
+                                                    milestones.push(
+                                                        <div
+                                                            key={v}
+                                                            className="absolute top-1/2 -translate-y-1/2 w-[1px] h-[2px] bg-slate-400 dark:bg-white opacity-10 rounded-full"
+                                                            style={{ left: `${pct}%` }}
+                                                        />
+                                                    );
+                                                }
+                                            }
+                                            return (
+                                                <div className="relative h-[32px]">
+                                                    <div className="absolute top-[4px] left-0 right-0">
+                                                        <input
+                                                            type="range"
+                                                            min={minDownPayment}
+                                                            max={maxDownPayment}
+                                                            step={500}
+                                                            value={currentDP}
+                                                            onPointerDown={e => {
+                                                                dpClickRef.current = {
+                                                                    preVal: currentDP,
+                                                                    time: Date.now(),
+                                                                    x: e.clientX,
+                                                                    targetVal: currentDP,
+                                                                };
+                                                            }}
+                                                            onChange={e => {
+                                                                const val = parseInt(e.target.value);
+                                                                if (!isNaN(val)) {
+                                                                    dpClickRef.current.targetVal = val;
+                                                                    if (setUserDownPayment) setUserDownPayment(val);
+                                                                }
+                                                            }}
+                                                            onPointerUp={e => {
+                                                                const { preVal, time, x, targetVal } =
+                                                                    dpClickRef.current;
+                                                                const isClick =
+                                                                    Date.now() - time < 300 &&
+                                                                    Math.abs(e.clientX - x) < 5;
+                                                                if (isClick && targetVal !== preVal) {
+                                                                    if (setUserDownPayment) setUserDownPayment(preVal);
+                                                                    animateDP(preVal, targetVal);
+                                                                }
+                                                            }}
+                                                            className="w-full h-1.5 rounded-full appearance-none cursor-pointer relative z-10"
+                                                            style={{
+                                                                background: `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${fillPct}%, ${trackBg} ${fillPct}%, ${trackBg} 100%)`,
+                                                                accentColor: fillColor,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="absolute top-[4px] left-0 right-0 h-[28px] pointer-events-none">
+                                                        {milestones}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+
+                                {/* Bottom Fade — skip for Gallery and Finance */}
+                                {isActive &&
+                                    card.id !== 'GALLERY' &&
+                                    card.id !== 'FINANCE' &&
+                                    card.id !== 'PRICING' && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 dark:from-[#0b0d10] dark:via-[#0b0d10]/40 to-transparent pointer-events-none z-10" />
+                                    )}
+                            </motion.div>
+                        );
+                    })}
                 </div>
-            </div>
 
-            <div className="page-container pt-4 pb-24 md:pb-10 space-y-12 relative z-10">
-                {/* 2. Top Fluid Section (50/25/25 Split) */}
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="flex flex-col lg:flex-row gap-6 items-stretch"
-                >
-                    {/* Visual Section (50%) */}
-                    <motion.div variants={itemVariants} className="w-full lg:w-1/2 min-w-0">
-                        <div className="relative">
-                            <VisualsRow
-                                colors={colors}
-                                selectedColor={selectedColor}
-                                onColorSelect={handleColorChange}
-                                productImage={getProductImage()}
-                                assets={activeColorAssets}
-                                videoSource={activeColorConfig?.video || ''}
-                                isVideoOpen={isVideoOpen}
-                                onCloseVideo={() => setIsVideoOpen(false)}
-                            />
-                        </div>
-                    </motion.div>
-
-                    {/* Pricing Summary (25%) */}
-                    <motion.div variants={itemVariants} className="w-full lg:w-1/4">
-                        <div className="relative">
-                            <PricingCard
-                                product={product}
-                                variantName={displayVariant}
-                                activeColor={{
-                                    name: displayColor || activeColorConfig.name,
-                                    hex: activeColorConfig.hex,
-                                }}
-                                totalOnRoad={displayOnRoad}
-                                totalSavings={totalSavings}
-                                originalPrice={totalOnRoad + totalSavings}
-                                coinPricing={coinPricing}
-                                showOClubPrompt={showOClubPrompt}
-                                priceBreakup={priceBreakupData}
-                                productImage={getProductImage()}
-                                pricingSource={
-                                    [initialLocation?.district, bestOffer?.dealer?.business_name]
-                                        .filter(Boolean)
-                                        .join(' • ') || data.pricingSource
-                                }
-                                leadName={leadContext?.name}
-                                isGated={isGated}
-                            />
-                        </div>
-                    </motion.div>
-
-                    {/* Finance Card (25%) */}
-                    <motion.div variants={itemVariants} className="w-full lg:w-1/4">
-                        <FinanceCard
-                            emi={emi}
-                            emiTenure={emiTenure}
-                            setEmiTenure={setEmiTenure}
-                            downPayment={userDownPayment || 0}
-                            setUserDownPayment={setUserDownPayment}
-                            minDownPayment={minDownPayment}
-                            maxDownPayment={maxDownPayment}
-                            totalOnRoad={totalOnRoad}
-                            loanAmount={loanAmount}
-                            annualInterest={annualInterest}
-                            interestType={interestType}
-                            schemeId={initialFinance?.scheme?.id}
-                            financeCharges={financeCharges}
-                            bank={initialFinance?.bank}
-                            scheme={initialFinance?.scheme}
-                        />
-                    </motion.div>
-                </motion.div>
+                {/* 1b. Hero Row: Mobile (Vertical Stack) */}
+                <div className="md:hidden space-y-4">
+                    <VisualsRow
+                        colors={colors}
+                        selectedColor={selectedColor}
+                        onColorSelect={handleColorChange}
+                        productImage={getProductImage()}
+                        assets={activeColorAssets}
+                        videoSource={activeColorConfig?.video || ''}
+                        isVideoOpen={isVideoOpen}
+                        onCloseVideo={() => setIsVideoOpen(false)}
+                    />
+                </div>
 
                 {/* 3. Mobile Configuration Accordions */}
                 <div className="md:hidden space-y-4">
@@ -1856,54 +2362,126 @@ export function DesktopPDP({
                 )}
             </div>
 
+            {/* Floating Bottom Command Bar (All Viewports) */}
             <div
-                className="md:hidden fixed inset-x-0 z-[95]"
-                style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+                className="fixed inset-x-0 bottom-0 z-[95]"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             >
-                <div className="mx-3 mb-2 rounded-2xl border border-white/10 bg-[#0b0d10]/95 backdrop-blur-xl shadow-2xl p-3 flex items-center justify-between gap-3">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">On-Road</span>
-                        <div className="flex items-center gap-2">
-                            {totalSavings > 0 && (
-                                <span className="text-[10px] text-slate-400 line-through font-mono">
-                                    ₹{(totalOnRoad + totalSavings).toLocaleString()}
+                <div className="page-container mb-2 md:mb-4">
+                    <div className="rounded-2xl md:rounded-full border border-white/10 bg-[#0b0d10]/95 backdrop-blur-xl shadow-2xl p-3 md:px-8 md:py-3 flex items-center justify-between gap-3 md:gap-6">
+                        {/* Left: Product Identity (Desktop) + Price */}
+                        <div className="flex items-center gap-4 md:gap-6 min-w-0">
+                            {/* Product Thumbnail — Desktop only */}
+                            <div className="hidden md:flex items-center gap-3 min-w-0">
+                                <div className="w-12 h-12 relative flex items-center justify-center bg-white/10 rounded-xl overflow-hidden shrink-0">
+                                    <Image
+                                        src={getProductImage()}
+                                        alt={displayModel}
+                                        fill
+                                        sizes="48px"
+                                        className="object-contain"
+                                    />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-black text-white uppercase italic tracking-tight leading-none mt-0.5 truncate">
+                                        {displayModel}{' '}
+                                        <span className="text-[9px] font-bold text-slate-400 tracking-widest not-italic">
+                                            {displayVariant}
+                                        </span>
+                                    </span>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <div
+                                            className="w-2.5 h-2.5 rounded-full border border-white/20"
+                                            style={{ backgroundColor: activeColorConfig.hex }}
+                                        />
+                                        <span className="text-[8px] font-black tracking-widest text-slate-500 uppercase leading-none">
+                                            {displayColor}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="w-px h-8 bg-white/10 ml-2" />
+                            </div>
+
+                            {/* Price Summary */}
+                            <div className="flex items-center gap-3 md:gap-4">
+                                <div className="flex flex-col md:flex-row md:items-center md:gap-3">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 md:hidden">
+                                        On-Road
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            On-Road
+                                        </span>
+                                        {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
+                                            <span className="text-[10px] text-slate-500 line-through font-mono">
+                                                ₹{(totalOnRoad + totalSavings).toLocaleString()}
+                                            </span>
+                                        )}
+                                        <span className="text-lg font-black text-[#FFD700] font-mono">
+                                            ₹{displayOnRoad.toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
+                                    <>
+                                        <div className="hidden md:block w-px h-6 bg-white/10" />
+                                        <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                                            ✦ O'Club Privileged Saving: ₹
+                                            {(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}
+                                        </span>
+                                    </>
+                                )}
+
+                                {!coinPricing && showOClubPrompt && (
+                                    <>
+                                        <div className="hidden md:block w-px h-6 bg-white/10" />
+                                        <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black uppercase tracking-widest text-indigo-400">
+                                            +13 O-Club Coins
+                                        </span>
+                                    </>
+                                )}
+
+                                {/* EMI & Tenure */}
+                                <div className="hidden md:block w-px h-6 bg-white/10" />
+                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest text-white font-mono tabular-nums">
+                                    EMI ₹{footerEmi.toLocaleString()} / {emiTenure}mo
                                 </span>
-                            )}
-                            <span className="text-lg font-black text-[#FFD700] font-mono">
-                                ₹{displayOnRoad.toLocaleString()}
-                            </span>
+                            </div>
                         </div>
-                        {coinPricing && (
-                            <span className="mt-1 text-[9px] font-black uppercase tracking-widest text-emerald-500">
-                                B-Coin: {coinPricing.coinsUsed} used · Save ₹{coinPricing.discount.toLocaleString()}
-                            </span>
-                        )}
-                        {showCoinRate && (
-                            <span className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                                1 coin = ₹{OCLUB_COIN_VALUE.toFixed(2)}
-                            </span>
-                        )}
-                        {!coinPricing && showOClubPrompt && (
-                            <span className="mt-1 text-[9px] font-black uppercase tracking-widest text-indigo-500">
-                                Signup & get 13 O-Club coins
-                            </span>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={handleBookingRequest}
-                            disabled={isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)}
-                            className={`h-11 px-5 font-black text-[11px] uppercase tracking-widest rounded-full shadow-xl flex items-center gap-2 transition-all
-                            ${
-                                isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
-                                    ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
-                                    : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20'
-                            }
-                        `}
-                        >
-                            {isGated ? 'OPEN LEAD FIRST' : 'GET QUOTE'}
-                            <ArrowRight size={14} />
-                        </button>
+
+                        {/* Right: Actions (Desktop) + CTA */}
+                        <div className="flex items-center gap-3 md:gap-4">
+                            {/* Action Icons — Desktop only */}
+                            <div className="hidden md:flex items-center gap-1">
+                                <ActionIcon
+                                    icon={Share2}
+                                    onClick={handleShareQuote}
+                                    colorClass="text-slate-400 hover:text-white"
+                                />
+                                <ActionIcon
+                                    icon={Heart}
+                                    onClick={handleSaveQuote}
+                                    colorClass="text-slate-400 hover:text-rose-500"
+                                />
+                            </div>
+                            <button
+                                onClick={handleBookingRequest}
+                                disabled={
+                                    isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
+                                }
+                                className={`h-11 px-5 md:px-6 font-black text-[11px] uppercase tracking-widest rounded-full shadow-xl flex items-center gap-2 transition-all group
+                                ${
+                                    isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
+                                        ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                                        : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
+                                }
+                            `}
+                            >
+                                {isGated ? 'OPEN LEAD' : 'GET QUOTE'}
+                                <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

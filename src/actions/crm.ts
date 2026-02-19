@@ -3257,7 +3257,9 @@ export async function getQuoteByDisplayId(
 
     // Fetch high-fidelity pricing from canonical state pricing table
     let highFidelityPricing = null;
-    const colorId = quote.color_id || quote.variant_id || pricingSnapshot?.color_id;
+    const selectedVehicleSkuId =
+        quote.vehicle_sku_id || quote.color_id || quote.variant_id || pricingSnapshot?.color_id;
+    const colorId = selectedVehicleSkuId;
     const stateCode =
         pricingSnapshot?.location?.state_code ||
         pricingSnapshot?.location?.stateCode ||
@@ -3332,6 +3334,12 @@ export async function getQuoteByDisplayId(
 
     // Resolve SKU image and specs if not in commercials
     let resolvedImageUrl = commercials.image || commercials.imageUrl || commercials.pricing_snapshot?.imageUrl || null;
+    if (typeof resolvedImageUrl === 'string') {
+        const normalized = resolvedImageUrl.trim().toLowerCase();
+        if (!normalized || normalized === 'null' || normalized === 'undefined') {
+            resolvedImageUrl = null;
+        }
+    }
     let vehicleSpecs = commercials.specs || commercials.pricing_snapshot?.specs || {};
 
     const resolveHex = (val: any) => {
@@ -3511,7 +3519,14 @@ export async function getQuoteByDisplayId(
     };
 
     const resolveProductIdentity = async (skuId?: string | null) => {
-        const resolved = { brand: '', model: '', variant: '' };
+        const resolved = {
+            brand: '',
+            model: '',
+            variant: '',
+            brandId: '',
+            modelId: '',
+            variantId: '',
+        };
         if (!skuId) return resolved;
 
         // Try as SKU first
@@ -3528,6 +3543,7 @@ export async function getQuoteByDisplayId(
                 .eq('id', sku.vehicle_variant_id)
                 .maybeSingle();
             if (variant?.name) resolved.variant = variant.name;
+            if (variant?.id) resolved.variantId = variant.id;
 
             if (variant?.model_id) {
                 const { data: model } = await (supabase as any)
@@ -3536,13 +3552,15 @@ export async function getQuoteByDisplayId(
                     .eq('id', variant.model_id)
                     .maybeSingle();
                 if (model?.name) resolved.model = model.name;
+                if (model?.id) resolved.modelId = model.id;
                 if (model?.brand_id) {
                     const { data: brand } = await supabase
                         .from('cat_brands')
-                        .select('name')
+                        .select('id, name')
                         .eq('id', model.brand_id)
                         .maybeSingle();
                     if (brand?.name) resolved.brand = brand.name;
+                    if (brand?.id) resolved.brandId = brand.id;
                 }
             }
             return resolved;
@@ -3556,6 +3574,7 @@ export async function getQuoteByDisplayId(
             .maybeSingle();
         if (variant?.name) {
             resolved.variant = variant.name;
+            resolved.variantId = variant.id || '';
             if (variant.model_id) {
                 const { data: model } = await (supabase as any)
                     .from('cat_models')
@@ -3563,13 +3582,15 @@ export async function getQuoteByDisplayId(
                     .eq('id', variant.model_id)
                     .maybeSingle();
                 if (model?.name) resolved.model = model.name;
+                if (model?.id) resolved.modelId = model.id;
                 if (model?.brand_id) {
                     const { data: brand } = await supabase
                         .from('cat_brands')
-                        .select('name')
+                        .select('id, name')
                         .eq('id', model.brand_id)
                         .maybeSingle();
                     if (brand?.name) resolved.brand = brand.name;
+                    if (brand?.id) resolved.brandId = brand.id;
                 }
             }
         }
@@ -3594,114 +3615,266 @@ export async function getQuoteByDisplayId(
         return null;
     };
 
-    const itemId = (quote.color_id || quote.variant_id) as string | null;
+    const toDefinedObject = (obj: Record<string, any>) => {
+        const out: Record<string, any> = {};
+        Object.entries(obj || {}).forEach(([key, value]) => {
+            if (value === null || value === undefined) return;
+            if (typeof value === 'string' && value.trim() === '') return;
+            if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return;
+            out[key] = value;
+        });
+        return out;
+    };
+
+    const buildVariantSpecs = (variantItem: any) => {
+        const engine = toDefinedObject({
+            displacement: variantItem.displacement,
+            power: variantItem.max_power,
+            torque: variantItem.max_torque,
+            type: variantItem.engine_type,
+        });
+        const performance = toDefinedObject({
+            mileage: variantItem.mileage,
+            rangeKm: variantItem.range_km,
+            rideModes: variantItem.ride_modes,
+        });
+        const transmission = toDefinedObject({
+            type: variantItem.transmission,
+            startType: variantItem.start_type,
+        });
+        const dimensions = toDefinedObject({
+            weight: variantItem.kerb_weight,
+            seatHeight: variantItem.seat_height,
+            groundClearance: variantItem.ground_clearance,
+            wheelbase: variantItem.wheelbase,
+            fuelCapacity: variantItem.fuel_capacity,
+        });
+        const brakes = toDefinedObject({
+            front: variantItem.front_brake,
+            rear: variantItem.rear_brake,
+            abs: variantItem.braking_system,
+        });
+        const chassis = toDefinedObject({
+            suspensionFront: variantItem.front_suspension,
+            suspensionRear: variantItem.rear_suspension,
+        });
+
+        return toDefinedObject({
+            displacement: variantItem.displacement,
+            engine_cc: variantItem.displacement,
+            max_power: variantItem.max_power,
+            max_torque: variantItem.max_torque,
+            transmission_type: variantItem.transmission,
+            gearbox: variantItem.transmission,
+            mileage: variantItem.mileage,
+            fuel_capacity: variantItem.fuel_capacity,
+            front_brake: variantItem.front_brake,
+            front_brake_type: variantItem.front_brake,
+            rear_brake: variantItem.rear_brake,
+            rear_brake_type: variantItem.rear_brake,
+            braking_system: variantItem.braking_system,
+            tyre_type: variantItem.tyre_type,
+            kerb_weight: variantItem.kerb_weight,
+            seat_height: variantItem.seat_height,
+            wheelbase: variantItem.wheelbase,
+            ground_clearance: variantItem.ground_clearance,
+            front_suspension: variantItem.front_suspension,
+            rear_suspension: variantItem.rear_suspension,
+            front_tyre: variantItem.front_tyre,
+            rear_tyre: variantItem.rear_tyre,
+            start_type: variantItem.start_type,
+            engine_type: variantItem.engine_type,
+            motor_power: variantItem.motor_power,
+            battery_type: variantItem.battery_type,
+            battery_capacity: variantItem.battery_capacity,
+            charging_time: variantItem.charging_time,
+            range_km: variantItem.range_km,
+            ride_modes: variantItem.ride_modes,
+            air_filter: variantItem.air_filter,
+            num_valves: variantItem.num_valves,
+            console_type: variantItem.console_type,
+            bluetooth: variantItem.bluetooth,
+            navigation: variantItem.navigation,
+            usb_charging: variantItem.usb_charging,
+            led_headlamp: variantItem.led_headlamp,
+            led_tail_lamp: variantItem.led_tail_lamp,
+            engine,
+            performance,
+            transmission,
+            dimensions,
+            brakes,
+            chassis,
+        });
+    };
+
+    const buildModelSpecs = (modelItem: any) =>
+        toDefinedObject({
+            engine_cc: modelItem.engine_cc,
+            fuel_type: modelItem.fuel_type,
+            body_type: modelItem.body_type,
+            emission_standard: modelItem.emission_standard,
+            hsn_code: modelItem.hsn_code,
+            item_tax_rate: modelItem.item_tax_rate,
+        });
+
+    const itemId = selectedVehicleSkuId as string | null;
     if ((!resolvedImageUrl || Object.keys(vehicleSpecs).length === 0 || !itemHex) && itemId) {
-        if (!resolvedImageUrl || Object.keys(vehicleSpecs).length === 0) {
-            // Try cat_skus first
-            const { data: skuItem } = await (supabase as any)
-                .from('cat_skus')
-                .select('image_url, hex_primary, color_name, vehicle_variant_id')
-                .eq('id', itemId)
+        let variantIdForLookup: string | null = null;
+        let modelIdForLookup: string | null = null;
+        let skuSpecs: any = {};
+
+        const { data: skuItem } = await (supabase as any)
+            .from('cat_skus')
+            .select(
+                'id, model_id, vehicle_variant_id, primary_image, gallery_img_1, gallery_img_2, gallery_img_3, gallery_img_4, gallery_img_5, gallery_img_6, video_url_1, video_url_2, hex_primary, color_name, finish'
+            )
+            .eq('id', itemId)
+            .maybeSingle();
+
+        if (skuItem) {
+            variantIdForLookup = skuItem.vehicle_variant_id || null;
+            modelIdForLookup = skuItem.model_id || null;
+
+            const gallery = [
+                skuItem.primary_image,
+                skuItem.gallery_img_1,
+                skuItem.gallery_img_2,
+                skuItem.gallery_img_3,
+                skuItem.gallery_img_4,
+                skuItem.gallery_img_5,
+                skuItem.gallery_img_6,
+            ].filter(Boolean);
+
+            if (!resolvedImageUrl && gallery.length > 0) {
+                resolvedImageUrl = gallery[0];
+            }
+
+            skuSpecs = toDefinedObject({
+                hex_primary: skuItem.hex_primary,
+                color_name: skuItem.color_name,
+                finish: skuItem.finish,
+                primary_image: skuItem.primary_image,
+                gallery: gallery,
+                video_urls: [skuItem.video_url_1, skuItem.video_url_2].filter(Boolean),
+            });
+
+            if (!itemHex) {
+                itemHex = resolveHex(skuItem.hex_primary) || null;
+            }
+        } else {
+            // Fallback: treat item id as vehicle variant id
+            variantIdForLookup = itemId;
+        }
+
+        let modelSpecs: any = {};
+        let variantSpecs: any = {};
+        if (variantIdForLookup) {
+            const { data: variantItem } = await (supabase as any)
+                .from('cat_variants_vehicle')
+                .select(
+                    'id, model_id, displacement, max_power, max_torque, transmission, mileage, fuel_capacity, front_brake, rear_brake, braking_system, tyre_type, kerb_weight, seat_height, wheelbase, ground_clearance, front_suspension, rear_suspension, front_tyre, rear_tyre, start_type, engine_type, motor_power, battery_type, battery_capacity, charging_time, range_km, ride_modes, air_filter, num_valves, console_type, bluetooth, navigation, usb_charging, led_headlamp, led_tail_lamp'
+                )
+                .eq('id', variantIdForLookup)
                 .maybeSingle();
 
-            if (skuItem) {
-                if (!resolvedImageUrl && skuItem.image_url) {
-                    resolvedImageUrl = skuItem.image_url;
-                }
-                // Merge specs from variant and model
-                let modelSpecs: any = {};
-                let variantSpecs: any = {};
-
-                if (skuItem.vehicle_variant_id) {
-                    const { data: variantItem } = await (supabase as any)
-                        .from('cat_variants_vehicle')
-                        .select('engine_cc, fuel_capacity, mileage, specs, model_id')
-                        .eq('id', skuItem.vehicle_variant_id)
-                        .maybeSingle();
-                    if (variantItem) {
-                        variantSpecs = {
-                            ...(variantItem.specs || {}),
-                            engine_cc: variantItem.engine_cc,
-                            fuel_capacity: variantItem.fuel_capacity,
-                            mileage: variantItem.mileage,
-                        };
-                        if (variantItem.model_id) {
-                            const { data: modelItem } = await (supabase as any)
-                                .from('cat_models')
-                                .select('specs')
-                                .eq('id', variantItem.model_id)
-                                .maybeSingle();
-                            if (modelItem?.specs) modelSpecs = modelItem.specs;
-                        }
-                    }
-                }
-
-                const skuSpecs: any = {
-                    hex_primary: skuItem.hex_primary,
-                    color_name: skuItem.color_name,
-                };
-                vehicleSpecs = { ...vehicleSpecs, ...modelSpecs, ...variantSpecs, ...skuSpecs };
-
-                if (!itemHex) {
-                    itemHex = resolveHex(skuItem.hex_primary) || null;
-                    if (!itemHex) {
-                        const s = vehicleSpecs as any;
-                        itemHex =
-                            resolveHex(s?.color_hex) ||
-                            resolveHex(s?.colorHex) ||
-                            resolveHex(s?.hex_primary) ||
-                            resolveHex(s?.hex_code) ||
-                            resolveHex(s?.hexCode) ||
-                            resolveHex(s?.ColorHexCode) ||
-                            resolveHex(s?.fields?.ColorHexCode);
-                    }
-                }
-            } else {
-                // Try as variant
-                const { data: variantItem } = await (supabase as any)
-                    .from('cat_variants_vehicle')
-                    .select('engine_cc, fuel_capacity, mileage, specs, model_id')
-                    .eq('id', itemId)
-                    .maybeSingle();
-                if (variantItem) {
-                    let mSpecs: any = {};
-                    const vSpecs = {
-                        ...(variantItem.specs || {}),
-                        engine_cc: variantItem.engine_cc,
-                        fuel_capacity: variantItem.fuel_capacity,
-                        mileage: variantItem.mileage,
-                    };
-                    if (variantItem.model_id) {
-                        const { data: modelItem } = await (supabase as any)
-                            .from('cat_models')
-                            .select('specs')
-                            .eq('id', variantItem.model_id)
-                            .maybeSingle();
-                        if (modelItem?.specs) mSpecs = modelItem.specs;
-                    }
-                    vehicleSpecs = { ...vehicleSpecs, ...mSpecs, ...vSpecs };
-                }
+            if (variantItem) {
+                variantSpecs = buildVariantSpecs(variantItem);
+                if (!modelIdForLookup) modelIdForLookup = variantItem.model_id || null;
             }
+        }
+
+        if (modelIdForLookup) {
+            const { data: modelItem } = await (supabase as any)
+                .from('cat_models')
+                .select('id, brand_id, engine_cc, fuel_type, body_type, emission_standard, hsn_code, item_tax_rate')
+                .eq('id', modelIdForLookup)
+                .maybeSingle();
+            if (modelItem) {
+                modelSpecs = buildModelSpecs(modelItem);
+            }
+        }
+
+        vehicleSpecs = {
+            ...vehicleSpecs,
+            ...modelSpecs,
+            ...variantSpecs,
+            ...skuSpecs,
+        };
+
+        if (!itemHex) {
+            const s = vehicleSpecs as any;
+            itemHex =
+                resolveHex(s?.color_hex) ||
+                resolveHex(s?.colorHex) ||
+                resolveHex(s?.hex_primary) ||
+                resolveHex(s?.hex_code) ||
+                resolveHex(s?.hexCode) ||
+                resolveHex(s?.ColorHexCode) ||
+                resolveHex(s?.fields?.ColorHexCode);
         }
     }
 
     const hexCode = itemHex || null;
 
-    const selectedSkuId = quote.color_id || quote.variant_id || null;
+    const selectedSkuId = selectedVehicleSkuId || null;
     const identity = await resolveProductIdentity(selectedSkuId);
     const productMake = commercials.brand || identity.brand || '';
     const productModel = commercials.model || identity.model || '';
     const productVariant = commercials.variant || identity.variant || '';
+    const productBrandId = identity.brandId || '';
+    const productModelId = identity.modelId || '';
+    const productVariantId = identity.variantId || '';
 
     const dealerId =
         pricingSnapshot?.dealer?.id || pricingSnapshot?.dealer_id || commercials?.dealer_id || quote.studio_id || null;
 
     // PDP Options: Accessories + Services
-    const { data: accessoriesData } = await (supabase as any)
+    const { data: accessorySkus } = await (supabase as any)
         .from('cat_skus')
-        .select('*, brand:cat_brands(name), category')
-        .eq('category', 'ACCESSORY')
+        .select(
+            `
+            id, name, price_base, primary_image, color_name, finish, status, sku_type,
+            brand:cat_brands!brand_id(name),
+            model:cat_models!model_id(id, name),
+            accessory_variant:cat_variants_accessory!accessory_variant_id(id, name, slug, status)
+            `
+        )
+        .eq('sku_type', 'ACCESSORY')
         .eq('status', 'ACTIVE');
+
+    const accessorySkuIds = (accessorySkus || []).map((a: any) => a.id).filter(Boolean);
+    const { data: suitableForRows } =
+        accessorySkuIds.length > 0
+            ? await (supabase as any)
+                  .from('cat_suitable_for')
+                  .select('sku_id, target_brand_id, target_model_id, target_variant_id')
+                  .in('sku_id', accessorySkuIds)
+            : ({ data: [] } as any);
+
+    const suitableForMap = new Map<string, any[]>();
+    (suitableForRows || []).forEach((row: any) => {
+        if (!suitableForMap.has(row.sku_id)) suitableForMap.set(row.sku_id, []);
+        suitableForMap.get(row.sku_id)!.push(row);
+    });
+
+    const accessoriesData = (accessorySkus || []).map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        price_base: a.price_base,
+        image_url: a.primary_image,
+        category: 'ACCESSORY',
+        brand: a.brand,
+        inclusion_type: 'OPTIONAL',
+        specs: {
+            suitable_for: '',
+            color: a.color_name || '',
+            finish: a.finish || '',
+            max_qty: 1,
+        },
+        __compat: suitableForMap.get(a.id) || [],
+        __variant_name: a.accessory_variant?.name || '',
+        __product_name: a.model?.name || '',
+    }));
 
     const { data: servicesData } = await supabase.from('cat_services').select('*').eq('status', 'ACTIVE');
 
@@ -3738,14 +3911,36 @@ export async function getQuoteByDisplayId(
     }
 
     const pdpAccessories = (accessoriesData || [])
-        .filter((a: any) =>
-            matchesAccessoryCompatibility(a.specs?.suitable_for, productMake, productModel, productVariant)
-        )
+        .filter((a: any) => {
+            const compatRows = Array.isArray(a.__compat) ? a.__compat : [];
+            if (compatRows.length > 0) {
+                return compatRows.some((r: any) => {
+                    const brandOk = !r.target_brand_id || r.target_brand_id === productBrandId;
+                    const modelOk = !r.target_model_id || r.target_model_id === productModelId;
+                    const variantOk = !r.target_variant_id || r.target_variant_id === productVariantId;
+                    return brandOk && modelOk && variantOk;
+                });
+            }
+            return matchesAccessoryCompatibility(a.specs?.suitable_for, productMake, productModel, productVariant);
+        })
         .map((a: any) => {
             const rule = accessoryRules.get(a.id);
             const offer = rule ? rule.offer : 0;
-            const basePrice = Number(a.price_base);
-            const discountPrice = Math.max(0, basePrice + offer);
+            const basePrice = Number(a.price_base) || 0;
+
+            // Keep semantics aligned with store PDP:
+            // offer < 0 => absolute value is sell price
+            // offer > 0 => direct sell price
+            // offer = 0 => sell price is MRP/base price
+            let mrp = basePrice;
+            let discountPrice = basePrice;
+            if (offer < 0) {
+                discountPrice = Math.abs(offer);
+            } else if (offer > 0) {
+                discountPrice = offer;
+            }
+            if (mrp === 0) mrp = discountPrice;
+
             const inclusionType =
                 rule?.inclusion ||
                 (bundleIdsForDealer.has(a.id) ? 'BUNDLE' : undefined) ||
@@ -3774,7 +3969,7 @@ export async function getQuoteByDisplayId(
                 displayName,
                 description: descriptionLabel,
                 suitableFor: a.specs?.suitable_for || '',
-                price: basePrice,
+                price: mrp,
                 discountPrice,
                 maxQty: 1,
                 isMandatory,
@@ -3782,6 +3977,7 @@ export async function getQuoteByDisplayId(
                 category: a.category || 'OTHERS',
                 brand: a.brand?.name || null,
                 subCategory: null,
+                image: a.image_url || null,
             };
         });
 
@@ -3964,6 +4160,7 @@ export async function getQuoteByDisplayId(
     const jsonAddonIds = new Set(mappedJsonAddons.map(a => a.id));
     const missingRuleAddons = ruleAddons.filter(a => !jsonAddonIds.has(a.id));
     const pdpInsuranceAddons = [...mappedJsonAddons, ...missingRuleAddons];
+    const alternativeVariantId = identity.variantId || quote.variant_id || '';
 
     return {
         success: true,
@@ -3975,13 +4172,13 @@ export async function getQuoteByDisplayId(
                 email: quote.customer?.primary_email || (quote.lead as any)?.customer_email || null,
             },
             vehicle: {
-                brand: commercials.brand || '',
-                model: commercials.model || '',
-                variant: commercials.variant || '',
-                color: commercials.color_name || commercials.color || '',
+                brand: commercials.brand || identity.brand || '',
+                model: commercials.model || identity.model || '',
+                variant: commercials.variant || identity.variant || '',
+                color: commercials.color_name || commercials.color || vehicleSpecs?.color_name || '',
                 hexCode,
                 imageUrl: resolvedImageUrl,
-                skuId: quote.color_id || quote.variant_id,
+                skuId: selectedSkuId,
                 specs: vehicleSpecs,
                 keySpecs: [
                     {
@@ -4010,7 +4207,7 @@ export async function getQuoteByDisplayId(
                 rear_brake: vehicleSpecs.rear_brake_type || vehicleSpecs.rear_brake || '',
                 tyre_type: vehicleSpecs.tyre_type || '',
             },
-            alternativeBikes: await getAlternativeRecommendations(quote.variant_id || quote.color_id || ''),
+            alternativeBikes: alternativeVariantId ? await getAlternativeRecommendations(alternativeVariantId) : [],
             pdpOptions: {
                 accessories: pdpAccessories,
                 services: pdpServices,
@@ -4570,42 +4767,72 @@ export async function reassignQuoteDealership(
  * Checks cat_recommendations table first, fallbacks to similarity logic.
  */
 export async function getAlternativeRecommendations(variantId: string) {
+    const hydrateVariants = async (variantIds: string[]) => {
+        const ids = Array.from(new Set((variantIds || []).filter(Boolean)));
+        if (ids.length === 0) return [];
+
+        const [{ data: variants }, { data: variantSkus }] = await Promise.all([
+            (adminClient as any).from('cat_variants_vehicle').select('id, name').in('id', ids),
+            (adminClient as any)
+                .from('cat_skus')
+                .select('id, vehicle_variant_id, primary_image, price_base, is_primary')
+                .eq('sku_type', 'VEHICLE')
+                .eq('status', 'ACTIVE')
+                .in('vehicle_variant_id', ids),
+        ]);
+
+        const bestSkuByVariant = new Map<string, any>();
+        (variantSkus || []).forEach((sku: any) => {
+            const key = sku.vehicle_variant_id;
+            if (!key) return;
+            const current = bestSkuByVariant.get(key);
+            if (!current) {
+                bestSkuByVariant.set(key, sku);
+                return;
+            }
+            if (sku.is_primary && !current.is_primary) {
+                bestSkuByVariant.set(key, sku);
+                return;
+            }
+            if (!current.primary_image && sku.primary_image) {
+                bestSkuByVariant.set(key, sku);
+            }
+        });
+
+        return (variants || []).map((variant: any) => {
+            const sku = bestSkuByVariant.get(variant.id);
+            return {
+                id: variant.id,
+                name: variant.name,
+                brand: '',
+                price: Number(sku?.price_base || 0),
+                image: sku?.primary_image || null,
+            };
+        });
+    };
+
     // 1. Check persistent recommendations
     const { data: persistent, error: persistentError } = await (adminClient as any)
         .from('cat_recommendations')
-        .select(
-            `
-            recommended_variant_id,
-            position,
-            item:recommended_variant_id(
-                id,
-                name,
-                image_url,
-                price_base
-            )
-        `
-        )
+        .select('recommended_variant_id, position')
         .eq('source_variant_id', variantId)
         .order('position', { ascending: true })
         .limit(3);
 
     if (!persistentError && persistent && persistent.length > 0) {
-        return (persistent as any[]).map(p => {
-            const item = (p as any).item as any;
-            return {
-                id: item.id,
-                name: item.name,
-                brand: '',
-                price: Number(item.price_base),
-                image: item.image_url,
-            };
-        });
+        const orderedIds = (persistent as any[]).map(p => p.recommended_variant_id).filter(Boolean);
+        const hydrated = await hydrateVariants(orderedIds);
+        const hydratedMap = new Map(hydrated.map((item: any) => [item.id, item]));
+        return orderedIds
+            .map(id => hydratedMap.get(id))
+            .filter(Boolean)
+            .slice(0, 3);
     }
 
-    // 2. Fallback: Get current variant's model and price
+    // 2. Fallback: Get current variant model
     const { data: current, error: currentError } = await (adminClient as any)
         .from('cat_variants_vehicle')
-        .select('model_id, price_base')
+        .select('id, model_id')
         .eq('id', variantId)
         .single();
 
@@ -4614,30 +4841,33 @@ export async function getAlternativeRecommendations(variantId: string) {
         return [];
     }
 
-    // 3. Fallback: Fetch up to 3 sibling variants from the same model within ±20% price
-    const basePrice = Number(current.price_base) || 0;
-    const minPrice = basePrice * 0.8;
-    const maxPrice = basePrice * 1.2;
-
-    const { data: alternatives, error: altError } = await (adminClient as any)
+    // 3. Fetch sibling variants from same model and hydrate from primary vehicle SKUs
+    const { data: siblingVariants, error: siblingError } = await (adminClient as any)
         .from('cat_variants_vehicle')
-        .select('id, name, image_url, price_base')
+        .select('id')
         .eq('model_id', current.model_id)
         .neq('id', variantId)
-        .gte('price_base', minPrice)
-        .lte('price_base', maxPrice)
-        .limit(3);
+        .limit(20);
 
-    if (altError) {
-        console.error('Error fetching alternatives:', altError);
+    if (siblingError) {
+        console.error('Error fetching sibling variants:', siblingError);
         return [];
     }
 
-    return (alternatives || []).map((a: any) => ({
-        id: a.id,
-        name: a.name,
-        brand: '',
-        price: Number(a.price_base),
-        image: a.image_url,
-    }));
+    const siblingIds = (siblingVariants || []).map((v: any) => v.id).filter(Boolean);
+    if (siblingIds.length === 0) return [];
+
+    const [currentHydrated] = await hydrateVariants([variantId]);
+    const hydratedSiblings = await hydrateVariants(siblingIds);
+
+    const currentPrice = Number(currentHydrated?.price || 0);
+    let filtered = hydratedSiblings;
+    if (currentPrice > 0) {
+        const minPrice = currentPrice * 0.8;
+        const maxPrice = currentPrice * 1.2;
+        filtered = hydratedSiblings.filter((item: any) => item.price >= minPrice && item.price <= maxPrice);
+    }
+
+    if (filtered.length === 0) filtered = hydratedSiblings;
+    return filtered.slice(0, 3);
 }

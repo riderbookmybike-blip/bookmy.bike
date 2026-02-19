@@ -63,198 +63,118 @@ export default function PricingCard({
     const displayOriginal = originalPrice || totalOnRoad + totalSavings;
 
     return (
-        <div className="glass-panel dark:bg-black/60 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-full border border-white/5">
-            {/* Main Content Holder */}
-            <div className="p-6 pb-2">
-                {leadName && (
-                    <div className="mb-4 p-3 bg-brand-primary/10 border border-brand-primary/20 rounded-2xl">
-                        <p className="text-[9px] font-black uppercase text-brand-primary tracking-widest leading-none mb-1">
-                            Quoting for
-                        </p>
-                        <p className="text-lg font-black text-slate-900 dark:text-white uppercase leading-none">
-                            {leadName}
-                        </p>
-                    </div>
-                )}
-
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-brand-primary tracking-widest mb-6">
-                    <Zap size={14} />
-                    Financial Summary
+        <div className="md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:dark:backdrop-blur-none md:border-0 md:shadow-none rounded-[2.5rem] md:rounded-none overflow-hidden flex flex-col h-full">
+            {/* Lead Name Banner */}
+            {leadName && (
+                <div className="mb-4 p-3 bg-brand-primary/10 border border-brand-primary/20 rounded-2xl shrink-0">
+                    <p className="text-[9px] font-black uppercase text-brand-primary tracking-widest leading-none mb-1">
+                        Quoting for
+                    </p>
+                    <p className="text-lg font-black text-slate-900 dark:text-white uppercase leading-none">
+                        {leadName}
+                    </p>
                 </div>
-            </div>
+            )}
 
-            {/* Price Breakup */}
-            <div className="px-6 py-4 flex-1">
-                <div className="space-y-4">
-                    {priceBreakup
-                        .filter(i => !i.isTotal)
-                        .map((item, idx) => (
-                            <div key={idx} className="group/item relative">
-                                <div className="flex justify-between items-center text-[10px]">
-                                    <span
-                                        className={`font-bold uppercase tracking-widest ${item.breakdown || item.helpText || (item as any).comparisonOptions ? 'cursor-help border-b border-dotted border-slate-300 dark:border-white/20' : 'text-slate-600/80 dark:text-slate-400/80'}`}
-                                    >
-                                        {item.label}
-                                    </span>
-                                    <span
-                                        className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'}`}
-                                    >
-                                        {item.isDeduction ? '-' : ''}₹
-                                        {typeof item.value === 'number'
-                                            ? Math.abs(item.value).toLocaleString()
-                                            : item.value}
-                                    </span>
-                                </div>
+            {/* Price Breakup — stretched to fill content area */}
+            <div className="flex-1 flex flex-col justify-evenly">
+                {priceBreakup
+                    .filter(i => !i.isTotal)
+                    .map((item, idx) => (
+                        <div key={idx} className="group/item relative">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                    {item.label}
+                                </span>
+                                <span
+                                    className={`text-[11px] font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'}`}
+                                >
+                                    {item.isDeduction ? '-' : ''}₹
+                                    {typeof item.value === 'number'
+                                        ? Math.abs(item.value).toLocaleString()
+                                        : item.value}
+                                </span>
+                            </div>
 
-                                {/* Brief Details Inline (New Request) */}
-                                {item.breakdown && item.breakdown.length > 0 && (
-                                    <p className="text-[8px] text-slate-400 dark:text-zinc-600 mt-1 font-bold uppercase tracking-tighter truncate max-w-[180px]">
-                                        {item.breakdown.map(b => b.label).join(' • ')}
-                                    </p>
-                                )}
+                            {/* Enhanced Tooltip */}
+                            {(item.breakdown || item.helpText || (item as any).comparisonOptions) && (
+                                <div className="absolute right-0 top-full mt-2 z-50 w-max min-w-[200px] max-w-[320px] p-3 rounded-xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/item:opacity-100 group-hover/item:visible transition-all duration-300 pointer-events-none origin-top-right">
+                                    {/* Triangle pointer */}
+                                    <div className="absolute -top-1 right-4 w-2 h-2 bg-[#15191e] border-l border-t border-white/10 rotate-45" />
 
-                                {/* Enhanced Tooltip */}
-                                {(item.breakdown || item.helpText || (item as any).comparisonOptions) && (
-                                    <div className="absolute right-0 top-full mt-2 z-50 w-max min-w-[200px] max-w-[320px] p-3 rounded-xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/item:opacity-100 group-hover/item:visible transition-all duration-300 pointer-events-none origin-top-right">
-                                        {/* Triangle pointer */}
-                                        <div className="absolute -top-1 right-4 w-2 h-2 bg-[#15191e] border-l border-t border-white/10 rotate-45" />
+                                    <div className="space-y-3 relative z-10">
+                                        <div className="pb-2 border-b border-white/5">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-brand-primary mb-0.5">
+                                                {item.label}
+                                            </p>
+                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">
+                                                Breakdown & Details
+                                            </p>
+                                        </div>
 
-                                        <div className="space-y-3 relative z-10">
-                                            <div className="pb-2 border-b border-white/5">
-                                                <p className="text-[9px] font-black uppercase tracking-widest text-brand-primary mb-0.5">
-                                                    {item.label}
-                                                </p>
-                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">
-                                                    Breakdown & Details
-                                                </p>
+                                        {/* Comparison Cards (The "Teen Card" View) */}
+                                        {(item as any).comparisonOptions && (
+                                            <div className="grid grid-cols-1 gap-2">
+                                                {(item as any).comparisonOptions.map((opt: any) => (
+                                                    <div
+                                                        key={opt.id}
+                                                        className="bg-white/5 p-2 rounded-lg border border-white/5 flex items-center justify-between gap-4"
+                                                    >
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[9px] font-bold text-white uppercase tracking-tighter">
+                                                                {opt.name.replace(' Registration', '')}
+                                                            </span>
+                                                            <span className="text-[8px] text-slate-400 dark:text-slate-400 max-w-[120px] truncate">
+                                                                {opt.description}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-brand-primary tabular-nums">
+                                                            ₹{opt.price.toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                ))}
                                             </div>
+                                        )}
 
-                                            {/* Comparison Cards (The "Teen Card" View) */}
-                                            {(item as any).comparisonOptions && (
-                                                <div className="grid grid-cols-1 gap-2">
-                                                    {(item as any).comparisonOptions.map((opt: any) => (
+                                        {/* Standard Breakdown List */}
+                                        {item.breakdown &&
+                                            item.breakdown.length > 0 &&
+                                            !(item as any).comparisonOptions && (
+                                                <div className="space-y-1.5">
+                                                    {item.breakdown.map((b: any, bIdx: number) => (
                                                         <div
-                                                            key={opt.id}
-                                                            className="bg-white/5 p-2 rounded-lg border border-white/5 flex items-center justify-between gap-4"
+                                                            key={bIdx}
+                                                            className="flex justify-between items-center text-[9px]"
                                                         >
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[9px] font-bold text-white uppercase tracking-tighter">
-                                                                    {opt.name.replace(' Registration', '')}
-                                                                </span>
-                                                                <span className="text-[8px] text-slate-400 dark:text-slate-400 max-w-[120px] truncate">
-                                                                    {opt.description}
-                                                                </span>
-                                                            </div>
-                                                            <span className="text-[10px] font-black text-brand-primary tabular-nums">
-                                                                ₹{opt.price.toLocaleString()}
+                                                            <span className="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">
+                                                                {b.label}
+                                                            </span>
+                                                            <span className="text-white font-mono">
+                                                                ₹{(b.amount || b.value || 0).toLocaleString()}
                                                             </span>
                                                         </div>
                                                     ))}
                                                 </div>
                                             )}
 
-                                            {/* Standard Breakdown List */}
-                                            {item.breakdown &&
-                                                item.breakdown.length > 0 &&
-                                                !(item as any).comparisonOptions && (
-                                                    <div className="space-y-1.5">
-                                                        {item.breakdown.map((b: any, bIdx: number) => (
-                                                            <div
-                                                                key={bIdx}
-                                                                className="flex justify-between items-center text-[9px]"
-                                                            >
-                                                                <span className="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">
-                                                                    {b.label}
-                                                                </span>
-                                                                <span className="text-white font-mono">
-                                                                    ₹{(b.amount || b.value || 0).toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                            {/* Help Text Lines */}
-                                            {item.helpText && Array.isArray(item.helpText) && (
-                                                <div className="space-y-1">
-                                                    {item.helpText.map((text, hIdx) => (
-                                                        <p
-                                                            key={hIdx}
-                                                            className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed"
-                                                        >
-                                                            • {text}
-                                                        </p>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                                        {/* Help Text Lines */}
+                                        {item.helpText && Array.isArray(item.helpText) && (
+                                            <div className="space-y-1">
+                                                {item.helpText.map((text, hIdx) => (
+                                                    <p
+                                                        key={hIdx}
+                                                        className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed"
+                                                    >
+                                                        • {text}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        ))}
-                </div>
-            </div>
-
-            {/* Final Price Footer */}
-            <div className="p-6 pt-4 border-t border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-                <div className="flex flex-col gap-3">
-                    <div className="flex justify-between items-end">
-                        <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1">
-                                <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-600 dark:text-slate-400">
-                                    Offer Price
-                                </span>
-                                <Info size={10} className={infoColorClass} />
-                            </div>
-                            {pricingSource && (
-                                <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">
-                                    ({pricingSource})
-                                </span>
-                            )}
-                        </div>
-                        <div className="text-right flex flex-col items-end">
-                            {totalSavings > 0 && (
-                                <span className="text-xs font-bold text-slate-400 dark:text-zinc-600 line-through decoration-red-500/50 decoration-2 mr-1">
-                                    On Road ₹{displayOriginal.toLocaleString()}
-                                </span>
-                            )}
-                            <span className="text-4xl font-black italic tracking-tighter text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-in zoom-in-95 duration-700">
-                                ₹{totalOnRoad.toLocaleString()}
-                            </span>
-                            {coinPricing && (
-                                <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                                    B-Coin: {coinPricing.coinsUsed} used · Save ₹{coinPricing.discount.toLocaleString()}
-                                </span>
-                            )}
-                            {!coinPricing && showOClubPrompt && (
-                                <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                                    Signup & get 13 O-Club coins
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {totalSavings > 0 && (
-                        <div className="group/savings relative">
-                            <div className="flex items-center justify-between py-2.5 px-4 bg-brand-primary/[0.12] dark:bg-brand-primary/[0.06] border border-brand-primary/30 rounded-2xl animate-in slide-in-from-bottom-2 duration-500 shadow-[0_0_20px_rgba(255,215,0,0.05)]">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-5 h-5 rounded-full bg-brand-primary/20 flex items-center justify-center">
-                                        <Zap
-                                            size={10}
-                                            className="text-brand-primary fill-brand-primary animate-pulse"
-                                        />
-                                    </div>
-                                    <span className="text-[11px] font-black uppercase tracking-wider text-brand-primary">
-                                        You Are Saving ₹{totalSavings.toLocaleString()}
-                                    </span>
                                 </div>
-                                <div className="px-2 py-0.5 bg-brand-primary text-black text-[8px] font-black rounded-full uppercase tracking-tighter">
-                                    Limited Deal
-                                </div>
-                            </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    ))}
             </div>
         </div>
     );

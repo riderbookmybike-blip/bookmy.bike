@@ -32,6 +32,7 @@ import AttributeInput from '@/components/catalog/AttributeInput';
 import { toast } from 'sonner';
 import { INDIAN_STATES, DEFAULT_STATE_CODE, getStateName } from '@/constants/indianStates';
 import CopyableId from '@/components/ui/CopyableId';
+import { saveMatrixSkuEditor } from '@/actions/catalog/matrixStepActions';
 
 const getYoutubeThumbnail = (url: string) => {
     if (!url) return null;
@@ -1246,24 +1247,9 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                 onClick={async () => {
                                     setIsSavingSku(true);
                                     try {
-                                        const supabase = createClient();
-
                                         // 1. Determine base price from first selected state
                                         const primaryState = selectedStates[0] || DEFAULT_STATE_CODE;
                                         const basePrice = statePrices[primaryState] || editingSku.price_base || 0;
-
-                                        // 2. Update cat_skus (specs, price_base, inclusion_type)
-                                        const { error } = await (supabase as any)
-                                            .from('cat_skus')
-                                            .update({
-                                                specs: editingSku.specs,
-                                                price_base: basePrice,
-                                                inclusion_type: inclusionType,
-                                            })
-                                            .eq('id', editingSku.id);
-                                        if (error) throw error;
-
-                                        // 3. Upsert state prices into canonical state pricing table
                                         const effectivePrices: Record<string, number> = {};
                                         selectedStates.forEach(code => {
                                             const val = statePrices[code];
@@ -1275,41 +1261,33 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                         });
 
                                         const stateRows = Object.entries(effectivePrices).map(([code, price]) => ({
-                                            sku_id: editingSku.id,
                                             state_code: code,
                                             ex_showroom: price,
-                                            publish_stage: 'DRAFT',
                                         }));
-                                        if (stateRows.length > 0) {
-                                            const { error: priceErr } = await supabase
-                                                .from('cat_price_state_mh' as any)
-                                                .upsert(stateRows as any, { onConflict: 'sku_id,state_code' });
-                                            if (priceErr) console.error('State price upsert warning:', priceErr);
+
+                                        const compatibility = compatEntries.map((c: any) => ({
+                                            is_universal: Boolean(c.is_universal),
+                                            target_brand_id: c.target_brand_id || null,
+                                            target_family_id: c.target_family_id || null,
+                                            target_variant_id: c.target_variant_id || null,
+                                        }));
+
+                                        const result = await saveMatrixSkuEditor({
+                                            sku_id: editingSku.id,
+                                            specs: editingSku.specs || {},
+                                            price_base: basePrice,
+                                            inclusion_type: inclusionType,
+                                            state_prices: stateRows,
+                                            compatibility,
+                                        });
+
+                                        if (!result.success) {
+                                            throw new Error(result.error);
                                         }
 
-                                        // 4. Sync compatibility entries to cat_item_compatibility
-                                        // Delete existing entries then re-insert
-                                        await supabase
-                                            .from('cat_item_compatibility')
-                                            .delete()
-                                            .eq('item_id', editingSku.id);
-                                        if (compatEntries.length > 0) {
-                                            const compatRows = compatEntries.map((c: any) => ({
-                                                item_id: editingSku.id,
-                                                is_universal: c.is_universal || false,
-                                                target_brand_id: c.target_brand_id || null,
-                                                target_family_id: c.target_family_id || null,
-                                                target_variant_id: c.target_variant_id || null,
-                                            }));
-                                            const { error: compatErr } = await supabase
-                                                .from('cat_item_compatibility')
-                                                .insert(compatRows);
-                                            if (compatErr) console.error('Compatibility insert warning:', compatErr);
-                                        }
-
-                                        // 5. Update Local State
                                         const updatedSku = {
                                             ...editingSku,
+                                            ...(result.sku || {}),
                                             price_base: basePrice,
                                             inclusion_type: inclusionType,
                                         };

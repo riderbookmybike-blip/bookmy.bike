@@ -190,15 +190,6 @@ export function useSystemDealerContext({
                     activeSku = product.colors?.[0]?.skuId;
                 }
 
-                // Debug: Log what we're sending to RPC
-                console.log('[SSPP Debug] RPC Params:', {
-                    activeSku,
-                    selectedColor,
-                    productFirstColorSkuId: product.colors?.[0]?.skuId,
-                    district,
-                    stateCode,
-                });
-
                 const applyPricing = (pricingData: any) => {
                     setServerPricing(pricingData as ServerPricing);
 
@@ -238,13 +229,6 @@ export function useSystemDealerContext({
                         prefetchedPricing &&
                         Number(prefetchedPricing.ex_showroom) > 0 &&
                         String(prefetchedPricing.meta?.vehicle_color_id || '') === String(activeSku);
-
-                    if (prefetchCoversActiveSku) {
-                        console.log(
-                            '[SSPP] Skipping client pricing re-fetch – prefetchedPricing covers activeSku',
-                            activeSku
-                        );
-                    }
 
                     if (!prefetchCoversActiveSku) {
                         const activeStateCode = normalizeClientStateCode(stateCode);
