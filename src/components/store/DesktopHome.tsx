@@ -222,7 +222,7 @@ export function DesktopHome() {
             </div>
             {/* the hyper-aperture: kinetic chassis extraordinaria */}
             <section
-                className={`relative ${sectionViewportClass} ebook-section overflow-hidden bg-gradient-to-br from-slate-50 via-white to-white isolate flex flex-col items-center justify-start px-6 md:px-0 pt-6 md:pt-10`}
+                className={`relative ${sectionViewportClass} ebook-section overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 isolate flex flex-col items-center justify-start px-6 md:px-0 pt-6 md:pt-10`}
                 onMouseMove={e => {
                     const xPct = (e.clientX / window.innerWidth) * 100;
                     const x = (e.clientX / window.innerWidth - 0.5) * 30;
@@ -237,14 +237,14 @@ export function DesktopHome() {
                     {/* deep background image */}
                     <motion.div
                         initial={{ scale: 1.2, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 0.15 }}
+                        animate={{ scale: 1, opacity: 0.7 }}
                         transition={{ duration: 2.5, ease: [0.16, 1, 0.3, 1] }}
                         className="absolute inset-0 w-full h-full will-change-transform"
                         style={{
                             transform: 'translate(calc(var(--hyper-x) * -0.2), calc(var(--hyper-y) * -0.2)) scale(1.1)',
                         }}
                     >
-                        <img src={heroImage} alt="Tunnel" className="w-full h-full object-cover grayscale opacity-60" />
+                        <img src={heroImage} alt="Tunnel" className="w-full h-full object-cover opacity-80" />
                     </motion.div>
 
                     {/* aperture layer 1: mid frame */}
@@ -256,11 +256,11 @@ export function DesktopHome() {
                     />
 
                     {/* aperture layer 2: peripheral lens flare/vignette - Simplified for consistency */}
-                    <div className="absolute inset-0 bg-slate-200/5 z-20" />
+                    <div className="absolute inset-0 bg-black/30 z-20" />
 
                     {/* aperture layer 3: digital scanning grid */}
                     <div
-                        className="absolute inset-0 bg-[linear-gradient(to_right,#00000005_1px,transparent_1px),linear-gradient(to_bottom,#00000005_1px,transparent_1px)] bg-[size:120px_120px] z-30 opacity-40 mix-blend-multiply"
+                        className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:120px_120px] z-30 opacity-30"
                         style={{
                             transform: 'translate(calc(var(--hyper-x) * 0.4), calc(var(--hyper-y) * 0.4))',
                         }}
@@ -312,7 +312,7 @@ export function DesktopHome() {
                                 />
                             </defs>
                             <text
-                                className="text-[8.5px] font-black uppercase tracking-[0.6em] fill-slate-900 font-[family-name:var(--font-bruno-ace)]"
+                                className="text-[8.5px] font-black uppercase tracking-[0.6em] fill-white font-[family-name:var(--font-bruno-ace)]"
                                 style={{ opacity: 0.95 }}
                             >
                                 <textPath
@@ -327,25 +327,25 @@ export function DesktopHome() {
                         </motion.svg>
 
                         {/* Central HUD Core */}
-                        <div className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full bg-white border border-slate-200 backdrop-blur-3xl flex flex-col items-center justify-center group/tele shadow-[0_20px_40px_rgba(0,0,0,0.05)] hover:border-brand-primary transition-all overflow-hidden">
+                        <div className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full bg-black/60 border border-white/20 backdrop-blur-3xl flex flex-col items-center justify-center group/tele shadow-[0_20px_40px_rgba(0,0,0,0.3)] hover:border-brand-primary transition-all overflow-hidden">
                             <motion.div
                                 animate={{ x: ['-100%', '200%'] }}
                                 transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
                                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-30deg] pointer-events-none"
                             />
                             <div className="z-10 scale-75 sm:scale-90 md:scale-110 group-hover/tele:scale-100 transition-transform duration-500 brightness-100">
-                                <Logo variant="icon" size={64} mode="light" />
+                                <Logo variant="icon" size={64} mode="dark" />
                             </div>
                         </div>
 
                         {/* Decorative Outer Rings (Counter-Rotating: Anti-clockwise) */}
-                        <div className="absolute inset-0 rounded-full border border-slate-900/5 scale-[0.8] pointer-events-none" />
+                        <div className="absolute inset-0 rounded-full border border-white/10 scale-[0.8] pointer-events-none" />
                         <motion.div
                             animate={{ rotate: -360 }}
                             transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
-                            className="absolute inset-0 rounded-full border border-dashed border-slate-900/10 scale-[0.9] pointer-events-none opacity-40"
+                            className="absolute inset-0 rounded-full border border-dashed border-white/20 scale-[0.9] pointer-events-none opacity-40"
                         />
-                        <div className="absolute inset-0 rounded-full border border-slate-900/5 scale-[1.05] pointer-events-none" />
+                        <div className="absolute inset-0 rounded-full border border-white/10 scale-[1.05] pointer-events-none" />
                     </motion.div>
 
                     {/* LIQUID CHROME TYPOGRAPHY */}
@@ -354,7 +354,7 @@ export function DesktopHome() {
                             initial={{ opacity: 0, letterSpacing: '1.2em' }}
                             animate={{ opacity: 1, letterSpacing: '0.4em' }}
                             transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
-                            className="text-sm md:text-base font-black uppercase text-slate-900 mb-6 transition-all duration-300 font-[family-name:var(--font-bruno-ace)]"
+                            className="text-sm md:text-base font-black uppercase text-white/90 mb-6 transition-all duration-300 font-[family-name:var(--font-bruno-ace)]"
                         >
                             The Highest Fidelity Marketplace
                         </motion.div>
@@ -365,7 +365,7 @@ export function DesktopHome() {
                                 initial={{ opacity: 0, y: 40 }}
                                 animate={{ opacity: 0.05, y: 0 }}
                                 transition={{ delay: 0.4, duration: 1.5 }}
-                                className="absolute -inset-2 text-4xl sm:text-6xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-slate-900 blur-3xl pointer-events-none"
+                                className="absolute -inset-2 text-4xl sm:text-6xl md:text-8xl lg:text-[clamp(4rem,12.5vw,10.5rem)] font-black uppercase text-white blur-3xl pointer-events-none"
                                 style={{
                                     backgroundPosition: 'calc(100% - var(--mouse-x-pct)) 50%',
                                 }}
@@ -378,7 +378,7 @@ export function DesktopHome() {
                                 initial={{ opacity: 0, scale: 0.95, y: 30 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-                                className="relative text-4xl sm:text-6xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#0f172a_0%,#0f172a_40%,#ff9d00_50%,#0f172a_60%,#0f172a_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
+                                className="relative text-4xl sm:text-6xl md:text-8xl lg:text-[clamp(4rem,12vw,9.5rem)] font-black italic uppercase tracking-[-0.03em] leading-none text-transparent bg-clip-text bg-[linear-gradient(110deg,#ffffff_0%,#ffffff_40%,#ff9d00_50%,#ffffff_60%,#ffffff_100%)] bg-[length:200%_100%] transition-all duration-1000 font-[family-name:var(--font-bruno-ace)]"
                                 style={{
                                     textShadow: '0 10px 30px rgba(0,0,0,0.05)',
                                     WebkitTextFillColor: 'transparent',
@@ -410,7 +410,7 @@ export function DesktopHome() {
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02 }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 h-[220px] bg-white border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-slate-200'} rounded-3xl backdrop-blur-3xl overflow-hidden group/bento flex flex-col justify-center cursor-pointer shadow-lg transition-all duration-500`}
+                            className={`${bentoHover === 'inventory' ? 'md:col-span-2' : 'md:col-span-1'} relative p-8 h-[220px] bg-black/40 border ${bentoHover === 'inventory' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-xl overflow-hidden group/bento flex flex-col justify-center cursor-pointer shadow-lg transition-all duration-500`}
                         >
                             <div className="absolute top-0 right-0 p-6 opacity-20 group-hover/bento:opacity-100 transition-opacity">
                                 <Zap size={24} className="text-brand-primary" />
@@ -418,7 +418,7 @@ export function DesktopHome() {
                             <div className="flex items-center gap-8 relative z-10 w-full h-full">
                                 {/* Left Column: Core Stats (Locked Width) */}
                                 <div className="md:w-48 flex-none space-y-4">
-                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">
+                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/60 font-[family-name:var(--font-bruno-ace)] group-hover/bento:text-brand-primary transition-colors">
                                         <span>{t('SKU_Live')}</span>
                                         <motion.div
                                             animate={{ opacity: [1, 0.1, 1] }}
@@ -427,12 +427,12 @@ export function DesktopHome() {
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <span className="text-4xl font-black text-slate-900 italic tracking-tighter leading-none">
+                                        <span className="text-4xl font-black text-white italic tracking-tighter leading-none">
                                             380+
                                         </span>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-slate-500 tracking-widest px-2 py-1 rounded font-inter opacity-60">
+                                        <span className="text-[10px] font-bold text-white/40 tracking-widest px-2 py-1 rounded font-inter">
                                             {t('active_sourcing')}
                                         </span>
                                     </div>
@@ -444,7 +444,7 @@ export function DesktopHome() {
                                         <motion.div
                                             initial={{ opacity: 0, x: 10 }}
                                             animate={{ opacity: 1, x: 0 }}
-                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl backdrop-blur-sm"
+                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-brand-primary animate-pulse" />
@@ -452,7 +452,7 @@ export function DesktopHome() {
                                                     {t('Archive_01: Inventory_Core')}
                                                 </span>
                                             </div>
-                                            <p className="text-[12px] text-slate-500 font-medium leading-[1.6] max-w-[240px]">
+                                            <p className="text-[12px] text-white/50 font-medium leading-[1.6] max-w-[240px]">
                                                 {t(
                                                     "Access India's largest curated collection of premium motorcycles, updated real-time across regional hubs."
                                                 )}
@@ -472,12 +472,12 @@ export function DesktopHome() {
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.02 }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 h-[220px] bg-white border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-slate-200'} rounded-3xl backdrop-blur-3xl group/dispatch flex flex-col justify-center cursor-pointer shadow-lg transition-all duration-500`}
+                            className={`${bentoHover === 'dispatch' ? 'md:col-span-2' : 'md:col-span-1'} p-8 h-[220px] bg-black/40 border ${bentoHover === 'dispatch' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-xl group/dispatch flex flex-col justify-center cursor-pointer shadow-lg transition-all duration-500`}
                         >
                             <div className="flex items-center gap-8 relative z-10 w-full h-full">
                                 {/* Left Column: Action Chips */}
                                 <div className="md:w-48 flex-none space-y-4">
-                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 font-[family-name:var(--font-bruno-ace)]">
+                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/60 font-[family-name:var(--font-bruno-ace)]">
                                         <span>{t('Smart_Discovery')}</span>
                                         <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
                                     </div>
@@ -485,7 +485,7 @@ export function DesktopHome() {
                                         {['Under 80k', 'Best Mileage', 'Electric', 'Cruiser'].map(chip => (
                                             <div
                                                 key={chip}
-                                                className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full text-[9px] font-black uppercase tracking-tight text-slate-500 hover:bg-brand-primary hover:text-black hover:border-brand-primary transition-all"
+                                                className="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-tight text-white/60 hover:bg-brand-primary hover:text-black hover:border-brand-primary transition-all"
                                             >
                                                 {chip}
                                             </div>
@@ -496,11 +496,11 @@ export function DesktopHome() {
                                 {/* Right Column: Expanded Details */}
                                 {bentoHover === 'dispatch' && (
                                     <>
-                                        <div className="w-px h-24 bg-slate-200 skew-x-[-20deg] hidden md:block" />
+                                        <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
                                         <motion.div
                                             initial={{ opacity: 0, x: 10 }}
                                             animate={{ opacity: 1, x: 0 }}
-                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl backdrop-blur-sm"
+                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-brand-primary" />
@@ -508,7 +508,7 @@ export function DesktopHome() {
                                                     {t('Frictionless_Picker')}
                                                 </span>
                                             </div>
-                                            <p className="text-[12px] text-slate-500 font-medium leading-[1.6]">
+                                            <p className="text-[12px] text-white/50 font-medium leading-[1.6]">
                                                 {t(
                                                     'Bypass traditional browsing. One-tap access to pre-filtered collections based on your lifestyle.'
                                                 )}
@@ -528,12 +528,12 @@ export function DesktopHome() {
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ scale: 1.02 }}
                             transition={{ layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] } }}
-                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 h-[220px] bg-white border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-slate-200'} rounded-3xl backdrop-blur-3xl group/savings flex flex-col justify-center cursor-pointer shadow-lg transition-all duration-500`}
+                            className={`${bentoHover === 'savings' || bentoHover === null ? 'md:col-span-2' : 'md:col-span-1'} p-8 h-[220px] bg-black/40 border ${bentoHover === 'savings' ? 'border-brand-primary' : 'border-white/10'} rounded-3xl backdrop-blur-xl group/savings flex flex-col justify-center cursor-pointer shadow-lg transition-all duration-500`}
                         >
                             <div className="flex items-center gap-8 relative z-10 w-full h-full">
                                 {/* Left Column: Core Stats (Locked Width) */}
                                 <div className="md:w-48 flex-none space-y-4">
-                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 font-[family-name:var(--font-bruno-ace)]">
+                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/60 font-[family-name:var(--font-bruno-ace)]">
                                         <span>{t('Savings_Matrix')}</span>
                                         <motion.div
                                             animate={{ opacity: [1, 0.1, 1] }}
@@ -542,12 +542,12 @@ export function DesktopHome() {
                                         />
                                     </div>
                                     <div className="flex items-baseline gap-4 whitespace-nowrap">
-                                        <p className="text-4xl font-black text-slate-900 italic tracking-tighter leading-none">
+                                        <p className="text-4xl font-black text-white italic tracking-tighter leading-none">
                                             {MARKET_METRICS.avgSavings}
                                         </p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[10px] font-bold text-slate-500 tracking-widest px-2 py-1 rounded opacity-60">
+                                        <p className="text-[10px] font-bold text-white/40 tracking-widest px-2 py-1 rounded">
                                             {t('exclusive_rebate')}
                                         </p>
                                     </div>
@@ -556,11 +556,11 @@ export function DesktopHome() {
                                 {/* Right Column: Expanded Details */}
                                 {(bentoHover === 'savings' || bentoHover === null) && (
                                     <>
-                                        <div className="w-px h-24 bg-slate-200 skew-x-[-20deg] hidden md:block" />
+                                        <div className="w-px h-24 bg-white/10 skew-x-[-20deg] hidden md:block" />
                                         <motion.div
                                             initial={{ opacity: 0, x: 10 }}
                                             animate={{ opacity: 1, x: 0 }}
-                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl backdrop-blur-sm"
+                                            className="flex-1 hidden md:flex flex-col gap-2 p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-brand-primary animate-pulse" />
@@ -568,7 +568,7 @@ export function DesktopHome() {
                                                     {t('Archive_03: Finance_Core')}
                                                 </span>
                                             </div>
-                                            <p className="text-[12px] text-slate-500 font-medium leading-[1.6] max-w-[240px]">
+                                            <p className="text-[12px] text-white/50 font-medium leading-[1.6] max-w-[240px]">
                                                 {t(
                                                     'Leverage our Lowest EMI Guarantee and exclusive dealer rebates to save an average of ₹12,000 per booking.'
                                                 )}
@@ -601,8 +601,8 @@ export function DesktopHome() {
                                     fill="transparent"
                                     rx="10"
                                     stroke="#000"
-                                    strokeWidth="1"
-                                    strokeOpacity="0.1"
+                                    strokeWidth="1.5"
+                                    strokeOpacity="0.3"
                                     className="group-hover:stroke-brand-primary/50 transition-colors"
                                 />
                                 <motion.rect
@@ -612,7 +612,7 @@ export function DesktopHome() {
                                     height="100%"
                                     fill="transparent"
                                     rx="10"
-                                    stroke="#059669"
+                                    stroke="#FFD700"
                                     strokeWidth="2"
                                     strokeDasharray="100, 400"
                                     strokeDashoffset="0"
@@ -621,7 +621,7 @@ export function DesktopHome() {
                                 />
                             </svg>
 
-                            <div className="relative z-10 flex items-center gap-4 text-xs font-black uppercase tracking-[0.4rem] text-slate-900 group-hover:text-black transition-colors font-[family-name:var(--font-bruno-ace)]">
+                            <div className="relative z-10 flex items-center gap-4 text-xs font-black uppercase tracking-[0.4rem] text-white group-hover:text-brand-primary transition-colors font-[family-name:var(--font-bruno-ace)]">
                                 <Search size={18} />
                                 {t('Lock_Intro_Pricing')}
                             </div>
@@ -630,12 +630,12 @@ export function DesktopHome() {
                             <div className="absolute inset-0 bg-brand-primary/5 rounded-xl scale-95 group-hover:scale-110 opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl" />
                         </Link>
 
-                        <div className="hidden md:flex gap-12 opacity-30 text-[9px] font-mono tracking-widest text-slate-900">
+                        <div className="hidden md:flex gap-12 opacity-30 text-[9px] font-mono tracking-widest text-white">
                             <span className="flex items-center gap-2">
-                                <div className="w-1 h-1 bg-slate-900 rounded-full" /> SECURE_LINK: ENABLED
+                                <div className="w-1 h-1 bg-white rounded-full" /> SECURE_LINK: ENABLED
                             </span>
                             <span className="flex items-center gap-2">
-                                <div className="w-1 h-1 bg-slate-900 rounded-full" /> HAPTIC_FEEDBACK: ACTIVE
+                                <div className="w-1 h-1 bg-white rounded-full" /> HAPTIC_FEEDBACK: ACTIVE
                             </span>
                             <span className="flex items-center gap-2 underline">v2.6_OS_CORE</span>
                         </div>
@@ -643,8 +643,8 @@ export function DesktopHome() {
                 </div>
 
                 {/* cinematic letterbox / vignette overlay */}
-                <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-slate-100/10 to-transparent z-40" />
-                <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-slate-100/10 to-transparent z-40" />
+                <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-black/40 to-transparent z-40" />
+                <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black/40 to-transparent z-40" />
             </section>
 
             <section
