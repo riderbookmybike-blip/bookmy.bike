@@ -60,26 +60,55 @@ export interface ProductVariant {
 export interface VehicleSpecifications {
     engine: {
         displacement?: string;
+        type?: string;
         maxPower?: string;
         maxTorque?: string;
+        numValves?: string;
+        startType?: string;
+        mileage?: string;
+        cooling?: string;
     };
     transmission: {
         type: string;
         gears?: string;
     };
+    brakes?: {
+        front?: string;
+        rear?: string;
+        abs?: string;
+    };
+    suspension?: {
+        front?: string;
+        rear?: string;
+    };
     battery?: {
         range?: string;
         chargingTime?: string;
+        capacity?: string;
+        motorPower?: string;
     };
     dimensions: {
-        seatHeight?: string;
         kerbWeight?: string;
-        curbWeight?: string; // Add alias for backward compat
+        seatHeight?: string;
+        groundClearance?: string;
+        wheelbase?: string;
         fuelCapacity?: string;
+        curbWeight?: string; // alias for backward compat
+    };
+    tyres?: {
+        front?: string;
+        rear?: string;
+        type?: string;
     };
     features: {
-        bluetooth?: boolean | string; // Handled both type forms
-        abs?: string;
+        bluetooth?: boolean | string;
+        usbCharging?: boolean | string;
+        navigation?: boolean | string;
+        consoleType?: string;
+        ledHeadlamp?: boolean | string;
+        ledTailLamp?: boolean | string;
+        rideModes?: string;
+        abs?: string; // backward compat
     };
 }
 

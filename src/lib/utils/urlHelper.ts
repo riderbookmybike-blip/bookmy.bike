@@ -81,6 +81,15 @@ export function buildProductUrl(options: BuildUrlOptions): UrlResult {
     };
 }
 /**
+ * buildVariantExplorerUrl
+ * Generates the URL for the Variant Explorer page.
+ * Pattern: /store/compare/{make}/{model}
+ */
+export function buildVariantExplorerUrl(make: string, model: string): string {
+    return `/store/compare/${slugify(make)}/${slugify(model)}`;
+}
+
+/**
  * getProxiedUrl
  * Returns a proxied URL for external images to bypass CORS.
  */

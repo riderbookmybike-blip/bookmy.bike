@@ -198,92 +198,79 @@ export async function POST(req: NextRequest) {
                 const message = error instanceof Error ? error.message : 'Unknown error';
                 return NextResponse.json({ success: false, message }, { status: 500 });
             }
-            const actualEmail = foundUser.email || email;
-            const shouldSetEmail = !foundUser.email;
 
-            // 1. CRITICAL: Update Password ONLY (Must succeed for login)
-            // We strip all other fields to minimize chance of 422 errors (e.g. invalid email state)
-            const { error: passwordError } = await adminClient.auth.admin.updateUserById(userId, {
-                password: password,
-            });
-
-            if (passwordError) {
-                console.error('[Login Debug] Password update failed:', passwordError);
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message: `Secure session setup failed: ${passwordError.message || 'Password update rejected'}`,
-                    },
-                    { status: 500 }
+            const userMetadata = (foundUser.user_metadata || {}) as Record<string, unknown>;
+            let loginEmail = foundUser.email || email;
+            const isCredentialError = (msg?: string | null) =>
+                /invalid login credentials|invalid grant|email not confirmed|user not found/i.test(
+                    (msg || '').toLowerCase()
                 );
-            }
 
-            // 2. Metadata Update (Non-critical)
-            await adminClient.auth.admin.updateUserById(userId, {
-                user_metadata: { ...foundUser.user_metadata, phone_login_migrated: true },
-                role: 'authenticated',
-            });
-
-            // 3. Option A: Internal Email Synthesis (Best Effort)
-            // Ensure every user has an email for Supabase compatibility
+            // Ensure every auth user has a usable email for password sign-in.
             if (!foundUser.email) {
                 const synthesizedEmail = `${phone}@bookmy.bike`;
-
-                // Try setting the synthesized email
                 const { error: emailError } = await adminClient.auth.admin.updateUserById(userId, {
                     email: synthesizedEmail,
                     email_confirm: true,
                 });
 
-                if (emailError) {
+                if (!emailError) {
+                    loginEmail = synthesizedEmail;
+                } else {
                     console.warn('[Login Debug] Primary synthesized email failed:', emailError.message);
-
-                    // Fallback: Append User ID to ensure uniqueness
                     const fallbackEmail = `${phone}.${userId.substring(0, 4)}@bookmy.bike`;
-                    await adminClient.auth.admin.updateUserById(userId, {
+                    const { error: fallbackError } = await adminClient.auth.admin.updateUserById(userId, {
                         email: fallbackEmail,
                         email_confirm: true,
                         user_metadata: {
-                            ...foundUser.user_metadata,
+                            ...userMetadata,
                             email_synthesized: true,
                             email_conflict_resolved: true,
                         },
                     });
+                    if (!fallbackError) {
+                        loginEmail = fallbackEmail;
+                    }
                 }
             } else {
-                // User already has email, ensure it is confirmed
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if (!(foundUser as any).email_confirmed_at) {
                     await adminClient.auth.admin.updateUserById(userId, { email_confirm: true });
                 }
             }
 
-            // 2. OPTIONAL: Update Email (Best Effort)
-            // If this fails (e.g. duplicate email), we log it but allow login to proceed
-            if (shouldSetEmail) {
-                const { error: emailError } = await adminClient.auth.admin.updateUserById(userId, {
-                    email: actualEmail,
-                    email_confirm: true,
-                });
-                if (emailError) {
-                    console.warn('[Login Debug] Email update skipped (likely duplicate):', emailError.message);
-                    // Flag metadata so we know sync failed
-                    await adminClient.auth.admin.updateUserById(userId, {
-                        user_metadata: {
-                            ...foundUser.user_metadata,
-                            email_sync_failed: true,
-                            email_sync_error: emailError.message,
-                        },
-                    });
-                }
-            }
-
-            const { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
-                email: actualEmail,
+            let { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
+                email: loginEmail,
                 password: password,
             });
 
-            if (signInError || !signInData.session) {
+            if ((signInError || !signInData?.session) && isCredentialError(signInError?.message)) {
+                // One-time migration fallback: set deterministic password only when login fails.
+                // This avoids revoking active refresh tokens on every successful OTP login.
+                const { error: passwordError } = await adminClient.auth.admin.updateUserById(userId, {
+                    password: password,
+                });
+
+                if (passwordError) {
+                    console.error('[Login Debug] Password migration update failed:', passwordError);
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            message: `Secure session setup failed: ${passwordError.message || 'Password update rejected'}`,
+                        },
+                        { status: 500 }
+                    );
+                }
+
+                const retry = await adminClient.auth.signInWithPassword({
+                    email: loginEmail,
+                    password: password,
+                });
+                signInData = retry.data;
+                signInError = retry.error;
+            }
+
+            if (signInError || !signInData?.session) {
                 console.error('[Login Debug] signInWithPassword failed:', signInError);
                 return NextResponse.json(
                     {
@@ -292,6 +279,14 @@ export async function POST(req: NextRequest) {
                     },
                     { status: 500 }
                 );
+            }
+
+            // Best-effort metadata sync without touching password again.
+            if (!userMetadata.phone_login_migrated) {
+                await adminClient.auth.admin.updateUserById(userId, {
+                    user_metadata: { ...userMetadata, phone_login_migrated: true },
+                    role: 'authenticated',
+                });
             }
 
             // SELF-VERIFY: Check if the token is actually valid right now

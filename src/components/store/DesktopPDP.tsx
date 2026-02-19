@@ -118,6 +118,7 @@ interface DesktopPDPProps {
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
     isGated?: boolean;
+    forceMobileLayout?: boolean;
     serviceability?: {
         isServiceable: boolean;
         status: string;
@@ -243,6 +244,7 @@ export function DesktopPDP({
     walletCoins = null,
     showOClubPrompt = false,
     isGated = false,
+    forceMobileLayout = false,
     serviceability,
 }: DesktopPDPProps) {
     const params = useSearchParams();
@@ -1579,7 +1581,9 @@ export function DesktopPDP({
             </div>
             <div className="page-container pt-4 pb-28 md:pb-28 space-y-6 relative z-10">
                 {/* 1. Hero Row: Image / Pricing / Finance — Horizontal Accordion (Desktop) */}
-                <div className="hidden md:flex flex-row gap-4 h-[720px] overflow-visible">
+                <div
+                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} flex-row gap-4 h-[720px] overflow-visible`}
+                >
                     {heroCards.map((card, idx) => {
                         const Icon = card.icon;
                         const isActive = heroActiveTab === card.id;
@@ -2201,7 +2205,7 @@ export function DesktopPDP({
                 </div>
 
                 {/* 1b. Hero Row: Mobile (Vertical Stack) */}
-                <div className="md:hidden space-y-4">
+                <div className={`${forceMobileLayout ? '' : 'md:hidden'} space-y-4`}>
                     <VisualsRow
                         colors={colors}
                         selectedColor={selectedColor}
@@ -2215,7 +2219,7 @@ export function DesktopPDP({
                 </div>
 
                 {/* 3. Mobile Configuration Accordions */}
-                <div className="md:hidden space-y-4">
+                <div className={`${forceMobileLayout ? '' : 'md:hidden'} space-y-4`}>
                     {configCards.map(category => {
                         const Icon = category.icon;
                         const isOpen = mobileConfigOpen === category.id;
@@ -2259,7 +2263,9 @@ export function DesktopPDP({
                 </div>
 
                 {/* 4. Modular 5-Pillar Configuration Grid (Horizontal Accordion Design) */}
-                <div className="hidden md:flex flex-row gap-4 h-[720px] overflow-visible">
+                <div
+                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} flex-row gap-4 h-[720px] overflow-visible`}
+                >
                     {configCards.map((category, idx) => {
                         const Icon = category.icon;
                         const isActive = activeConfigTab === category.id;
@@ -2372,7 +2378,9 @@ export function DesktopPDP({
                         {/* Left: Product Identity (Desktop) + Price */}
                         <div className="flex items-center gap-4 md:gap-6 min-w-0">
                             {/* Product Thumbnail — Desktop only */}
-                            <div className="hidden md:flex items-center gap-3 min-w-0">
+                            <div
+                                className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} items-center gap-3 min-w-0`}
+                            >
                                 <div className="w-12 h-12 relative flex items-center justify-center bg-white/10 rounded-xl overflow-hidden shrink-0">
                                     <Image
                                         src={getProductImage()}
@@ -2405,11 +2413,15 @@ export function DesktopPDP({
                             {/* Price Summary */}
                             <div className="flex items-center gap-3 md:gap-4">
                                 <div className="flex flex-col md:flex-row md:items-center md:gap-3">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 md:hidden">
+                                    <span
+                                        className={`text-[10px] font-black uppercase tracking-widest text-slate-400 ${forceMobileLayout ? '' : 'md:hidden'}`}
+                                    >
                                         On-Road
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <span
+                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline'} text-[10px] font-black uppercase tracking-widest text-slate-400`}
+                                        >
                                             On-Road
                                         </span>
                                         {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
@@ -2425,8 +2437,12 @@ export function DesktopPDP({
 
                                 {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
                                     <>
-                                        <div className="hidden md:block w-px h-6 bg-white/10" />
-                                        <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                                        <div
+                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-6 bg-white/10`}
+                                        />
+                                        <span
+                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline'} text-[10px] font-black uppercase tracking-widest text-emerald-400`}
+                                        >
                                             ✦ O'Club Privileged Saving: ₹
                                             {(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}
                                         </span>
@@ -2435,16 +2451,24 @@ export function DesktopPDP({
 
                                 {!coinPricing && showOClubPrompt && (
                                     <>
-                                        <div className="hidden md:block w-px h-6 bg-white/10" />
-                                        <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black uppercase tracking-widest text-indigo-400">
+                                        <div
+                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-6 bg-white/10`}
+                                        />
+                                        <span
+                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline-flex'} items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black uppercase tracking-widest text-indigo-400`}
+                                        >
                                             +13 O-Club Coins
                                         </span>
                                     </>
                                 )}
 
                                 {/* EMI & Tenure */}
-                                <div className="hidden md:block w-px h-6 bg-white/10" />
-                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest text-white font-mono tabular-nums">
+                                <div
+                                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-6 bg-white/10`}
+                                />
+                                <span
+                                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline'} text-[10px] font-black uppercase tracking-widest text-white font-mono tabular-nums`}
+                                >
                                     EMI ₹{footerEmi.toLocaleString()} / {emiTenure}mo
                                 </span>
                             </div>
@@ -2453,7 +2477,7 @@ export function DesktopPDP({
                         {/* Right: Actions (Desktop) + CTA */}
                         <div className="flex items-center gap-3 md:gap-4">
                             {/* Action Icons — Desktop only */}
-                            <div className="hidden md:flex items-center gap-1">
+                            <div className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} items-center gap-1`}>
                                 <ActionIcon
                                     icon={Share2}
                                     onClick={handleShareQuote}

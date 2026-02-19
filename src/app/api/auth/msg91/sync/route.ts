@@ -54,27 +54,76 @@ export async function POST(req: NextRequest) {
         }
 
         const userId = foundUser.id;
-        const actualEmail = foundUser.email || email; // Use real email if exists, else synthesized
-        const shouldSetEmail = !foundUser.email;
+        const userMetadata = (foundUser.user_metadata || {}) as Record<string, unknown>;
+        let loginEmail = foundUser.email || email;
+        const isCredentialError = (msg?: string | null) =>
+            /invalid login credentials|invalid grant|email not confirmed|user not found/i.test(
+                (msg || '').toLowerCase()
+            );
 
-        // 3. MIGRATION FIX: Ensure Password is Set for Legacy Users
-        const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
-            password: password,
-            ...(shouldSetEmail ? { email: actualEmail, email_confirm: true } : { email_confirm: true }),
-            user_metadata: { phone_login_migrated: true },
-        });
-
-        if (updateError) {
-            console.error('Migration Error:', updateError);
+        // Ensure email exists for password sign-in.
+        if (!foundUser.email) {
+            const synthesizedEmail = `${phone}@bookmy.bike`;
+            const { error: emailError } = await adminClient.auth.admin.updateUserById(userId, {
+                email: synthesizedEmail,
+                email_confirm: true,
+            });
+            if (!emailError) {
+                loginEmail = synthesizedEmail;
+            } else {
+                const fallbackEmail = `${phone}.${userId.substring(0, 4)}@bookmy.bike`;
+                const { error: fallbackError } = await adminClient.auth.admin.updateUserById(userId, {
+                    email: fallbackEmail,
+                    email_confirm: true,
+                    user_metadata: {
+                        ...userMetadata,
+                        email_synthesized: true,
+                        email_conflict_resolved: true,
+                    },
+                });
+                if (!fallbackError) {
+                    loginEmail = fallbackEmail;
+                }
+            }
+        } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (!(foundUser as any).email_confirmed_at) {
+                await adminClient.auth.admin.updateUserById(userId, { email_confirm: true });
+            }
         }
 
-        // 4. GENERATE SESSION
-        const { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
-            email: actualEmail,
+        // 4. GENERATE SESSION (without forced password reset)
+        let { data: signInData, error: signInError } = await adminClient.auth.signInWithPassword({
+            email: loginEmail,
             password: password,
         });
 
-        if (signInError || !signInData.session) {
+        if ((signInError || !signInData?.session) && isCredentialError(signInError?.message)) {
+            const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
+                password: password,
+                user_metadata: { ...userMetadata, phone_login_migrated: true },
+            });
+
+            if (updateError) {
+                console.error('Migration Error:', updateError);
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: updateError.message || 'Password migration failed',
+                    },
+                    { status: 500 }
+                );
+            }
+
+            const retry = await adminClient.auth.signInWithPassword({
+                email: loginEmail,
+                password: password,
+            });
+            signInData = retry.data;
+            signInError = retry.error;
+        }
+
+        if (signInError || !signInData?.session) {
             console.error('Session Generation Error:', signInError);
             return NextResponse.json(
                 {

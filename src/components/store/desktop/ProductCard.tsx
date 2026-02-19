@@ -48,6 +48,8 @@ export const ProductCard = ({
     walletCoins,
     showOClubPrompt,
     showBcoinBadge = true,
+    variantCount,
+    onExplore,
 }: {
     v: ProductVariant;
     viewMode?: 'grid' | 'list';
@@ -88,6 +90,8 @@ export const ProductCard = ({
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
     showBcoinBadge?: boolean;
+    variantCount?: number;
+    onExplore?: () => void;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { language } = useI18n();
@@ -803,9 +807,16 @@ export const ProductCard = ({
                     </div>
 
                     <div className="flex flex-col mt-1">
-                        <p className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-full text-left">
-                            {displayVariant}
-                        </p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-full text-left">
+                                {variantCount && variantCount > 1 ? `${variantCount} Variants` : displayVariant}
+                            </p>
+                            {variantCount && variantCount > 1 && (
+                                <span className="px-1.5 py-0.5 bg-brand-primary/10 text-brand-primary text-[8px] font-black uppercase tracking-wider rounded-md border border-brand-primary/20">
+                                    Family
+                                </span>
+                            )}
+                        </div>
                         {v.suitableFor && (
                             <div className="flex flex-wrap gap-1 mt-2">
                                 {v.suitableFor
@@ -829,7 +840,7 @@ export const ProductCard = ({
                     <div className="flex flex-col items-start pr-4">
                         <div className="relative group/offer flex items-center gap-1.5 mb-1.5">
                             <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.1em] italic">
-                                Offer Price
+                                {variantCount && variantCount > 1 ? 'Starting from' : 'Offer Price'}
                             </p>
                             <CircleHelp
                                 size={12}
@@ -1022,6 +1033,20 @@ export const ProductCard = ({
                                 className="w-full h-11 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] cursor-not-allowed flex items-center justify-center"
                             >
                                 Not Serviceable
+                            </button>
+                        ) : variantCount && variantCount > 1 && onExplore ? (
+                            <button
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    onExplore();
+                                }}
+                                className="group/btn relative w-full h-10 md:h-11 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all"
+                            >
+                                Explore {variantCount} Variants
+                                <ArrowRight
+                                    size={12}
+                                    className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
+                                />
                             </button>
                         ) : (
                             <Link

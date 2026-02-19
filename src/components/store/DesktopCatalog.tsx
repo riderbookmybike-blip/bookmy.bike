@@ -21,8 +21,10 @@ import {
 import { toast } from 'sonner';
 import { checkServiceability } from '@/actions/serviceArea';
 import Link from 'next/link';
-import { buildProductUrl } from '@/lib/utils/urlHelper';
+import { buildProductUrl, buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+
+import { groupProductsByModel } from '@/utils/variantGrouping';
 
 import { BRANDS as defaultBrands } from '@/config/market';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
@@ -88,6 +90,7 @@ export const DesktopCatalog = ({
 }: DesktopCatalogProps) => {
     // Prefer client-resolved items when available, otherwise SSR
     const isLoading = externalLoading;
+    const router = useRouter();
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
 
@@ -871,6 +874,22 @@ export const DesktopCatalog = ({
         return smartFilteredResults;
     }, [isSmart, results, smartFilteredResults, smartColor, explodedVariant]);
 
+    // Group displayResults by model — show only cheapest variant per model family
+    const groupedDisplayResults = useMemo(() => {
+        const groups = groupProductsByModel(displayResults);
+        return groups.map(group => {
+            // Sort by exShowroom price (ascending) and pick cheapest
+            const sorted = [...group.variants].sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
+            return {
+                representative: sorted[0],
+                variantCount: group.variants.length,
+                make: group.make,
+                model: group.model,
+                modelSlug: group.modelSlug,
+            };
+        });
+    }, [displayResults]);
+
     // Location gate: catalog stays in DOM for SEO, but overlaid with modal when location missing
     const showLocationGate = needsLocation || serviceability.status === 'unset';
 
@@ -1389,7 +1408,8 @@ export const DesktopCatalog = ({
                             }`}
                         >
                             {/* Results Grid */}
-                            {displayResults.map((v, idx) => {
+                            {groupedDisplayResults.map((group, idx) => {
+                                const v = group.representative;
                                 const key = `${v.id}-${(v as any).color || v.imageUrl || idx}`;
 
                                 return (
@@ -1406,6 +1426,15 @@ export const DesktopCatalog = ({
                                         walletCoins={isLoggedIn ? availableCoins : null}
                                         showOClubPrompt={!isLoggedIn}
                                         showBcoinBadge={isLoggedIn}
+                                        variantCount={group.variantCount}
+                                        onExplore={
+                                            group.variantCount > 1
+                                                ? () => {
+                                                      const url = buildVariantExplorerUrl(group.make, group.model);
+                                                      router.push(url);
+                                                  }
+                                                : undefined
+                                        }
                                         onExplodeColors={
                                             isSmart
                                                 ? () => {

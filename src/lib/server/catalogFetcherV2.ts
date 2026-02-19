@@ -80,6 +80,19 @@ interface RawProductRow {
     console_type: string | null;
     bluetooth: boolean | null;
     usb_charging: boolean | null;
+    engine_type: string | null;
+    start_type: string | null;
+    front_suspension: string | null;
+    rear_suspension: string | null;
+    front_tyre: string | null;
+    rear_tyre: string | null;
+    tyre_type: string | null;
+    led_headlamp: boolean | null;
+    led_tail_lamp: boolean | null;
+    navigation: boolean | null;
+    ride_modes: string | null;
+    num_valves: number | null;
+    wheelbase: string | null;
     // Pricing (from cat_price_state_mh)
     ex_showroom: number | null;
     on_road_price: number | null;
@@ -191,25 +204,49 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 finish: s.finish || undefined,
             }));
 
-        // Build specifications from variant data
+        // Build specifications from variant data — comprehensive mapping
         const specifications: VehicleSpecifications = {
             engine: {
                 displacement: m.displacement || undefined,
+                type: m.engine_type || undefined,
                 maxPower: m.max_power || undefined,
                 maxTorque: m.max_torque || undefined,
+                numValves: m.num_valves ? String(m.num_valves) : undefined,
+                startType: m.start_type || undefined,
+                mileage: m.mileage || undefined,
             },
             transmission: {
                 type: m.transmission || 'N/A',
             },
+            brakes: {
+                front: m.front_brake || undefined,
+                rear: m.rear_brake || undefined,
+                abs: m.braking_system || undefined,
+            },
+            suspension: {
+                front: m.front_suspension || undefined,
+                rear: m.rear_suspension || undefined,
+            },
             dimensions: {
-                seatHeight: m.seat_height || undefined,
                 kerbWeight: m.kerb_weight || undefined,
-                curbWeight: m.kerb_weight || undefined,
+                seatHeight: m.seat_height || undefined,
+                groundClearance: m.ground_clearance || undefined,
+                wheelbase: m.wheelbase || undefined,
                 fuelCapacity: m.fuel_capacity || undefined,
+            },
+            tyres: {
+                front: m.front_tyre || undefined,
+                rear: m.rear_tyre || undefined,
+                type: m.tyre_type || undefined,
             },
             features: {
                 bluetooth: m.bluetooth ?? undefined,
-                abs: m.braking_system || undefined,
+                usbCharging: m.usb_charging ?? undefined,
+                navigation: m.navigation ?? undefined,
+                consoleType: m.console_type || undefined,
+                ledHeadlamp: m.led_headlamp ?? undefined,
+                ledTailLamp: m.led_tail_lamp ?? undefined,
+                rideModes: m.ride_modes || undefined,
             },
         };
 

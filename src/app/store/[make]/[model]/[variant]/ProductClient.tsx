@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useSystemDealerContext } from '@/hooks/useSystemDealerContext';
 import { useDealerSession } from '@/hooks/useDealerSession';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -81,9 +82,21 @@ export default function ProductClient({
     const [isTeamMember, setIsTeamMember] = useState(false);
     const { availableCoins, isLoggedIn } = useOClubWallet();
     const { dealerId: sessionDealerId } = useDealerSession();
+    const { device } = useBreakpoint();
+    const [forceMobileLayout, setForceMobileLayout] = useState(false);
 
     // Authority: Determine if team member is gated (Marketplace without lead context)
     const isGated = isTeamMember && !leadIdFromUrl;
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const isCoarsePointer =
+            window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
+        const isMobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+
+        // Force mobile PDP on touch-first devices even when browser reports wider viewport.
+        setForceMobileLayout(device !== 'desktop' && (isCoarsePointer || isMobileUA));
+    }, [device]);
 
     useEffect(() => {
         const checkUser = async () => {
@@ -637,6 +650,7 @@ export default function ProductClient({
         walletCoins: isLoggedIn ? availableCoins : null,
         showOClubPrompt: !isLoggedIn,
         isGated,
+        forceMobileLayout,
     };
 
     if (!hasValidColorSku) {
