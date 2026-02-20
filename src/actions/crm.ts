@@ -13,6 +13,22 @@ import { checkServiceability } from './serviceArea';
 import { createOrLinkMember } from './members';
 import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
 
+const END_CUSTOMER_ROLES = new Set(['bmb_user', 'member', 'customer']);
+const STAFF_SOURCE_HINTS = new Set(['LEADS', 'DEALER_REFERRAL', 'CRM']);
+
+function normalizeRole(role?: string | null) {
+    return (role || '').trim().toLowerCase();
+}
+
+function isEndCustomerRole(role?: string | null) {
+    if (!role) return true;
+    return END_CUSTOMER_ROLES.has(normalizeRole(role));
+}
+
+function isStaffContextSource(source?: string | null) {
+    return STAFF_SOURCE_HINTS.has((source || '').trim().toUpperCase());
+}
+
 // --- CUSTOMER PROFILES ---
 
 // function getOrCreateCustomerProfile removed - using createOrLinkMember from members.ts instead
@@ -337,6 +353,7 @@ export async function createLeadAction(data: {
 }) {
     const interestModel = data.interest_model || data.model || 'GENERAL_ENQUIRY';
     const authUser = await getAuthUser();
+    let actorIsStaff = false;
 
     // Strict sanitation
     const strictPhone = toAppStorageFormat(data.customer_phone);
@@ -376,6 +393,15 @@ export async function createLeadAction(data: {
         });
         if (!validation.success) {
             return validation;
+        }
+
+        if (authUser?.id) {
+            const { data: actorMember } = await adminClient
+                .from('id_members')
+                .select('role')
+                .eq('id', authUser.id)
+                .maybeSingle();
+            actorIsStaff = !isEndCustomerRole(actorMember?.role);
         }
 
         let customerId: string;
@@ -418,6 +444,15 @@ export async function createLeadAction(data: {
 
         console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
 
+        // Guardrail: staff should not accidentally create a lead mapped to their own team profile.
+        if (authUser?.id && customerId === authUser.id && (actorIsStaff || isStaffContextSource(data.source))) {
+            return {
+                success: false,
+                message:
+                    'Lead creation blocked: customer is mapped to your team account. Use customer phone/details and retry.',
+            };
+        }
+
         // Update member with any collected profile fields (only non-null values, to avoid wiping existing data)
         const memberUpdate: Record<string, any> = {};
         if (data.customer_dob) memberUpdate.date_of_birth = data.customer_dob;
@@ -435,20 +470,32 @@ export async function createLeadAction(data: {
         console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
 
         // 1.5. Prevent duplicate active leads for same customer (by id OR phone)
-        const { data: existingLead, error: existingLeadError } = await adminClient
+        const { data: existingLeadCandidates, error: existingLeadError } = await adminClient
             .from('crm_leads')
-            .select('id, status, events_log, customer_id, customer_phone')
+            .select('id, status, events_log, customer_id, customer_phone, selected_dealer_tenant_id')
             .eq('is_deleted', false)
             .eq('owner_tenant_id', effectiveOwnerId)
             .or(`customer_id.eq.${customerId},customer_phone.eq.${strictPhone}`)
             .not('status', 'in', '("CLOSED")')
             .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .limit(20);
 
         if (existingLeadError) {
             console.error('[DEBUG] Existing lead check failed:', existingLeadError);
         }
+
+        const candidateLeads = (existingLeadCandidates || []) as Array<{
+            id: string;
+            status: string;
+            events_log: any[] | null;
+            selected_dealer_tenant_id: string | null;
+            customer_id: string | null;
+            customer_phone: string | null;
+        }>;
+
+        const existingLead = data.selected_dealer_id
+            ? candidateLeads.find(l => l.selected_dealer_tenant_id === data.selected_dealer_id) || null
+            : candidateLeads[0] || null;
 
         if (existingLead) {
             const nowIso = new Date().toISOString();
@@ -463,10 +510,15 @@ export async function createLeadAction(data: {
             };
 
             const existingEvents = (existingLead.events_log as any[]) || [];
-            await adminClient
-                .from('crm_leads')
-                .update({ events_log: [...existingEvents, duplicateEvent], updated_at: nowIso })
-                .eq('id', existingLead.id);
+            const duplicateUpdatePayload: Record<string, any> = {
+                events_log: [...existingEvents, duplicateEvent],
+                updated_at: nowIso,
+            };
+            // Backfill dealer lock on legacy leads when reusing under an explicit dealer context.
+            if (data.selected_dealer_id && !existingLead.selected_dealer_tenant_id) {
+                duplicateUpdatePayload.selected_dealer_tenant_id = data.selected_dealer_id;
+            }
+            await adminClient.from('crm_leads').update(duplicateUpdatePayload).eq('id', existingLead.id);
 
             try {
                 await adminClient.from('crm_audit_log').insert({
@@ -669,6 +721,13 @@ export async function createQuoteAction(data: {
     const isStrict = settings?.unified_context_strict_mode !== false; // Active by default
 
     const createdBy = user?.id;
+    const { data: actorMember } = await supabase
+        .from('id_members')
+        .select('id, role')
+        .eq('id', createdBy || '')
+        .maybeSingle();
+    const actorIsStaff = !!createdBy && !isEndCustomerRole(actorMember?.role);
+
     // Prefer explicit member_id or lead-linked customer_id (avoid using staff auth IDs)
     let memberId: string | null = data.member_id || null;
     let leadReferrerId: string | null = null;
@@ -731,15 +790,29 @@ export async function createQuoteAction(data: {
             if (!memberId && lead.customer_id) {
                 memberId = lead.customer_id;
             }
+
+            // Guardrail: team users should not create lead-based quotes against their own staff profile.
+            if (actorIsStaff && createdBy && lead.customer_id && lead.customer_id === createdBy && !data.member_id) {
+                return {
+                    success: false,
+                    message:
+                        'Quote creation blocked: selected lead is mapped to your team profile. Open the correct customer lead.',
+                };
+            }
             leadReferrerId = lead.referred_by_id || null;
         }
     }
 
-    if (!memberId && user?.id) {
-        const { data: member } = await supabase.from('id_members').select('id, role').eq('id', user.id).maybeSingle();
-        if (member && (!member.role || member.role === 'BMB_USER' || member.role === 'MEMBER')) {
-            memberId = member.id;
-        }
+    if (!memberId && actorMember && isEndCustomerRole(actorMember.role)) {
+        memberId = actorMember.id;
+    }
+
+    // Final hard guard: team users cannot create quotes for themselves in any flow.
+    if (actorIsStaff && createdBy && memberId && memberId === createdBy) {
+        return {
+            success: false,
+            message: 'Quote creation blocked: team members cannot generate quotes for their own account.',
+        };
     }
 
     // Extract flat fields for analytics - handling Multiple naming conventions

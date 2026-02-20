@@ -172,6 +172,7 @@ export default function ProductClient({
     const [showQuoteSuccess, setShowQuoteSuccess] = useState(false);
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [showReferralModal, setShowReferralModal] = useState(false);
+    const shouldForcePhoneCapture = isTeamMember;
 
     // Unified Dealer Context Hook
     const { dealerColors, dealerAccessories, bestOffer, resolvedLocation, serverPricing } = useSystemDealerContext({
@@ -623,8 +624,13 @@ export default function ProductClient({
     const handlers = {
         handleColorChange: setSelectedColor,
         handleShareQuote,
-        handleSaveQuote: leadIdFromUrl ? handleConfirmQuote : () => setShowQuoteSuccess(true),
-        handleBookingRequest: leadIdFromUrl ? handleConfirmQuote : handleBookingRequest,
+        handleSaveQuote:
+            shouldForcePhoneCapture || !leadIdFromUrl ? () => setShowQuoteSuccess(true) : handleConfirmQuote,
+        handleBookingRequest: shouldForcePhoneCapture
+            ? () => setShowQuoteSuccess(true)
+            : leadIdFromUrl
+              ? handleConfirmQuote
+              : handleBookingRequest,
         toggleAccessory,
         toggleInsuranceAddon,
         toggleService,
@@ -688,7 +694,7 @@ export default function ProductClient({
                 variantId={product.id}
                 colorId={colorSkuId || undefined}
                 commercials={buildCommercials()}
-                source="STORE_PDP"
+                source={leadIdFromUrl ? 'LEADS' : 'STORE_PDP'}
             />
 
             <EmailUpdateModal

@@ -134,7 +134,7 @@ export function LeadCaptureModal({
                     model: model,
                     owner_tenant_id: tenantId || undefined,
                     selected_dealer_id: sessionDealerId || undefined,
-                    source: 'PDP_QUICK_QUOTE',
+                    source: isStaff ? 'DEALER_REFERRAL' : 'PDP_QUICK_QUOTE',
                 });
 
                 if (leadResult.success && (leadResult as any).leadId) {

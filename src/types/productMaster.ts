@@ -67,10 +67,15 @@ export interface VehicleSpecifications {
         startType?: string;
         mileage?: string;
         cooling?: string;
+        cylinders?: string;
+        boreStroke?: string;
+        compressionRatio?: string;
+        topSpeed?: string;
     };
     transmission: {
         type: string;
         gears?: string;
+        clutch?: string;
     };
     brakes?: {
         front?: string;
@@ -93,12 +98,19 @@ export interface VehicleSpecifications {
         groundClearance?: string;
         wheelbase?: string;
         fuelCapacity?: string;
-        curbWeight?: string; // alias for backward compat
+        curbWeight?: string;
+        overallLength?: string;
+        overallWidth?: string;
+        overallHeight?: string;
+        chassisType?: string;
     };
     tyres?: {
         front?: string;
         rear?: string;
         type?: string;
+        wheelType?: string;
+        frontWheelSize?: string;
+        rearWheelSize?: string;
     };
     features: {
         bluetooth?: boolean | string;
@@ -108,7 +120,24 @@ export interface VehicleSpecifications {
         ledHeadlamp?: boolean | string;
         ledTailLamp?: boolean | string;
         rideModes?: string;
-        abs?: string; // backward compat
+        abs?: string;
+        headlampType?: string;
+        speedometer?: string;
+        tripmeter?: string;
+        clock?: boolean;
+        lowFuelIndicator?: boolean;
+        lowOilIndicator?: boolean;
+        lowBatteryIndicator?: boolean;
+        pillionSeat?: boolean;
+        pillionFootrest?: boolean;
+        standAlarm?: boolean;
+        passLight?: boolean;
+        killswitch?: boolean;
+    };
+    warranty?: {
+        years?: string;
+        distance?: string;
+        serviceInterval?: string;
     };
 }
 

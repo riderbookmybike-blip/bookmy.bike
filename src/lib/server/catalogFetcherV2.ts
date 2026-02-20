@@ -50,6 +50,7 @@ interface RawProductRow {
     model_slug: string;
     product_type: string;
     body_type: string | null;
+    segment: string | null;
     engine_cc: number | null;
     fuel_type: string | null;
     emission_standard: string | null;
@@ -69,7 +70,10 @@ interface RawProductRow {
     max_power: string | null;
     max_torque: string | null;
     transmission: string | null;
-    mileage: string | null;
+    mileage_arai: string | null;
+    warranty_years: number | null;
+    warranty_km: number | null;
+    service_interval: string | null;
     front_brake: string | null;
     rear_brake: string | null;
     braking_system: string | null;
@@ -93,6 +97,32 @@ interface RawProductRow {
     ride_modes: string | null;
     num_valves: number | null;
     wheelbase: string | null;
+    // New BikeWale-level columns
+    cooling_system: string | null;
+    cylinders: number | null;
+    bore_stroke: string | null;
+    compression_ratio: string | null;
+    top_speed: number | null;
+    clutch: string | null;
+    overall_length: number | null;
+    overall_width: number | null;
+    overall_height: number | null;
+    chassis_type: string | null;
+    wheel_type: string | null;
+    front_wheel_size: string | null;
+    rear_wheel_size: string | null;
+    headlamp_type: string | null;
+    speedometer: string | null;
+    tripmeter: string | null;
+    clock: boolean | null;
+    low_fuel_indicator: boolean | null;
+    low_oil_indicator: boolean | null;
+    low_battery_indicator: boolean | null;
+    pillion_seat: boolean | null;
+    pillion_footrest: boolean | null;
+    stand_alarm: boolean | null;
+    pass_light: boolean | null;
+    killswitch: boolean | null;
     // Pricing (from cat_price_state_mh)
     ex_showroom: number | null;
     on_road_price: number | null;
@@ -213,10 +243,16 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 maxTorque: m.max_torque || undefined,
                 numValves: m.num_valves ? String(m.num_valves) : undefined,
                 startType: m.start_type || undefined,
-                mileage: m.mileage || undefined,
+                mileage: m.mileage_arai || undefined,
+                cooling: m.cooling_system || undefined,
+                cylinders: m.cylinders ? String(m.cylinders) : undefined,
+                boreStroke: m.bore_stroke || undefined,
+                compressionRatio: m.compression_ratio || undefined,
+                topSpeed: m.top_speed ? `${m.top_speed} kmph` : undefined,
             },
             transmission: {
                 type: m.transmission || 'N/A',
+                clutch: m.clutch || undefined,
             },
             brakes: {
                 front: m.front_brake || undefined,
@@ -233,11 +269,18 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 groundClearance: m.ground_clearance || undefined,
                 wheelbase: m.wheelbase || undefined,
                 fuelCapacity: m.fuel_capacity || undefined,
+                overallLength: m.overall_length ? `${m.overall_length} mm` : undefined,
+                overallWidth: m.overall_width ? `${m.overall_width} mm` : undefined,
+                overallHeight: m.overall_height ? `${m.overall_height} mm` : undefined,
+                chassisType: m.chassis_type || undefined,
             },
             tyres: {
                 front: m.front_tyre || undefined,
                 rear: m.rear_tyre || undefined,
                 type: m.tyre_type || undefined,
+                wheelType: m.wheel_type || undefined,
+                frontWheelSize: m.front_wheel_size || undefined,
+                rearWheelSize: m.rear_wheel_size || undefined,
             },
             features: {
                 bluetooth: m.bluetooth ?? undefined,
@@ -247,6 +290,23 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 ledHeadlamp: m.led_headlamp ?? undefined,
                 ledTailLamp: m.led_tail_lamp ?? undefined,
                 rideModes: m.ride_modes || undefined,
+                headlampType: m.headlamp_type || undefined,
+                speedometer: m.speedometer || undefined,
+                tripmeter: m.tripmeter || undefined,
+                clock: m.clock ?? undefined,
+                lowFuelIndicator: m.low_fuel_indicator ?? undefined,
+                lowOilIndicator: m.low_oil_indicator ?? undefined,
+                lowBatteryIndicator: m.low_battery_indicator ?? undefined,
+                pillionSeat: m.pillion_seat ?? undefined,
+                pillionFootrest: m.pillion_footrest ?? undefined,
+                standAlarm: m.stand_alarm ?? undefined,
+                passLight: m.pass_light ?? undefined,
+                killswitch: m.killswitch ?? undefined,
+            },
+            warranty: {
+                years: m.warranty_years ? `${m.warranty_years} Years` : undefined,
+                distance: m.warranty_km ? `${m.warranty_km} km` : undefined,
+                serviceInterval: m.service_interval || undefined,
             },
         };
 
@@ -274,7 +334,7 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
             fuelType: (m.fuel_type as any) || 'PETROL',
             displacement,
             powerUnit: isEV ? 'KW' : 'CC',
-            segment: m.body_type || '',
+            segment: m.segment || m.body_type || '',
             rating: 0,
             popularityScore: Math.max(...skus.map(s => s.visit_count || 0)) + (skus.some(s => s.is_popular) ? 1 : 0),
             price: {

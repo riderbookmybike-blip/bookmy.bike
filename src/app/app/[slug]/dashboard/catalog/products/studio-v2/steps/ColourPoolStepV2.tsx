@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Loader2, Plus, Trash2, Palette, Save, GripVertical, Sparkles } from 'lucide-react';
+import { Loader2, Plus, Trash2, Palette, Save, GripVertical, Sparkles, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { createColour, updateColour, deleteColour, reorderColours } from '@/actions/catalog/catalogV2Actions';
 import type { CatalogModel, CatalogColour } from '@/actions/catalog/catalogV2Actions';
+import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import CopyableId from '@/components/ui/CopyableId';
 
 // ── Finish badge styling ──
@@ -22,6 +23,12 @@ interface ColourPoolStepProps {
 }
 
 export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoolStepProps) {
+    const productType = (model.product_type || 'VEHICLE') as string;
+    const isVehicle = productType === 'VEHICLE';
+    const labels = getHierarchyLabels(productType);
+    const poolLabel = labels.pool; // 'Colour' for VEHICLE, 'Tier' for SERVICE, 'Sub-Variant' for ACCESSORY
+    const poolLabelLower = poolLabel.toLowerCase();
+
     // ── Form state for new colour ──
     const [newName, setNewName] = useState('');
     const [newHex, setNewHex] = useState('#4F46E5');
@@ -53,10 +60,10 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
             setNewHexSecondary('');
             setNewFinish('');
             setShowNewForm(false);
-            toast.success(`Colour "${created.name}" added`);
+            toast.success(`${poolLabel} "${created.name}" added`);
         } catch (err) {
-            console.error('Failed to create colour:', err);
-            toast.error('Failed to create colour');
+            console.error(`Failed to create ${poolLabelLower}:`, err);
+            toast.error(`Failed to create ${poolLabelLower}`);
         } finally {
             setIsCreating(false);
         }
@@ -70,9 +77,9 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
             const updated = await updateColour(id, data);
             onUpdate(colours.map(c => (c.id === id ? updated : c)));
             setEditingId(null);
-            toast.success('Colour updated');
+            toast.success(`${poolLabel} updated`);
         } catch (err) {
-            toast.error('Failed to update colour');
+            toast.error(`Failed to update ${poolLabelLower}`);
         } finally {
             setIsSaving(null);
         }
@@ -80,13 +87,18 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
 
     const handleDelete = async (id: string) => {
         const colour = colours.find(c => c.id === id);
-        if (!confirm(`Delete colour "${colour?.name}"? SKUs linked to this colour will be unlinked.`)) return;
+        if (
+            !confirm(
+                `Delete ${poolLabelLower} "${colour?.name}"? SKUs linked to this ${poolLabelLower} will be unlinked.`
+            )
+        )
+            return;
         try {
             await deleteColour(id);
             onUpdate(colours.filter(c => c.id !== id));
-            toast.success('Colour deleted');
+            toast.success(`${poolLabel} deleted`);
         } catch (err) {
-            toast.error('Failed to delete colour');
+            toast.error(`Failed to delete ${poolLabelLower}`);
         }
     };
 
@@ -127,10 +139,10 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
             <div className="flex items-start justify-between">
                 <div>
                     <h2 className="text-xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
-                        {model.name} — Colour Pool
+                        {model.name} — {poolLabel} Pool
                     </h2>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                        Define colours once, assign to SKUs later · {colours.length} colour
+                        Define {poolLabelLower}s once, assign to SKUs later · {colours.length} {poolLabelLower}
                         {colours.length !== 1 ? 's' : ''} defined
                     </p>
                 </div>
@@ -139,7 +151,7 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                     className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105 active:scale-95"
                 >
                     <Plus size={16} />
-                    Add Colour
+                    Add {poolLabel}
                 </button>
             </div>
 
@@ -149,15 +161,17 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                     <div className="flex items-center gap-2 mb-2">
                         <Sparkles size={16} className="text-indigo-500" />
                         <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
-                            New Colour
+                            New {poolLabel}
                         </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        {/* Colour Name */}
-                        <div className="md:col-span-1">
+                    <div
+                        className={`grid grid-cols-1 ${isVehicle ? 'md:grid-cols-4' : 'md:grid-cols-1 max-w-md'} gap-4`}
+                    >
+                        {/* Name */}
+                        <div className={isVehicle ? 'md:col-span-1' : ''}>
                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
-                                Colour Name
+                                {poolLabel} Name
                             </label>
                             <input
                                 type="text"
@@ -166,99 +180,126 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                 onKeyDown={e => {
                                     if (e.key === 'Enter') handleCreate();
                                 }}
-                                placeholder="e.g. Starlight Blue"
+                                placeholder={
+                                    isVehicle
+                                        ? 'e.g. Starlight Blue'
+                                        : `e.g. ${productType === 'SERVICE' ? '1 Year, Silver, Gold' : 'Standard, Premium'}`
+                                }
                                 className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
                                 autoFocus
                             />
                         </div>
 
-                        {/* Primary Hex */}
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
-                                Primary Hex
-                            </label>
-                            <div className="flex gap-2 items-center">
-                                <input
-                                    type="color"
-                                    value={newHex}
-                                    onChange={e => setNewHex(e.target.value)}
-                                    className="w-10 h-10 rounded-xl border-2 border-slate-200 cursor-pointer shadow-inner"
-                                />
-                                <input
-                                    type="text"
-                                    value={newHex}
-                                    onChange={e => setNewHex(e.target.value)}
-                                    placeholder="#4F46E5"
-                                    className="flex-1 px-3 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none"
-                                />
-                            </div>
-                        </div>
+                        {/* Colour-specific fields — hidden for non-VEHICLE */}
+                        {isVehicle && (
+                            <>
+                                {/* Primary Hex */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                                        Primary Hex
+                                    </label>
+                                    <div className="flex gap-2 items-center">
+                                        <input
+                                            type="color"
+                                            value={newHex}
+                                            onChange={e => setNewHex(e.target.value)}
+                                            className="w-10 h-10 rounded-xl border-2 border-slate-200 cursor-pointer shadow-inner"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={newHex}
+                                            onChange={e => setNewHex(e.target.value)}
+                                            placeholder="#4F46E5"
+                                            className="flex-1 px-3 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none"
+                                        />
+                                    </div>
+                                </div>
 
-                        {/* Secondary Hex */}
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
-                                Secondary Hex <span className="text-slate-300">(optional)</span>
-                            </label>
-                            <div className="flex gap-2 items-center">
-                                <input
-                                    type="color"
-                                    value={newHexSecondary || '#000000'}
-                                    onChange={e => setNewHexSecondary(e.target.value)}
-                                    className="w-10 h-10 rounded-xl border-2 border-slate-200 cursor-pointer shadow-inner"
-                                />
-                                <input
-                                    type="text"
-                                    value={newHexSecondary}
-                                    onChange={e => setNewHexSecondary(e.target.value)}
-                                    placeholder="#000000"
-                                    className="flex-1 px-3 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none"
-                                />
-                            </div>
-                        </div>
+                                {/* Secondary Hex */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                                        Secondary Hex <span className="text-slate-300">(optional)</span>
+                                    </label>
+                                    <div className="flex gap-2 items-center">
+                                        <input
+                                            type="color"
+                                            value={newHexSecondary || '#000000'}
+                                            onChange={e => setNewHexSecondary(e.target.value)}
+                                            className="w-10 h-10 rounded-xl border-2 border-slate-200 cursor-pointer shadow-inner"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={newHexSecondary}
+                                            onChange={e => setNewHexSecondary(e.target.value)}
+                                            placeholder="#000000"
+                                            className="flex-1 px-3 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none"
+                                        />
+                                    </div>
+                                </div>
 
-                        {/* Finish */}
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
-                                Finish
-                            </label>
-                            <select
-                                value={newFinish}
-                                onChange={e => setNewFinish(e.target.value)}
-                                className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold outline-none"
-                            >
-                                <option value="">— Select finish —</option>
-                                <option value="GLOSS">Gloss</option>
-                                <option value="MATTE">Matte</option>
-                                <option value="METALLIC">Metallic</option>
-                                <option value="CHROME">Chrome</option>
-                            </select>
-                        </div>
+                                {/* Finish */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                                        Finish
+                                    </label>
+                                    <select
+                                        value={newFinish}
+                                        onChange={e => setNewFinish(e.target.value)}
+                                        className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold outline-none"
+                                    >
+                                        <option value="">— Select finish —</option>
+                                        <option value="GLOSS">Gloss</option>
+                                        <option value="MATTE">Matte</option>
+                                        <option value="METALLIC">Metallic</option>
+                                        <option value="CHROME">Chrome</option>
+                                    </select>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Preview + Actions */}
                     <div className="flex items-center justify-between pt-2">
                         {/* Live preview */}
                         <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <div
-                                    className="w-12 h-12 rounded-2xl shadow-lg border-2 border-white"
-                                    style={{ backgroundColor: newHex || '#ccc' }}
-                                />
-                                {newHexSecondary && (
-                                    <div
-                                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-lg border-2 border-white shadow"
-                                        style={{ backgroundColor: newHexSecondary }}
-                                    />
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                                    {newName || 'Colour Preview'}
-                                </p>
-                                <p className="text-[10px] font-mono text-slate-400">
-                                    {newHex} {newFinish && `· ${newFinish}`}
-                                </p>
-                            </div>
+                            {!isVehicle ? (
+                                <>
+                                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                                        <Layers size={20} className="text-emerald-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                            {newName || 'Tier Preview'}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">
+                                            Service Tier
+                                        </p>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="relative">
+                                        <div
+                                            className="w-12 h-12 rounded-2xl shadow-lg border-2 border-white"
+                                            style={{ backgroundColor: newHex || '#ccc' }}
+                                        />
+                                        {newHexSecondary && (
+                                            <div
+                                                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-lg border-2 border-white shadow"
+                                                style={{ backgroundColor: newHexSecondary }}
+                                            />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                            {newName || 'Colour Preview'}
+                                        </p>
+                                        <p className="text-[10px] font-mono text-slate-400">
+                                            {newHex} {newFinish && `· ${newFinish}`}
+                                        </p>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="flex gap-2">
@@ -299,7 +340,7 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                         >
                             <div className="p-5">
                                 <div className="flex items-center gap-4">
-                                    {/* Reorder handle + swatch */}
+                                    {/* Reorder handle + swatch/icon */}
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="number"
@@ -323,19 +364,26 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                             title={`Position ${index + 1} — type to reorder`}
                                         />
 
-                                        {/* Dual swatch */}
-                                        <div className="relative">
-                                            <div
-                                                className="w-12 h-12 rounded-2xl shadow-md border-2 border-white dark:border-slate-700 transition-transform group-hover:scale-110"
-                                                style={{ backgroundColor: colour.hex_primary || '#ccc' }}
-                                            />
-                                            {colour.hex_secondary && (
+                                        {!isVehicle ? (
+                                            /* Tier icon */
+                                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center transition-transform group-hover:scale-110">
+                                                <Layers size={20} className="text-emerald-500" />
+                                            </div>
+                                        ) : (
+                                            /* Dual colour swatch */
+                                            <div className="relative">
                                                 <div
-                                                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-lg border-2 border-white dark:border-slate-700 shadow"
-                                                    style={{ backgroundColor: colour.hex_secondary }}
+                                                    className="w-12 h-12 rounded-2xl shadow-md border-2 border-white dark:border-slate-700 transition-transform group-hover:scale-110"
+                                                    style={{ backgroundColor: colour.hex_primary || '#ccc' }}
                                                 />
-                                            )}
-                                        </div>
+                                                {colour.hex_secondary && (
+                                                    <div
+                                                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-lg border-2 border-white dark:border-slate-700 shadow"
+                                                        style={{ backgroundColor: colour.hex_secondary }}
+                                                    />
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Details */}
@@ -353,16 +401,18 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                             )}
                                             <span className="text-[10px] font-mono text-slate-300">#{index + 1}</span>
                                         </div>
-                                        <div className="flex items-center gap-3 mt-1">
-                                            <span className="text-[10px] font-mono text-slate-400">
-                                                {colour.hex_primary || 'no hex'}
-                                            </span>
-                                            {colour.hex_secondary && (
+                                        {isVehicle && (
+                                            <div className="flex items-center gap-3 mt-1">
                                                 <span className="text-[10px] font-mono text-slate-400">
-                                                    + {colour.hex_secondary}
+                                                    {colour.hex_primary || 'no hex'}
                                                 </span>
-                                            )}
-                                        </div>
+                                                {colour.hex_secondary && (
+                                                    <span className="text-[10px] font-mono text-slate-400">
+                                                        + {colour.hex_secondary}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                         <CopyableId id={colour.id} />
                                     </div>
 
@@ -390,7 +440,9 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                 {/* Inline Edit Form */}
                                 {isEditing && (
                                     <div className="mt-5 pt-5 border-t border-slate-100 dark:border-white/5 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div
+                                            className={`grid grid-cols-1 ${isVehicle ? 'md:grid-cols-4' : 'max-w-md'} gap-4`}
+                                        >
                                             <div>
                                                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
                                                     Name
@@ -402,70 +454,90 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                                     className="w-full px-3 py-2.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
-                                                    Primary Hex
-                                                </label>
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="color"
-                                                        value={data.hex_primary || '#000000'}
-                                                        onChange={e =>
-                                                            updateField(colour.id, 'hex_primary', e.target.value)
-                                                        }
-                                                        className="w-10 h-10 rounded-xl border-2 border-slate-200 cursor-pointer"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={data.hex_primary || ''}
-                                                        onChange={e =>
-                                                            updateField(colour.id, 'hex_primary', e.target.value)
-                                                        }
-                                                        className="flex-1 px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
-                                                    Secondary Hex
-                                                </label>
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="color"
-                                                        value={data.hex_secondary || '#000000'}
-                                                        onChange={e =>
-                                                            updateField(colour.id, 'hex_secondary', e.target.value)
-                                                        }
-                                                        className="w-10 h-10 rounded-xl border-2 border-slate-200 cursor-pointer"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={data.hex_secondary || ''}
-                                                        onChange={e =>
-                                                            updateField(colour.id, 'hex_secondary', e.target.value)
-                                                        }
-                                                        className="flex-1 px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
-                                                    Finish
-                                                </label>
-                                                <select
-                                                    value={data.finish || ''}
-                                                    onChange={e =>
-                                                        updateField(colour.id, 'finish', e.target.value || null)
-                                                    }
-                                                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold outline-none"
-                                                >
-                                                    <option value="">—</option>
-                                                    <option value="GLOSS">Gloss</option>
-                                                    <option value="MATTE">Matte</option>
-                                                    <option value="METALLIC">Metallic</option>
-                                                    <option value="CHROME">Chrome</option>
-                                                </select>
-                                            </div>
+                                            {isVehicle && (
+                                                <>
+                                                    <div>
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                                                            Primary Hex
+                                                        </label>
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="color"
+                                                                value={data.hex_primary || '#000000'}
+                                                                onChange={e =>
+                                                                    updateField(
+                                                                        colour.id,
+                                                                        'hex_primary',
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                className="w-10 h-10 rounded-xl border-2 border-slate-200 cursor-pointer"
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                value={data.hex_primary || ''}
+                                                                onChange={e =>
+                                                                    updateField(
+                                                                        colour.id,
+                                                                        'hex_primary',
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                                                            Secondary Hex
+                                                        </label>
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="color"
+                                                                value={data.hex_secondary || '#000000'}
+                                                                onChange={e =>
+                                                                    updateField(
+                                                                        colour.id,
+                                                                        'hex_secondary',
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                className="w-10 h-10 rounded-xl border-2 border-slate-200 cursor-pointer"
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                value={data.hex_secondary || ''}
+                                                                onChange={e =>
+                                                                    updateField(
+                                                                        colour.id,
+                                                                        'hex_secondary',
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-mono outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                                                            Finish
+                                                        </label>
+                                                        <select
+                                                            value={data.finish || ''}
+                                                            onChange={e =>
+                                                                updateField(colour.id, 'finish', e.target.value || null)
+                                                            }
+                                                            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold outline-none"
+                                                        >
+                                                            <option value="">—</option>
+                                                            <option value="GLOSS">Gloss</option>
+                                                            <option value="MATTE">Matte</option>
+                                                            <option value="METALLIC">Metallic</option>
+                                                            <option value="CHROME">Chrome</option>
+                                                        </select>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
 
                                         <div className="flex justify-end gap-2">
@@ -500,19 +572,26 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
             {colours.length === 0 && !showNewForm && (
                 <div className="text-center py-16">
                     <div className="relative inline-block mb-4">
-                        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/20 dark:to-violet-900/20 flex items-center justify-center">
-                            <Palette size={36} className="text-indigo-400" />
+                        <div
+                            className={`w-20 h-20 rounded-3xl flex items-center justify-center ${isVehicle ? 'bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/20 dark:to-violet-900/20' : 'bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/20 dark:to-teal-900/20'}`}
+                        >
+                            {isVehicle ? (
+                                <Palette size={36} className="text-indigo-400" />
+                            ) : (
+                                <Layers size={36} className="text-emerald-400" />
+                            )}
                         </div>
                     </div>
-                    <p className="font-bold text-sm text-slate-500">No colours defined yet</p>
+                    <p className="font-bold text-sm text-slate-500">No {poolLabelLower}s defined yet</p>
                     <p className="text-xs text-slate-400 mt-1">
-                        Add colours to this model&apos;s palette — they&apos;ll be available for all SKUs
+                        Add {poolLabelLower}s to this {labels.model.toLowerCase()} — they&apos;ll be available for all
+                        SKUs
                     </p>
                     <button
                         onClick={() => setShowNewForm(true)}
-                        className="mt-4 text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider"
+                        className={`mt-4 text-xs font-bold uppercase tracking-wider ${isVehicle ? 'text-indigo-600 hover:text-indigo-700' : 'text-emerald-600 hover:text-emerald-700'}`}
                     >
-                        + Add First Colour
+                        + Add First {poolLabel}
                     </button>
                 </div>
             )}
@@ -520,24 +599,30 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
             {/* Summary footer */}
             {colours.length > 0 && (
                 <div className="flex items-center gap-4 bg-slate-50 dark:bg-white/[0.02] rounded-2xl px-5 py-4 border border-slate-100 dark:border-white/5">
-                    <div className="flex -space-x-2">
-                        {colours.slice(0, 8).map(c => (
-                            <div
-                                key={c.id}
-                                className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 shadow-sm"
-                                style={{ backgroundColor: c.hex_primary || '#ccc' }}
-                                title={c.name}
-                            />
-                        ))}
-                        {colours.length > 8 && (
-                            <div className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[8px] font-bold text-slate-500">
-                                +{colours.length - 8}
-                            </div>
-                        )}
-                    </div>
+                    {isVehicle ? (
+                        <div className="flex -space-x-2">
+                            {colours.slice(0, 8).map(c => (
+                                <div
+                                    key={c.id}
+                                    className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 shadow-sm"
+                                    style={{ backgroundColor: c.hex_primary || '#ccc' }}
+                                    title={c.name}
+                                />
+                            ))}
+                            {colours.length > 8 && (
+                                <div className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[8px] font-bold text-slate-500">
+                                    +{colours.length - 8}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                            <Layers size={16} className="text-emerald-500" />
+                        </div>
+                    )}
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        {colours.length} colour{colours.length !== 1 ? 's' : ''} in pool · These will be available in
-                        the SKU step
+                        {colours.length} {poolLabelLower}
+                        {colours.length !== 1 ? 's' : ''} in pool · These will be available in the SKU step
                     </p>
                 </div>
             )}
