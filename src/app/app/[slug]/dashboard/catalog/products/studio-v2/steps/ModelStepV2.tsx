@@ -183,101 +183,103 @@ export default function ModelStepV2({ brand, category, modelData, onSave }: Mode
             </div>
 
             {/* Model Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {models.map(model => {
-                    const isSelected = modelData?.id === model.id;
-                    return (
-                        <div
-                            key={model.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => onSave(model)}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter' || e.key === ' ') onSave(model);
-                            }}
-                            className={`group relative p-6 rounded-[2rem] border-2 transition-all duration-500 cursor-pointer ${
-                                isSelected
-                                    ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-900/20 shadow-xl shadow-indigo-500/10'
-                                    : 'border-slate-100 bg-white dark:bg-white/5 dark:border-white/10 hover:border-indigo-200 hover:shadow-md'
-                            }`}
-                        >
-                            <div className="flex flex-col items-center gap-3">
-                                <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center border border-slate-100 dark:border-white/10">
-                                    <Box size={28} className={isSelected ? 'text-indigo-500' : 'text-slate-400'} />
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {[...models]
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map(model => {
+                        const isSelected = modelData?.id === model.id;
+                        return (
+                            <div
+                                key={model.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => onSave(model)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter' || e.key === ' ') onSave(model);
+                                }}
+                                className={`group relative p-4 rounded-2xl border-2 transition-all duration-500 cursor-pointer ${
+                                    isSelected
+                                        ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-900/20 shadow-xl shadow-indigo-500/10'
+                                        : 'border-slate-100 bg-white dark:bg-white/5 dark:border-white/10 hover:border-indigo-200 hover:shadow-md'
+                                }`}
+                            >
+                                <div className="flex flex-col items-center gap-2">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center border border-slate-100 dark:border-white/10">
+                                        <Box size={20} className={isSelected ? 'text-indigo-500' : 'text-slate-400'} />
+                                    </div>
+                                    <div className="text-center">
+                                        <h4 className="font-black text-sm text-slate-900 dark:text-white uppercase italic leading-tight">
+                                            {model.name}
+                                        </h4>
+                                        {category === 'VEHICLE' && (
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                {model.engine_cc ? `${model.engine_cc}cc` : ''}{' '}
+                                                {model.fuel_type ? `• ${model.fuel_type}` : ''}{' '}
+                                                {model.body_type ? `• ${model.body_type}` : ''}
+                                            </p>
+                                        )}
+                                        <div className="flex items-center justify-center gap-2 mt-2">
+                                            <span
+                                                className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                                    model.status === 'ACTIVE'
+                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                                }`}
+                                            >
+                                                {model.status}
+                                            </span>
+                                        </div>
+                                        <div className="mt-2">
+                                            <CopyableId id={model.id} />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="text-center">
-                                    <h4 className="font-black text-lg text-slate-900 dark:text-white uppercase italic leading-tight">
-                                        {model.name}
-                                    </h4>
-                                    {category === 'VEHICLE' && (
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                            {model.engine_cc ? `${model.engine_cc}cc` : ''}{' '}
-                                            {model.fuel_type ? `• ${model.fuel_type}` : ''}{' '}
-                                            {model.body_type ? `• ${model.body_type}` : ''}
-                                        </p>
-                                    )}
-                                    <div className="flex items-center justify-center gap-2 mt-2">
-                                        <span
-                                            className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                                                model.status === 'ACTIVE'
-                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                                            }`}
-                                        >
-                                            {model.status}
-                                        </span>
+
+                                {isSelected && (
+                                    <div className="absolute top-3 right-3 text-emerald-500">
+                                        <CheckCircle2
+                                            size={18}
+                                            fill="currentColor"
+                                            strokeWidth={1}
+                                            className="text-white"
+                                        />
                                     </div>
-                                    <div className="mt-2">
-                                        <CopyableId id={model.id} />
-                                    </div>
+                                )}
+
+                                {/* Action buttons */}
+                                <div className="absolute bottom-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                    <button
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            openEditModal(model);
+                                        }}
+                                        className="p-2 bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-600 rounded-xl border border-transparent hover:border-indigo-100 hover:shadow-sm"
+                                    >
+                                        <Edit2 size={14} />
+                                    </button>
+                                    <button
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            handleDelete(model.id);
+                                        }}
+                                        className="p-2 bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-red-600 rounded-xl border border-transparent hover:border-red-100 hover:shadow-sm"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
                             </div>
-
-                            {isSelected && (
-                                <div className="absolute top-4 right-4 text-emerald-500">
-                                    <CheckCircle2
-                                        size={24}
-                                        fill="currentColor"
-                                        strokeWidth={1}
-                                        className="text-white"
-                                    />
-                                </div>
-                            )}
-
-                            {/* Action buttons */}
-                            <div className="absolute bottom-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                <button
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        openEditModal(model);
-                                    }}
-                                    className="p-2 bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-600 rounded-xl border border-transparent hover:border-indigo-100 hover:shadow-sm"
-                                >
-                                    <Edit2 size={14} />
-                                </button>
-                                <button
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        handleDelete(model.id);
-                                    }}
-                                    className="p-2 bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-red-600 rounded-xl border border-transparent hover:border-red-100 hover:shadow-sm"
-                                >
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
 
                 {/* Create Card */}
                 <button
                     onClick={openCreateModal}
-                    className="group p-6 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center gap-3 hover:border-indigo-500 hover:bg-indigo-50/10 transition-all text-slate-400 hover:text-indigo-600"
+                    className="group p-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center gap-2 hover:border-indigo-500 hover:bg-indigo-50/10 transition-all text-slate-400 hover:text-indigo-600"
                 >
-                    <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Plus size={28} />
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Plus size={20} />
                     </div>
-                    <span className="text-xs font-black uppercase tracking-widest">New {labels.model}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">New {labels.model}</span>
                 </button>
             </div>
 

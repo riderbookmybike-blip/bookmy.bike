@@ -72,6 +72,7 @@ interface SKUPriceRow {
     variantPosition?: number;
     isPopular?: boolean;
     originalIsPopular?: boolean;
+    updatedByName?: string;
 }
 
 const DELTA_MIN = -25000;
@@ -220,7 +221,7 @@ export default function PricingPage() {
                         ins_od_base:ins_own_damage_premium_amount, ins_od_total:ins_own_damage_total_amount, ins_tp_base:ins_liability_only_premium_amount, ins_tp_total:ins_liability_only_total_amount,
                         ins_sum_mandatory_insurance, ins_sum_mandatory_insurance_gst_amount, ins_total:ins_gross_premium, ins_gst_rate,
                         addon_pa_amount:addon_personal_accident_cover_amount, addon_pa_gstamount:addon_personal_accident_cover_gst_amount, addon_pa_total:addon_personal_accident_cover_total_amount,
-                        publish_stage, is_popular, published_at, updated_at
+                        publish_stage, is_popular, published_at, published_by, updated_at
                         `
                     )
                     .eq('state_code', activeStateCode),
@@ -253,8 +254,22 @@ export default function PricingPage() {
                     publishStage?: string;
                     updatedAt?: string;
                     isPopular?: boolean;
+                    updatedByName?: string;
                 }
             >();
+            // Resolve published_by UUIDs to display names
+            const publisherIds = [...new Set((priceData || []).map((r: any) => r.published_by).filter(Boolean))];
+            const publisherNameMap = new Map<string, string>();
+            if (publisherIds.length > 0) {
+                const { data: memberRows } = await supabase
+                    .from('id_members')
+                    .select('id, full_name')
+                    .in('id', publisherIds);
+                (memberRows || []).forEach((m: any) => {
+                    if (m.id && m.full_name) publisherNameMap.set(m.id, m.full_name);
+                });
+            }
+
             (priceData || []).forEach((row: any) => {
                 const skuId = row.sku_id;
                 if (!skuId) return;
@@ -283,6 +298,7 @@ export default function PricingPage() {
                     publishStage: row.publish_stage || 'DRAFT',
                     updatedAt: row.updated_at,
                     isPopular: row.is_popular || false,
+                    updatedByName: row.published_by ? publisherNameMap.get(row.published_by) || undefined : undefined,
                 });
             });
 
@@ -375,6 +391,7 @@ export default function PricingPage() {
                     displayState: displayState,
                     isPopular: priceRecord?.isPopular || false,
                     originalIsPopular: priceRecord?.isPopular || false,
+                    updatedByName: priceRecord?.updatedByName,
                 };
             });
 

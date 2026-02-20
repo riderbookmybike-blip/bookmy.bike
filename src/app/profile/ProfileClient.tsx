@@ -46,6 +46,7 @@ import { createClient } from '@/lib/supabase/client';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { getDefaultAvatar } from '@/lib/avatars';
+import { ThemeModeSelector } from '@/components/ui/ThemeModeSelector';
 
 interface ProfileClientProps {
     user: any;
@@ -335,6 +336,22 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         </button>
                                     </>
                                 )}
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants} className="mb-12">
+                        <div className="rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-6 md:p-8">
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                        Appearance
+                                    </h3>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mt-1">
+                                        Choose Light, Dark, or System theme for your profile.
+                                    </p>
+                                </div>
+                                <ThemeModeSelector className="w-full md:w-auto" />
                             </div>
                         </div>
                     </motion.div>

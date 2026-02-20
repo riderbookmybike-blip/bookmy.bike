@@ -60,25 +60,7 @@ export const SKU_SELECT = `
 `;
 
 /** Canonical pricing select columns */
-export const PRICE_SELECT = `
-    sku_id, state_code,
-    ex_showroom, ex_showroom_basic:ex_factory, ex_showroom_gst_amount:ex_factory_gst_amount, ex_showroom_total:ex_showroom, gst_rate, hsn_code,
-    on_road_price,
-    rto_default_type,
-    rto_registration_fee_state, rto_registration_fee_bh, rto_registration_fee_company,
-    rto_smartcard_charges_state, rto_smartcard_charges_bh, rto_smartcard_charges_company,
-    rto_postal_charges_state, rto_postal_charges_bh, rto_postal_charges_company,
-    rto_roadtax_rate_state, rto_roadtax_rate_bh, rto_roadtax_rate_company,
-    rto_roadtax_amount_state, rto_roadtax_amount_bh, rto_roadtax_amount_company,
-    rto_roadtaxcess_rate_state:rto_roadtax_cess_rate_state, rto_roadtaxcess_rate_bh:rto_roadtax_cess_rate_bh, rto_roadtaxcess_rate_company:rto_roadtax_cess_rate_company,
-    rto_roadtaxcessamount_state:rto_roadtax_cess_amount_state, rto_roadtaxcessamount_bh:rto_roadtax_cess_amount_bh, rto_roadtaxcessamount_company:rto_roadtax_cess_amount_company,
-    rto_total_state, rto_total_bh, rto_total_company,
-    ins_od_base:ins_own_damage_premium_amount, ins_od_total:ins_own_damage_total_amount, ins_tp_base:ins_liability_only_premium_amount, ins_tp_total:ins_liability_only_total_amount,
-    ins_sum_mandatory_insurance, ins_sum_mandatory_insurance_gst_amount, ins_total:ins_gross_premium, ins_gst_rate,
-    addon_pa_amount:addon_personal_accident_cover_amount, addon_pa_gstamount:addon_personal_accident_cover_gst_amount, addon_pa_total:addon_personal_accident_cover_total_amount,
-    publish_stage,
-    published_at, updated_at
-`;
+export const PRICE_SELECT = '*';
 
 /**
  * Extended SKU select for Catalog — includes model/brand/variant JOINs
@@ -149,6 +131,137 @@ export const CATALOG_SKU_SELECT = `
 /** Slimmed pricing select for Catalog listings (only needs totals) */
 export const CATALOG_PRICE_SELECT =
     'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular';
+
+const RTO_SUFFIX_BY_TYPE = {
+    STATE: 'state',
+    BH: 'bh',
+    COMPANY: 'company',
+} as const;
+
+const VALID_RTO_TYPES = new Set(['STATE', 'BH', 'COMPANY']);
+
+const toNumber = (value: unknown): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toCamelCase = (value: string) =>
+    value.replace(/_([a-z])/g, (_, ch: string) => ch.toUpperCase()).replace(/[^a-zA-Z0-9]/g, '');
+
+const normalizeRtoBaseKey = (base: string) => {
+    let normalized = base;
+
+    // Normalize historical naming differences.
+    normalized = normalized.replace(/^roadtax_/, 'road_tax_');
+    normalized = normalized.replace(/^roadtax$/, 'road_tax');
+    normalized = normalized.replace(/^road_tax_cess_/, 'cess_');
+
+    return normalized;
+};
+
+type RtoTypePayload = {
+    total: number;
+    fees: Record<string, number>;
+    tax: Record<string, number>;
+    registrationCharges?: number;
+    smartCardCharges?: number;
+    postalCharges?: number;
+    hypothecationCharges?: number;
+    roadTax?: number;
+    roadTaxRate?: number;
+    cessAmount?: number;
+    cessRate?: number;
+};
+
+const enrichRtoCompatibilityFields = (payload: RtoTypePayload, key: string, amount: number) => {
+    if (key === 'registration_fee') payload.registrationCharges = amount;
+    if (key === 'smartcard_charges') payload.smartCardCharges = amount;
+    if (key === 'postal_charges') payload.postalCharges = amount;
+    if (key === 'hypothecation_charges') payload.hypothecationCharges = amount;
+    if (key === 'road_tax_amount') payload.roadTax = amount;
+    if (key === 'road_tax_rate') payload.roadTaxRate = amount;
+    if (key === 'cess_amount') payload.cessAmount = amount;
+    if (key === 'cess_rate') payload.cessRate = amount;
+};
+
+const buildRtoTypePayload = (row: Record<string, any>, type: keyof typeof RTO_SUFFIX_BY_TYPE): RtoTypePayload => {
+    const suffix = RTO_SUFFIX_BY_TYPE[type];
+    const payload: RtoTypePayload = {
+        total: toNumber(row[`rto_total_${suffix}`]),
+        fees: {},
+        tax: {},
+    };
+
+    Object.entries(row).forEach(([rawKey, rawValue]) => {
+        if (!rawKey.startsWith('rto_')) return;
+        if (!rawKey.endsWith(`_${suffix}`)) return;
+
+        const baseRaw = rawKey.slice(4, rawKey.length - `_${suffix}`.length);
+        if (baseRaw === 'total' || baseRaw === 'default_type') return;
+
+        const amount = toNumber(rawValue);
+        if (amount <= 0) return;
+
+        const base = normalizeRtoBaseKey(baseRaw);
+        const camel = toCamelCase(base);
+        const isTax = base.includes('tax') || base.includes('cess');
+        const target = isTax ? payload.tax : payload.fees;
+
+        target[camel] = amount;
+        enrichRtoCompatibilityFields(payload, base, amount);
+    });
+
+    return payload;
+};
+
+const addonLabelFromKey = (key: string) =>
+    key
+        .split('_')
+        .map(part => {
+            if (part === 'pa') return 'PA';
+            if (part === 'rsa') return 'RSA';
+            return part.charAt(0).toUpperCase() + part.slice(1);
+        })
+        .join(' ');
+
+const buildInsuranceAddons = (row: Record<string, any>) => {
+    const addonBaseKeys = Object.keys(row)
+        .filter(key => key.startsWith('addon_') && key.endsWith('_total_amount'))
+        .map(key => key.slice('addon_'.length, -'_total_amount'.length));
+
+    return addonBaseKeys
+        .map(baseKey => {
+            const total = toNumber(row[`addon_${baseKey}_total_amount`]);
+            const price = toNumber(row[`addon_${baseKey}_amount`]);
+            const gst = toNumber(row[`addon_${baseKey}_gst_amount`]);
+            const defaultRaw = row[`addon_${baseKey}_default`];
+            const isDefault =
+                defaultRaw === true ||
+                defaultRaw === 'true' ||
+                defaultRaw === 1 ||
+                defaultRaw === '1' ||
+                defaultRaw === 't';
+
+            if (total <= 0 && price <= 0 && gst <= 0) return null;
+
+            return {
+                id: baseKey,
+                label: addonLabelFromKey(baseKey),
+                price,
+                gst,
+                total,
+                default: isDefault,
+            };
+        })
+        .filter(Boolean) as {
+        id: string;
+        label: string;
+        price: number;
+        gst: number;
+        total: number;
+        default: boolean;
+    }[];
+};
 
 // ─── 1. Model Resolution ────────────────────────────────────
 
@@ -317,33 +430,59 @@ export async function fetchPublishedPricing(
         rows = fallbackRows || null;
     }
 
-    const matchingRow = (rows || []).find((row: any) => Number(row.rto_total_state) > 0);
+    const matchingRow = (rows || []).find((row: any) => toNumber(row.rto_total_state) > 0);
     const priceRow = matchingRow || (rows || [])[0] || null;
 
     if (!priceRow) return { priceRow: null, snapshot: null };
 
+    const defaultRtoTypeRaw = String(priceRow.rto_default_type || 'STATE').toUpperCase();
+    const defaultRtoType = VALID_RTO_TYPES.has(defaultRtoTypeRaw) ? defaultRtoTypeRaw : 'STATE';
+    const rtoByType = {
+        STATE: buildRtoTypePayload(priceRow, 'STATE'),
+        BH: buildRtoTypePayload(priceRow, 'BH'),
+        COMPANY: buildRtoTypePayload(priceRow, 'COMPANY'),
+    };
+    const addons = buildInsuranceAddons(priceRow);
+
+    const odTotal = toNumber(priceRow.ins_own_damage_total_amount || priceRow.ins_own_damage_premium_amount);
+    const tpTotal = toNumber(priceRow.ins_liability_only_total_amount || priceRow.ins_liability_only_premium_amount);
+    const grossInsurance =
+        toNumber(priceRow.ins_gross_premium) ||
+        toNumber(priceRow.ins_sum_mandatory_insurance) + toNumber(priceRow.ins_sum_mandatory_insurance_gst_amount);
+
+    const selectedRtoTotal = rtoByType[defaultRtoType as keyof typeof rtoByType]?.total || rtoByType.STATE.total || 0;
+    const onRoadPrice =
+        toNumber(priceRow.on_road_price) || toNumber(priceRow.ex_showroom) + selectedRtoTotal + grossInsurance;
+
     const snapshot: SotPricingSnapshot = {
         vehicle_color_id: priceRow.sku_id,
-        ex_showroom_price: Number(priceRow.ex_showroom) || 0,
-        rto_total: Number(priceRow.rto_total_state) || 0,
-        insurance_total: Number(priceRow.ins_total) || 0,
-        on_road_price: Number(priceRow.on_road_price) || 0,
+        ex_showroom_price: toNumber(priceRow.ex_showroom),
+        rto_total: selectedRtoTotal,
+        insurance_total: grossInsurance,
+        on_road_price: onRoadPrice,
         rto: {
-            STATE: { total: Number(priceRow.rto_total_state) },
-            BH: { total: Number(priceRow.rto_total_bh) },
-            COMPANY: { total: Number(priceRow.rto_total_company) },
-            default: priceRow.rto_default_type || 'STATE',
+            STATE: rtoByType.STATE,
+            BH: rtoByType.BH,
+            COMPANY: rtoByType.COMPANY,
+            default: defaultRtoType,
         },
         insurance: {
-            base_total:
-                Number(priceRow.ins_total || 0) ||
-                Number(priceRow.ins_sum_mandatory_insurance || 0) +
-                    Number(priceRow.ins_sum_mandatory_insurance_gst_amount || 0),
-            od: { total: Number(priceRow.ins_od_total) },
-            tp: { total: Number(priceRow.ins_tp_total) },
-            pa: Number(priceRow.addon_pa_total ?? 0),
+            base_total: grossInsurance,
+            od: {
+                total: odTotal,
+                base: toNumber(priceRow.ins_own_damage_premium_amount),
+                gst: toNumber(priceRow.ins_own_damage_gst_amount),
+            },
+            tp: {
+                total: tpTotal,
+                base: toNumber(priceRow.ins_liability_only_premium_amount),
+                gst: toNumber(priceRow.ins_liability_only_gst_amount),
+            },
+            pa: toNumber(priceRow.addon_personal_accident_cover_total_amount),
+            addons,
+            gst_rate: toNumber(priceRow.ins_gst_rate || 18),
         },
-        state_code: stateCode,
+        state_code: String(priceRow.state_code || stateCode || 'MH'),
         district: 'ALL',
         published_at: priceRow.published_at,
     };

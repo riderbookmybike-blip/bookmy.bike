@@ -84,6 +84,7 @@ interface SKUPriceRow {
     finish?: string;
     hex_primary?: string;
     hex_secondary?: string;
+    updatedByName?: string;
 }
 
 interface PricingLedgerTableProps {
@@ -1498,16 +1499,19 @@ export default function PricingLedgerTable({
                                     )}
 
                                     <th
-                                        className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right w-[100px] whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                        className="px-2 py-1.5 text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors border-l border-l-slate-100 dark:border-l-slate-800"
                                         onClick={() => handleSort('updatedAt')}
                                     >
                                         <div className="flex items-center justify-end gap-1">
-                                            Last Updated
+                                            Updated
                                             <ArrowUpDown
                                                 size={10}
                                                 className={`opacity-30 ${sortConfig?.key === 'updatedAt' ? 'text-emerald-600 opacity-100' : ''}`}
                                             />
                                         </div>
+                                    </th>
+                                    <th className="px-2 py-1.5 text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                        By
                                     </th>
 
                                     <th className="relative px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right group/header w-[100px] whitespace-nowrap">
@@ -1577,24 +1581,27 @@ export default function PricingLedgerTable({
                                         sku.originalExShowroom !== undefined &&
                                         sku.exShowroom !== sku.originalExShowroom;
                                     const isSelected = selectedSkuIds.has(sku.id);
-                                    const canEdit = isSelected && singleVariantSelected;
+                                    const canEdit = isSelected;
                                     const updatedAt = sku.updatedAt || sku.publishedAt;
                                     const updatedLabel = (() => {
                                         if (!updatedAt) return '—';
-                                        const now = new Date();
-                                        const then = new Date(updatedAt);
-                                        const diffMs = now.getTime() - then.getTime();
-                                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                                        if (diffDays === 0) return 'Today';
-                                        if (diffDays === 1) return '1d ago';
-                                        return `${diffDays}d ago`;
+                                        const d = new Date(updatedAt);
+                                        const day = d.getDate();
+                                        const mon = d.toLocaleString('en-IN', { month: 'short' });
+                                        const time = d.toLocaleString('en-IN', {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: true,
+                                        });
+                                        return `${day} ${mon}, ${time}`;
                                     })();
-                                    const updatedTooltip = updatedAt
-                                        ? new Date(updatedAt).toLocaleString('en-IN', {
-                                              dateStyle: 'medium',
-                                              timeStyle: 'short',
-                                          })
-                                        : '';
+                                    const updatedByName = (() => {
+                                        const full = sku.updatedByName || '';
+                                        if (!full) return '—';
+                                        const parts = full.trim().split(/\s+/);
+                                        if (parts.length <= 1) return full;
+                                        return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+                                    })();
 
                                     return (
                                         <tr
@@ -2150,18 +2157,16 @@ export default function PricingLedgerTable({
                                                                         onUpdateOffer(sku.id, -enteredDelta);
                                                                     }}
                                                                     onBlur={() => {
-                                                                        setDeltaDrafts(prev => {
-                                                                            const next = { ...prev };
-                                                                            const raw = (next[sku.id] ?? '').trim();
-                                                                            if (raw === '' || raw === '-') {
-                                                                                delete next[sku.id];
-                                                                                return next;
-                                                                            }
+                                                                        const raw = (deltaDrafts[sku.id] ?? '').trim();
+                                                                        if (raw !== '' && raw !== '-') {
                                                                             const enteredDelta = Math.max(
                                                                                 -25000,
                                                                                 Math.min(25000, Math.trunc(Number(raw)))
                                                                             );
                                                                             onUpdateOffer(sku.id, -enteredDelta);
+                                                                        }
+                                                                        setDeltaDrafts(prev => {
+                                                                            const next = { ...prev };
                                                                             delete next[sku.id];
                                                                             return next;
                                                                         });
@@ -2213,15 +2218,15 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            <td className="px-2 py-1 text-right w-[80px] relative group/updated">
-                                                <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400">
+                                            <td className="px-2 py-1 text-right border-l border-l-slate-50 dark:border-l-slate-800/50">
+                                                <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                                     {updatedLabel}
                                                 </span>
-                                                {updatedTooltip && (
-                                                    <div className="absolute bottom-full mb-1 right-0 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/updated:opacity-100 group-hover/updated:visible transition-all whitespace-nowrap z-50">
-                                                        {updatedTooltip}
-                                                    </div>
-                                                )}
+                                            </td>
+                                            <td className="px-2 py-1 text-right">
+                                                <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                                                    {updatedByName}
+                                                </span>
                                             </td>
 
                                             <td className="px-3 py-1.5 text-right w-[90px] relative">

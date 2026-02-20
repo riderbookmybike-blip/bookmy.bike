@@ -65,15 +65,15 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
 
     const resolveHref = (href: string) => {
         if (!tenantSlug) return href;
-        // reuse same prefixes as command palette; keep it minimal
-        const prefixes = ['/dashboard', '/leads', '/quotes', '/sales-orders'];
+        const prefixes = ['/dashboard', '/leads', '/quotes', '/sales-orders', '/bookings'];
         const shouldPrefix = prefixes.some(prefix => href.startsWith(prefix));
         return shouldPrefix ? `/app/${tenantSlug}${href}` : href;
     };
 
     const quickActions = [
         { icon: Megaphone, href: '/leads?action=create', label: 'Quick Add Lead' },
-        { icon: FileText, href: '/quotes?action=create', label: 'Quick Add Quote' },
+        // Quote quick-add should land on Quotes home (creation requires context)
+        { icon: FileText, href: '/quotes', label: 'Go to Quotes' },
     ];
 
     return (

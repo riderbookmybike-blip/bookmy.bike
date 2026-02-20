@@ -94,8 +94,9 @@ export default function ProductClient({
             window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
         const isMobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
 
-        // Force mobile PDP on touch-first devices even when browser reports wider viewport.
-        setForceMobileLayout(device !== 'desktop' && (isCoarsePointer || isMobileUA));
+        // Always treat detected phones as mobile PDP, even if browser is in desktop-site mode.
+        const isPhoneDevice = device === 'phone';
+        setForceMobileLayout(isPhoneDevice || (device !== 'desktop' && (isCoarsePointer || isMobileUA)));
     }, [device]);
 
     useEffect(() => {

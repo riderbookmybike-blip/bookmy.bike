@@ -40,6 +40,23 @@ import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
 import AnalyticsScripts from '@/components/analytics/AnalyticsScripts';
 import { Toaster } from 'sonner';
 
+const themeBootstrapScript = `
+(() => {
+  try {
+    const saved = localStorage.getItem('theme');
+    const theme = saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const resolved = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
+    const root = document.documentElement;
+    root.classList.remove('light');
+    root.classList.remove('dark');
+    root.classList.add(resolved);
+    root.dataset.theme = theme;
+    root.style.colorScheme = resolved;
+  } catch (_) {}
+})();
+`;
+
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -47,6 +64,9 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" suppressHydrationWarning>
+            <head>
+                <script id="theme-bootstrap" dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+            </head>
             <body
                 suppressHydrationWarning
                 className={`${inter.variable} ${jetbrainsMono.variable} ${brunoAce.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)]`}

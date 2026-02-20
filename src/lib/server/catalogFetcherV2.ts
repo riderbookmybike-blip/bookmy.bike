@@ -287,10 +287,10 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 usbCharging: m.usb_charging ?? undefined,
                 navigation: m.navigation ?? undefined,
                 consoleType: m.console_type || undefined,
-                ledHeadlamp: m.led_headlamp ?? undefined,
-                ledTailLamp: m.led_tail_lamp ?? undefined,
+                headlampType:
+                    m.headlamp_type || (m.led_headlamp ? 'LED' : m.led_headlamp === false ? 'Halogen' : undefined),
+                tailLampType: m.led_tail_lamp === true ? 'LED' : m.led_tail_lamp === false ? 'Bulb' : undefined,
                 rideModes: m.ride_modes || undefined,
-                headlampType: m.headlamp_type || undefined,
                 speedometer: m.speedometer || undefined,
                 tripmeter: m.tripmeter || undefined,
                 clock: m.clock ?? undefined,
@@ -311,7 +311,7 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
         };
 
         // Build price from cat_price_state_mh
-        const exShowroom = primarySku.ex_showroom ?? primarySku.price_base ?? 0;
+        const exShowroom = primarySku.ex_showroom ?? 0;
         const onRoad = primarySku.on_road_price ?? exShowroom;
 
         // Determine displacement + powerUnit

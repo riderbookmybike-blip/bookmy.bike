@@ -37,6 +37,7 @@ import { LocationPicker } from './LocationPicker';
 import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
 import { setLocationCookie } from '@/actions/locationCookie';
 import { ProductCard } from './desktop/ProductCard';
+import { CompareTray, type CompareItem } from './CompareTray';
 import { CompactProductCard } from './mobile/CompactProductCard';
 import { MobileFilterDrawer } from './mobile/MobileFilterDrawer';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
@@ -146,6 +147,41 @@ export const DesktopCatalog = ({
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isEmiOpen, setIsEmiOpen] = useState(true);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    // Compare state
+    const [compareItems, setCompareItems] = useState<CompareItem[]>([]);
+    const toggleCompare = (item: CompareItem) => {
+        setCompareItems(prev => {
+            const exists = prev.find(c => c.modelSlug === item.modelSlug);
+            if (exists) return prev.filter(c => c.modelSlug !== item.modelSlug);
+            if (prev.length >= 3) {
+                toast.error('Max 3 models to compare');
+                return prev;
+            }
+            toast.success(`${item.model} added to compare`);
+            return [...prev, item];
+        });
+    };
+    const removeCompare = (modelSlug: string) => setCompareItems(prev => prev.filter(c => c.modelSlug !== modelSlug));
+    const clearCompare = () => setCompareItems([]);
+    const handleCompareNow = () => {
+        if (compareItems.length === 0) return;
+        const item = compareItems[0];
+        router.push(`/store/compare/${item.make.toLowerCase()}/${item.modelSlug}`);
+    };
+
+    // Downpayment edit popover
+    const [isDpEditOpen, setIsDpEditOpen] = useState(false);
+    const [dpDraft, setDpDraft] = useState(downpayment);
+    const openDpEdit = () => {
+        setDpDraft(downpayment);
+        setIsDpEditOpen(true);
+    };
+    const applyDp = (val: number) => {
+        setDownpayment(val);
+        setIsDpEditOpen(false);
+        toast.success(`Downpayment updated to ₹${val.toLocaleString('en-IN')}`);
+    };
 
     const bodyOptions = ['MOTORCYCLE', 'SCOOTER', 'MOPED'] as const;
     const fuelOptions = ['Petrol', 'Electric', 'CNG'] as const;
@@ -1427,6 +1463,16 @@ export const DesktopCatalog = ({
                                         showOClubPrompt={!isLoggedIn}
                                         showBcoinBadge={isLoggedIn}
                                         variantCount={group.variantCount}
+                                        onCompare={() =>
+                                            toggleCompare({
+                                                make: group.make,
+                                                model: group.model,
+                                                modelSlug: group.modelSlug,
+                                                imageUrl: v.imageUrl || '',
+                                            })
+                                        }
+                                        isInCompare={compareItems.some(c => c.modelSlug === group.modelSlug)}
+                                        onEditDownpayment={openDpEdit}
                                         onExplore={
                                             group.variantCount > 1
                                                 ? () => {
@@ -1722,6 +1768,117 @@ export const DesktopCatalog = ({
                     );
                 }}
             />
+
+            {/* Compare Tray */}
+            <CompareTray
+                items={compareItems}
+                onRemove={removeCompare}
+                onCompareNow={handleCompareNow}
+                onClear={clearCompare}
+            />
+
+            {/* Finance Edit — full-width bottom sheet */}
+            <AnimatePresence>
+                {isDpEditOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-end justify-center"
+                        onClick={() => setIsDpEditOpen(false)}
+                    >
+                        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+                        <motion.div
+                            initial={{ y: 100 }}
+                            animate={{ y: 0 }}
+                            exit={{ y: 100 }}
+                            onClick={e => e.stopPropagation()}
+                            className="relative z-10 w-full max-w-2xl mx-auto rounded-t-3xl bg-white dark:bg-slate-900 border-t border-x border-slate-200 dark:border-white/10 shadow-2xl p-6 space-y-6"
+                        >
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                    Finance Settings
+                                </h3>
+                                <button
+                                    onClick={() => setIsDpEditOpen(false)}
+                                    className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {/* Downpayment */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Downpayment
+                                    </span>
+                                    <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                        ₹{dpDraft.toLocaleString('en-IN')}
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={100000}
+                                    step={1000}
+                                    value={dpDraft}
+                                    onChange={e => setDpDraft(Number(e.target.value))}
+                                    className="w-full accent-[#F4B000] h-2 rounded-full"
+                                />
+                                <div className="flex justify-between text-[8px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                                    <span>₹0</span>
+                                    <span>₹25K</span>
+                                    <span>₹50K</span>
+                                    <span>₹75K</span>
+                                    <span>₹1L</span>
+                                </div>
+                                <div className="flex items-center justify-center gap-2 flex-wrap">
+                                    {[5000, 10000, 15000, 20000, 30000, 50000].map(val => (
+                                        <button
+                                            key={val}
+                                            onClick={() => setDpDraft(val)}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                        >
+                                            ₹{val / 1000}K
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Tenure */}
+                            <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-white/5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Tenure
+                                    </span>
+                                    <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                        {tenure} months
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-center gap-2">
+                                    {[12, 24, 36, 48, 60].map(val => (
+                                        <button
+                                            key={val}
+                                            onClick={() => setTenure(val)}
+                                            className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                        >
+                                            {val}mo
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => applyDp(dpDraft)}
+                                className="w-full py-3 rounded-xl bg-[#F4B000] hover:bg-[#FFD700] text-black text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[#F4B000]/20 transition-all hover:-translate-y-0.5"
+                            >
+                                Apply to All Cards
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

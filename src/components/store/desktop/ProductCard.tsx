@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Star, StarHalf, MapPin, Bluetooth, ArrowRight, Sparkles, Zap, CircleHelp, Layers } from 'lucide-react';
+import {
+    Heart,
+    Star,
+    StarHalf,
+    MapPin,
+    Bluetooth,
+    ArrowRight,
+    Sparkles,
+    Zap,
+    CircleHelp,
+    Layers,
+    GitCompareArrows,
+    Pencil,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
@@ -50,6 +63,9 @@ export const ProductCard = ({
     showBcoinBadge = true,
     variantCount,
     onExplore,
+    onCompare,
+    isInCompare = false,
+    onEditDownpayment,
 }: {
     v: ProductVariant;
     viewMode?: 'grid' | 'list';
@@ -92,6 +108,9 @@ export const ProductCard = ({
     showBcoinBadge?: boolean;
     variantCount?: number;
     onExplore?: () => void;
+    onCompare?: () => void;
+    isInCompare?: boolean;
+    onEditDownpayment?: () => void;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { language } = useI18n();
@@ -635,6 +654,18 @@ export const ProductCard = ({
                 </div>
 
                 <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                    {onCompare && (
+                        <button
+                            onClick={e => {
+                                e.stopPropagation();
+                                onCompare();
+                            }}
+                            className={`w-8 h-8 rounded-full border flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105 ${isInCompare ? 'bg-[#F4B000]/20 border-[#F4B000]/40 text-[#F4B000]' : 'bg-white/80 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 hover:text-[#F4B000]'}`}
+                            title={isInCompare ? 'Remove from Compare' : 'Add to Compare'}
+                        >
+                            <GitCompareArrows size={14} />
+                        </button>
+                    )}
                     {onExplodeColors && (
                         <button
                             onClick={e => {
@@ -809,13 +840,8 @@ export const ProductCard = ({
                     <div className="flex flex-col mt-1">
                         <div className="flex items-center gap-2">
                             <p className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-full text-left">
-                                {variantCount && variantCount > 1 ? `${variantCount} Variants` : displayVariant}
+                                {displayVariant}
                             </p>
-                            {variantCount && variantCount > 1 && (
-                                <span className="px-1.5 py-0.5 bg-brand-primary/10 text-brand-primary text-[8px] font-black uppercase tracking-wider rounded-md border border-brand-primary/20">
-                                    Family
-                                </span>
-                            )}
                         </div>
                         {v.suitableFor && (
                             <div className="flex flex-wrap gap-1 mt-2">
@@ -1017,6 +1043,19 @@ export const ProductCard = ({
                                 <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
                                     Downpayment ₹{(downpayment || 0).toLocaleString('en-IN')}
                                 </span>
+                                {onEditDownpayment && (
+                                    <button
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            onEditDownpayment();
+                                        }}
+                                        className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-emerald-500/60 hover:text-emerald-600 hover:bg-emerald-500/10 transition-all"
+                                        title="Edit Downpayment"
+                                    >
+                                        <Pencil size={9} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1040,9 +1079,9 @@ export const ProductCard = ({
                                     e.stopPropagation();
                                     onExplore();
                                 }}
-                                className="group/btn relative w-full h-10 md:h-11 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all"
+                                className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
                             >
-                                Explore {variantCount} Variants
+                                Compare Variants
                                 <ArrowRight
                                     size={12}
                                     className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"

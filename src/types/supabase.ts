@@ -476,6 +476,7 @@ export type Database = {
                     name: string;
                     position: number | null;
                     product_type: string;
+                    segment: string | null;
                     slug: string | null;
                     status: string | null;
                     updated_at: string | null;
@@ -493,6 +494,7 @@ export type Database = {
                     name: string;
                     position?: number | null;
                     product_type: string;
+                    segment?: string | null;
                     slug?: string | null;
                     status?: string | null;
                     updated_at?: string | null;
@@ -510,6 +512,7 @@ export type Database = {
                     name?: string;
                     position?: number | null;
                     product_type?: string;
+                    segment?: string | null;
                     slug?: string | null;
                     status?: string | null;
                     updated_at?: string | null;
@@ -1507,43 +1510,71 @@ export type Database = {
                     battery_capacity: string | null;
                     battery_type: string | null;
                     bluetooth: boolean | null;
+                    bore_stroke: string | null;
                     braking_system: string | null;
                     charging_time: string | null;
+                    chassis_type: string | null;
+                    clock: boolean | null;
+                    clutch: string | null;
+                    compression_ratio: string | null;
                     console_type: string | null;
+                    cooling_system: string | null;
                     created_at: string | null;
+                    cylinders: number | null;
                     displacement: number | null;
                     engine_type: string | null;
                     front_brake: string | null;
                     front_suspension: string | null;
                     front_tyre: string | null;
+                    front_wheel_size: string | null;
                     fuel_capacity: number | null;
                     ground_clearance: number | null;
+                    headlamp_type: string | null;
                     id: string;
                     kerb_weight: number | null;
+                    killswitch: boolean | null;
                     led_headlamp: boolean | null;
                     led_tail_lamp: boolean | null;
+                    low_battery_indicator: boolean | null;
+                    low_fuel_indicator: boolean | null;
+                    low_oil_indicator: boolean | null;
                     max_power: string | null;
                     max_torque: string | null;
-                    mileage: number | null;
+                    mileage_arai: number | null;
                     model_id: string;
                     motor_power: string | null;
                     name: string;
                     navigation: boolean | null;
                     num_valves: number | null;
+                    overall_height: number | null;
+                    overall_length: number | null;
+                    overall_width: number | null;
+                    pass_light: boolean | null;
+                    pillion_footrest: boolean | null;
+                    pillion_seat: boolean | null;
                     position: number | null;
                     range_km: number | null;
                     rear_brake: string | null;
                     rear_suspension: string | null;
                     rear_tyre: string | null;
+                    rear_wheel_size: string | null;
                     ride_modes: string | null;
                     seat_height: number | null;
+                    service_interval: string | null;
                     slug: string | null;
+                    speedometer: string | null;
+                    stand_alarm: boolean | null;
                     start_type: string | null;
                     status: string | null;
+                    top_speed: number | null;
                     transmission: string | null;
+                    tripmeter: string | null;
                     tyre_type: string | null;
                     updated_at: string | null;
                     usb_charging: boolean | null;
+                    warranty_km: number | null;
+                    warranty_years: number | null;
+                    wheel_type: string | null;
                     wheelbase: number | null;
                 };
                 Insert: {
@@ -1551,43 +1582,71 @@ export type Database = {
                     battery_capacity?: string | null;
                     battery_type?: string | null;
                     bluetooth?: boolean | null;
+                    bore_stroke?: string | null;
                     braking_system?: string | null;
                     charging_time?: string | null;
+                    chassis_type?: string | null;
+                    clock?: boolean | null;
+                    clutch?: string | null;
+                    compression_ratio?: string | null;
                     console_type?: string | null;
+                    cooling_system?: string | null;
                     created_at?: string | null;
+                    cylinders?: number | null;
                     displacement?: number | null;
                     engine_type?: string | null;
                     front_brake?: string | null;
                     front_suspension?: string | null;
                     front_tyre?: string | null;
+                    front_wheel_size?: string | null;
                     fuel_capacity?: number | null;
                     ground_clearance?: number | null;
+                    headlamp_type?: string | null;
                     id?: string;
                     kerb_weight?: number | null;
+                    killswitch?: boolean | null;
                     led_headlamp?: boolean | null;
                     led_tail_lamp?: boolean | null;
+                    low_battery_indicator?: boolean | null;
+                    low_fuel_indicator?: boolean | null;
+                    low_oil_indicator?: boolean | null;
                     max_power?: string | null;
                     max_torque?: string | null;
-                    mileage?: number | null;
+                    mileage_arai?: number | null;
                     model_id: string;
                     motor_power?: string | null;
                     name: string;
                     navigation?: boolean | null;
                     num_valves?: number | null;
+                    overall_height?: number | null;
+                    overall_length?: number | null;
+                    overall_width?: number | null;
+                    pass_light?: boolean | null;
+                    pillion_footrest?: boolean | null;
+                    pillion_seat?: boolean | null;
                     position?: number | null;
                     range_km?: number | null;
                     rear_brake?: string | null;
                     rear_suspension?: string | null;
                     rear_tyre?: string | null;
+                    rear_wheel_size?: string | null;
                     ride_modes?: string | null;
                     seat_height?: number | null;
+                    service_interval?: string | null;
                     slug?: string | null;
+                    speedometer?: string | null;
+                    stand_alarm?: boolean | null;
                     start_type?: string | null;
                     status?: string | null;
+                    top_speed?: number | null;
                     transmission?: string | null;
+                    tripmeter?: string | null;
                     tyre_type?: string | null;
                     updated_at?: string | null;
                     usb_charging?: boolean | null;
+                    warranty_km?: number | null;
+                    warranty_years?: number | null;
+                    wheel_type?: string | null;
                     wheelbase?: number | null;
                 };
                 Update: {
@@ -1595,43 +1654,71 @@ export type Database = {
                     battery_capacity?: string | null;
                     battery_type?: string | null;
                     bluetooth?: boolean | null;
+                    bore_stroke?: string | null;
                     braking_system?: string | null;
                     charging_time?: string | null;
+                    chassis_type?: string | null;
+                    clock?: boolean | null;
+                    clutch?: string | null;
+                    compression_ratio?: string | null;
                     console_type?: string | null;
+                    cooling_system?: string | null;
                     created_at?: string | null;
+                    cylinders?: number | null;
                     displacement?: number | null;
                     engine_type?: string | null;
                     front_brake?: string | null;
                     front_suspension?: string | null;
                     front_tyre?: string | null;
+                    front_wheel_size?: string | null;
                     fuel_capacity?: number | null;
                     ground_clearance?: number | null;
+                    headlamp_type?: string | null;
                     id?: string;
                     kerb_weight?: number | null;
+                    killswitch?: boolean | null;
                     led_headlamp?: boolean | null;
                     led_tail_lamp?: boolean | null;
+                    low_battery_indicator?: boolean | null;
+                    low_fuel_indicator?: boolean | null;
+                    low_oil_indicator?: boolean | null;
                     max_power?: string | null;
                     max_torque?: string | null;
-                    mileage?: number | null;
+                    mileage_arai?: number | null;
                     model_id?: string;
                     motor_power?: string | null;
                     name?: string;
                     navigation?: boolean | null;
                     num_valves?: number | null;
+                    overall_height?: number | null;
+                    overall_length?: number | null;
+                    overall_width?: number | null;
+                    pass_light?: boolean | null;
+                    pillion_footrest?: boolean | null;
+                    pillion_seat?: boolean | null;
                     position?: number | null;
                     range_km?: number | null;
                     rear_brake?: string | null;
                     rear_suspension?: string | null;
                     rear_tyre?: string | null;
+                    rear_wheel_size?: string | null;
                     ride_modes?: string | null;
                     seat_height?: number | null;
+                    service_interval?: string | null;
                     slug?: string | null;
+                    speedometer?: string | null;
+                    stand_alarm?: boolean | null;
                     start_type?: string | null;
                     status?: string | null;
+                    top_speed?: number | null;
                     transmission?: string | null;
+                    tripmeter?: string | null;
                     tyre_type?: string | null;
                     updated_at?: string | null;
                     usb_charging?: boolean | null;
+                    warranty_km?: number | null;
+                    warranty_years?: number | null;
+                    wheel_type?: string | null;
                     wheelbase?: number | null;
                 };
                 Relationships: [
@@ -1938,6 +2025,7 @@ export type Database = {
                     customer_details: Json | null;
                     deleted_at: string | null;
                     deleted_by: string | null;
+                    delivery_branch_id: string | null;
                     delivery_date: string | null;
                     delivery_status: string | null;
                     display_id: string | null;
@@ -1953,12 +2041,14 @@ export type Database = {
                     operational_stage: Database['public']['Enums']['crm_operational_stage'] | null;
                     payment_status: string | null;
                     pdi_status: string | null;
+                    qty: number;
                     quote_id: string | null;
                     refund_status: string | null;
                     registration_number: string | null;
                     registration_status: string | null;
                     rto_receipt_number: string | null;
                     sales_order_snapshot: Json | null;
+                    sku_id: string | null;
                     stage_updated_at: string | null;
                     stage_updated_by: string | null;
                     status: string | null;
@@ -1981,6 +2071,7 @@ export type Database = {
                     customer_details?: Json | null;
                     deleted_at?: string | null;
                     deleted_by?: string | null;
+                    delivery_branch_id?: string | null;
                     delivery_date?: string | null;
                     delivery_status?: string | null;
                     display_id?: string | null;
@@ -1996,12 +2087,14 @@ export type Database = {
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
                     payment_status?: string | null;
                     pdi_status?: string | null;
+                    qty?: number;
                     quote_id?: string | null;
                     refund_status?: string | null;
                     registration_number?: string | null;
                     registration_status?: string | null;
                     rto_receipt_number?: string | null;
                     sales_order_snapshot?: Json | null;
+                    sku_id?: string | null;
                     stage_updated_at?: string | null;
                     stage_updated_by?: string | null;
                     status?: string | null;
@@ -2024,6 +2117,7 @@ export type Database = {
                     customer_details?: Json | null;
                     deleted_at?: string | null;
                     deleted_by?: string | null;
+                    delivery_branch_id?: string | null;
                     delivery_date?: string | null;
                     delivery_status?: string | null;
                     display_id?: string | null;
@@ -2039,12 +2133,14 @@ export type Database = {
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
                     payment_status?: string | null;
                     pdi_status?: string | null;
+                    qty?: number;
                     quote_id?: string | null;
                     refund_status?: string | null;
                     registration_number?: string | null;
                     registration_status?: string | null;
                     rto_receipt_number?: string | null;
                     sales_order_snapshot?: Json | null;
+                    sku_id?: string | null;
                     stage_updated_at?: string | null;
                     stage_updated_by?: string | null;
                     status?: string | null;
@@ -4286,6 +4382,7 @@ export type Database = {
                     phone: string | null;
                     phones_json: Json | null;
                     pincode: string | null;
+                    preferences: Json;
                     primary_email: string | null;
                     primary_phone: string | null;
                     quotes_count: number | null;
@@ -4349,6 +4446,7 @@ export type Database = {
                     phone?: string | null;
                     phones_json?: Json | null;
                     pincode?: string | null;
+                    preferences?: Json;
                     primary_email?: string | null;
                     primary_phone?: string | null;
                     quotes_count?: number | null;
@@ -4412,6 +4510,7 @@ export type Database = {
                     phone?: string | null;
                     phones_json?: Json | null;
                     pincode?: string | null;
+                    preferences?: Json;
                     primary_email?: string | null;
                     primary_phone?: string | null;
                     quotes_count?: number | null;
@@ -4645,6 +4744,340 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            inv_delivery_challan_items: {
+                Row: {
+                    created_at: string | null;
+                    created_by: string | null;
+                    dc_qty: number;
+                    delivery_challan_id: string | null;
+                    id: string;
+                    remarks: string | null;
+                    sku_id: string;
+                    tenant_id: string;
+                    updated_at: string | null;
+                    updated_by: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    dc_qty: number;
+                    delivery_challan_id?: string | null;
+                    id?: string;
+                    remarks?: string | null;
+                    sku_id: string;
+                    tenant_id: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    dc_qty?: number;
+                    delivery_challan_id?: string | null;
+                    id?: string;
+                    remarks?: string | null;
+                    sku_id?: string;
+                    tenant_id?: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_delivery_challan_items_delivery_challan_id_fkey';
+                        columns: ['delivery_challan_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_delivery_challans';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            inv_delivery_challans: {
+                Row: {
+                    created_at: string | null;
+                    created_by: string | null;
+                    dc_date: string;
+                    dc_number: string;
+                    expected_delivery_date: string | null;
+                    id: string;
+                    lr_number: string | null;
+                    purchase_order_id: string | null;
+                    status: string;
+                    supplier_tenant_id: string | null;
+                    tenant_id: string;
+                    transporter_name: string | null;
+                    updated_at: string | null;
+                    updated_by: string | null;
+                    vehicle_number: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    dc_date: string;
+                    dc_number: string;
+                    expected_delivery_date?: string | null;
+                    id?: string;
+                    lr_number?: string | null;
+                    purchase_order_id?: string | null;
+                    status?: string;
+                    supplier_tenant_id?: string | null;
+                    tenant_id: string;
+                    transporter_name?: string | null;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                    vehicle_number?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    dc_date?: string;
+                    dc_number?: string;
+                    expected_delivery_date?: string | null;
+                    id?: string;
+                    lr_number?: string | null;
+                    purchase_order_id?: string | null;
+                    status?: string;
+                    supplier_tenant_id?: string | null;
+                    tenant_id?: string;
+                    transporter_name?: string | null;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                    vehicle_number?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_delivery_challans_purchase_order_id_fkey';
+                        columns: ['purchase_order_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_purchase_orders';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_delivery_challans_supplier_tenant_id_fkey';
+                        columns: ['supplier_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_delivery_challans_supplier_tenant_id_fkey';
+                        columns: ['supplier_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            inv_grn: {
+                Row: {
+                    created_at: string | null;
+                    created_by: string | null;
+                    delivery_branch_id: string | null;
+                    delivery_challan_id: string | null;
+                    delivery_warehouse_id: string | null;
+                    id: string;
+                    purchase_order_id: string | null;
+                    request_branch_id: string | null;
+                    request_warehouse_id: string | null;
+                    status: string;
+                    tenant_id: string;
+                    updated_at: string | null;
+                    updated_by: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    delivery_branch_id?: string | null;
+                    delivery_challan_id?: string | null;
+                    delivery_warehouse_id?: string | null;
+                    id?: string;
+                    purchase_order_id?: string | null;
+                    request_branch_id?: string | null;
+                    request_warehouse_id?: string | null;
+                    status?: string;
+                    tenant_id: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    delivery_branch_id?: string | null;
+                    delivery_challan_id?: string | null;
+                    delivery_warehouse_id?: string | null;
+                    id?: string;
+                    purchase_order_id?: string | null;
+                    request_branch_id?: string | null;
+                    request_warehouse_id?: string | null;
+                    status?: string;
+                    tenant_id?: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_grn_delivery_challan_id_fkey';
+                        columns: ['delivery_challan_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_delivery_challans';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_grn_purchase_order_id_fkey';
+                        columns: ['purchase_order_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_purchase_orders';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            inv_grn_accessory_details: {
+                Row: {
+                    batch_number: string | null;
+                    created_at: string | null;
+                    grn_item_id: string | null;
+                    id: string;
+                    lot_details: Json | null;
+                    photos: Json | null;
+                    serial_number: string | null;
+                };
+                Insert: {
+                    batch_number?: string | null;
+                    created_at?: string | null;
+                    grn_item_id?: string | null;
+                    id?: string;
+                    lot_details?: Json | null;
+                    photos?: Json | null;
+                    serial_number?: string | null;
+                };
+                Update: {
+                    batch_number?: string | null;
+                    created_at?: string | null;
+                    grn_item_id?: string | null;
+                    id?: string;
+                    lot_details?: Json | null;
+                    photos?: Json | null;
+                    serial_number?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_grn_accessory_details_grn_item_id_fkey';
+                        columns: ['grn_item_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_grn_items';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            inv_grn_items: {
+                Row: {
+                    accepted: number;
+                    created_at: string | null;
+                    created_by: string | null;
+                    grn_id: string | null;
+                    id: string;
+                    purchase_order_item_id: string | null;
+                    received: number;
+                    rejected: number;
+                    sku_id: string | null;
+                    tenant_id: string;
+                    updated_at: string | null;
+                    updated_by: string | null;
+                };
+                Insert: {
+                    accepted?: number;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    grn_id?: string | null;
+                    id?: string;
+                    purchase_order_item_id?: string | null;
+                    received?: number;
+                    rejected?: number;
+                    sku_id?: string | null;
+                    tenant_id: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                };
+                Update: {
+                    accepted?: number;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    grn_id?: string | null;
+                    id?: string;
+                    purchase_order_item_id?: string | null;
+                    received?: number;
+                    rejected?: number;
+                    sku_id?: string | null;
+                    tenant_id?: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_grn_items_grn_id_fkey';
+                        columns: ['grn_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_grn';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_grn_items_purchase_order_item_id_fkey';
+                        columns: ['purchase_order_item_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_purchase_order_items';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            inv_grn_vehicle_details: {
+                Row: {
+                    battery_brand: string | null;
+                    battery_number: string | null;
+                    chassis_number: string | null;
+                    created_at: string | null;
+                    engine_number: string | null;
+                    grn_item_id: string | null;
+                    id: string;
+                    key_number: string | null;
+                    manufacturing_date: string | null;
+                    photos: Json | null;
+                    tyre_make: string | null;
+                };
+                Insert: {
+                    battery_brand?: string | null;
+                    battery_number?: string | null;
+                    chassis_number?: string | null;
+                    created_at?: string | null;
+                    engine_number?: string | null;
+                    grn_item_id?: string | null;
+                    id?: string;
+                    key_number?: string | null;
+                    manufacturing_date?: string | null;
+                    photos?: Json | null;
+                    tyre_make?: string | null;
+                };
+                Update: {
+                    battery_brand?: string | null;
+                    battery_number?: string | null;
+                    chassis_number?: string | null;
+                    created_at?: string | null;
+                    engine_number?: string | null;
+                    grn_item_id?: string | null;
+                    id?: string;
+                    key_number?: string | null;
+                    manufacturing_date?: string | null;
+                    photos?: Json | null;
+                    tyre_make?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_grn_vehicle_details_grn_item_id_fkey';
+                        columns: ['grn_item_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_grn_items';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             inv_ledger: {
                 Row: {
                     from_tenant_id: string | null;
@@ -4718,32 +5151,155 @@ export type Database = {
                     },
                 ];
             };
-            inv_po_items: {
+            inv_procurement_quotes: {
                 Row: {
+                    created_at: string | null;
+                    created_by: string | null;
+                    freight_amount: number;
+                    id: string;
+                    landed_cost: number | null;
+                    lead_time_days: number | null;
+                    quoted_at: string | null;
+                    quoted_by_user_id: string | null;
+                    requisition_item_id: string | null;
+                    selection_reason: string | null;
+                    status: string;
+                    supplier_id: string | null;
+                    tax_amount: number;
+                    tenant_id: string;
+                    unit_cost: number;
+                    updated_at: string | null;
+                    updated_by: string | null;
+                    valid_till: string | null;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    freight_amount?: number;
+                    id?: string;
+                    landed_cost?: number | null;
+                    lead_time_days?: number | null;
+                    quoted_at?: string | null;
+                    quoted_by_user_id?: string | null;
+                    requisition_item_id?: string | null;
+                    selection_reason?: string | null;
+                    status?: string;
+                    supplier_id?: string | null;
+                    tax_amount?: number;
+                    tenant_id: string;
+                    unit_cost?: number;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                    valid_till?: string | null;
+                };
+                Update: {
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    freight_amount?: number;
+                    id?: string;
+                    landed_cost?: number | null;
+                    lead_time_days?: number | null;
+                    quoted_at?: string | null;
+                    quoted_by_user_id?: string | null;
+                    requisition_item_id?: string | null;
+                    selection_reason?: string | null;
+                    status?: string;
+                    supplier_id?: string | null;
+                    tax_amount?: number;
+                    tenant_id?: string;
+                    unit_cost?: number;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                    valid_till?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_procurement_quotes_requisition_item_id_fkey';
+                        columns: ['requisition_item_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_requisition_items';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_procurement_quotes_supplier_id_fkey';
+                        columns: ['supplier_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_procurement_quotes_supplier_id_fkey';
+                        columns: ['supplier_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            inv_purchase_order_items: {
+                Row: {
+                    created_at: string | null;
+                    created_by: string | null;
                     id: string;
                     ordered_qty: number;
                     po_id: string;
+                    purchase_order_id: string | null;
                     received_qty: number | null;
+                    requisition_item_id: string | null;
                     sku_id: string;
+                    status: string | null;
+                    tenant_id: string;
                     unit_cost: number | null;
+                    updated_at: string | null;
+                    updated_by: string | null;
                 };
                 Insert: {
+                    created_at?: string | null;
+                    created_by?: string | null;
                     id?: string;
                     ordered_qty: number;
                     po_id: string;
+                    purchase_order_id?: string | null;
                     received_qty?: number | null;
+                    requisition_item_id?: string | null;
                     sku_id: string;
+                    status?: string | null;
+                    tenant_id: string;
                     unit_cost?: number | null;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
                 };
                 Update: {
+                    created_at?: string | null;
+                    created_by?: string | null;
                     id?: string;
                     ordered_qty?: number;
                     po_id?: string;
+                    purchase_order_id?: string | null;
                     received_qty?: number | null;
+                    requisition_item_id?: string | null;
                     sku_id?: string;
+                    status?: string | null;
+                    tenant_id?: string;
                     unit_cost?: number | null;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
                 };
                 Relationships: [
+                    {
+                        foreignKeyName: 'inv_purchase_order_items_purchase_order_id_fkey';
+                        columns: ['purchase_order_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_purchase_orders';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_purchase_order_items_requisition_item_id_fkey';
+                        columns: ['requisition_item_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_requisition_items';
+                        referencedColumns: ['id'];
+                    },
                     {
                         foreignKeyName: 'purchase_order_items_po_id_fkey';
                         columns: ['po_id'];
@@ -4757,6 +5313,8 @@ export type Database = {
                 Row: {
                     created_at: string | null;
                     created_by: string | null;
+                    delivery_branch_id: string | null;
+                    delivery_warehouse_id: string | null;
                     display_id: string | null;
                     docket_number: string | null;
                     expected_date: string | null;
@@ -4768,11 +5326,14 @@ export type Database = {
                     transporter_contact: string | null;
                     transporter_name: string | null;
                     updated_at: string | null;
+                    updated_by: string | null;
                     vendor_name: string | null;
                 };
                 Insert: {
                     created_at?: string | null;
                     created_by?: string | null;
+                    delivery_branch_id?: string | null;
+                    delivery_warehouse_id?: string | null;
                     display_id?: string | null;
                     docket_number?: string | null;
                     expected_date?: string | null;
@@ -4784,11 +5345,14 @@ export type Database = {
                     transporter_contact?: string | null;
                     transporter_name?: string | null;
                     updated_at?: string | null;
+                    updated_by?: string | null;
                     vendor_name?: string | null;
                 };
                 Update: {
                     created_at?: string | null;
                     created_by?: string | null;
+                    delivery_branch_id?: string | null;
+                    delivery_warehouse_id?: string | null;
                     display_id?: string | null;
                     docket_number?: string | null;
                     expected_date?: string | null;
@@ -4800,6 +5364,7 @@ export type Database = {
                     transporter_contact?: string | null;
                     transporter_name?: string | null;
                     updated_at?: string | null;
+                    updated_by?: string | null;
                     vendor_name?: string | null;
                 };
                 Relationships: [
@@ -4812,27 +5377,48 @@ export type Database = {
                     },
                 ];
             };
-            inv_req_items: {
+            inv_requisition_items: {
                 Row: {
+                    created_at: string | null;
+                    created_by: string | null;
                     id: string;
                     notes: string | null;
+                    qty: number | null;
                     quantity: number | null;
                     requisition_id: string | null;
                     sku_id: string;
+                    status: string | null;
+                    tenant_id: string;
+                    updated_at: string | null;
+                    updated_by: string | null;
                 };
                 Insert: {
+                    created_at?: string | null;
+                    created_by?: string | null;
                     id?: string;
                     notes?: string | null;
+                    qty?: number | null;
                     quantity?: number | null;
                     requisition_id?: string | null;
                     sku_id: string;
+                    status?: string | null;
+                    tenant_id: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
                 };
                 Update: {
+                    created_at?: string | null;
+                    created_by?: string | null;
                     id?: string;
                     notes?: string | null;
+                    qty?: number | null;
                     quantity?: number | null;
                     requisition_id?: string | null;
                     sku_id?: string;
+                    status?: string | null;
+                    tenant_id?: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
                 };
                 Relationships: [
                     {
@@ -4846,33 +5432,74 @@ export type Database = {
             };
             inv_requisitions: {
                 Row: {
+                    assigned_to_user_id: string | null;
+                    booking_id: string | null;
                     created_at: string | null;
                     customer_name: string | null;
+                    delivery_branch_id: string | null;
+                    delivery_warehouse_id: string | null;
                     display_id: string | null;
                     id: string;
+                    priority: string | null;
+                    request_branch_id: string | null;
+                    request_warehouse_id: string | null;
                     requested_by: string | null;
+                    requested_by_user_id: string | null;
+                    source_type: string;
                     status: string | null;
                     tenant_id: string;
+                    updated_at: string | null;
+                    updated_by: string | null;
                 };
                 Insert: {
+                    assigned_to_user_id?: string | null;
+                    booking_id?: string | null;
                     created_at?: string | null;
                     customer_name?: string | null;
+                    delivery_branch_id?: string | null;
+                    delivery_warehouse_id?: string | null;
                     display_id?: string | null;
                     id?: string;
+                    priority?: string | null;
+                    request_branch_id?: string | null;
+                    request_warehouse_id?: string | null;
                     requested_by?: string | null;
+                    requested_by_user_id?: string | null;
+                    source_type?: string;
                     status?: string | null;
                     tenant_id: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
                 };
                 Update: {
+                    assigned_to_user_id?: string | null;
+                    booking_id?: string | null;
                     created_at?: string | null;
                     customer_name?: string | null;
+                    delivery_branch_id?: string | null;
+                    delivery_warehouse_id?: string | null;
                     display_id?: string | null;
                     id?: string;
+                    priority?: string | null;
+                    request_branch_id?: string | null;
+                    request_warehouse_id?: string | null;
                     requested_by?: string | null;
+                    requested_by_user_id?: string | null;
+                    source_type?: string;
                     status?: string | null;
                     tenant_id?: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_requisitions_booking_id_fkey';
+                        columns: ['booking_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             inv_stock: {
                 Row: {
@@ -4913,6 +5540,114 @@ export type Database = {
                     sku_id?: string;
                     status?: Database['public']['Enums']['inventory_status'] | null;
                     updated_at?: string | null;
+                };
+                Relationships: [];
+            };
+            inv_stock_ledger: {
+                Row: {
+                    balance_after: number;
+                    branch_id: string;
+                    created_at: string | null;
+                    created_by: string | null;
+                    id: string;
+                    qty_delta: number;
+                    reason_code: string;
+                    ref_id: string;
+                    ref_type: string;
+                    sku_id: string;
+                    tenant_id: string;
+                    warehouse_id: string | null;
+                };
+                Insert: {
+                    balance_after: number;
+                    branch_id: string;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    id?: string;
+                    qty_delta: number;
+                    reason_code: string;
+                    ref_id: string;
+                    ref_type: string;
+                    sku_id: string;
+                    tenant_id: string;
+                    warehouse_id?: string | null;
+                };
+                Update: {
+                    balance_after?: number;
+                    branch_id?: string;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    id?: string;
+                    qty_delta?: number;
+                    reason_code?: string;
+                    ref_id?: string;
+                    ref_type?: string;
+                    sku_id?: string;
+                    tenant_id?: string;
+                    warehouse_id?: string | null;
+                };
+                Relationships: [];
+            };
+            inv_stock_transfers: {
+                Row: {
+                    approved_at: string | null;
+                    approved_by: string | null;
+                    created_at: string | null;
+                    created_by: string | null;
+                    destination_branch_id: string;
+                    destination_warehouse_id: string | null;
+                    id: string;
+                    notes: string | null;
+                    posted_at: string | null;
+                    qty: number;
+                    requested_by: string | null;
+                    sku_id: string;
+                    source_branch_id: string;
+                    source_warehouse_id: string | null;
+                    status: string;
+                    tenant_id: string;
+                    updated_at: string | null;
+                    updated_by: string | null;
+                };
+                Insert: {
+                    approved_at?: string | null;
+                    approved_by?: string | null;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    destination_branch_id: string;
+                    destination_warehouse_id?: string | null;
+                    id?: string;
+                    notes?: string | null;
+                    posted_at?: string | null;
+                    qty: number;
+                    requested_by?: string | null;
+                    sku_id: string;
+                    source_branch_id: string;
+                    source_warehouse_id?: string | null;
+                    status?: string;
+                    tenant_id: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
+                };
+                Update: {
+                    approved_at?: string | null;
+                    approved_by?: string | null;
+                    created_at?: string | null;
+                    created_by?: string | null;
+                    destination_branch_id?: string;
+                    destination_warehouse_id?: string | null;
+                    id?: string;
+                    notes?: string | null;
+                    posted_at?: string | null;
+                    qty?: number;
+                    requested_by?: string | null;
+                    sku_id?: string;
+                    source_branch_id?: string;
+                    source_warehouse_id?: string | null;
+                    status?: string;
+                    tenant_id?: string;
+                    updated_at?: string | null;
+                    updated_by?: string | null;
                 };
                 Relationships: [];
             };

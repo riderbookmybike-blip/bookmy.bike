@@ -96,16 +96,54 @@ export interface SotPricingSnapshot {
     insurance_total: number;
     on_road_price: number;
     rto: {
-        STATE: { total: number };
-        BH: { total: number };
-        COMPANY: { total: number };
+        STATE: {
+            total: number;
+            fees?: Record<string, number>;
+            tax?: Record<string, number>;
+            registrationCharges?: number;
+            smartCardCharges?: number;
+            postalCharges?: number;
+            hypothecationCharges?: number;
+            roadTax?: number;
+            roadTaxRate?: number;
+            cessAmount?: number;
+            cessRate?: number;
+        };
+        BH: {
+            total: number;
+            fees?: Record<string, number>;
+            tax?: Record<string, number>;
+            registrationCharges?: number;
+            smartCardCharges?: number;
+            postalCharges?: number;
+            hypothecationCharges?: number;
+            roadTax?: number;
+            roadTaxRate?: number;
+            cessAmount?: number;
+            cessRate?: number;
+        };
+        COMPANY: {
+            total: number;
+            fees?: Record<string, number>;
+            tax?: Record<string, number>;
+            registrationCharges?: number;
+            smartCardCharges?: number;
+            postalCharges?: number;
+            hypothecationCharges?: number;
+            roadTax?: number;
+            roadTaxRate?: number;
+            cessAmount?: number;
+            cessRate?: number;
+        };
         default: string;
     };
     insurance: {
         base_total: number;
-        od: { total: number };
-        tp: { total: number };
+        od: { total: number; base?: number; gst?: number };
+        tp: { total: number; base?: number; gst?: number };
         pa: number;
+        addons?: { id: string; label: string; price: number; gst: number; total: number; default: boolean }[];
+        gst_rate?: number;
     };
     state_code: string;
     district: string;

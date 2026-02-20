@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/.auth/
 
 # next.js
 /.next/
@@ -46,3 +47,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 gen-lang-client-*.json
+# Large PNG binaries (trigger GitHub secret scanning false positives)
+public/media/hero/splendor-plus/images/primary.png
+public/media/hero/splendor-plus-xtec/images/primary.png

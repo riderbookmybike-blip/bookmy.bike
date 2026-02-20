@@ -201,23 +201,60 @@ export function useSystemPDPLogic({
     const parseRtoData = (val: any): { total: number; breakdown: any[] } | null => {
         if (val === null || val === undefined) return null;
 
+        const numeric = (input: any) => {
+            const parsed = Number(input);
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+
         // Handle legacy number format
-        if (typeof val === 'number') return { total: val, breakdown: [] };
+        if (typeof val === 'number' || typeof val === 'string') return { total: numeric(val), breakdown: [] };
 
         // Handle new object format
         if (typeof val === 'object' && 'total' in val) {
-            const hasDetails = val.roadTax || val.registrationCharges || val.smartCardCharges;
+            const dynamicFeeEntries =
+                val.fees && typeof val.fees === 'object'
+                    ? Object.entries(val.fees)
+                          .map(([key, amount]) => ({
+                              label: key
+                                  .replace(/([A-Z])/g, ' $1')
+                                  .replace(/^./, (ch: string) => ch.toUpperCase())
+                                  .trim(),
+                              amount: numeric(amount),
+                          }))
+                          .filter(entry => entry.amount > 0)
+                    : [];
+            const dynamicTaxEntries =
+                val.tax && typeof val.tax === 'object'
+                    ? Object.entries(val.tax)
+                          .map(([key, amount]) => ({
+                              label: key
+                                  .replace(/([A-Z])/g, ' $1')
+                                  .replace(/^./, (ch: string) => ch.toUpperCase())
+                                  .trim(),
+                              amount: numeric(amount),
+                          }))
+                          .filter(entry => entry.amount > 0)
+                    : [];
+
+            const hasDetails =
+                dynamicFeeEntries.length > 0 ||
+                dynamicTaxEntries.length > 0 ||
+                val.roadTax ||
+                val.registrationCharges ||
+                val.smartCardCharges;
             const b = hasDetails
-                ? [
-                      { label: 'Road Tax', amount: val.roadTax },
-                      { label: 'Reg. Charges', amount: val.registrationCharges },
-                      { label: 'Smart Card', amount: val.smartCardCharges },
-                      { label: 'Hypothecation', amount: val.hypothecationCharges },
-                      { label: 'Postal Charges', amount: val.postalCharges },
-                      { label: 'Cess', amount: val.cessAmount },
-                  ].filter(x => x.amount > 0)
-                : [{ label: 'Registration (Estimated)', amount: val.total }];
-            return { total: val.total, breakdown: b };
+                ? dynamicFeeEntries.length > 0 || dynamicTaxEntries.length > 0
+                    ? [...dynamicFeeEntries, ...dynamicTaxEntries]
+                    : [
+                          { label: 'Road Tax', amount: numeric(val.roadTax) },
+                          { label: 'Reg. Charges', amount: numeric(val.registrationCharges) },
+                          { label: 'Smart Card', amount: numeric(val.smartCardCharges) },
+                          { label: 'Hypothecation', amount: numeric(val.hypothecationCharges) },
+                          { label: 'Postal Charges', amount: numeric(val.postalCharges) },
+                          { label: 'Cess', amount: numeric(val.cessAmount) },
+                      ].filter(x => x.amount > 0)
+                : [{ label: 'Registration (Estimated)', amount: numeric(val.total) }];
+            return { total: numeric(val.total), breakdown: b };
         }
         return null;
     };

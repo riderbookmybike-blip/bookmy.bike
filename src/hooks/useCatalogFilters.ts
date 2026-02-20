@@ -72,10 +72,24 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const [maxEMI, setMaxEMI] = useState<number>(20000); // 20k default
 
     // Dynamic EMI States
-    const [downpayment, setDownpayment] = useState(() => {
+    const [downpayment, _setDownpayment] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('bkmb_downpayment');
+            if (stored) return parseInt(stored);
+        }
         const dp = searchParams.get('dp');
-        return dp ? parseInt(dp) : 0;
+        return dp ? parseInt(dp) : 15000;
     });
+    const setDownpayment = (val: number | ((prev: number) => number)) => {
+        _setDownpayment(prev => {
+            const next = typeof val === 'function' ? val(prev) : val;
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('bkmb_downpayment', String(next));
+                window.dispatchEvent(new CustomEvent('bkmb_dp_changed', { detail: next }));
+            }
+            return next;
+        });
+    };
     const [tenure, setTenure] = useState(() => {
         const t = searchParams.get('tenure');
         return t ? parseInt(t) : 36;

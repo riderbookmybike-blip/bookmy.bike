@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { Menu, X, Heart, Home as HomeIcon, ArrowRight } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { createClient } from '@/lib/supabase/client';
 import { usePathname } from 'next/navigation';
@@ -24,7 +23,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [mounted, setMounted] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null);
-    const { theme } = useTheme();
+    const { resolvedTheme } = useTheme();
     const pathname = usePathname();
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
@@ -60,7 +59,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     }, []);
 
     const isHome = pathname === '/' || pathname === '/store';
-    const isLight = mounted ? theme === 'light' : true;
+    const isLight = mounted ? resolvedTheme === 'light' : true;
 
     // Quick rollback: set navPreset to 'wide'.
     const navPreset: 'tight' | 'wide' = 'tight';
@@ -116,13 +115,12 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 </span>
                             )}
                         </Link>
-                        <ThemeToggle className="w-10 h-10 rounded-full border border-slate-200 text-slate-900 hover:bg-slate-900 hover:text-white hover:border-slate-900 hover:shadow-[0_10px_20px_rgba(0,0,0,0.1)] transition-all duration-300" />
                     </div>
 
                     <ProfileDropdown
                         onLoginClick={onLoginClick}
                         scrolled={!isHeaderTransparent}
-                        theme={theme}
+                        theme={resolvedTheme}
                         tone="light"
                         externalOpen={isSidebarOpen}
                         onOpenChange={setIsSidebarOpen}

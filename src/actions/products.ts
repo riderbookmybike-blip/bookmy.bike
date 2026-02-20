@@ -116,13 +116,16 @@ export async function getPricingLedger(tenantId: string) {
 
         const engineCc = Number(model.engine_cc || 110);
 
+        const skuType = String(sku.sku_type || '').toUpperCase();
+        const isVehicleSku = skuType === 'VEHICLE';
+
         return {
             id: sku.id,
             variantName: variant.name || sku.name,
             modelName: model.name || '',
             makeName: brand.name || '',
             colorName: sku.color_name || sku.name,
-            exShowroom: price?.ex_showroom_price || sku.price_base || 0,
+            exShowroom: isVehicleSku ? price?.ex_showroom_price || 0 : price?.ex_showroom_price || sku.price_base || 0,
             offerAmount: rule?.offer_amount || 0,
             basePrice: sku.price_base || 0,
             gstRate: 0.28,

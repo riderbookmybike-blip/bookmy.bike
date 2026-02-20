@@ -117,11 +117,10 @@ export interface VehicleSpecifications {
         usbCharging?: boolean | string;
         navigation?: boolean | string;
         consoleType?: string;
-        ledHeadlamp?: boolean | string;
-        ledTailLamp?: boolean | string;
+        headlampType?: string;
+        tailLampType?: string;
         rideModes?: string;
         abs?: string;
-        headlampType?: string;
         speedometer?: string;
         tripmeter?: string;
         clock?: boolean;

@@ -32,7 +32,7 @@ export const Logo: React.FC<LogoProps> = ({
     style = {},
 }) => {
     const [mounted, setMounted] = React.useState(false);
-    const { theme } = useTheme();
+    const { resolvedTheme } = useTheme();
 
     React.useEffect(() => {
         setMounted(true);
@@ -68,14 +68,8 @@ export const Logo: React.FC<LogoProps> = ({
     const activeMode = useMemo(() => {
         if (!mounted) return mode === 'auto' ? 'light' : mode;
         if (mode !== 'auto') return mode;
-        if (theme === 'dark') return 'dark';
-        if (theme === 'system') {
-            return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark'
-                : 'light';
-        }
-        return 'light';
-    }, [mode, theme, mounted]);
+        return resolvedTheme;
+    }, [mode, resolvedTheme, mounted]);
 
     // Color Logic based on Variants and Monochrome overrides
     const colors = useMemo(() => {

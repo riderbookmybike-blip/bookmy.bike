@@ -9,6 +9,7 @@ import { cookies } from 'next/headers';
 import { resolveFinanceScheme, ViewerContext } from '@/utils/financeResolver';
 import { BankScheme } from '@/types/bankPartner';
 import { getSitemapData } from '@/lib/server/sitemapFetcher';
+import { isAccessoryCompatible } from '@/lib/catalog/accessoryCompatibility';
 import {
     isStoreSotV2Enabled,
     resolveStoreContext,
@@ -135,65 +136,6 @@ const stripColorFromName = (name: string, color: string) => {
     }
 
     return name;
-};
-
-const matchesAccessoryCompatibility = (
-    suitableFor: string | null | undefined,
-    brand: string,
-    model: string,
-    variant: string
-) => {
-    // STRICT: Accessories MUST have explicit suitability tags.
-    // If no suitability is defined, accessory is NOT shown.
-    // Only accessories tagged with Universal/All OR matching brand/model/variant are shown.
-    const suitabilityRaw = Array.isArray(suitableFor) ? suitableFor.join(',') : suitableFor;
-    if (!suitabilityRaw || suitabilityRaw.trim() === '') return false;
-
-    const tags = suitabilityRaw
-        .split(',')
-        .map(t => t.trim())
-        .filter(Boolean);
-    if (tags.length === 0) return false; // No valid tags = excluded
-
-    const brandNorm = normalizeSuitabilityTag(brand || '');
-    const modelNorm = normalizeSuitabilityTag(model || '');
-    const variantNorm = normalizeSuitabilityTag(variant || '');
-
-    const buildKey = (...parts: string[]) => parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-
-    const variantHasModel = Boolean(modelNorm && variantNorm.includes(modelNorm));
-    const variantHasBrand = Boolean(brandNorm && variantNorm.includes(brandNorm));
-
-    const brandModel = buildKey(brandNorm, modelNorm);
-    const brandVariant = buildKey(variantHasBrand ? '' : brandNorm, variantNorm);
-    const modelVariant = buildKey(variantHasModel ? '' : modelNorm, variantNorm);
-    const brandModelVariant = buildKey(variantHasBrand ? '' : brandNorm, variantHasModel ? '' : modelNorm, variantNorm);
-
-    const matchKeys = new Set(
-        [brandNorm, modelNorm, variantNorm, brandModel, brandVariant, modelVariant, brandModelVariant].filter(Boolean)
-    );
-
-    return tags.some(tag => {
-        const normalized = normalizeSuitabilityTag(tag);
-        if (!normalized) return false;
-
-        if (normalized.includes('universal') || normalized === 'all') {
-            return true;
-        }
-
-        if (normalized.includes('all models')) {
-            return Boolean(brandNorm && normalized.includes(brandNorm));
-        }
-
-        if (normalized.includes('all variants')) {
-            return Boolean(brandNorm && modelNorm && normalized.includes(brandNorm) && normalized.includes(modelNorm));
-        }
-
-        if (brandNorm && normalized.startsWith(brandNorm) && normalized.includes('all models')) return true;
-        if (matchKeys.has(normalized)) return true;
-
-        return false;
-    });
 };
 
 export async function generateStaticParams() {
@@ -677,10 +619,11 @@ export default async function Page({ params, searchParams }: Props) {
 
     // 4. Resolve Server Pricing (SSPP)
     const firstSkuId = skuIds[0];
-    const baseExShowroom = publishedPriceData?.ex_showroom_price || item.price_base || 0;
+    // Vehicle base price MUST come from published state pricing only.
+    const baseExShowroom = Number(publishedPriceData?.ex_showroom_price || 0);
     let serverPricing: any = null;
 
-    if (firstSkuId && publishedPriceData && publishedPriceData.rto_total > 0) {
+    if (firstSkuId && publishedPriceData && Number(publishedPriceData.ex_showroom_price || 0) > 0) {
         const rec = publishedPriceData;
 
         // SOT Phase 3: Use new JSON columns if available, fallback to legacy
@@ -690,9 +633,58 @@ export default async function Page({ params, searchParams }: Props) {
                 ? rec.insurance
                 : null;
 
+        const asNumber = (value: any) => {
+            const n = Number(value);
+            return Number.isFinite(n) ? n : 0;
+        };
+
+        const readTotal = (value: any) => (typeof value === 'object' ? asNumber(value?.total) : asNumber(value));
+
+        const resolveRtoTotal = (value: any) => {
+            const type = String(value?.default || 'STATE').toUpperCase();
+            const selected = value?.[type];
+            const fallback = value?.STATE;
+            return readTotal(selected) || readTotal(fallback);
+        };
+
+        const resolvedRtoTotal = rtoJsonData ? resolveRtoTotal(rtoJsonData) : asNumber(rec.rto_total);
+        const resolvedInsuranceTotal = insJsonData ? asNumber(insJsonData.base_total) : asNumber(rec.insurance_total);
+
         // Build RTO breakdown from JSON or legacy
         const rtoData = rtoJsonData
-            ? [{ label: 'RTO Total', amount: Number(rtoJsonData.STATE || 0) }]
+            ? (() => {
+                  const selectedType = String(rtoJsonData.default || 'STATE').toUpperCase();
+                  const selectedRto = rtoJsonData[selectedType] || rtoJsonData.STATE || {};
+                  const fees = selectedRto?.fees || {};
+                  const tax = selectedRto?.tax || {};
+                  const dynamicBreakdown = [
+                      ...Object.entries(fees).map(([key, amount]) => ({
+                          label: key
+                              .replace(/([A-Z])/g, ' $1')
+                              .replace(/^./, s => s.toUpperCase())
+                              .trim(),
+                          amount: asNumber(amount),
+                      })),
+                      ...Object.entries(tax).map(([key, amount]) => ({
+                          label: key
+                              .replace(/([A-Z])/g, ' $1')
+                              .replace(/^./, s => s.toUpperCase())
+                              .trim(),
+                          amount: asNumber(amount),
+                      })),
+                  ].filter(entry => entry.amount > 0);
+
+                  if (dynamicBreakdown.length > 0) return dynamicBreakdown;
+
+                  return [
+                      { label: 'Road Tax', amount: asNumber(selectedRto?.roadTax) },
+                      { label: 'Reg. Charges', amount: asNumber(selectedRto?.registrationCharges) },
+                      { label: 'Smart Card', amount: asNumber(selectedRto?.smartCardCharges) },
+                      { label: 'Hypothecation', amount: asNumber(selectedRto?.hypothecationCharges) },
+                      { label: 'Postal Charges', amount: asNumber(selectedRto?.postalCharges) },
+                      { label: 'Cess', amount: asNumber(selectedRto?.cessAmount) },
+                  ].filter(entry => entry.amount > 0);
+              })()
             : typeof rec.rto_breakdown === 'object' && rec.rto_breakdown
               ? Object.entries(rec.rto_breakdown).map(([label, amount]) => ({ label, amount: Number(amount) }))
               : [];
@@ -700,14 +692,12 @@ export default async function Page({ params, searchParams }: Props) {
         // Build Insurance breakdown from JSON or legacy
         const insData = insJsonData
             ? [
-                  { label: 'OD Premium', amount: Number(insJsonData.od || 0), componentId: 'od' },
-                  { label: 'TP Premium', amount: Number(insJsonData.tp || 0), componentId: 'tp' },
+                  { label: 'OD Premium', amount: readTotal(insJsonData.od), componentId: 'od' },
+                  { label: 'TP Premium', amount: readTotal(insJsonData.tp), componentId: 'tp' },
                   {
                       label: 'GST',
                       amount: Math.round(
-                          Number(insJsonData.base_total || 0) -
-                              Number(insJsonData.od || 0) -
-                              Number(insJsonData.tp || 0)
+                          asNumber(insJsonData.base_total || 0) - readTotal(insJsonData.od) - readTotal(insJsonData.tp)
                       ),
                       componentId: 'gst',
                   },
@@ -739,43 +729,58 @@ export default async function Page({ params, searchParams }: Props) {
 
         serverPricing = {
             success: true,
-            ex_showroom: parseFloat(rec.ex_showroom_price),
+            ex_showroom: asNumber(rec.ex_showroom_price),
             // SOT Phase 3: Include full rto JSON for client hooks
             rto: rtoJsonData || {
-                STATE: parseFloat(rec.rto_total),
+                STATE: { total: asNumber(rec.rto_total) },
                 BH: null,
                 COMPANY: null,
                 default: 'STATE',
-                total: parseFloat(rec.rto_total),
-                type: 'STATE',
-                breakdown: rtoData,
             },
             // SOT Phase 3: Include full insurance JSON for client hooks
             insurance: insJsonData || {
-                od: Number((rec.insurance_breakdown as any)?.odPremium || 0),
-                tp: Number((rec.insurance_breakdown as any)?.tpPremium || 0),
+                od: { total: Number((rec.insurance_breakdown as any)?.odPremium || 0) },
+                tp: { total: Number((rec.insurance_breakdown as any)?.tpPremium || 0) },
                 gst_rate: 18,
-                base_total: parseFloat(rec.insurance_total),
+                base_total: asNumber(rec.insurance_total),
                 addons: [],
-                total: parseFloat(rec.insurance_total),
-                breakdown: insData,
             },
             // Legacy fields for backward compat
             rto_breakdown: rtoData,
             insurance_breakdown: insData,
-            final_on_road: parseFloat(rec.on_road_price),
+            final_on_road:
+                asNumber(rec.on_road_price) ||
+                asNumber(rec.ex_showroom_price) + resolvedRtoTotal + resolvedInsuranceTotal,
             location: {
                 district: rec.district,
                 state_code: rec.state_code,
             },
+            meta: {
+                vehicle_color_id: rec.vehicle_color_id || rec.sku_id || firstSkuId,
+                engine_cc: Number(modelRow?.engine_cc || 0),
+                idv: Math.round(asNumber(rec.ex_showroom_price) * 0.95),
+                calculated_at: new Date().toISOString(),
+            },
             source: 'PUBLISHED_CAT_PRICES',
         };
     }
+    const getRtoFromServerPricing = (pricing: any) => {
+        const rto = pricing?.rto;
+        if (!rto || typeof rto !== 'object') return 0;
+        const selectedType = String(rto.default || 'STATE').toUpperCase();
+        const selected = rto[selectedType] ?? rto.STATE;
+        return typeof selected === 'object' ? Number(selected?.total || 0) : Number(selected || 0);
+    };
+
+    const getInsuranceFromServerPricing = (pricing: any) => {
+        return Number(pricing?.insurance?.base_total || 0);
+    };
+
     let initialPricingSnapshot = serverPricing
         ? {
               exShowroom: serverPricing.ex_showroom ?? baseExShowroom,
-              rto: serverPricing?.rto?.total ?? 0,
-              insurance: serverPricing?.insurance?.total ?? 0,
+              rto: getRtoFromServerPricing(serverPricing),
+              insurance: getInsuranceFromServerPricing(serverPricing),
               total: serverPricing?.final_on_road ?? baseExShowroom,
               breakdown: serverPricing,
           }
@@ -919,7 +924,7 @@ export default async function Page({ params, searchParams }: Props) {
                               null,
                           assets: sku?.assets || [], // PASS ASSETS FOR GALLERY
                           video: sku?.video_url || sku?.specs?.video_urls?.[0] || sku?.specs?.video_url || null,
-                          pricingOverride: sku?.price_base ? { exShowroom: sku.price_base } : undefined,
+                          pricingOverride: undefined,
                           dealerOffer: rawOffer,
                           isPrimary: Boolean(sku?.is_primary || color?.is_primary),
                       };
@@ -962,7 +967,7 @@ export default async function Page({ params, searchParams }: Props) {
                               null,
                           assets: sku.assets || [], // PASS ASSETS FOR GALLERY
                           video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
-                          pricingOverride: sku.price_base ? { exShowroom: sku.price_base } : undefined,
+                          pricingOverride: undefined,
                           dealerOffer: rawOffer,
                           isPrimary: Boolean(sku?.is_primary),
                       };
@@ -991,21 +996,27 @@ export default async function Page({ params, searchParams }: Props) {
     const currentBrandId = modelRow?.brand_id || null;
     const currentModelId = modelRow?.id || null;
     const currentVariantId = item.id || null;
+    const currentCompatibilityVariantIds = [currentVariantId, ...allSkus.map((s: any) => s.id)].filter(Boolean);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const accessories = (accessoriesData || [])
         .filter((a: any) => {
-            // Canonical suitability from cat_suitable_for; fallback to legacy text suitability matcher.
             const rows = Array.isArray(a.__compat) ? a.__compat : [];
-            if (rows.length > 0) {
-                return rows.some((r: any) => {
-                    const brandOk = !r.target_brand_id || r.target_brand_id === currentBrandId;
-                    const modelOk = !r.target_model_id || r.target_model_id === currentModelId;
-                    const variantOk = !r.target_variant_id || r.target_variant_id === currentVariantId;
-                    return brandOk && modelOk && variantOk;
-                });
-            }
-            return matchesAccessoryCompatibility(a.specs?.suitable_for, productMake, productModel, productVariant);
+            const compatible = isAccessoryCompatible({
+                compatibilityRows: rows,
+                suitableFor: a.specs?.suitable_for,
+                brand: productMake,
+                model: productModel,
+                variant: productVariant,
+                brandId: currentBrandId,
+                modelId: currentModelId,
+                variantIds: currentCompatibilityVariantIds,
+            });
+            if (!compatible) return false;
+
+            const rule = accessoryRules.get(a.id);
+            if (rule && rule.isActive === false) return false;
+            return true;
         })
         .map((a: any) => {
             const rule = accessoryRules.get(a.id);

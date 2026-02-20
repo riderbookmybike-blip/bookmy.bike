@@ -42,6 +42,7 @@ function skuToPdfArray(sku: CatalogSku): string[] {
 export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: SKUStepProps) {
     const productType = (model.product_type || 'VEHICLE') as ProductType;
     const labels = getHierarchyLabels(productType);
+    const poolLabel = labels.pool;
     const [busyCells, setBusyCells] = useState<Set<string>>(new Set());
     const [activeMediaSku, setActiveMediaSku] = useState<CatalogSku | null>(null);
 
@@ -54,7 +55,31 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
               : 'service_variant_id';
 
     // Use ALL colours from the colour pool as matrix rows, sorted by position
-    const sortedColours = [...colours].sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+    // Fallback: if colour pool is empty but SKUs exist, reconstruct synthetic colour entries from SKUs
+    const effectiveColours: CatalogColour[] = (() => {
+        if (colours.length > 0) return colours;
+        if (skus.length === 0) return [];
+        // Reconstruct from orphaned SKUs — deduplicate by colour_id
+        const seen = new Map<string, CatalogColour>();
+        skus.forEach((sku, idx) => {
+            const cid = sku.colour_id || sku.id; // fallback to SKU id if no colour_id
+            if (!seen.has(cid)) {
+                seen.set(cid, {
+                    id: cid,
+                    model_id: model.id,
+                    name: sku.color_name || sku.name || `SKU ${idx + 1}`,
+                    hex_primary: sku.hex_primary,
+                    hex_secondary: sku.hex_secondary,
+                    finish: sku.finish,
+                    position: seen.size,
+                    created_at: sku.created_at,
+                    updated_at: sku.updated_at,
+                });
+            }
+        });
+        return Array.from(seen.values());
+    })();
+    const sortedColours = [...effectiveColours].sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
 
     const getSkuForCell = (variantId: string, colourId: string) =>
         skus.find(s => (s as any)[variantFkField] === variantId && s.colour_id === colourId);
@@ -97,8 +122,10 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                 const variant = variants.find((v: any) => v.id === variantId);
                 toast.success(`Added ${colour.name} to ${variant?.name || 'variant'}`);
             }
-        } catch {
-            toast.error(existingSku ? 'Failed to remove SKU' : 'Failed to create SKU');
+        } catch (err: any) {
+            console.error('SKU toggle failed:', err);
+            const msg = err?.message || 'Unknown error';
+            toast.error(existingSku ? `Failed to remove SKU: ${msg}` : `Failed to create SKU: ${msg}`);
         } finally {
             setBusyCells(prev => {
                 const next = new Set(prev);
@@ -259,9 +286,11 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                             <Palette size={18} className="text-pink-500" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-slate-900 dark:text-white">{colours.length}</p>
+                            <p className="text-2xl font-black text-slate-900 dark:text-white">
+                                {effectiveColours.length}
+                            </p>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                Colours in Pool
+                                {labels.pool}s in Pool
                             </p>
                         </div>
                     </div>
@@ -563,13 +592,16 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                 <div className="text-center py-20 text-slate-400">
                     <Grid3X3 size={48} className="mx-auto mb-4 opacity-30" />
                     <p className="font-bold text-sm">
-                        {colours.length === 0 && variants.length === 0
-                            ? 'Add variants and colours first'
-                            : colours.length === 0
-                              ? 'Add colours in the Colour Pool step first'
-                              : 'Add variants in the Variants step first'}
+                        {effectiveColours.length === 0 && variants.length === 0
+                            ? `Add ${labels.variant.toLowerCase()}s and ${poolLabel.toLowerCase()}s first`
+                            : effectiveColours.length === 0
+                              ? `Add ${poolLabel.toLowerCase()}s in the ${labels.pool} step first`
+                              : `Add ${labels.variant.toLowerCase()}s in the ${labels.variant} step first`}
                     </p>
-                    <p className="text-xs mt-1">The matrix will appear once both variants and colours are defined</p>
+                    <p className="text-xs mt-1">
+                        The matrix will appear once both {labels.variant.toLowerCase()}s and {poolLabel.toLowerCase()}s
+                        are defined
+                    </p>
                 </div>
             )}
 

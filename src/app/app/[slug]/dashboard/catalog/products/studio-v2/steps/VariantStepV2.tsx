@@ -198,8 +198,10 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
             await deleteVariant(variantId, productType);
             onUpdate(variants.filter(v => v.id !== variantId));
             toast.success(`${labels.variant} deleted`);
-        } catch (err) {
-            toast.error('Failed to delete');
+        } catch (err: any) {
+            console.error('Variant delete failed:', err);
+            const msg = err?.message || 'Unknown error';
+            toast.error(`Failed to delete: ${msg}`);
         }
     };
 
