@@ -55,5 +55,19 @@
 - [ ] Wire stock counts to catalog display
 
 ### CLEANUP-001 — Database Cleanup
-- [ ] Archive and remove deprecated `vehicle_prices` table
-- [ ] Remove unused mock data from production
+- [x] Archive and remove deprecated `vehicle_prices` table
+- [x] Remove unused mock data from production
+
+**Follow-up Task Owner:** `antigravity`
+**Migration:** `supabase/migrations/20260220195121_cleanup_archive_vehicle_prices.sql`
+
+**Pre-Apply / Apply Checklist:**
+- [x] Confirm target Supabase project (`main` project connected via MCP: `aytdeqjxxjxbgiyslubx`)
+- [x] Confirm no active code paths or jobs still depend on `public.vehicle_prices`
+- [x] Confirm no active code paths or jobs still depend on `public.upsert_vehicle_prices_bypass(jsonb)`
+- [x] Take a DB backup/snapshot before running migration *(N/A: connected project already had `public.vehicle_prices` absent; no table data remained to preserve)*
+- [x] Schedule execution in low-traffic window (required for production) *(N/A: migration executed as metadata-safe cleanup with target objects already absent)*
+- [x] Apply migration to the target Supabase project
+- [x] Verify post-apply (current state): `public.vehicle_prices` absent, `public.upsert_vehicle_prices_bypass(jsonb)` absent, migration recorded
+
+**Closure Note (2026-02-20):** CLEANUP-001 migration applied via MCP on project `aytdeqjxxjxbgiyslubx` as migration `20260220195121_cleanup_archive_vehicle_prices`; verified no residual `vehicle_prices` objects remain.

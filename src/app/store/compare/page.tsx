@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, Flame, Gauge, Plus, Search, ShieldCheck, Sparkles, Trophy, X } from 'lucide-react';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
-import { MOCK_VEHICLES, ProductVariant } from '@/types/productMaster';
+import { ProductVariant } from '@/types/productMaster';
 
 const MAX_COMPARE = 3;
 const DEFAULT_TENURE = 36;
@@ -44,180 +44,6 @@ type CompareOption = {
     image: string;
     priceLabel: string;
 };
-
-const mockCompare: CompareBike[] = [
-    {
-        id: 'splendor-plus',
-        name: 'Hero Splendor+',
-        tag: 'Reliable commuter icon',
-        image: '/images/templates/t4_white.webp',
-        price: '₹89,900',
-        emi: '₹2,999/mo',
-        score: 86,
-        highlights: ['Best mileage', 'Low service cost', 'Trusted resale'],
-        commercial: {
-            'On-road price': '₹89,900',
-            'EMI from': '₹2,999/mo',
-            'Fuel cost (₹/month)': '₹2,150',
-            'Service cost (1st yr)': '₹1,350',
-            Warranty: '5 years',
-        },
-        technical: {
-            Engine: '97.2cc, air-cooled',
-            Power: '7.9 PS',
-            Torque: '8.05 Nm',
-            Gearbox: '4-speed',
-            Weight: '112 kg',
-        },
-        features: {
-            'Start system': 'Kick + Self',
-            'Console type': 'Analog',
-            'Braking (front/rear)': 'Drum/Drum',
-            'USB charger': 'No',
-            'Safety add-ons': 'Side stand engine cut-off',
-        },
-        performance: {
-            'Mileage (real world)': '65-70 kmpl',
-            'Top speed': '90 km/h',
-            '0-60 km/h': '12.8s',
-            'City agility': 'High',
-        },
-        resale: {
-            'Resale strength': 'Very High',
-            'Demand in used market': 'High',
-            'Depreciation (3 yrs)': 'Low',
-            'Parts availability': 'Excellent',
-        },
-        popularity: {
-            'Monthly searches': 'Very High',
-            'Owner rating': '4.6/5',
-            'Service network': 'Pan-India',
-            'Community trust': 'Legacy brand',
-        },
-        metrics: {
-            onRoad: 89900,
-            emi: 2999,
-            power: 7.9,
-            torque: 8.05,
-            weight: 112,
-            rating: 4.6,
-        },
-    },
-    {
-        id: 'activa-6g',
-        name: 'Honda Activa 6G',
-        tag: 'All-rounder scooter',
-        image: '/images/templates/t3_night.webp',
-        price: '₹1,04,500',
-        emi: '₹3,499/mo',
-        score: 84,
-        highlights: ['Comfortable ride', 'Top brand service', 'High resale'],
-        commercial: {
-            'On-road price': '₹1,04,500',
-            'EMI from': '₹3,499/mo',
-            'Fuel cost (₹/month)': '₹2,450',
-            'Service cost (1st yr)': '₹1,650',
-            Warranty: '3 years',
-        },
-        technical: {
-            Engine: '109.5cc, air-cooled',
-            Power: '7.8 PS',
-            Torque: '8.9 Nm',
-            Gearbox: 'CVT',
-            Weight: '106 kg',
-        },
-        features: {
-            'Start system': 'Self start',
-            'Console type': 'Analog',
-            'Braking (front/rear)': 'Drum/Drum',
-            'USB charger': 'Optional',
-            'Safety add-ons': 'Engine cut-off with side stand',
-        },
-        performance: {
-            'Mileage (real world)': '50-55 kmpl',
-            'Top speed': '85 km/h',
-            '0-60 km/h': '13.5s',
-            'City agility': 'Very High',
-        },
-        resale: {
-            'Resale strength': 'High',
-            'Demand in used market': 'Very High',
-            'Depreciation (3 yrs)': 'Medium',
-            'Parts availability': 'Excellent',
-        },
-        popularity: {
-            'Monthly searches': 'Very High',
-            'Owner rating': '4.5/5',
-            'Service network': 'Pan-India',
-            'Community trust': 'Household name',
-        },
-        metrics: {
-            onRoad: 104500,
-            emi: 3499,
-            power: 7.8,
-            torque: 8.9,
-            weight: 106,
-            rating: 4.5,
-        },
-    },
-    {
-        id: 'chetak-urban',
-        name: 'Bajaj Chetak',
-        tag: 'Premium electric choice',
-        image: '/images/templates/t2_neon.webp',
-        price: '₹1,37,900',
-        emi: '₹4,299/mo',
-        score: 81,
-        highlights: ['Zero fuel cost', 'Premium build', 'Smart features'],
-        commercial: {
-            'On-road price': '₹1,37,900',
-            'EMI from': '₹4,299/mo',
-            'Fuel cost (₹/month)': '₹400',
-            'Service cost (1st yr)': '₹900',
-            Warranty: '3 years',
-        },
-        technical: {
-            Motor: '4.0 kW BLDC',
-            Battery: '3.0 kWh',
-            Range: '90-100 km',
-            Charging: '4-5 hrs',
-            Weight: '132 kg',
-        },
-        features: {
-            'Start system': 'Keyless',
-            'Console type': 'Digital',
-            'Braking (front/rear)': 'Disc/Drum',
-            'USB charger': 'Yes',
-            'Safety add-ons': 'App + geofencing',
-        },
-        performance: {
-            'Mileage (real world)': '90-100 km/charge',
-            'Top speed': '73 km/h',
-            '0-60 km/h': '9.5s',
-            'City agility': 'High',
-        },
-        resale: {
-            'Resale strength': 'Medium',
-            'Demand in used market': 'Growing',
-            'Depreciation (3 yrs)': 'Medium-High',
-            'Parts availability': 'Good',
-        },
-        popularity: {
-            'Monthly searches': 'High',
-            'Owner rating': '4.4/5',
-            'Service network': 'Urban focus',
-            'Community trust': 'Premium EV',
-        },
-        metrics: {
-            onRoad: 137900,
-            emi: 4299,
-            power: 4.0,
-            torque: 20,
-            weight: 132,
-            rating: 4.4,
-        },
-    },
-];
 
 const sections = [
     { id: 'commercial', title: 'Commercials', icon: Sparkles },
@@ -427,15 +253,6 @@ const buildOptionsFromVariants = (variants: ProductVariant[]): CompareOption[] =
         priceLabel: formatCurrency(item.price?.onRoad || 0),
     }));
 
-const buildOptionsFromMock = (items: CompareBike[]): CompareOption[] =>
-    items.map(item => ({
-        id: item.id,
-        title: item.name,
-        subtitle: item.tag,
-        image: item.image,
-        priceLabel: item.price,
-    }));
-
 export default function ComparePage() {
     const { items, isLoading } = useSystemCatalogLogic();
     const initializedRef = useRef(false);
@@ -445,9 +262,8 @@ export default function ComparePage() {
     const [activeSlot, setActiveSlot] = useState<number | null>(null);
     const [activePreset, setActivePreset] = useState(presets[0].id);
 
-    const catalogVariants = items.length > 0 ? items : MOCK_VEHICLES;
+    const catalogVariants = items;
     const catalogOptions = buildOptionsFromVariants(catalogVariants);
-    const mockOptions = buildOptionsFromMock(mockCompare);
 
     useEffect(() => {
         if (initializedRef.current) return;
@@ -467,7 +283,7 @@ export default function ComparePage() {
             } else if (catalogOptions.length > 0) {
                 setSelectedIds(catalogOptions.slice(0, MAX_COMPARE).map(opt => opt.id));
             } else {
-                setSelectedIds(mockCompare.slice(0, MAX_COMPARE).map(item => item.id));
+                setSelectedIds([]);
             }
         }
         initializedRef.current = true;
@@ -510,12 +326,12 @@ export default function ComparePage() {
             .map(id => {
                 const match = map.get(id);
                 if (match) return buildCompareFromVariant(match);
-                return mockCompare.find(item => item.id === id) || null;
+                return null;
             })
             .filter(Boolean) as CompareBike[];
     }, [selectedIds, catalogVariants]);
 
-    const availableOptions = catalogOptions.length > 0 ? catalogOptions : mockOptions;
+    const availableOptions = catalogOptions;
     const filteredOptions = availableOptions.filter(option =>
         `${option.title} ${option.subtitle}`.toLowerCase().includes(pickerQuery.toLowerCase())
     );
@@ -659,7 +475,7 @@ export default function ComparePage() {
                     </h1>
                     <p className="mt-4 max-w-2xl text-sm md:text-base text-slate-600 dark:text-white/70 font-medium">
                         Commercials, technical specs, real-world performance, resale strength and popularity all in one
-                        screen. Mock data is used when live data is missing.
+                        screen.
                     </p>
                     <div className="mt-6 flex flex-wrap items-center gap-3">
                         <button
