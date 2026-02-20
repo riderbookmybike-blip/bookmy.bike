@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
 import { createOrLinkMember } from './members';
 import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
+import { isAccessoryCompatible } from '@/lib/catalog/accessoryCompatibility';
 
 const END_CUSTOMER_ROLES = new Set(['bmb_user', 'member', 'customer']);
 const STAFF_SOURCE_HINTS = new Set(['LEADS', 'DEALER_REFERRAL', 'CRM']);
@@ -1188,6 +1189,20 @@ export async function createBookingFromQuote(quoteId: string) {
         if (bookingError) {
             console.error('[createBookingFromQuote] Fetch Booking Error:', bookingError);
             return { success: false, message: bookingError.message };
+        }
+
+        // INV-004: Non-blocking shortage check — auto-creates requisition if needed
+        try {
+            const { bookingShortageCheck } = await import('@/actions/inventory');
+            const shortageResult = await bookingShortageCheck(bookingIdValue);
+            if (shortageResult.status === 'SHORTAGE_CREATED') {
+                console.log(
+                    `[createBookingFromQuote] Shortage detected → requisition ${shortageResult.requisition_id}`
+                );
+            }
+        } catch (shortageErr) {
+            // Non-blocking: booking succeeds even if shortage check fails
+            console.error('[createBookingFromQuote] Shortage check failed (non-blocking):', shortageErr);
         }
 
         revalidatePath('/app/[slug]/sales-orders');
@@ -3527,70 +3542,6 @@ export async function getQuoteByDisplayId(
         return name;
     };
 
-    const matchesAccessoryCompatibility = (
-        suitableFor: string | null | undefined,
-        brand: string,
-        model: string,
-        variant: string
-    ) => {
-        const suitabilityRaw = Array.isArray(suitableFor) ? suitableFor.join(',') : suitableFor;
-        if (!suitabilityRaw || suitabilityRaw.trim() === '') return false;
-
-        const tags = suitabilityRaw
-            .split(',')
-            .map(t => t.trim())
-            .filter(Boolean);
-        if (tags.length === 0) return false;
-
-        const brandNorm = normalizeSuitabilityTag(brand || '');
-        const modelNorm = normalizeSuitabilityTag(model || '');
-        const variantNorm = normalizeSuitabilityTag(variant || '');
-
-        const buildKey = (...parts: string[]) => parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-
-        const variantHasModel = Boolean(modelNorm && variantNorm.includes(modelNorm));
-        const variantHasBrand = Boolean(brandNorm && variantNorm.includes(brandNorm));
-
-        const brandModel = buildKey(brandNorm, modelNorm);
-        const brandVariant = buildKey(variantHasBrand ? '' : brandNorm, variantNorm);
-        const modelVariant = buildKey(variantHasModel ? '' : modelNorm, variantNorm);
-        const brandModelVariant = buildKey(
-            variantHasBrand ? '' : brandNorm,
-            variantHasModel ? '' : modelNorm,
-            variantNorm
-        );
-
-        const matchKeys = new Set(
-            [brandNorm, modelNorm, variantNorm, brandModel, brandVariant, modelVariant, brandModelVariant].filter(
-                Boolean
-            )
-        );
-
-        return tags.some(tag => {
-            const normalized = normalizeSuitabilityTag(tag);
-            if (!normalized) return false;
-
-            if (normalized.includes('universal') || normalized === 'all') {
-                return true;
-            }
-
-            if (normalized.includes('all models')) {
-                return Boolean(brandNorm && normalized.includes(brandNorm));
-            }
-
-            if (normalized.includes('all variants')) {
-                return Boolean(
-                    brandNorm && modelNorm && normalized.includes(brandNorm) && normalized.includes(modelNorm)
-                );
-            }
-
-            if (brandNorm && normalized.startsWith(brandNorm) && normalized.includes('all models')) return true;
-            if (matchKeys.has(normalized)) return true;
-
-            return false;
-        });
-    };
-
     const resolveProductIdentity = async (skuId?: string | null) => {
         const resolved = {
             brand: '',
@@ -3986,15 +3937,21 @@ export async function getQuoteByDisplayId(
     const pdpAccessories = (accessoriesData || [])
         .filter((a: any) => {
             const compatRows = Array.isArray(a.__compat) ? a.__compat : [];
-            if (compatRows.length > 0) {
-                return compatRows.some((r: any) => {
-                    const brandOk = !r.target_brand_id || r.target_brand_id === productBrandId;
-                    const modelOk = !r.target_model_id || r.target_model_id === productModelId;
-                    const variantOk = !r.target_variant_id || r.target_variant_id === productVariantId;
-                    return brandOk && modelOk && variantOk;
-                });
-            }
-            return matchesAccessoryCompatibility(a.specs?.suitable_for, productMake, productModel, productVariant);
+            const compatible = isAccessoryCompatible({
+                compatibilityRows: compatRows,
+                suitableFor: a.specs?.suitable_for,
+                brand: productMake,
+                model: productModel,
+                variant: productVariant,
+                brandId: productBrandId,
+                modelId: productModelId,
+                variantIds: [productVariantId, selectedSkuId],
+            });
+            if (!compatible) return false;
+
+            const rule = accessoryRules.get(a.id);
+            if (rule && rule.isActive === false) return false;
+            return true;
         })
         .map((a: any) => {
             const rule = accessoryRules.get(a.id);

@@ -127,7 +127,9 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                 .insert({
                     tenant_id: tenantId,
                     customer_name: customerName,
-                    status: 'PENDING',
+                    source_type: 'DIRECT',
+                    status: 'SUBMITTED',
+                    priority: 'MEDIUM',
                 })
                 .select()
                 .single();
@@ -135,11 +137,13 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
             if (reqErr) throw reqErr;
 
             // 2. Create Requisition Item
-            const { error: itemErr } = await supabase.from('inv_req_items').insert({
+            const { error: itemErr } = await supabase.from('inv_requisition_items').insert({
                 requisition_id: req.id,
                 sku_id: selectedColor,
                 quantity: quantity,
                 notes: notes,
+                tenant_id: tenantId,
+                status: 'OPEN',
             });
 
             if (itemErr) throw itemErr;
