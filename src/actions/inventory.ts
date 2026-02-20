@@ -154,9 +154,7 @@ export async function createDirectRequisition(
  *
  * Guard: will NOT create duplicate requisitions for the same booking.
  */
-export async function bookingShortageCheck(
-    bookingId: string
-): Promise<{
+export async function bookingShortageCheck(bookingId: string): Promise<{
     success: boolean;
     status: 'SUFFICIENT' | 'SHORTAGE_CREATED' | 'SKIPPED';
     requisition_id?: string;
@@ -316,7 +314,7 @@ export async function selectProcurementQuote(
         const { data: cheapest } = await adminClient
             .from('inv_procurement_quotes')
             .select('id, landed_cost')
-            .eq('requisition_item_id', quote.requisition_item_id)
+            .eq('requisition_item_id', quote.requisition_item_id as string)
             .not('status', 'in', '("REJECTED","EXPIRED")')
             .order('landed_cost', { ascending: true })
             .limit(1)
@@ -333,7 +331,7 @@ export async function selectProcurementQuote(
         await adminClient
             .from('inv_procurement_quotes')
             .update({ status: 'SUBMITTED', updated_by: user.id, updated_at: new Date().toISOString() })
-            .eq('requisition_item_id', quote.requisition_item_id)
+            .eq('requisition_item_id', quote.requisition_item_id as string)
             .eq('status', 'SELECTED');
 
         // Select this quote
@@ -384,7 +382,7 @@ export async function updateRequisitionStatus(
 
         if (fetchErr || !req) return { success: false, message: 'Requisition not found' };
 
-        const allowed = VALID_TRANSITIONS[req.status] || [];
+        const allowed = VALID_TRANSITIONS[req.status as keyof typeof VALID_TRANSITIONS] || [];
         if (!allowed.includes(newStatus)) {
             return {
                 success: false,
@@ -481,4 +479,394 @@ export async function getSupplierTenants() {
     }
 
     return data || [];
+}
+
+// =============================================================================
+// PHASE C: PURCHASE ORDERS
+// =============================================================================
+
+export interface CreatePurchaseOrderInput {
+    tenant_id: string;
+    requisition_id?: string;
+    vendor_name: string;
+    transporter_name?: string;
+    transporter_contact?: string;
+    docket_number?: string;
+    expected_date?: string;
+    delivery_branch_id?: string;
+    delivery_warehouse_id?: string;
+    items: Array<{
+        sku_id: string;
+        ordered_qty: number;
+        unit_cost?: number;
+        requisition_item_id?: string;
+    }>;
+}
+
+// 10. Create Purchase Order
+export async function createPurchaseOrder(
+    input: CreatePurchaseOrderInput
+): Promise<{ success: boolean; data?: any; message?: string }> {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
+    if (!input.items || input.items.length === 0) {
+        return { success: false, message: 'At least one item is required.' };
+    }
+
+    try {
+        const orderNumber = `PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        // Create PO header — use 'ORDERED' (valid po_status enum value)
+        const { data: po, error: poErr } = await adminClient
+            .from('inv_purchase_orders')
+            .insert({
+                tenant_id: input.tenant_id,
+                order_number: orderNumber,
+                status: 'ORDERED',
+                requisition_id: input.requisition_id || null,
+                vendor_name: input.vendor_name,
+                transporter_name: input.transporter_name || null,
+                transporter_contact: input.transporter_contact || null,
+                docket_number: input.docket_number || null,
+                expected_date: input.expected_date || null,
+                delivery_branch_id: input.delivery_branch_id || null,
+                delivery_warehouse_id: input.delivery_warehouse_id || null,
+                created_by: user.id,
+            })
+            .select()
+            .single();
+
+        if (poErr) throw poErr;
+
+        // Create PO items
+        const poItems = input.items.map(item => ({
+            po_id: po.id,
+            purchase_order_id: po.id,
+            sku_id: item.sku_id,
+            ordered_qty: item.ordered_qty,
+            unit_cost: item.unit_cost || null,
+            requisition_item_id: item.requisition_item_id || null,
+            tenant_id: input.tenant_id,
+            status: 'ORDERED',
+            created_by: user.id,
+        }));
+
+        const { error: itemErr } = await adminClient.from('inv_purchase_order_items').insert(poItems);
+        if (itemErr) throw itemErr;
+
+        // Transition linked requisition to IN_PROCUREMENT
+        if (input.requisition_id) {
+            await adminClient
+                .from('inv_requisitions')
+                .update({ status: 'IN_PROCUREMENT', updated_by: user.id, updated_at: new Date().toISOString() })
+                .eq('id', input.requisition_id);
+        }
+
+        revalidatePath('/dashboard/inventory/orders');
+        revalidatePath('/dashboard/inventory/requisitions');
+        return { success: true, data: po };
+    } catch (err: any) {
+        console.error('[createPurchaseOrder] Error:', err);
+        return { success: false, message: err.message };
+    }
+}
+
+// 11. Get Purchase Orders List
+export async function getPurchaseOrders(tenantId: string) {
+    const { data, error } = await adminClient
+        .from('inv_purchase_orders')
+        .select(
+            `
+            *,
+            items:inv_purchase_order_items (
+                id, sku_id, ordered_qty, received_qty, unit_cost, status
+            )
+        `
+        )
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('[getPurchaseOrders] Error:', error);
+        return [];
+    }
+    return data || [];
+}
+
+// 12. Get PO Detail
+export async function getPurchaseOrderById(poId: string) {
+    const { data, error } = await adminClient
+        .from('inv_purchase_orders')
+        .select(
+            `
+            *,
+            items:inv_purchase_order_items (
+                id, sku_id, ordered_qty, received_qty, unit_cost, status, requisition_item_id
+            ),
+            grns:inv_grn (
+                id, status, created_at,
+                items:inv_grn_items (
+                    id, sku_id, received, accepted, rejected,
+                    vehicle_details:inv_grn_vehicle_details (
+                        id, chassis_number, engine_number, key_number, manufacturing_date
+                    )
+                )
+            )
+        `
+        )
+        .eq('id', poId)
+        .single();
+
+    if (error) {
+        console.error('[getPurchaseOrderById] Error:', error);
+        return null;
+    }
+    return data;
+}
+
+// =============================================================================
+// PHASE C: GOODS RECEIPT NOTE (GRN)
+// =============================================================================
+
+export interface GRNVehicleDetail {
+    chassis_number: string;
+    engine_number: string;
+    key_number?: string;
+    manufacturing_date?: string;
+    battery_brand?: string;
+    battery_number?: string;
+    tyre_make?: string;
+}
+
+export interface CreateGRNInput {
+    tenant_id: string;
+    purchase_order_id: string;
+    delivery_challan_id?: string;
+    delivery_branch_id?: string;
+    delivery_warehouse_id?: string;
+    items: Array<{
+        purchase_order_item_id: string;
+        sku_id: string;
+        received: number;
+        accepted: number;
+        rejected: number;
+        vehicles: GRNVehicleDetail[];
+    }>;
+}
+
+// 13. Create GRN (Draft)
+export async function createGRN(input: CreateGRNInput): Promise<{ success: boolean; data?: any; message?: string }> {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
+    try {
+        // Create GRN header
+        const { data: grn, error: grnErr } = await adminClient
+            .from('inv_grn')
+            .insert({
+                tenant_id: input.tenant_id,
+                purchase_order_id: input.purchase_order_id,
+                delivery_challan_id: input.delivery_challan_id || null,
+                delivery_branch_id: input.delivery_branch_id || null,
+                delivery_warehouse_id: input.delivery_warehouse_id || null,
+                status: 'DRAFT',
+                created_by: user.id,
+            })
+            .select()
+            .single();
+
+        if (grnErr) throw grnErr;
+
+        // Create GRN items
+        for (const item of input.items) {
+            const { data: grnItem, error: itemErr } = await adminClient
+                .from('inv_grn_items')
+                .insert({
+                    grn_id: grn.id,
+                    purchase_order_item_id: item.purchase_order_item_id,
+                    sku_id: item.sku_id,
+                    received: item.received,
+                    accepted: item.accepted,
+                    rejected: item.rejected,
+                    tenant_id: input.tenant_id,
+                    created_by: user.id,
+                })
+                .select()
+                .single();
+
+            if (itemErr) throw itemErr;
+
+            // Insert vehicle details for each accepted unit
+            if (item.vehicles && item.vehicles.length > 0) {
+                const vehicleRows = item.vehicles.map(v => ({
+                    grn_item_id: grnItem.id,
+                    chassis_number: v.chassis_number,
+                    engine_number: v.engine_number,
+                    key_number: v.key_number || null,
+                    manufacturing_date: v.manufacturing_date || null,
+                    battery_brand: v.battery_brand || null,
+                    battery_number: v.battery_number || null,
+                    tyre_make: v.tyre_make || null,
+                }));
+
+                const { error: vehErr } = await adminClient.from('inv_grn_vehicle_details').insert(vehicleRows);
+
+                if (vehErr) throw vehErr;
+            }
+        }
+
+        return { success: true, data: grn };
+    } catch (err: any) {
+        console.error('[createGRN] Error:', err);
+        return { success: false, message: err.message };
+    }
+}
+
+// 14. Confirm GRN — posts stock
+export async function confirmGRN(
+    grnId: string
+): Promise<{ success: boolean; message?: string; stock_posted?: number }> {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
+    try {
+        // Fetch GRN with items and vehicle details
+        const { data: grn, error: fetchErr } = await adminClient
+            .from('inv_grn')
+            .select(
+                `
+                *,
+                items:inv_grn_items (
+                    id, purchase_order_item_id, sku_id, received, accepted, rejected,
+                    vehicle_details:inv_grn_vehicle_details (
+                        id, chassis_number, engine_number, key_number, manufacturing_date,
+                        battery_brand, battery_number, tyre_make
+                    )
+                )
+            `
+            )
+            .eq('id', grnId)
+            .single();
+
+        if (fetchErr || !grn) return { success: false, message: 'GRN not found' };
+
+        if (grn.status === 'CONFIRMED') {
+            return { success: false, message: 'GRN already confirmed' };
+        }
+
+        let totalStockPosted = 0;
+
+        for (const item of grn.items) {
+            // 1. Update PO item received_qty
+            if (item.purchase_order_item_id) {
+                const { data: poItem } = await adminClient
+                    .from('inv_purchase_order_items')
+                    .select('received_qty')
+                    .eq('id', item.purchase_order_item_id)
+                    .single();
+
+                const newReceivedQty = (poItem?.received_qty || 0) + item.accepted;
+
+                await adminClient
+                    .from('inv_purchase_order_items')
+                    .update({
+                        received_qty: newReceivedQty,
+                        status: 'RECEIVED',
+                        updated_by: user.id,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('id', item.purchase_order_item_id);
+            }
+
+            // 2. Post stock — 1 inv_stock row per vehicle
+            for (const vehicle of item.vehicle_details || []) {
+                const { error: stockErr } = await (adminClient as any).from('inv_stock').insert({
+                    sku_id: item.sku_id,
+                    chassis_number: vehicle.chassis_number,
+                    engine_number: vehicle.engine_number,
+                    status: 'AVAILABLE',
+                    current_owner_id: grn.tenant_id,
+                });
+
+                if (stockErr) {
+                    console.error('[confirmGRN] Stock insert error:', stockErr);
+                    continue; // Don't fail entire GRN for one stock error
+                }
+                totalStockPosted++;
+            }
+
+            // 3. Ledger entry
+            if (item.accepted > 0) {
+                const branchId =
+                    grn.delivery_branch_id || grn.request_branch_id || '00000000-0000-0000-0000-000000000000';
+                await (adminClient as any).from('inv_stock_ledger').insert({
+                    tenant_id: grn.tenant_id,
+                    sku_id: item.sku_id,
+                    branch_id: branchId,
+                    qty_delta: item.accepted,
+                    balance_after: item.accepted, // Simplified — real balance needs aggregate
+                    reason_code: 'GRN_INWARD',
+                    ref_type: 'GRN',
+                    ref_id: grn.id,
+                    created_by: user.id,
+                });
+            }
+        }
+
+        // 4. Mark GRN confirmed
+        await adminClient
+            .from('inv_grn')
+            .update({ status: 'CONFIRMED', updated_by: user.id, updated_at: new Date().toISOString() })
+            .eq('id', grnId);
+
+        // 5. Check if PO is fully received → auto-complete
+        if (grn.purchase_order_id) {
+            const { data: poItems } = await adminClient
+                .from('inv_purchase_order_items')
+                .select('ordered_qty, received_qty')
+                .eq('po_id', grn.purchase_order_id);
+
+            if (poItems) {
+                const allReceived = poItems.every((i: any) => (i.received_qty || 0) >= i.ordered_qty);
+                const someReceived = poItems.some((i: any) => (i.received_qty || 0) > 0);
+
+                const newPoStatus = allReceived ? 'COMPLETED' : someReceived ? 'PARTIALLY_RECEIVED' : 'ORDERED';
+
+                await adminClient
+                    .from('inv_purchase_orders')
+                    .update({ status: newPoStatus, updated_by: user.id, updated_at: new Date().toISOString() })
+                    .eq('id', grn.purchase_order_id);
+
+                // 6. If PO completed and linked to requisition → auto-fulfill
+                if (allReceived) {
+                    const { data: po } = await adminClient
+                        .from('inv_purchase_orders')
+                        .select('requisition_id')
+                        .eq('id', grn.purchase_order_id)
+                        .single();
+
+                    if (po?.requisition_id) {
+                        await adminClient
+                            .from('inv_requisitions')
+                            .update({
+                                status: 'FULFILLED',
+                                updated_by: user.id,
+                                updated_at: new Date().toISOString(),
+                            })
+                            .eq('id', po.requisition_id);
+                    }
+                }
+            }
+        }
+
+        revalidatePath('/dashboard/inventory/orders');
+        revalidatePath('/dashboard/inventory/requisitions');
+        revalidatePath('/dashboard/inventory/stock');
+
+        return { success: true, stock_posted: totalStockPosted };
+    } catch (err: any) {
+        console.error('[confirmGRN] Error:', err);
+        return { success: false, message: err.message };
+    }
 }

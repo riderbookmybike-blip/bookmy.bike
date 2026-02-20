@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Loader2, CheckCircle2, Truck, Building2, Calendar, ArrowRight, Search, Package } from 'lucide-react';
+import { X, Plus, Loader2, CheckCircle2, Truck, Building2, Calendar, Package } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { format } from 'date-fns';
+import { createPurchaseOrder } from '@/actions/inventory';
+import { toast } from 'sonner';
 
 interface ModalProps {
     isOpen: boolean;
@@ -12,13 +13,33 @@ interface ModalProps {
     tenantId: string;
 }
 
+interface ReqItem {
+    id: string;
+    sku_id: string;
+    quantity: number;
+    notes: string | null;
+    status: string;
+    requisition_id: string;
+    inv_requisitions: {
+        id: string;
+        customer_name: string | null;
+        status: string;
+        created_at: string;
+    };
+    // Selected quote for unit_cost
+    selected_quote?: {
+        landed_cost: number;
+    } | null;
+}
+
 export default function CreatePOModal({ isOpen, onClose, onSuccess, tenantId }: ModalProps) {
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
     const [fetchingReqs, setFetchingReqs] = useState(false);
 
     // Data
-    const [requisitions, setRequisitions] = useState<any[]>([]);
+    const [requisitions, setRequisitions] = useState<ReqItem[]>([]);
+    const [skuNames, setSkuNames] = useState<Record<string, string>>({});
     const [selectedReqItems, setSelectedReqItems] = useState<Set<string>>(new Set());
 
     // Form State
@@ -36,33 +57,47 @@ export default function CreatePOModal({ isOpen, onClose, onSuccess, tenantId }: 
     const fetchPendingRequisitions = async () => {
         setFetchingReqs(true);
         try {
+            // Fetch SUBMITTED requisition items — no broken vehicle_colors join
             const { data, error } = await (supabase as any)
-                .from('purchase_requisition_items')
+                .from('inv_requisition_items')
                 .select(
                     `
-                    *,
-                    purchase_requisitions!inner (
-                        id,
-                        customer_name,
-                        status,
-                        created_at
-                    ),
-                    vehicle_colors (
-                        name,
-                        vehicle_variants (
-                            name,
-                            vehicle_models (
-                                name,
-                                brands (name)
-                            )
-                        )
+                    id, sku_id, quantity, notes, status, requisition_id,
+                    inv_requisitions!inner (
+                        id, customer_name, status, created_at
                     )
                 `
                 )
-                .eq('purchase_requisitions.status', 'PENDING');
+                .eq('inv_requisitions.status', 'SUBMITTED')
+                .eq('status', 'OPEN');
 
             if (error) throw error;
-            setRequisitions(data || []);
+
+            const items: ReqItem[] = data || [];
+            setRequisitions(items);
+
+            // Resolve SKU names
+            const skuIds = items.map(i => i.sku_id).filter(Boolean);
+            if (skuIds.length) {
+                const { data: skus } = await supabase.from('cat_skus').select('id, sku_code').in('id', skuIds);
+                if (skus) {
+                    const map: Record<string, string> = {};
+                    skus.forEach((s: any) => (map[s.id] = s.sku_code || s.id.slice(0, 8)));
+                    setSkuNames(map);
+                }
+            }
+
+            // Fetch selected procurement quotes for unit_cost
+            for (const item of items) {
+                const { data: quote } = await (supabase as any)
+                    .from('inv_procurement_quotes')
+                    .select('landed_cost')
+                    .eq('requisition_item_id', item.id)
+                    .eq('status', 'SELECTED')
+                    .maybeSingle();
+                item.selected_quote = quote || null;
+            }
+            setRequisitions([...items]);
         } catch (err) {
             console.error('Error fetching reqs:', err);
         } finally {
@@ -82,55 +117,52 @@ export default function CreatePOModal({ isOpen, onClose, onSuccess, tenantId }: 
         setLoading(true);
 
         try {
-            const poNumber = `PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-            // 1. Create Purchase Order
-            const { data: po, error: poErr } = await (supabase as any)
-                .from('purchase_orders')
-                .insert({
-                    tenant_id: tenantId,
-                    order_number: poNumber,
-                    vendor_name: vendorName,
-                    transporter_name: transporterName,
-                    docket_number: docketNumber,
-                    expected_date: expectedDate || null,
-                    status: 'ORDERED', // Moves straight to Ordered/In-Transit
-                })
-                .select()
-                .single();
-
-            if (poErr) throw poErr;
-
-            // 2. Create PO Items from selections
             const selectedData = requisitions.filter(r => selectedReqItems.has(r.id));
-            const poItems = selectedData.map(item => ({
-                po_id: po.id,
-                sku_id: item.sku_id,
-                ordered_qty: item.quantity,
-            }));
 
-            const { error: itemErr } = await (supabase as any).from('purchase_order_items').insert(poItems);
-            if (itemErr) throw itemErr;
-
-            // 3. Update Requisitions Status to CONVERTED
+            // Group by requisition — use the first requisition's ID
             const reqIds = Array.from(new Set(selectedData.map(r => r.requisition_id)));
-            const { error: reqUpdateErr } = await (supabase as any)
-                .from('purchase_requisitions')
-                .update({ status: 'CONVERTED' })
-                .in('id', reqIds);
 
-            if (reqUpdateErr) throw reqUpdateErr;
+            const result = await createPurchaseOrder({
+                tenant_id: tenantId,
+                requisition_id: reqIds[0] || undefined,
+                vendor_name: vendorName,
+                transporter_name: transporterName || undefined,
+                docket_number: docketNumber || undefined,
+                expected_date: expectedDate || undefined,
+                items: selectedData.map(item => ({
+                    sku_id: item.sku_id,
+                    ordered_qty: item.quantity,
+                    unit_cost: item.selected_quote?.landed_cost,
+                    requisition_item_id: item.id,
+                })),
+            });
 
-            onSuccess();
-            onClose();
+            if (result.success) {
+                toast.success(`Purchase Order ${result.data?.order_number} created`);
+                onSuccess();
+                onClose();
+                // Reset
+                setSelectedReqItems(new Set());
+                setVendorName('');
+                setTransporterName('');
+                setDocketNumber('');
+                setExpectedDate('');
+            } else {
+                toast.error(result.message || 'Failed to create PO');
+            }
         } catch (err) {
             console.error('PO Creation Error:', err);
+            toast.error('Failed to create PO');
         } finally {
             setLoading(false);
         }
     };
 
     if (!isOpen) return null;
+
+    const selectedData = requisitions.filter(r => selectedReqItems.has(r.id));
+    const totalUnits = selectedData.reduce((sum, r) => sum + r.quantity, 0);
+    const totalCost = selectedData.reduce((sum, r) => sum + (r.selected_quote?.landed_cost || 0) * r.quantity, 0);
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -151,7 +183,7 @@ export default function CreatePOModal({ isOpen, onClose, onSuccess, tenantId }: 
                                 Initiate Purchase Order
                             </h2>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                                Supply Chain & Logistics Procurement
+                                Create PO from pending requisition items
                             </p>
                         </div>
                     </div>
@@ -164,7 +196,7 @@ export default function CreatePOModal({ isOpen, onClose, onSuccess, tenantId }: 
                 </div>
 
                 <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-                    {/* Left Side: Select Requisitions */}
+                    {/* Left Side: Select Requisition Items */}
                     <div className="flex-1 overflow-y-auto p-8 border-b md:border-b-0 md:border-r border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/1 scrollbar-none">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
@@ -209,26 +241,26 @@ export default function CreatePOModal({ isOpen, onClose, onSuccess, tenantId }: 
                                                     <span
                                                         className={`text-[10px] font-black uppercase tracking-tighter ${isSelected ? 'text-white/70' : 'text-slate-400'}`}
                                                     >
-                                                        REQ-{req.purchase_requisitions.id.slice(0, 8).toUpperCase()}
+                                                        REQ-{req.inv_requisitions.id.slice(0, 8).toUpperCase()}
                                                     </span>
                                                     <span
                                                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}
                                                     >
-                                                        {req.purchase_requisitions.customer_name || 'Generic'}
+                                                        {req.inv_requisitions.customer_name || 'Generic'}
                                                     </span>
                                                 </div>
                                                 <h4
                                                     className={`text-[11px] font-black uppercase truncate ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}
                                                 >
-                                                    {req.vehicle_colors.vehicle_variants.vehicle_models.brands.name}{' '}
-                                                    {req.vehicle_colors.vehicle_variants.vehicle_models.name}
+                                                    {skuNames[req.sku_id] || req.sku_id.slice(0, 12) + '...'}
                                                 </h4>
-                                                <p
-                                                    className={`text-[10px] font-bold uppercase truncate ${isSelected ? 'text-white/60' : 'text-slate-500'}`}
-                                                >
-                                                    {req.vehicle_colors.vehicle_variants.name} •{' '}
-                                                    {req.vehicle_colors.name}
-                                                </p>
+                                                {req.selected_quote && (
+                                                    <p
+                                                        className={`text-[10px] font-bold mt-0.5 ${isSelected ? 'text-white/60' : 'text-emerald-500'}`}
+                                                    >
+                                                        ₹{req.selected_quote.landed_cost.toLocaleString()} / unit
+                                                    </p>
+                                                )}
                                             </div>
                                             <div
                                                 className={`text-right ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}
@@ -270,7 +302,7 @@ export default function CreatePOModal({ isOpen, onClose, onSuccess, tenantId }: 
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="EX: SAFEXRESS..."
+                                        placeholder="EX: SAFEXPRESS..."
                                         className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 px-6 text-sm font-black focus:outline-none focus:ring-2 focus:ring-indigo-500/20 uppercase tracking-widest"
                                         value={transporterName}
                                         onChange={e => setTransporterName(e.target.value)}
@@ -307,20 +339,25 @@ export default function CreatePOModal({ isOpen, onClose, onSuccess, tenantId }: 
                         <div className="mt-12 p-6 bg-slate-50 dark:bg-white/2 rounded-3xl border border-slate-100 dark:border-white/5">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    Total Vehicles
+                                    Total Units
                                 </span>
                                 <span className="text-xl font-black text-slate-900 dark:text-white italic">
-                                    {
-                                        (selectedDataCount = requisitions
-                                            .filter(r => selectedReqItems.has(r.id))
-                                            .reduce((sum, r) => sum + r.quantity, 0))
-                                    }{' '}
-                                    Units
+                                    {totalUnits} Units
                                 </span>
                             </div>
+                            {totalCost > 0 && (
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Est. Landed Cost
+                                    </span>
+                                    <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                        ₹{totalCost.toLocaleString()}
+                                    </span>
+                                </div>
+                            )}
                             <p className="text-[10px] font-bold text-slate-500 uppercase leading-snug tracking-tighter">
                                 By converting these requisitions, stock will be marked as{' '}
-                                <span className="text-indigo-500">IN TRANSIT</span> in your inventory.
+                                <span className="text-indigo-500">ORDERED</span> in your inventory.
                             </p>
                         </div>
                     </div>
@@ -347,6 +384,3 @@ export default function CreatePOModal({ isOpen, onClose, onSuccess, tenantId }: 
         </div>
     );
 }
-
-// Inline helper for calc because React variables are strict
-let selectedDataCount = 0;
