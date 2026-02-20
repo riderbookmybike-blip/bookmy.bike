@@ -870,3 +870,139 @@ export async function confirmGRN(
         return { success: false, message: err.message };
     }
 }
+
+// =============================================================================
+// PHASE D: STOCK VISIBILITY
+// =============================================================================
+
+// 15. Get Stock List
+export async function getStock(tenantId: string, filters?: { status?: string }) {
+    let query = adminClient
+        .from('inv_stock')
+        .select('*')
+        .eq('current_owner_id', tenantId)
+        .order('created_at', { ascending: false });
+
+    if (filters?.status && filters.status !== 'ALL') {
+        query = query.eq('status', filters.status);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error('[getStock] Error:', error);
+        return [];
+    }
+
+    // Resolve SKU names from cat_skus
+    const skuIds = (data || []).map(s => s.sku_id).filter(Boolean);
+    let skuMap: Record<string, string> = {};
+    if (skuIds.length > 0) {
+        const uniqueSkuIds = [...new Set(skuIds)];
+        const { data: skus } = await adminClient.from('cat_skus').select('id, sku_code').in('id', uniqueSkuIds);
+        if (skus) {
+            skus.forEach(s => {
+                skuMap[s.id] = s.sku_code || s.id.slice(0, 8);
+            });
+        }
+    }
+
+    return (data || []).map(item => ({
+        ...item,
+        sku_name: skuMap[item.sku_id] || item.sku_id?.slice(0, 12) || 'Unknown',
+    }));
+}
+
+// 16. Get Stock Detail
+export async function getStockById(stockId: string) {
+    const { data: stock, error } = await adminClient.from('inv_stock').select('*').eq('id', stockId).single();
+
+    if (error) {
+        console.error('[getStockById] Error:', error);
+        return null;
+    }
+
+    // Resolve SKU name
+    let skuName = stock.sku_id?.slice(0, 12) || 'Unknown';
+    if (stock.sku_id) {
+        const { data: sku } = await adminClient.from('cat_skus').select('sku_code').eq('id', stock.sku_id).single();
+        if (sku) skuName = sku.sku_code || skuName;
+    }
+
+    // Fetch ledger entries for this SKU + owner
+    const { data: ledger } = await (adminClient as any)
+        .from('inv_stock_ledger')
+        .select('*')
+        .eq('sku_id', stock.sku_id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+    return {
+        ...stock,
+        sku_name: skuName,
+        ledger: ledger || [],
+    };
+}
+
+// 17. Update Stock Status
+const STOCK_TRANSITIONS: Record<string, string[]> = {
+    IN_TRANSIT: ['AVAILABLE', 'DAMAGED'],
+    AVAILABLE: ['RESERVED', 'SOLD', 'DAMAGED', 'IN_TRANSIT'],
+    RESERVED: ['AVAILABLE', 'SOLD', 'DAMAGED'],
+    SOLD: [], // terminal
+    DAMAGED: ['AVAILABLE'], // can be repaired
+};
+
+export async function updateStockStatus(
+    stockId: string,
+    newStatus: string
+): Promise<{ success: boolean; message?: string }> {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
+    try {
+        const { data: stock, error: fetchErr } = await adminClient
+            .from('inv_stock')
+            .select('id, status, sku_id, current_owner_id')
+            .eq('id', stockId)
+            .single();
+
+        if (fetchErr || !stock) return { success: false, message: 'Stock item not found' };
+
+        const allowed = STOCK_TRANSITIONS[stock.status as keyof typeof STOCK_TRANSITIONS] || [];
+        if (!allowed.includes(newStatus)) {
+            return {
+                success: false,
+                message: `Cannot transition from ${stock.status} to ${newStatus}`,
+            };
+        }
+
+        const { error: updateErr } = await adminClient
+            .from('inv_stock')
+            .update({
+                status: newStatus,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', stockId);
+
+        if (updateErr) throw updateErr;
+
+        // Ledger entry for status change
+        await (adminClient as any).from('inv_stock_ledger').insert({
+            sku_id: stock.sku_id,
+            branch_id: '00000000-0000-0000-0000-000000000000',
+            qty_delta: newStatus === 'SOLD' ? -1 : 0,
+            balance_after: 0, // simplified
+            reason_code: `STATUS_${newStatus}`,
+            ref_type: 'STOCK_STATUS',
+            ref_id: stockId,
+            created_by: user.id,
+        });
+
+        revalidatePath('/dashboard/inventory/stock');
+        return { success: true };
+    } catch (err: any) {
+        console.error('[updateStockStatus] Error:', err);
+        return { success: false, message: err.message };
+    }
+}

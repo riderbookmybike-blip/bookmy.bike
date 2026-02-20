@@ -1,127 +1,101 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Warehouse,
-    Plus,
     Search,
-    Filter,
     ChevronRight,
     CheckCircle2,
-    AlertCircle,
     Package,
-    Tag,
     Hash,
-    Car,
     Loader2,
-    ArrowDownToLine,
     ShieldCheck,
     Calendar,
-    User,
+    Tag,
+    Truck,
+    AlertTriangle,
+    ArrowRight,
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { format } from 'date-fns';
-import InwardStockModal from './components/InwardStockModal';
+import { useRouter } from 'next/navigation';
+import { getStock } from '@/actions/inventory';
 
-interface InventoryItem {
+interface StockItem {
     id: string;
+    sku_id: string;
+    sku_name: string;
     chassis_number: string;
     engine_number: string;
     status: string;
+    dealer_price: number | null;
+    offer_price: number | null;
+    invoice_date: string | null;
     created_at: string;
-    vehicle_colors: {
-        name: string;
-        vehicle_variants: {
-            name: string;
-            vehicle_models: {
-                name: string;
-                brands: {
-                    name: string;
-                };
-            };
-        };
-    };
-    allocated_to?: {
-        customer_name: string;
-    };
 }
 
+const STATUS_COLORS: Record<string, string> = {
+    AVAILABLE:
+        'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+    RESERVED:
+        'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
+    SOLD: 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10',
+    DAMAGED: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20',
+    IN_TRANSIT:
+        'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
+};
+
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+    AVAILABLE: <CheckCircle2 size={14} />,
+    RESERVED: <Tag size={14} />,
+    SOLD: <Package size={14} />,
+    DAMAGED: <AlertTriangle size={14} />,
+    IN_TRANSIT: <Truck size={14} />,
+};
+
 export default function StockPage() {
-    const supabase: any = createClient();
     const { tenantId } = useTenant();
-    const [stock, setStock] = useState<InventoryItem[]>([]);
+    const router = useRouter();
+    const [stock, setStock] = useState<StockItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
-    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    useEffect(() => {
-        if (tenantId) {
-            fetchStock();
-        }
-    }, [tenantId, statusFilter]);
-
-    const fetchStock = async () => {
+    const fetchStockData = useCallback(async () => {
+        if (!tenantId) return;
         setLoading(true);
         try {
-            let query = (supabase as any)
-                .from('vehicle_inventory')
-                .select(
-                    `
-                    *,
-                    vehicle_colors (
-                        name,
-                        vehicle_variants (
-                            name,
-                            vehicle_models (
-                                name,
-                                brands (name)
-                            )
-                        )
-                    ),
-                    allocated_to:purchase_requisitions!allocated_to_requisition_id (
-                        customer_name
-                    )
-                `
-                )
-                .order('created_at', { ascending: false });
-
-            if (statusFilter !== 'ALL') {
-                query = query.eq('status', statusFilter);
-            }
-
-            const { data, error } = await query;
-            if (error) throw error;
-            setStock((data as any) || []);
+            const data = await getStock(tenantId, {
+                status: statusFilter !== 'ALL' ? statusFilter : undefined,
+            });
+            setStock(data as StockItem[]);
         } catch (err) {
             console.error('Error fetching stock:', err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [tenantId, statusFilter]);
 
-    const getStatusColor = (status: string) => {
-        switch (status.toUpperCase()) {
-            case 'AVAILABLE':
-                return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20';
-            case 'BOOKED':
-                return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20';
-            case 'SOLD':
-                return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10';
-            default:
-                return 'bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10';
-        }
-    };
+    useEffect(() => {
+        fetchStockData();
+    }, [fetchStockData]);
 
-    const filteredStock = stock.filter(item => {
-        const query = searchQuery.toLowerCase();
+    const filtered = stock.filter(item => {
+        const q = searchQuery.toLowerCase().trim();
+        if (!q) return true;
         return (
-            item.chassis_number.toLowerCase().includes(query) ||
-            item.engine_number.toLowerCase().includes(query) ||
-            item.vehicle_colors.vehicle_variants.vehicle_models.name.toLowerCase().includes(query)
+            item.chassis_number?.toLowerCase().includes(q) ||
+            item.engine_number?.toLowerCase().includes(q) ||
+            item.sku_name?.toLowerCase().includes(q)
         );
     });
+
+    const stats = {
+        available: stock.filter(s => s.status === 'AVAILABLE').length,
+        reserved: stock.filter(s => s.status === 'RESERVED').length,
+        inTransit: stock.filter(s => s.status === 'IN_TRANSIT').length,
+        total: stock.length,
+    };
 
     return (
         <div className="space-y-8 pb-20">
@@ -136,80 +110,69 @@ export default function StockPage() {
                         Real-time inventory of physical vehicle assets
                     </p>
                 </div>
-
                 <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-black text-sm transition-all shadow-lg shadow-emerald-500/25 active:scale-95 uppercase tracking-wide shrink-0 transition-transform"
+                    onClick={() => router.push('/dashboard/inventory/orders')}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-black text-sm transition-all shadow-lg shadow-emerald-500/25 active:scale-95 uppercase tracking-wide shrink-0"
                 >
-                    <ArrowDownToLine size={18} strokeWidth={3} />
-                    Inward New Stock (GRN)
+                    <ArrowRight size={18} strokeWidth={3} />
+                    Inward via GRN
                 </button>
             </div>
 
-            {/* Live Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
-                            <CheckCircle2 size={24} />
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                    { label: 'Available', value: stats.available, icon: <CheckCircle2 size={24} />, color: 'emerald' },
+                    { label: 'Reserved', value: stats.reserved, icon: <Tag size={24} />, color: 'amber' },
+                    { label: 'In Transit', value: stats.inTransit, icon: <Truck size={24} />, color: 'indigo' },
+                    { label: 'Total', value: stats.total, icon: <Hash size={24} />, color: 'slate' },
+                ].map(s => (
+                    <div
+                        key={s.label}
+                        className="bg-white dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className={`p-3 bg-${s.color}-500/10 rounded-2xl text-${s.color}-500`}>{s.icon}</div>
+                            <span className={`text-[10px] font-black text-${s.color}-500 uppercase`}>{s.label}</span>
                         </div>
-                        <span className="text-[10px] font-black text-emerald-500 uppercase">Available</span>
+                        <div className="text-3xl font-black text-slate-900 dark:text-white">{s.value}</div>
                     </div>
-                    <div className="text-3xl font-black text-slate-900 dark:text-white">
-                        {stock.filter(s => s.status === 'AVAILABLE').length}
-                    </div>
-                    <p className="text-xs font-bold text-slate-500 uppercase mt-1">Ready for Sale</p>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500">
-                            <Tag size={24} />
-                        </div>
-                        <span className="text-[10px] font-black text-amber-500 uppercase">Booked</span>
-                    </div>
-                    <div className="text-3xl font-black text-slate-900 dark:text-white">
-                        {stock.filter(s => s.status === 'BOOKED').length}
-                    </div>
-                    <p className="text-xs font-bold text-slate-500 uppercase mt-1">Against Requisitions</p>
-                </div>
+                ))}
             </div>
 
             {/* Filters */}
             <div className="bg-white/50 dark:bg-slate-900/30 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-4 rounded-3xl flex flex-col md:flex-row items-center gap-4">
                 <div className="relative flex-1 group w-full">
                     <Search
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors"
                         size={18}
                     />
                     <input
                         type="text"
-                        placeholder="SEARCH BY CHASSIS, ENGINE, OR MODEL..."
-                        className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-12 pr-4 text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest placeholder:text-slate-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                        placeholder="SEARCH BY CHASSIS, ENGINE, OR SKU..."
+                        className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-12 pr-4 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all uppercase tracking-widest placeholder:text-slate-400/50"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
                 </div>
-
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none w-full md:w-auto">
-                    {['ALL', 'AVAILABLE', 'BOOKED', 'SOLD'].map(status => (
+                <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+                    {['ALL', 'AVAILABLE', 'RESERVED', 'IN_TRANSIT', 'SOLD', 'DAMAGED'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border
-                                ${
-                                    statusFilter === status
-                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
-                                        : 'bg-white dark:bg-slate-800/50 text-slate-500 border-slate-200 dark:border-white/5'
-                                }`}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${
+                                statusFilter === status
+                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent shadow-lg'
+                                    : 'bg-white dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:border-slate-300'
+                            }`}
                         >
-                            {status}
+                            {status.replace(/_/g, ' ')}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Stock List */}
+            {/* Table */}
             <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
                 {loading ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-4">
@@ -218,17 +181,17 @@ export default function StockPage() {
                             Auditing Physical Assets...
                         </span>
                     </div>
-                ) : filteredStock.length === 0 ? (
+                ) : filtered.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-6 text-center px-6">
-                        <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-300">
+                        <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-300 dark:text-slate-700">
                             <Package size={40} />
                         </div>
                         <div>
                             <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
                                 Zero Stock
                             </h3>
-                            <p className="text-xs font-bold text-slate-500 uppercase mt-2">
-                                Inward vehicles from your Purchase Orders to see them here.
+                            <p className="text-xs font-bold text-slate-500 uppercase mt-2 max-w-xs">
+                                Inward vehicles via GRN from your Purchase Orders.
                             </p>
                         </div>
                     </div>
@@ -238,83 +201,78 @@ export default function StockPage() {
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Asset Identifiers
+                                        Chassis / Engine
                                     </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Vehicle Details
+                                        SKU
                                     </th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Aquisition Date
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Dealer Price
                                     </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Status
                                     </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Inwarded
+                                    </th>
                                     <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Actions
+                                        Action
                                     </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredStock.map(item => (
+                                {filtered.map(item => (
                                     <tr
                                         key={item.id}
-                                        className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors"
+                                        onClick={() => router.push(`/dashboard/inventory/stock/${item.id}`)}
+                                        className="group border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors cursor-pointer"
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
                                                     <Hash size={12} className="text-slate-400" />
                                                     <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                                                        C: {item.chassis_number}
+                                                        {item.chassis_number}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <ShieldCheck size={12} className="text-slate-400" />
                                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                                        E: {item.engine_number}
+                                                        {item.engine_number}
                                                     </span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">
-                                                    {item.vehicle_colors.vehicle_variants.vehicle_models.brands.name}{' '}
-                                                    {item.vehicle_colors.vehicle_variants.vehicle_models.name}
-                                                </span>
-                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                                                    {item.vehicle_colors.vehicle_variants.name} •{' '}
-                                                    {item.vehicle_colors.name}
-                                                </span>
-                                            </div>
+                                            <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase truncate max-w-[180px] block">
+                                                {item.sku_name}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className="text-sm font-black text-slate-900 dark:text-white">
+                                                {item.dealer_price
+                                                    ? `₹${Number(item.dealer_price).toLocaleString()}`
+                                                    : '—'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${STATUS_COLORS[item.status] || STATUS_COLORS.AVAILABLE}`}
+                                            >
+                                                {STATUS_ICONS[item.status] || <Package size={14} />}
+                                                {item.status?.replace(/_/g, ' ')}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-1.5 text-slate-400">
                                                 <Calendar size={12} />
-                                                <span className="text-[10px] font-bold uppercase tracking-widest">
+                                                <span className="text-[10px] font-bold">
                                                     {format(new Date(item.created_at), 'dd MMM yyyy')}
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <span
-                                                    className={`px-3 py-1 bg-transparent rounded-full text-[10px] font-black border uppercase tracking-widest inline-flex w-fit ${getStatusColor(item.status)}`}
-                                                >
-                                                    {item.status}
-                                                </span>
-                                                {item.allocated_to?.customer_name && (
-                                                    <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
-                                                        <User size={10} />
-                                                        <span className="text-[9px] font-black uppercase tracking-tight truncate max-w-[120px]">
-                                                            {item.allocated_to.customer_name}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="p-2 text-slate-400 hover:text-emerald-600 rounded-xl transition-all">
+                                            <button className="p-2 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-all">
                                                 <ChevronRight size={20} />
                                             </button>
                                         </td>
@@ -325,13 +283,6 @@ export default function StockPage() {
                     </div>
                 )}
             </div>
-
-            <InwardStockModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onSuccess={fetchStock}
-                tenantId={tenantId || ''}
-            />
         </div>
     );
 }
