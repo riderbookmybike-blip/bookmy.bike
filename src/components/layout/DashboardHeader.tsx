@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Bell, Menu } from 'lucide-react';
+import { Bell, Menu, Megaphone, FileText } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter } from 'next/navigation';
 import { ProfileDropdown } from './ProfileDropdown';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { createClient } from '@/lib/supabase/client';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { HeaderCommandSearch } from '@/components/layout/HeaderCommandSearch';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 // Removed: import { DashboardGreeting } from './DashboardGreeting';
 // Removed: import { WorkspaceSwitcher } from '@/components/layout/WorkspaceSwitcher';
 
@@ -16,11 +17,12 @@ interface DashboardHeaderProps {
 }
 
 export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHeaderProps) => {
-    const { isSidebarExpanded, tenantName, tenantType, tenantConfig, tenantId } = useTenant();
-    const { theme } = useTheme();
+    const { isSidebarExpanded, tenantName, tenantConfig, tenantId, tenantSlug } = useTenant();
+    const { resolvedTheme } = useTheme();
     const router = useRouter();
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
+    const { unreadCount } = useUnreadNotifications(tenantId);
     const handleLoginClick = () => router.push('/login');
     const brandLogo = tenantConfig?.brand?.logoUrl;
     const brandColor = tenantConfig?.brand?.primaryColor || '#4F46E5';
@@ -60,6 +62,19 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
         window.addEventListener('tenantLogoUpdated', handleLogoUpdate);
         return () => window.removeEventListener('tenantLogoUpdated', handleLogoUpdate);
     }, []);
+
+    const resolveHref = (href: string) => {
+        if (!tenantSlug) return href;
+        // reuse same prefixes as command palette; keep it minimal
+        const prefixes = ['/dashboard', '/leads', '/quotes', '/sales-orders'];
+        const shouldPrefix = prefixes.some(prefix => href.startsWith(prefix));
+        return shouldPrefix ? `/app/${tenantSlug}${href}` : href;
+    };
+
+    const quickActions = [
+        { icon: Megaphone, href: '/leads?action=create', label: 'Quick Add Lead' },
+        { icon: FileText, href: '/quotes?action=create', label: 'Quick Add Quote' },
+    ];
 
     return (
         <nav
@@ -108,22 +123,43 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Hide search/bell/theme on phone — keep just profile */}
+                    {/* Hide search/bell on phone — keep just profile */}
                     {!isPhone && (
                         <>
-                            <button className="p-2 text-slate-400 hover:text-indigo-500 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all relative group">
-                                <Search size={18} />
-                            </button>
+                            {showSearch && (
+                                <HeaderCommandSearch className="p-2 text-slate-400 hover:text-indigo-500 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50" />
+                            )}
 
-                            <button className="p-2 text-slate-400 hover:text-indigo-500 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all relative group">
+                            {quickActions.map(action => (
+                                <button
+                                    key={action.href}
+                                    type="button"
+                                    onClick={() => router.push(resolveHref(action.href))}
+                                    className="p-2 text-slate-400 hover:text-indigo-500 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50"
+                                    title={action.label}
+                                    aria-label={action.label}
+                                >
+                                    <action.icon size={18} />
+                                </button>
+                            ))}
+
+                            <button
+                                type="button"
+                                onClick={() => router.push('/notifications')}
+                                className="p-2 text-slate-400 hover:text-indigo-500 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50"
+                                aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+                                title={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
+                            >
                                 <Bell size={18} />
-                                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-slate-950" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 bg-rose-500 text-white text-[10px] font-black rounded-full border-2 border-white dark:border-slate-950 flex items-center justify-center">
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </span>
+                                )}
                             </button>
-
-                            <ThemeToggle className="w-10 h-10 text-slate-400 hover:text-indigo-500 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl" />
                         </>
                     )}
-                    <ProfileDropdown onLoginClick={handleLoginClick} scrolled={true} theme={theme} />
+                    <ProfileDropdown onLoginClick={handleLoginClick} scrolled={true} theme={resolvedTheme} />
                 </div>
             </div>
         </nav>
