@@ -1031,3 +1031,79 @@ export async function updateStockStatus(
         return { success: false, message: err.message };
     }
 }
+
+// =============================================================================
+// PHASE E: LEDGER RECONCILIATION
+// =============================================================================
+
+// 18. Reconcile Stock vs Ledger
+// NOTE: Currently tenant+SKU scoped only. inv_stock lacks branch_id,
+// so branch-level reconciliation requires future schema expansion.
+export async function reconcileStockLedger(tenantId: string) {
+    try {
+        // 1. Count AVAILABLE stock per SKU from inv_stock
+        const { data: stockRows, error: stockErr } = await adminClient
+            .from('inv_stock')
+            .select('sku_id')
+            .eq('current_owner_id', tenantId)
+            .eq('status', 'AVAILABLE');
+
+        if (stockErr) throw stockErr;
+
+        const stockCounts: Record<string, number> = {};
+        (stockRows || []).forEach(row => {
+            stockCounts[row.sku_id] = (stockCounts[row.sku_id] || 0) + 1;
+        });
+
+        // 2. Get latest ledger balance_after per SKU
+        const skuIds = Object.keys(stockCounts);
+        const ledgerBalances: Record<string, number> = {};
+
+        for (const skuId of skuIds) {
+            const { data: latest } = await (adminClient as any)
+                .from('inv_stock_ledger')
+                .select('balance_after')
+                .eq('sku_id', skuId)
+                .eq('tenant_id', tenantId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (latest) {
+                ledgerBalances[skuId] = latest.balance_after;
+            }
+        }
+
+        // 3. Compare and find mismatches
+        const mismatches: Array<{
+            sku_id: string;
+            stock_count: number;
+            ledger_balance: number | null;
+            drift: number;
+        }> = [];
+
+        for (const skuId of skuIds) {
+            const stockCount = stockCounts[skuId] || 0;
+            const ledgerBalance = ledgerBalances[skuId] ?? null;
+
+            if (ledgerBalance !== null && stockCount !== ledgerBalance) {
+                mismatches.push({
+                    sku_id: skuId,
+                    stock_count: stockCount,
+                    ledger_balance: ledgerBalance,
+                    drift: stockCount - ledgerBalance,
+                });
+            }
+        }
+
+        return {
+            success: true,
+            total_skus_checked: skuIds.length,
+            mismatches,
+            is_clean: mismatches.length === 0,
+        };
+    } catch (err: any) {
+        console.error('[reconcileStockLedger] Error:', err);
+        return { success: false, message: err.message, mismatches: [], is_clean: false };
+    }
+}
