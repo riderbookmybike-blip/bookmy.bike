@@ -2,12 +2,25 @@ import Script from 'next/script';
 
 const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
 const clarityId = process.env.NEXT_PUBLIC_CLARITY_ID;
+const ga4Id = process.env.NEXT_PUBLIC_GA4_ID;
 
 export default function AnalyticsScripts() {
-    if (!gtmId && !clarityId) return null;
+    if (!gtmId && !clarityId && !ga4Id) return null;
 
     return (
         <>
+            {/* Google Analytics 4 (gtag.js) */}
+            {ga4Id ? (
+                <>
+                    <Script src={`https://www.googletagmanager.com/gtag/js?id=${ga4Id}`} strategy="afterInteractive" />
+                    <Script id="ga4-config" strategy="afterInteractive">
+                        {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+gtag('js',new Date());gtag('config','${ga4Id}');`}
+                    </Script>
+                </>
+            ) : null}
+
+            {/* Google Tag Manager (if separate GTM container exists) */}
             {gtmId ? (
                 <>
                     <Script id="gtm-script" strategy="afterInteractive">
@@ -28,6 +41,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                     </noscript>
                 </>
             ) : null}
+
+            {/* Microsoft Clarity */}
             {clarityId ? (
                 <Script id="clarity-script" strategy="afterInteractive">
                     {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
