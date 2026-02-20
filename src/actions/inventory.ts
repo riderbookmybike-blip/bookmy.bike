@@ -257,6 +257,31 @@ export async function createProcurementQuote(
     const user = await getAuthUser();
     if (!user) return { success: false, message: 'Authentication required' };
 
+    // SKU existence guard: verify the requisition item's SKU is valid
+    try {
+        const { data: reqItem } = await adminClient
+            .from('inv_requisition_items')
+            .select('sku_id')
+            .eq('id', input.requisition_item_id)
+            .single();
+
+        if (!reqItem?.sku_id) {
+            return { success: false, message: 'Requisition item not found or missing SKU' };
+        }
+
+        const { count } = await adminClient
+            .from('cat_skus')
+            .select('id', { count: 'exact', head: true })
+            .eq('id', reqItem.sku_id);
+
+        if (!count || count === 0) {
+            return { success: false, message: `SKU ${reqItem.sku_id} does not exist in catalog — cannot quote` };
+        }
+    } catch (guardErr: any) {
+        console.error('[createProcurementQuote] SKU guard error:', guardErr);
+        return { success: false, message: 'Failed to validate SKU' };
+    }
+
     const landed_cost = (input.unit_cost || 0) + (input.tax_amount || 0) + (input.freight_amount || 0);
 
     try {
@@ -884,7 +909,7 @@ export async function getStock(tenantId: string, filters?: { status?: string }) 
         .order('created_at', { ascending: false });
 
     if (filters?.status && filters.status !== 'ALL') {
-        query = query.eq('status', filters.status);
+        query = query.eq('status', filters.status as any);
     }
 
     const { data, error } = await query;
@@ -980,7 +1005,7 @@ export async function updateStockStatus(
         const { error: updateErr } = await adminClient
             .from('inv_stock')
             .update({
-                status: newStatus,
+                status: newStatus as any,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', stockId);
