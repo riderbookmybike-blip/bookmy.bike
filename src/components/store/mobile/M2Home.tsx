@@ -89,6 +89,17 @@ const TESTIMONIALS = [
     },
 ];
 
+const DEFAULT_SERVICE_CITIES = [
+    'Mumbai',
+    'Navi Mumbai',
+    'Thane',
+    'Kalyan-Dombivli',
+    'Palghar',
+    'Mira-Bhayandar',
+    'Vasai-Virar',
+    'Panvel',
+];
+
 /* ═══════════════════════════════════════════════════════════
    M2 HOME — Phone-First Premium Homepage
    ═══════════════════════════════════════════════════════════ */
@@ -156,6 +167,7 @@ export function M2Home() {
     }, [items]);
 
     const [activeTestimonial, setActiveTestimonial] = useState(0);
+    const [failedImageKeys, setFailedImageKeys] = useState<Set<string>>(new Set());
 
     // Feature hooks
     const { user } = useAuth();
@@ -189,7 +201,18 @@ export function M2Home() {
         return null;
     }, [userLocationStr]);
 
-    const trendingLocationName = parsedLocation?.district || 'Maharashtra';
+    const trendingLocationName =
+        parsedLocation?.district || parsedLocation?.taluka || parsedLocation?.state || 'Maharashtra';
+    const primaryServiceLocation = parsedLocation?.district || parsedLocation?.taluka || null;
+    const serviceRegionName = parsedLocation?.district || parsedLocation?.state || 'Maharashtra';
+    const serviceCities = React.useMemo(() => {
+        if (!primaryServiceLocation) return DEFAULT_SERVICE_CITIES;
+        const normalized = String(primaryServiceLocation).toLowerCase();
+        return [
+            String(primaryServiceLocation),
+            ...DEFAULT_SERVICE_CITIES.filter(city => city.toLowerCase() !== normalized),
+        ].slice(0, 8);
+    }, [primaryServiceLocation]);
     const riderName = user?.user_metadata?.first_name || 'Rider';
     const isReturningUser = !!user;
 
@@ -202,20 +225,15 @@ export function M2Home() {
         return Math.round(emi);
     };
 
-    // Auto-rotate testimonials
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setActiveTestimonial(prev => (prev + 1) % TESTIMONIALS.length);
-        }, 4000);
-        return () => clearInterval(timer);
-    }, []);
-
     return (
         <div className="flex flex-col bg-[#0b0d10] text-white overflow-x-hidden min-h-[100dvh]">
             {/* ══════════════════════════════════════════════
                 SECTION 1: IMMERSIVE HERO (full viewport)
             ══════════════════════════════════════════════ */}
-            <section ref={heroRef} className="relative min-h-[100svh] flex flex-col justify-end overflow-hidden">
+            <section
+                ref={heroRef}
+                className="relative min-h-[100svh] flex flex-col justify-end md:justify-center md:items-center overflow-hidden"
+            >
                 {/* Parallax Background */}
                 <motion.div className="absolute inset-0" style={{ scale: heroScale, opacity: heroOpacity }}>
                     <Image
@@ -239,7 +257,7 @@ export function M2Home() {
                 />
 
                 {/* Hero Content */}
-                <div className="relative z-10 px-5 pb-[110px] flex flex-col gap-5">
+                <div className="relative z-10 px-5 md:px-12 lg:px-20 pb-[110px] md:pb-0 flex flex-col gap-5 md:items-center md:text-center md:max-w-3xl lg:max-w-4xl md:mx-auto">
                     {/* Tag line */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -254,7 +272,10 @@ export function M2Home() {
                             }}
                         >
                             <Sparkles size={12} style={{ color: GOLD }} />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: GOLD }}>
+                            <span
+                                className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] md:tracking-[0.3em]"
+                                style={{ color: GOLD }}
+                            >
                                 India&apos;s Smartest Bike Marketplace
                             </span>
                         </div>
@@ -265,7 +286,7 @@ export function M2Home() {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 1, delay: 0.4 }}
-                        className="text-[40px] font-black leading-[0.95] tracking-tight"
+                        className="text-[40px] md:text-7xl lg:text-8xl font-black leading-[0.95] tracking-tight"
                     >
                         {isReturningUser ? (
                             <>
@@ -301,7 +322,7 @@ export function M2Home() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.6 }}
-                        className="text-sm text-white/60 font-medium leading-relaxed max-w-[280px]"
+                        className="text-sm md:text-lg text-white/60 font-medium leading-relaxed max-w-[280px] md:max-w-lg"
                     >
                         {isReturningUser
                             ? 'Ready to pick up where you left off? Compare prices and book instantly.'
@@ -313,13 +334,13 @@ export function M2Home() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.7 }}
-                        className="flex gap-2.5 mt-2"
+                        className="flex gap-2.5 mt-2 md:gap-4 md:mt-4"
                     >
                         {['Scooter', 'Motorcycle', 'Moped'].map(type => (
                             <Link
                                 key={type}
                                 href={`/store/catalog?bodyType=${type.toUpperCase()}`}
-                                className="flex-1 py-2.5 rounded-xl border border-white/20 bg-white/5 active:bg-white/10 backdrop-blur-md text-center text-[10px] font-black uppercase tracking-wider text-white transition-colors"
+                                className="flex-1 md:flex-none py-2.5 md:py-3 md:px-8 rounded-xl border border-white/20 bg-white/5 active:bg-white/10 hover:bg-white/10 hover:border-white/40 backdrop-blur-md text-center text-[10px] md:text-xs font-black uppercase tracking-wider text-white transition-all"
                             >
                                 {type}
                             </Link>
@@ -334,7 +355,7 @@ export function M2Home() {
                     >
                         <Link
                             href="/store/catalog"
-                            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-xs uppercase tracking-[0.15em] text-black active:scale-[0.97] transition-transform shadow-[0_0_20px_rgba(255,215,0,0.15)]"
+                            className="w-full md:w-auto md:px-16 flex items-center justify-center gap-2.5 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm uppercase tracking-[0.15em] text-black active:scale-[0.97] hover:scale-[1.03] transition-transform shadow-[0_0_30px_rgba(255,215,0,0.2)]"
                             style={{ background: GOLD }}
                         >
                             <Bike size={16} className="shrink-0" />
@@ -347,7 +368,7 @@ export function M2Home() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 1.2 }}
-                        className="flex items-center justify-center flex-wrap gap-x-2.5 gap-y-1 mt-3"
+                        className="flex items-center justify-center flex-wrap gap-x-2.5 md:gap-x-4 gap-y-1 mt-3 md:mt-5"
                     >
                         {[
                             `${skuCount || '130'}+ MODELS`,
@@ -356,7 +377,7 @@ export function M2Home() {
                         ].map((stat: string, i: number) => (
                             <div key={stat} className="flex items-center gap-2.5">
                                 {i > 0 && <span className="text-white/20 text-[10px] leading-none">&bull;</span>}
-                                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white/40">
+                                <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.15em] text-white/40">
                                     {stat}
                                 </span>
                             </div>
@@ -368,18 +389,18 @@ export function M2Home() {
             {/* ══════════════════════════════════════════════
                 SECTION 2: QUICK CATEGORY CARDS
             ══════════════════════════════════════════════ */}
-            <section className="relative py-10 px-5">
+            <section className="relative py-10 md:py-16 lg:py-20 px-5 md:px-12 lg:px-20">
                 {/* Subtle top glow */}
                 <div
                     className="absolute top-0 left-1/2 -translate-x-1/2 w-[200px] h-[100px] rounded-full blur-[80px] opacity-30"
                     style={{ background: GOLD }}
                 />
 
-                <div className="relative">
+                <div className="relative max-w-[1440px] mx-auto">
                     <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">
                         Browse By Category
                     </p>
-                    <h2 className="text-2xl font-black tracking-tight mb-6">
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-6 md:mb-8">
                         What are you
                         <span
                             className="text-transparent bg-clip-text ml-2"
@@ -391,7 +412,7 @@ export function M2Home() {
                         </span>
                     </h2>
 
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col md:flex-row gap-3 md:gap-4">
                         {CATEGORIES.map((cat, i) => {
                             const count = items?.filter(item => item.bodyType === cat.bodyType).length ?? 0;
                             return (
@@ -401,10 +422,11 @@ export function M2Home() {
                                     whileInView={{ opacity: 1, x: 0 }}
                                     viewport={{ once: true, margin: '-40px' }}
                                     transition={{ duration: 0.5, delay: i * 0.1 }}
+                                    className="md:flex-1"
                                 >
                                     <Link
                                         href={cat.link}
-                                        className="group flex items-center gap-4 p-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm active:scale-[0.98] transition-all"
+                                        className="group flex items-center gap-4 p-4 md:p-5 rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm active:scale-[0.98] hover:bg-white/[0.06] hover:border-white/[0.15] transition-all"
                                     >
                                         {/* Vehicle Image */}
                                         <div
@@ -448,13 +470,13 @@ export function M2Home() {
                 SECTION 3: TRENDING — HORIZONTAL SCROLL
             ══════════════════════════════════════════════ */}
             {trendingItems.length > 0 && (
-                <section className="py-10">
-                    <div className="flex items-end justify-between px-5 mb-5">
+                <section className="py-10 md:py-16 lg:py-20">
+                    <div className="flex items-end justify-between px-5 md:px-12 lg:px-20 mb-5 md:mb-8 max-w-[1440px] mx-auto">
                         <div>
                             <p className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: GOLD }}>
                                 Popular Right Now
                             </p>
-                            <h2 className="text-2xl font-black tracking-tight text-white mt-1">
+                            <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-white mt-1">
                                 Trending in {trendingLocationName}
                             </h2>
                         </div>
@@ -467,11 +489,13 @@ export function M2Home() {
                         </Link>
                     </div>
 
-                    <div className="flex gap-3.5 overflow-x-auto snap-x snap-mandatory px-5 pb-4 no-scrollbar">
+                    <div className="flex md:grid md:grid-cols-4 gap-3.5 md:gap-5 overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none px-5 md:px-12 lg:px-20 pb-4 no-scrollbar max-w-[1440px] mx-auto">
                         {trendingItems.map((item: any, i: number) => {
                             const name = item.displayName || 'Unknown';
                             const brand = item.make || '';
                             const img = item.imageUrl;
+                            const imageKey = String(item.id || item.slug || item.modelSlug || i);
+                            const showImage = !!img && !failedImageKeys.has(imageKey);
 
                             // Pricing Logic identical to Catalog Cards
                             const displayPrice =
@@ -486,7 +510,7 @@ export function M2Home() {
                                 <Link
                                     key={item.id || i}
                                     href={`/store/${brand.toLowerCase().replace(/\s+/g, '-')}/${item.modelSlug || item.slug || ''}`}
-                                    className="snap-center flex-none w-[200px] rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden active:scale-[0.97] transition-all group"
+                                    className="snap-center flex-none w-[200px] md:w-auto md:flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden active:scale-[0.97] hover:bg-white/[0.06] hover:border-white/[0.15] transition-all group"
                                 >
                                     {/* Badge */}
                                     {isBestSeller && (
@@ -496,7 +520,7 @@ export function M2Home() {
                                         >
                                             <TrendingUp size={10} style={{ color: GOLD }} />
                                             <span
-                                                className="text-[8px] font-black uppercase tracking-widest"
+                                                className="text-[10px] font-black uppercase tracking-widest"
                                                 style={{ color: GOLD }}
                                             >
                                                 Best Seller
@@ -507,13 +531,20 @@ export function M2Home() {
                                     {/* Image */}
                                     <div className="relative h-[120px] flex items-center justify-center p-3">
                                         <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent" />
-                                        {img ? (
+                                        {showImage ? (
                                             <Image
                                                 src={img}
                                                 alt={name}
                                                 width={170}
                                                 height={110}
                                                 className="object-contain drop-shadow-lg relative z-10"
+                                                onError={() => {
+                                                    setFailedImageKeys(prev => {
+                                                        const next = new Set(prev);
+                                                        next.add(imageKey);
+                                                        return next;
+                                                    });
+                                                }}
                                             />
                                         ) : (
                                             <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
@@ -524,7 +555,7 @@ export function M2Home() {
 
                                     {/* Info */}
                                     <div className="px-4 pb-4 pt-2">
-                                        <p className="text-[7px] font-black uppercase tracking-[0.25em] text-white/30">
+                                        <p className="text-[9px] font-black uppercase tracking-[0.22em] text-white/55">
                                             {brand}
                                         </p>
                                         <h3 className="text-sm font-black uppercase tracking-tight text-white mt-0.5 truncate">
@@ -572,322 +603,377 @@ export function M2Home() {
             {/* ══════════════════════════════════════════════
                 SECTION 4: WHY BOOKMYBIKE — TRUST SIGNALS
             ══════════════════════════════════════════════ */}
-            <section className="py-12 px-5">
-                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">Why Us</p>
-                <h2 className="text-2xl font-black tracking-tight mb-8">
-                    Built for
-                    <span
-                        className="text-transparent bg-clip-text ml-2"
-                        style={{
-                            backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
-                        }}
-                    >
-                        trust.
-                    </span>
-                </h2>
-
-                <div className="grid grid-cols-2 gap-3">
-                    {TRUST_BADGES.map((badge, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true, margin: '-30px' }}
-                            transition={{ delay: i * 0.08 }}
-                            className="relative flex flex-col items-center gap-3 p-5 rounded-2xl border border-white/[0.08] bg-white/[0.03] text-center overflow-hidden"
+            <section className="py-12 md:py-16 lg:py-20 px-5 md:px-12 lg:px-20">
+                <div className="max-w-[1440px] mx-auto">
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">Why Us</p>
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-8">
+                        Built for
+                        <span
+                            className="text-transparent bg-clip-text ml-2"
+                            style={{
+                                backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
+                            }}
                         >
-                            {/* Subtle gradient glow */}
-                            <div
-                                className={`absolute top-0 inset-x-0 h-16 bg-gradient-to-b ${badge.bg} to-transparent opacity-40`}
-                            />
+                            trust.
+                        </span>
+                    </h2>
 
-                            <div
-                                className={`relative z-10 w-10 h-10 rounded-xl bg-white/[0.08] flex items-center justify-center ${badge.color}`}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                        {TRUST_BADGES.map((badge, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: '-30px' }}
+                                transition={{ delay: i * 0.08 }}
+                                className="relative flex flex-col items-center gap-3 p-5 rounded-2xl border border-white/[0.08] bg-white/[0.03] text-center overflow-hidden"
                             >
-                                <badge.icon size={20} />
-                            </div>
-                            <span className="relative z-10 text-[10px] font-black uppercase tracking-wider text-white/70 whitespace-pre-line leading-tight">
-                                {badge.label}
-                            </span>
-                        </motion.div>
-                    ))}
+                                {/* Subtle gradient glow */}
+                                <div
+                                    className={`absolute top-0 inset-x-0 h-16 bg-gradient-to-b ${badge.bg} to-transparent opacity-40`}
+                                />
+
+                                <div
+                                    className={`relative z-10 w-10 h-10 rounded-xl bg-white/[0.08] flex items-center justify-center ${badge.color}`}
+                                >
+                                    <badge.icon size={20} />
+                                </div>
+                                <span className="relative z-10 text-[10px] font-black uppercase tracking-wider text-white/70 whitespace-pre-line leading-tight">
+                                    {badge.label}
+                                </span>
+                            </motion.div>
+                        ))}
+                    </div>
                 </div>
             </section>
 
             {/* ══════════════════════════════════════════════
                 SECTION 5: HOW IT WORKS — 3-STEP FLOW
             ══════════════════════════════════════════════ */}
-            <section className="py-12 px-5 bg-gradient-to-b from-[#0b0d10] via-[#0f1218] to-[#0b0d10]">
-                <div className="text-center mb-8">
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] mb-2" style={{ color: GOLD }}>
-                        The Process
-                    </p>
-                    <h2 className="text-2xl font-black tracking-tight">
-                        3 Steps to Your
-                        <span
-                            className="text-transparent bg-clip-text ml-1"
-                            style={{
-                                backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
-                            }}
-                        >
-                            Dream Ride
-                        </span>
-                    </h2>
-                </div>
+            <section className="py-12 md:py-16 lg:py-20 px-5 md:px-12 lg:px-20 bg-gradient-to-b from-[#0b0d10] via-[#0f1218] to-[#0b0d10]">
+                <div className="max-w-[1440px] mx-auto">
+                    <div className="text-center mb-8 md:mb-12">
+                        <p className="text-[9px] font-black uppercase tracking-[0.4em] mb-2" style={{ color: GOLD }}>
+                            The Process
+                        </p>
+                        <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight">
+                            3 Steps to Your
+                            <span
+                                className="text-transparent bg-clip-text ml-1"
+                                style={{
+                                    backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
+                                }}
+                            >
+                                Dream Ride
+                            </span>
+                        </h2>
+                    </div>
 
-                <div className="flex flex-col gap-4">
-                    {[
-                        {
-                            step: '01',
-                            title: 'Select',
-                            desc: 'Browse 130+ models with live regional on-road prices. Filter by type, budget, or brand.',
-                            icon: Sparkles,
-                            accent: 'from-violet-500/30 to-violet-500/5',
-                        },
-                        {
-                            step: '02',
-                            title: 'Quote',
-                            desc: 'Get an instant on-road quote with zero hidden charges. Compare EMIs across banks.',
-                            icon: Shield,
-                            accent: `from-[${GOLD}30] to-[${GOLD}05]`,
-                        },
-                        {
-                            step: '03',
-                            title: 'Ride',
-                            desc: 'Digital documentation. 4-hour doorstep delivery. Start riding the same day.',
-                            icon: Bike,
-                            accent: 'from-emerald-500/30 to-emerald-500/5',
-                        },
-                    ].map((step, i) => (
-                        <motion.div
-                            key={step.step}
-                            initial={{ opacity: 0, x: -20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true, margin: '-40px' }}
-                            transition={{ delay: i * 0.12 }}
-                            className="relative flex gap-4 p-5 rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden"
-                        >
-                            {/* Number & Icon */}
-                            <div className="flex-none flex flex-col items-center gap-2">
-                                <div
-                                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${step.accent} border border-white/10 flex items-center justify-center`}
-                                >
-                                    <step.icon size={20} className="text-white/80" />
+                    <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+                        {[
+                            {
+                                step: '01',
+                                title: 'Select',
+                                desc: 'Browse 130+ models with live regional on-road prices. Filter by type, budget, or brand.',
+                                icon: Sparkles,
+                                accent: 'from-violet-500/30 to-violet-500/5',
+                            },
+                            {
+                                step: '02',
+                                title: 'Quote',
+                                desc: 'Get an instant on-road quote with zero hidden charges. Compare EMIs across banks.',
+                                icon: Shield,
+                                accent: 'from-amber-400/30 to-amber-400/5',
+                            },
+                            {
+                                step: '03',
+                                title: 'Ride',
+                                desc: 'Digital documentation. 4-hour doorstep delivery. Start riding the same day.',
+                                icon: Bike,
+                                accent: 'from-emerald-500/30 to-emerald-500/5',
+                            },
+                        ].map((step, i) => (
+                            <motion.div
+                                key={step.step}
+                                initial={{ opacity: 0, x: -20 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true, margin: '-40px' }}
+                                transition={{ delay: i * 0.12 }}
+                                className="relative flex md:flex-col md:items-center md:text-center gap-4 p-5 md:p-6 rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden md:flex-1"
+                            >
+                                {/* Number & Icon */}
+                                <div className="flex-none flex flex-col items-center gap-2">
+                                    <div
+                                        className={`w-12 h-12 rounded-xl bg-gradient-to-br ${step.accent} border border-white/10 flex items-center justify-center`}
+                                    >
+                                        <step.icon size={20} className="text-white/80" />
+                                    </div>
+                                    <span className="text-[10px] font-black tracking-[0.3em] text-white/40">
+                                        {step.step}
+                                    </span>
                                 </div>
-                                <span className="text-[9px] font-black tracking-[0.3em] text-white/20">
-                                    {step.step}
-                                </span>
-                            </div>
 
-                            {/* Content */}
-                            <div className="flex-1 min-w-0 pt-1">
-                                <h3 className="text-lg font-black uppercase tracking-tight text-white">{step.title}</h3>
-                                <p className="text-xs text-white/45 mt-1.5 leading-relaxed">{step.desc}</p>
-                            </div>
+                                {/* Content */}
+                                <div className="flex-1 min-w-0 pt-1">
+                                    <h3 className="text-lg font-black uppercase tracking-tight text-white">
+                                        {step.title}
+                                    </h3>
+                                    <p className="text-sm text-white/65 mt-1.5 leading-relaxed">{step.desc}</p>
+                                </div>
 
-                            {/* Step connector line */}
-                            {i < 2 && (
-                                <div
-                                    className="absolute bottom-0 left-[41px] w-[2px] h-4 -mb-4 z-10"
-                                    style={{ background: `linear-gradient(to bottom, ${GOLD}30, transparent)` }}
-                                />
-                            )}
-                        </motion.div>
-                    ))}
+                                {/* Step connector line */}
+                                {i < 2 && (
+                                    <div
+                                        className="absolute bottom-0 left-[41px] w-[2px] h-4 -mb-4 z-10"
+                                        style={{ background: `linear-gradient(to bottom, ${GOLD}30, transparent)` }}
+                                    />
+                                )}
+                            </motion.div>
+                        ))}
+                    </div>
                 </div>
             </section>
 
             {/* ══════════════════════════════════════════════
                 SECTION 6: BRAND GRID
             ══════════════════════════════════════════════ */}
-            <section className="py-12 px-5">
-                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">Official Partners</p>
-                <h2 className="text-2xl font-black tracking-tight mb-6">
-                    Premium
-                    <span
-                        className="text-transparent bg-clip-text ml-2"
-                        style={{
-                            backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
-                        }}
-                    >
-                        Brands
-                    </span>
-                </h2>
+            <section className="py-12 md:py-16 lg:py-20 px-5 md:px-12 lg:px-20">
+                <div className="max-w-[1440px] mx-auto">
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">
+                        Official Partners
+                    </p>
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-6 md:mb-8">
+                        Premium
+                        <span
+                            className="text-transparent bg-clip-text ml-2"
+                            style={{
+                                backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
+                            }}
+                        >
+                            Brands
+                        </span>
+                    </h2>
 
-                <div className="grid grid-cols-4 gap-2.5">
-                    {brands.slice(0, 12).map((brand: any, i: number) => {
-                        const color = BRAND_COLORS[brand.name.toUpperCase()] || '#ffffff';
-                        return (
-                            <motion.div
-                                key={brand.id}
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                viewport={{ once: true, margin: '-20px' }}
-                                transition={{ delay: i * 0.04 }}
-                            >
-                                <Link
-                                    href={`/store/catalog?brand=${brand.name.toUpperCase()}`}
-                                    className="flex flex-col items-center gap-2 py-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] active:scale-[0.93] transition-transform"
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-4">
+                        {brands.slice(0, 12).map((brand: any, i: number) => {
+                            const color = BRAND_COLORS[brand.name.toUpperCase()] || '#ffffff';
+                            return (
+                                <motion.div
+                                    key={brand.id}
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    whileInView={{ opacity: 1, scale: 1 }}
+                                    viewport={{ once: true, margin: '-20px' }}
+                                    transition={{ delay: i * 0.04 }}
                                 >
-                                    <div
-                                        className="w-11 h-11 rounded-full flex items-center justify-center border border-white/10"
-                                        style={{ backgroundColor: color + '15' }}
+                                    <Link
+                                        href={`/store/catalog?brand=${brand.name.toUpperCase()}`}
+                                        className="flex flex-col items-center gap-2 py-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] active:scale-[0.93] transition-transform"
                                     >
-                                        {brand.brand_logos?.icon || brand.logo_svg ? (
-                                            <div
-                                                className="w-5 h-5 brightness-0 invert opacity-60 [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: sanitizeSvg(
-                                                        brand.brand_logos?.icon || brand.logo_svg || ''
-                                                    ),
-                                                }}
-                                            />
-                                        ) : (
-                                            <span className="text-xs font-black text-white/50">{brand.name[0]}</span>
-                                        )}
-                                    </div>
-                                    <span className="text-[7px] font-black uppercase tracking-wider text-white/40 text-center leading-tight">
-                                        {brand.name}
-                                    </span>
-                                </Link>
-                            </motion.div>
-                        );
-                    })}
+                                        <div
+                                            className="w-11 h-11 rounded-full flex items-center justify-center border border-white/10"
+                                            style={{ backgroundColor: color + '15' }}
+                                        >
+                                            {brand.brand_logos?.icon || brand.logo_svg ? (
+                                                <div
+                                                    className="w-5 h-5 brightness-0 invert opacity-60 [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: sanitizeSvg(
+                                                            brand.brand_logos?.icon || brand.logo_svg || ''
+                                                        ),
+                                                    }}
+                                                />
+                                            ) : (
+                                                <span className="text-xs font-black text-white/50">
+                                                    {brand.name[0]}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-[9px] font-black uppercase tracking-wider text-white/65 text-center leading-tight">
+                                            {brand.name}
+                                        </span>
+                                    </Link>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
                 </div>
             </section>
 
             {/* ══════════════════════════════════════════════
                 SECTION 7: SOCIAL PROOF — TESTIMONIALS
             ══════════════════════════════════════════════ */}
-            <section className="py-12 px-5 bg-gradient-to-b from-[#0b0d10] via-[#0f1218] to-[#0b0d10]">
-                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">Real Stories</p>
-                <h2 className="text-2xl font-black tracking-tight mb-6">
-                    Riders
-                    <span
-                        className="text-transparent bg-clip-text ml-2"
-                        style={{
-                            backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
-                        }}
-                    >
-                        Love Us
-                    </span>
-                </h2>
-
-                <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6">
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={activeTestimonial}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.3 }}
-                            className="flex flex-col gap-4"
+            <section className="py-12 md:py-16 lg:py-20 px-5 md:px-12 lg:px-20 bg-gradient-to-b from-[#0b0d10] via-[#0f1218] to-[#0b0d10]">
+                <div className="max-w-[1440px] mx-auto">
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">Real Stories</p>
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-6 md:mb-8">
+                        Riders
+                        <span
+                            className="text-transparent bg-clip-text ml-2"
+                            style={{
+                                backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
+                            }}
                         >
-                            {/* Stars */}
-                            <div className="flex gap-1">
-                                {Array.from({ length: TESTIMONIALS[activeTestimonial].rating }).map((_, i) => (
-                                    <Star key={i} size={14} fill={GOLD} stroke="none" />
-                                ))}
-                            </div>
+                            Love Us
+                        </span>
+                    </h2>
 
-                            {/* Quote */}
-                            <p className="text-sm text-white/70 leading-relaxed italic">
-                                &ldquo;{TESTIMONIALS[activeTestimonial].text}&rdquo;
-                            </p>
-
-                            {/* Author */}
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs font-black text-white">
-                                        {TESTIMONIALS[activeTestimonial].name}
-                                    </p>
-                                    <p className="text-[10px] text-white/40 mt-0.5">
-                                        <MapPin size={10} className="inline mr-1" />
-                                        {TESTIMONIALS[activeTestimonial].city} · {TESTIMONIALS[activeTestimonial].bike}
-                                    </p>
+                    {/* Mobile: carousel */}
+                    <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 md:hidden">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={activeTestimonial}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.3 }}
+                                className="flex flex-col gap-4"
+                            >
+                                {/* Stars */}
+                                <div className="flex gap-1">
+                                    {Array.from({ length: TESTIMONIALS[activeTestimonial].rating }).map((_, i) => (
+                                        <Star key={i} size={14} fill={GOLD} stroke="none" />
+                                    ))}
                                 </div>
-                                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-                                    <Check size={10} className="text-emerald-400" />
-                                    <span className="text-[8px] font-black uppercase tracking-wider text-emerald-400">
-                                        Verified
-                                    </span>
+
+                                {/* Quote */}
+                                <p className="text-sm text-white/70 leading-relaxed italic">
+                                    &ldquo;{TESTIMONIALS[activeTestimonial].text}&rdquo;
+                                </p>
+
+                                {/* Author */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-black text-white">
+                                            {TESTIMONIALS[activeTestimonial].name}
+                                        </p>
+                                        <p className="text-[11px] text-white/60 mt-0.5">
+                                            {TESTIMONIALS[activeTestimonial].bike}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
+                                        <Check size={10} className="text-emerald-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
+                                            Verified
+                                        </span>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </AnimatePresence>
+
+                        {/* Dots */}
+                        <div className="flex items-center justify-center gap-2 mt-5">
+                            {TESTIMONIALS.map((_, i) => (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    aria-label={`Show testimonial ${i + 1}`}
+                                    onClick={() => setActiveTestimonial(i)}
+                                    className="transition-all"
+                                >
+                                    <div
+                                        className={`rounded-full transition-all duration-300 ${
+                                            i === activeTestimonial ? 'w-6 h-1.5' : 'w-1.5 h-1.5 bg-white/20'
+                                        }`}
+                                        style={i === activeTestimonial ? { background: GOLD } : undefined}
+                                    />
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Desktop: show all testimonials side by side */}
+                    <div className="hidden md:grid md:grid-cols-3 gap-4">
+                        {TESTIMONIALS.map((t, i) => (
+                            <div
+                                key={i}
+                                className="flex flex-col gap-4 p-6 rounded-2xl border border-white/[0.08] bg-white/[0.03]"
+                            >
+                                <div className="flex gap-1">
+                                    {Array.from({ length: t.rating }).map((_, j) => (
+                                        <Star key={j} size={14} fill={GOLD} stroke="none" />
+                                    ))}
+                                </div>
+                                <p className="text-sm text-white/70 leading-relaxed italic flex-1">
+                                    &ldquo;{t.text}&rdquo;
+                                </p>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-black text-white">{t.name}</p>
+                                        <p className="text-[11px] text-white/60 mt-0.5">{t.bike}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
+                                        <Check size={10} className="text-emerald-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
+                                            Verified
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                        </motion.div>
-                    </AnimatePresence>
-
-                    {/* Dots */}
-                    <div className="flex items-center justify-center gap-2 mt-5">
-                        {TESTIMONIALS.map((_, i) => (
-                            <button key={i} onClick={() => setActiveTestimonial(i)} className="transition-all">
-                                <div
-                                    className={`rounded-full transition-all duration-300 ${
-                                        i === activeTestimonial ? 'w-6 h-1.5' : 'w-1.5 h-1.5 bg-white/20'
-                                    }`}
-                                    style={i === activeTestimonial ? { background: GOLD } : undefined}
-                                />
-                            </button>
                         ))}
                     </div>
-                </div>
 
-                {/* Trust metrics */}
-                <div className="mt-5 grid grid-cols-3 gap-3">
-                    {[
-                        { value: '4.8★', label: 'Avg Rating' },
-                        { value: '2,100+', label: 'Deliveries' },
-                        { value: '98%', label: 'Satisfaction' },
-                    ].map((metric, i) => (
-                        <div
-                            key={i}
-                            className="flex flex-col items-center py-3 rounded-xl border border-white/[0.08] bg-white/[0.03]"
-                        >
-                            <span className="text-base font-black text-white">{metric.value}</span>
-                            <span className="text-[8px] font-bold uppercase tracking-widest text-white/30 mt-0.5">
-                                {metric.label}
-                            </span>
-                        </div>
-                    ))}
+                    {/* Trust metrics */}
+                    <div className="mt-5 md:mt-8 grid grid-cols-3 gap-3 md:gap-4">
+                        {[
+                            { value: '4.8★', label: 'Avg Rating' },
+                            { value: '2,100+', label: 'Deliveries' },
+                            { value: '98%', label: 'Satisfaction' },
+                        ].map((metric, i) => (
+                            <div
+                                key={i}
+                                className="flex flex-col items-center py-3 rounded-xl border border-white/[0.08] bg-white/[0.03]"
+                            >
+                                <span className="text-base font-black text-white">{metric.value}</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/55 mt-0.5">
+                                    {metric.label}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </section>
 
             {/* ══════════════════════════════════════════════
                 SECTION 8: SERVICE AREAS
             ══════════════════════════════════════════════ */}
-            <section className="py-12 px-5">
-                <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">Where We Serve</p>
-                <h2 className="text-2xl font-black tracking-tight mb-6">
-                    Available in
-                    <span
-                        className="text-transparent bg-clip-text ml-2"
-                        style={{
-                            backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
-                        }}
-                    >
-                        Maharashtra
-                    </span>
-                </h2>
-
-                <div className="flex flex-wrap gap-2">
-                    {['Pune', 'Mumbai', 'Nagpur', 'Nashik', 'Aurangabad', 'Thane', 'Kolhapur', 'Solapur'].map(city => (
-                        <div
-                            key={city}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-white/[0.08] bg-white/[0.03]"
+            <section className="py-12 md:py-16 lg:py-20 px-5 md:px-12 lg:px-20">
+                <div className="max-w-[1440px] mx-auto">
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">
+                        Where We Serve
+                    </p>
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-6 md:mb-8">
+                        Available in
+                        <span
+                            className="text-transparent bg-clip-text ml-2"
+                            style={{
+                                backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
+                            }}
                         >
-                            <MapPin size={10} className="text-white/30" />
-                            <span className="text-[10px] font-bold text-white/50">{city}</span>
-                        </div>
-                    ))}
+                            {serviceRegionName}
+                        </span>
+                    </h2>
+
+                    <div className="flex flex-wrap gap-2">
+                        {serviceCities.map(city => (
+                            <div
+                                key={city}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-white/[0.08] bg-white/[0.03]"
+                            >
+                                <MapPin size={10} className="text-white/30" />
+                                <span className="text-[11px] font-bold text-white/70">{city}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-[11px] text-white/55 mt-3 font-medium">
+                        Expanding to more cities soon. Enter your pincode to check availability.
+                    </p>
                 </div>
-                <p className="text-[10px] text-white/25 mt-3 font-medium">
-                    Expanding to more cities soon. Enter your pincode to check availability.
-                </p>
             </section>
 
             {/* ══════════════════════════════════════════════
                 SECTION 9: FINAL CTA — BOOKING STRIP
             ══════════════════════════════════════════════ */}
-            <section className="relative py-14 px-5 overflow-hidden">
+            <section className="relative py-14 md:py-20 lg:py-24 px-5 md:px-12 lg:px-20 overflow-hidden">
                 {/* Background glow */}
                 <div
                     className="absolute inset-0 opacity-20"
@@ -896,8 +982,8 @@ export function M2Home() {
                     }}
                 />
 
-                <div className="relative z-10 flex flex-col items-center text-center gap-5">
-                    <h2 className="text-3xl font-black tracking-tight leading-tight">
+                <div className="relative z-10 flex flex-col items-center text-center gap-5 max-w-xl mx-auto">
+                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
                         Ready to
                         <br />
                         <span
@@ -915,7 +1001,7 @@ export function M2Home() {
 
                     <Link
                         href="/store/catalog"
-                        className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm uppercase tracking-wider text-black active:scale-[0.97] transition-transform shadow-lg"
+                        className="w-full md:w-auto md:px-16 flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm md:text-base uppercase tracking-wider text-black active:scale-[0.97] hover:scale-[1.02] transition-transform shadow-lg"
                         style={{
                             background: `linear-gradient(135deg, ${GOLD}, ${GOLD_INT})`,
                             boxShadow: `0 8px 32px ${GOLD}40`,
@@ -926,7 +1012,7 @@ export function M2Home() {
                         <ArrowRight size={18} />
                     </Link>
 
-                    <div className="flex items-center gap-2 text-[9px] font-bold text-white/30 uppercase tracking-widest">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-white/55 uppercase tracking-widest">
                         <Shield size={10} />
                         <span>No signup required · Free forever</span>
                     </div>

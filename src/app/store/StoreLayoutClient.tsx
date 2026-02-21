@@ -121,7 +121,7 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
     }, []);
 
     const pathname = usePathname();
-    const isLandingPage = pathname === '/store' || pathname === '/';
+    const isLandingPage = pathname === '/store' || pathname === '/' || pathname === '/d2';
 
     return (
         <FavoritesProvider>
@@ -154,7 +154,9 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
                     {!isLandingPage &&
                         !(
                             isPhone &&
-                            (pathname?.startsWith('/store/catalog') || pathname?.match(/^\/store\/[^/]+\/[^/]+/))
+                            (pathname?.startsWith('/store/catalog') ||
+                                pathname?.startsWith('/store/ocircle') ||
+                                pathname?.match(/^\/store\/[^/]+\/[^/]+/))
                         ) && <MarketplaceFooter />}
 
                     {/* Shopper Bottom HUD (phone only) */}

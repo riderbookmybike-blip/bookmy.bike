@@ -31,7 +31,7 @@ import { Logo } from '@/components/brand/Logo';
 const TABS = [
     { key: 'home', label: 'Home', icon: Home, href: '/' },
     { key: 'ride', label: 'Ride', icon: MotorcycleIcon, href: '/store/catalog' },
-    { key: 'search', label: 'Search', icon: Search, href: null },
+    { key: 'ocircle', label: "O'Circle", icon: Globe, href: '/store/ocircle' },
     { key: 'love', label: 'Love', icon: Heart, href: '/wishlist' },
     { key: 'menu', label: 'Menu', icon: Menu, href: null },
 ] as const;
@@ -110,7 +110,7 @@ export function ShopperBottomNav() {
 
     const isTabActive = (href: string) => {
         if (!pathname) return false;
-        if (href === '/') return pathname === '/' || pathname === '/store';
+        if (href === '/') return pathname === '/' || pathname === '/store' || pathname === '/d2';
         return pathname.startsWith(href);
     };
 
@@ -182,23 +182,7 @@ export function ShopperBottomNav() {
                                 </button>
                             );
                         }
-                        if (tab.key === 'search') {
-                            return (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => {
-                                        setSidebarOpen(false);
-                                        if (pathname !== '/store/catalog') {
-                                            router.push('/store/catalog');
-                                        }
-                                        setTimeout(() => window.dispatchEvent(new Event('toggleCatalogSearch')), 100);
-                                    }}
-                                    className={cls}
-                                >
-                                    {inner}
-                                </button>
-                            );
-                        }
+
                         return (
                             <Link key={tab.key} href={tab.href!} className={cls} onClick={() => setSidebarOpen(false)}>
                                 {inner}
