@@ -58,9 +58,10 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
     }, []);
 
-    const isHome = pathname === '/' || pathname === '/store' || pathname === '/m2';
-    const isM2 = pathname === '/m2';
-    const isMobileCatalog = isPhone && pathname === '/store/catalog';
+    const isHome = pathname === '/' || pathname === '/store';
+    // We treat /store/catalog as dark by default for the mobile layout,
+    // even before hydration resolves the breakpoint to avoid flashing white.
+    const isMobileCatalog = pathname === '/store/catalog';
     const isLight = mounted ? resolvedTheme === 'light' : true;
 
     // Quick rollback: set navPreset to 'wide'.
@@ -69,17 +70,18 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
     const isHeaderTransparent = isHome && !scrolled;
 
-    const mobileMenuButtonClass = isM2
-        ? 'text-white hover:bg-white/10'
-        : !isHeaderTransparent
-          ? isMobileCatalog
-              ? 'text-white hover:bg-white/10'
-              : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
-          : isLight && !isMobileCatalog
-            ? 'text-slate-900 hover:bg-slate-900/5'
-            : 'text-white hover:bg-white/10';
+    const mobileMenuButtonClass =
+        isPhone && isHome
+            ? 'text-white hover:bg-white/10'
+            : !isHeaderTransparent
+              ? isMobileCatalog
+                  ? 'text-white hover:bg-white/10'
+                  : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+              : isLight && !isMobileCatalog
+                ? 'text-slate-900 hover:bg-slate-900/5'
+                : 'text-white hover:bg-white/10';
 
-    const profileTone = isM2 ? 'dark' : 'light';
+    const profileTone = (isPhone && isHome) || isMobileCatalog ? 'dark' : 'light';
 
     return (
         <AppHeaderShell
@@ -87,11 +89,15 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             visible={isVisible}
             transparentAtTop={true}
             variant="marketplace"
-            className={`${isHeaderTransparent ? 'header-transparent' : ''} ${isM2 || isMobileCatalog || (!isLight && !isHome) ? 'dark-theme' : ''}`}
+            className={`${isHeaderTransparent ? 'header-transparent' : ''} ${(isPhone && isHome) || isMobileCatalog || (!isLight && !isHome) ? 'dark-theme' : ''}`}
             left={
-                <Link href={isM2 ? '/m2' : '/'} className="flex items-center group h-full">
+                <Link href="/" className="flex items-center group h-full">
                     <div className="flex items-center justify-center transition-all duration-300">
-                        <Logo mode="dark" size={30} variant="full" />
+                        <Logo
+                            mode={(isPhone && isHome) || isMobileCatalog ? 'dark' : 'auto'}
+                            size={30}
+                            variant="full"
+                        />
                     </div>
                 </Link>
             }

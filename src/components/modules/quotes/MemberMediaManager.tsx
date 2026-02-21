@@ -32,6 +32,7 @@ import {
     uploadMemberDocument,
     deleteCrmMemberDocument,
     getMemberDocumentUrl,
+    updateMemberDocumentAction,
 } from '@/actions/crm';
 
 const DOCUMENT_LABELS = [
@@ -61,6 +62,7 @@ interface MemberDocument {
     file_path: string;
     file_size?: number | null;
     created_at: string;
+    metadata?: Record<string, any>;
 }
 
 function formatFileSize(bytes?: number | null): string {
@@ -203,11 +205,20 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate, onDocC
 
     const handleLabelChange = async (docId: string, newLabel: string) => {
         try {
-            const supabaseClient = createClient();
-            await supabaseClient
-                .from('crm_member_documents')
-                .update({ label: newLabel, category: newLabel, updated_at: new Date().toISOString() })
-                .eq('id', docId);
+            const doc = docs.find(d => d.id === docId);
+            const existingMetadata =
+                doc?.metadata && typeof doc.metadata === 'object' && !Array.isArray(doc.metadata) ? doc.metadata : {};
+            await updateMemberDocumentAction(docId, {
+                purpose: newLabel,
+                metadata: {
+                    ...existingMetadata,
+                    label: newLabel,
+                    category: newLabel,
+                    name: doc?.name || existingMetadata.name || 'document',
+                    originalName: doc?.name || existingMetadata.originalName || existingMetadata.name || 'document',
+                    file_size: doc?.file_size ?? existingMetadata.file_size ?? existingMetadata.size ?? null,
+                },
+            });
             toast.success('Label updated');
             setEditingLabelId(null);
             fetchDocuments();

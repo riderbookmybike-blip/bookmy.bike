@@ -42,8 +42,11 @@ export async function getUnifiedLedger(tenantId: string, bankAccountId?: string)
         .eq('tenant_id', tenantId)
         .eq('is_deleted', false);
 
-    // Filter by bank account if provided (using a custom provider_data check or direct FK if it exists)
-    // For now, sorting by date and returning all for the tenant
+    // Filter by bank account if provided
+    if (bankAccountId) {
+        receiptsQuery = receiptsQuery.filter('provider_data->>bank_account_id', 'eq', bankAccountId);
+        paymentsQuery = paymentsQuery.filter('provider_data->>bank_account_id', 'eq', bankAccountId);
+    }
 
     const [receiptsRes, paymentsRes] = await Promise.all([
         receiptsQuery.order('created_at', { ascending: false }),
@@ -162,6 +165,22 @@ export async function createBankAccount(data: {
     account_type: string;
     is_primary?: boolean;
 }) {
+    // 1. Strict Validation matching DB constraint
+    const allowedTypes = ['SAVINGS', 'CURRENT', 'BANK', 'CASH', 'CREDIT_CARD', 'UPI', 'VIRTUAL'];
+    if (!allowedTypes.includes(data.account_type)) {
+        return { success: false, error: 'Invalid account type. Allowed types: ' + allowedTypes.join(', ') };
+    }
+
+    // 2. Transactional Primary Switch (satisfies unique index: idx_single_primary_bank_account_per_tenant)
+    if (data.is_primary) {
+        await adminClient
+            .from('id_bank_accounts')
+            .update({ is_primary: false })
+            .eq('tenant_id', data.tenant_id)
+            .eq('is_primary', true);
+    }
+
+    // 3. Insert new validated account
     const { data: inserted, error } = await adminClient
         .from('id_bank_accounts')
         .insert({
@@ -178,4 +197,41 @@ export async function createBankAccount(data: {
     }
 
     return { success: true, data: inserted };
+}
+
+/**
+ * Deletes a bank account.
+ */
+export async function deleteBankAccount(id: string) {
+    const { error } = await adminClient.from('id_bank_accounts').delete().eq('id', id);
+
+    if (error) {
+        console.error('Delete Bank Account Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    return { success: true };
+}
+
+/**
+ * Updates a bank account's properties (e.g., is_primary).
+ */
+export async function updateBankAccount(id: string, tenantId: string, updates: any) {
+    // If setting as primary, unset others first
+    if (updates.is_primary) {
+        await adminClient
+            .from('id_bank_accounts')
+            .update({ is_primary: false })
+            .eq('tenant_id', tenantId)
+            .eq('is_primary', true);
+    }
+
+    const { data, error } = await adminClient.from('id_bank_accounts').update(updates).eq('id', id).select().single();
+
+    if (error) {
+        console.error('Update Bank Account Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
 }

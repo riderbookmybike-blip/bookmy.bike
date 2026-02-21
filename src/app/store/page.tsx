@@ -1,13 +1,10 @@
-'use client';
-
 import React from 'react';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { isMobileDevice } from '@/lib/utils/device';
 import { DesktopHome } from '@/components/store/DesktopHome';
-import { MobileHome } from '@/components/store/mobile/MobileHome';
+import { M2Home } from '@/components/store/mobile/M2Home';
 
-export default function StorePage() {
-    const { device } = useBreakpoint();
-    const isPhone = device === 'phone';
+export default async function StorePage() {
+    const isPhone = await isMobileDevice();
 
-    return isPhone ? <MobileHome /> : <DesktopHome />;
+    return isPhone ? <M2Home /> : <DesktopHome />;
 }

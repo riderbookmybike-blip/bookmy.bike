@@ -5,8 +5,8 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import DesktopCompare from '@/components/store/desktop/DesktopCompare';
 import { MobileCompare } from '@/components/store/mobile/MobileCompare';
 
-export function SystemCompareRouter() {
-    const { device } = useBreakpoint();
+export function SystemCompareRouter({ initialDevice = 'desktop' }: { initialDevice?: 'phone' | 'desktop' } = {}) {
+    const { device } = useBreakpoint(initialDevice);
     const isPhone = device === 'phone';
 
     if (isPhone) {

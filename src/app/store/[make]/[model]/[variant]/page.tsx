@@ -5,6 +5,7 @@ import { resolveLocationByDistrict } from '@/utils/locationResolver';
 import { adminClient } from '@/lib/supabase/admin';
 import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
+import { isMobileDevice } from '@/lib/utils/device';
 import { cookies } from 'next/headers';
 import { resolveFinanceScheme, ViewerContext } from '@/utils/financeResolver';
 import { BankScheme } from '@/types/bankPartner';
@@ -225,6 +226,8 @@ export default async function Page({ params, searchParams }: Props) {
     const resolvedSearchParams = await searchParams;
     const supabase = adminClient;
     const cookieStore = await cookies(); // Access cookies
+    const isMobile = await isMobileDevice(); // resolve device on server
+
     // 0. Redirect if pincode is present (Standardizing on district parameter)
     if ((resolvedSearchParams as any).pincode) {
         const newParams = new URLSearchParams();
@@ -1186,6 +1189,7 @@ export default async function Page({ params, searchParams }: Props) {
                         : undefined
                 }
                 initialDealerId={winningDealerId}
+                initialDevice={isMobile ? 'phone' : 'desktop'}
             />
         </>
     );

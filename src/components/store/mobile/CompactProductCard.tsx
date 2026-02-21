@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Heart, Star, StarHalf } from 'lucide-react';
+import { Heart, Pencil, CircleHelp } from 'lucide-react';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 import type { ProductVariant } from '@/types/productMaster';
@@ -17,9 +17,17 @@ interface CompactProductCardProps {
     tenure: number;
     basePath?: string;
     leadId?: string;
+    onEditDownpayment?: () => void;
 }
 
-export function CompactProductCard({ v, downpayment, tenure, basePath = '/store', leadId }: CompactProductCardProps) {
+export function CompactProductCard({
+    v,
+    downpayment,
+    tenure,
+    basePath = '/store',
+    leadId,
+    onEditDownpayment,
+}: CompactProductCardProps) {
     const { isFavorite, toggleFavorite } = useFavorites();
     const isSaved = isFavorite(v.id);
     const [selectedHex, setSelectedHex] = useState<string | null>(() => {
@@ -47,9 +55,8 @@ export function CompactProductCard({ v, downpayment, tenure, basePath = '/store'
     const emiValue = Math.max(0, Math.round(loanAmount * factor));
     const bcoinTotal = coinsNeededForPrice(displayPrice);
 
-    // Swatches (max 4 visible)
-    const swatches = (v.availableColors || []).slice(0, 4);
-    const extraCount = (v.availableColors || []).length - 4;
+    // Swatches (show all visually)
+    const swatches = v.availableColors || [];
 
     const handleColorTap = (color: (typeof swatches)[0]) => {
         setSelectedHex(color.hexCode || null);
@@ -117,30 +124,79 @@ export function CompactProductCard({ v, downpayment, tenure, basePath = '/store'
                     <p className="text-[10px] font-semibold text-slate-400 leading-tight line-clamp-1">{v.variant}</p>
                 </div>
 
-                {/* Price */}
-                <div className="mt-auto flex justify-between items-end">
-                    <div>
-                        <p className="text-[16px] font-black text-white leading-none">
-                            ₹{displayPrice.toLocaleString('en-IN')}
-                        </p>
-                        {emiValue > 0 && (
-                            <p className="text-[10px] font-bold text-[#F4B000] mt-0.5">
-                                ₹{emiValue.toLocaleString('en-IN')}/mo
+                {/* Modern Pricing & EMI Stack */}
+                <div className="mt-auto flex flex-col gap-3">
+                    {/* Offer Price / Starting From */}
+                    <div className="flex flex-col items-start">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.1em] italic">
+                                On-Road
                             </p>
-                        )}
+                            <CircleHelp size={10} className="text-slate-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <p className="text-[18px] font-black text-white leading-none">
+                                ₹{displayPrice.toLocaleString('en-IN')}
+                            </p>
+                            <div className="flex items-center gap-1 bg-[#F4B000]/10 px-1.5 py-0.5 rounded border border-[#F4B000]/20">
+                                <Logo variant="icon" size={8} />
+                                <span className="text-[9px] font-black text-[#F4B000] italic leading-none">
+                                    {bcoinTotal.toLocaleString('en-IN')}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg border border-white/10">
-                        <Logo variant="icon" size={10} />
-                        <span className="text-[10px] font-black text-[#F4B000] italic leading-none">
-                            {bcoinTotal.toLocaleString('en-IN')}
-                        </span>
-                    </div>
+
+                    {/* Lowest EMI Block */}
+                    {emiValue > 0 && (
+                        <div className="flex flex-col items-start border-t border-white/5 pt-2">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                                <CircleHelp
+                                    size={10}
+                                    className="text-emerald-500 border-none outline-none focus:outline-none"
+                                />
+                                <p className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.1em] italic">
+                                    Lowest EMI
+                                </p>
+                            </div>
+                            <div className="flex items-baseline mb-1">
+                                <span className="text-[18px] font-black text-emerald-500 italic leading-none">
+                                    ₹{emiValue.toLocaleString('en-IN')}
+                                </span>
+                                <span className="text-white/15 text-sm font-light select-none mx-1">/</span>
+                                <span className="text-[12px] font-bold text-emerald-500/80 italic leading-none">
+                                    {activeTenure}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                                <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest leading-none">
+                                    Downpayment ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                </span>
+                                {onEditDownpayment && (
+                                    <button
+                                        onClick={e => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onEditDownpayment();
+                                        }}
+                                        className="ml-1 w-4 h-4 rounded flex items-center justify-center text-emerald-500 hover:bg-emerald-500/20 transition-all border-none outline-none focus:outline-none"
+                                    >
+                                        <Pencil
+                                            size={9}
+                                            strokeWidth={2.5}
+                                            className="border-none outline-none focus:outline-none"
+                                        />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </Link>
 
-            {/* Color Swatches (outside the link to prevent navigation on tap) */}
+            {/* Color Swatches (Desktop High-Fidelity) */}
             {swatches.length > 1 && (
-                <div className="flex items-center gap-1.5 px-3 pb-3">
+                <div className="flex items-center gap-2 px-3 pb-4 overflow-x-auto hide-scrollbar w-full">
                     {swatches.map((color, i) => (
                         <button
                             key={`${color.hexCode || i}`}
@@ -149,25 +205,24 @@ export function CompactProductCard({ v, downpayment, tenure, basePath = '/store'
                                 e.stopPropagation();
                                 handleColorTap(color);
                             }}
-                            className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all ${
-                                selectedHex === color.hexCode
-                                    ? 'border-[#FFD700] scale-110 shadow-[0_0_6px_rgba(255,215,0,0.5)]'
-                                    : 'border-white/15'
-                            }`}
-                            style={{ backgroundColor: color.hexCode || '#999' }}
-                            title={color.name}
+                            className="w-[18px] h-[18px] shrink-0 rounded-full shadow-[0_0_0_1px_rgba(255,255,255,0.15)] relative hover:scale-110 transition-all duration-300 overflow-hidden"
+                            style={{ background: color.hexCode }}
+                            title={`${color.name}${color.finish ? ` (${color.finish})` : ''}`}
                         >
-                            {color.finish === 'MATTE' && (
-                                <span className="text-[8px] font-black mix-blend-difference text-white/50">M</span>
+                            {/* Visual Gloss Effect */}
+                            {color.finish?.toUpperCase() === 'GLOSS' && (
+                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
                             )}
-                            {color.finish === 'GLOSS' && (
-                                <span className="text-[8px] font-black mix-blend-difference text-white/50">G</span>
+                            {/* Visual Matte Effect */}
+                            {color.finish?.toUpperCase() === 'MATTE' && (
+                                <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                            )}
+                            {/* Selection Ring */}
+                            {selectedHex === color.hexCode && (
+                                <div className="absolute inset-[-2px] rounded-full border border-white/40 pointer-events-none" />
                             )}
                         </button>
                     ))}
-                    {extraCount > 0 && (
-                        <span className="text-[9px] font-bold text-slate-500 ml-0.5">+{extraCount}</span>
-                    )}
                 </div>
             )}
         </div>

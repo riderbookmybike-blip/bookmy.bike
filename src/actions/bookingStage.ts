@@ -94,7 +94,7 @@ export async function advanceBookingStage(
         }
 
         // 2. Tenant ownership check — verify user belongs to same tenant
-        const { data: membership } = await supabase
+        const { data: membership } = await (supabase as any)
             .from('id_memberships')
             .select('tenant_id')
             .eq('user_id', user.id)

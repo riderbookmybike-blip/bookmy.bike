@@ -12,7 +12,7 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
 - `queued` | `in_progress` | `blocked` | `done` | `dropped`
 
 ## Current Snapshot
-- Last updated: 2026-02-08
+- Last updated: 2026-02-21
 - Active owners: Codex, Antigravity
 
 ---
@@ -277,6 +277,156 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
   - src/app/app/[slug]/dashboard/catalog/products/studio/steps/ReviewStep.tsx
 - next action: Reload Studio SKU step and confirm variant/color display.
 
+### T-CODEX-013: O-Circle Independent Secure Schema + Referral Attribution Plan
+- status: done
+- owner: Codex
+- goal: Define a production-grade O-Circle schema with independent account table (FK to member), complete referral attribution, immutable ledger, and secure redemption lifecycle.
+- progress: Audited existing O-Club core/redemption tables and mapped required hardening into a single implementation plan.
+- outcome: Added a detailed plan covering independent `oclub_member_accounts`, attribution chain, idempotent transaction model, security controls (RLS + definer RPC), and phased migration.
+- blockers: none
+- files:
+  - bclub.md
+  - TASK_MASTER.md
+- file tree impact:
+  - bclub.md
+  - TASK_MASTER.md
+- next action: Implement migrations + secure RPCs from plan (`oclub_member_accounts`, `oclub_referral_attributions`, `oclub_redemption_settlements`, `oclub_audit_events`) and cut over wallet access to server-validated APIs.
+
+### T-CODEX-014: Lead Workspace Module Wiring + Interest/Attachment Capture
+- status: done
+- owner: Codex
+- goal: Wire all lead detail modules (Documents, Tasks, Notes, Timeline, O Club) and add interest + attachment capture in lead creation.
+- progress: Replaced placeholder tabs with live data components/actions, added notes/tasks persistence on `crm_leads`, and integrated lead-form interest text + KYC attachment upload into member assets.
+- outcome: Lead workspace modules now open with working content and actions; new lead form captures customer interest and uploads docs to member document vault.
+- blockers: none
+- files:
+  - src/actions/crm.ts
+  - src/components/modules/leads/LeadEditorTable.tsx
+  - src/components/modules/leads/LeadForm.tsx
+  - src/components/modules/leads/LeadsPage.tsx
+- file tree impact:
+  - src/actions/crm.ts
+  - src/components/modules/leads/LeadEditorTable.tsx
+  - src/components/modules/leads/LeadForm.tsx
+  - src/components/modules/leads/LeadsPage.tsx
+- next action: Validate lead creation + document upload on staging and verify module actions with role-based users (owner/staff).
+
+### T-CODEX-015: crm_leads updated_at Compatibility Hotfix
+- status: done
+- owner: Codex
+- goal: Resolve runtime failure where PostgREST schema cache cannot resolve `crm_leads.updated_at`.
+- progress: Added compatibility fallback in lead module server actions and created migration to guarantee `updated_at` column exists.
+- outcome: Notes/tasks timeline writes avoid hard failure on missing `updated_at`, and DB migration provides permanent schema fix.
+- blockers: none
+- files:
+  - src/actions/crm.ts
+  - supabase/migrations/20260221101500_add_updated_at_to_crm_leads.sql
+  - TASK_MASTER.md
+- file tree impact:
+  - src/actions/crm.ts
+  - supabase/migrations/20260221101500_add_updated_at_to_crm_leads.sql
+  - TASK_MASTER.md
+- next action: Apply migration in active Supabase environment and retry Lead Notes save path.
+
+### T-CODEX-016: Notes Metadata + Unified Member Attachment Ledger
+- status: done
+- owner: Codex
+- goal: Show note author/timestamp + note attachments in lead workspace and route all member-related attachments through a single table.
+- progress: Added note author and attachment schema support end-to-end, wired attachment upload UI in lead notes, and refactored legacy member-doc APIs to use `id_member_assets` compatibility mapping.
+- outcome: Lead notes now capture/display author + time + attachments; note attachments are persisted in note payload and mirrored into `id_member_assets`; quote/member document flows now read/write through the unified attachment table.
+- blockers: none
+- files:
+  - src/actions/crm.ts
+  - src/components/modules/leads/LeadEditorTable.tsx
+  - src/components/modules/quotes/MemberMediaManager.tsx
+  - supabase/migrations/20260221114500_backfill_crm_member_documents_to_id_member_assets.sql
+  - TASK_MASTER.md
+- file tree impact:
+  - src/actions/crm.ts
+  - src/components/modules/leads/LeadEditorTable.tsx
+  - src/components/modules/quotes/MemberMediaManager.tsx
+  - supabase/migrations/20260221114500_backfill_crm_member_documents_to_id_member_assets.sql
+  - TASK_MASTER.md
+- next action: Apply backfill migration, then validate note attachment uploads + quote document label edits on staging.
+
+### T-CODEX-017: Pincode Auto-Resolution Into Lead/Member Profile
+- status: done
+- owner: Codex
+- goal: Auto-fetch state/district/taluka/area from pincode and persist it when creating/updating leads.
+- progress: Added pincode resolution server action, wired lead creation to enrich member + lead location metadata, and updated lead UI to display district/state/area.
+- outcome: On valid pincode, location is resolved from `loc_pincodes`/serviceability flow and stored in DB (`id_members` + `crm_leads.utm_data.location_profile`), including duplicate-lead refresh path.
+- blockers: none
+- files:
+  - src/actions/crm.ts
+  - src/components/modules/leads/LeadForm.tsx
+  - src/components/modules/leads/LeadEditorTable.tsx
+  - TASK_MASTER.md
+- file tree impact:
+  - src/actions/crm.ts
+  - src/components/modules/leads/LeadForm.tsx
+  - src/components/modules/leads/LeadEditorTable.tsx
+  - TASK_MASTER.md
+- next action: Validate with known pincodes (deliverable + non-deliverable) and confirm location chip + persisted lead profile values.
+
+### T-CODEX-018: Mandatory Referral Flow + Repeat Delivery Exemption
+- status: done
+- owner: Codex
+- goal: Enforce mandatory referral capture in CRM lead creation, resolve referrer by code/phone, preserve existing referral on duplicate leads, and skip referral rewards for repeat delivery members.
+- progress: Added referrer lookup actions, wired referral capture/validation UI in LeadForm, and extended `createLeadAction` to store referral context, keep duplicate referral locked, and apply O-Club referral credit only when eligible.
+- outcome: CRM lead flow now supports referral code or contact details with member name resolution; new leads require referral unless customer already has active delivery; duplicate lead updates refresh intent/location but do not overwrite referral attribution.
+- blockers: none
+- files:
+  - src/actions/crm.ts
+  - src/components/modules/leads/LeadForm.tsx
+  - src/components/modules/leads/LeadsPage.tsx
+  - TASK_MASTER.md
+- file tree impact:
+  - src/actions/crm.ts
+  - src/components/modules/leads/LeadForm.tsx
+  - src/components/modules/leads/LeadsPage.tsx
+  - TASK_MASTER.md
+- next action: Validate 4 scenarios in staging: new member + member referrer, new member + external referrer, existing member duplicate lead refresh, existing member with active delivery (no referral credit).
+
+### T-CODEX-019: Books Module (Phase 1 + 2: Static Payment Architecture)
+- status: done
+- owner: Codex
+- goal: Review the proposed Books overhaul plan, draft a highly secure architecture, execute Phase 1 (DB UI setup), and Phase 2 (Payment Generation).
+- progress: Phase 1 hardened the database (`account_type`, single `is_primary`) and Server Actions. Phase 2 pivoted from Kotak API to a Static generator. Rewrote `BankDetailWorkspace.tsx` to conditionally render an interactive NPCI `upi://pay` URI string-builder for UPI accounts, and a high-fidelity "Bank Details" clipboard card for non-UPI transfers.
+- outcome: Database safely restricts `account_type` strings and enforces 1 primary account per tenant. Server Actions respect invariants. Ledger view strictly scopes transactions. UI now seamlessly handles offline/static payment generation without 3rd party API dependencies.
+- blockers: none
+- files:
+  - /Users/rathoreajitmsingh/.gemini/antigravity/brain/9f8a88f2-a2e2-4fdd-ad80-fbcffbf2202b/implementation_plan.md
+  - TASK_MASTER.md
+  - supabase/migrations/20260221175500_books_account_type_hardening.sql
+  - src/actions/accounting.ts
+  - src/components/modules/books/BooksPage.tsx
+  - src/components/modules/books/BankDetailWorkspace.tsx
+- file tree impact:
+  - /Users/rathoreajitmsingh/.gemini/antigravity/brain/9f8a88f2-a2e2-4fdd-ad80-fbcffbf2202b/implementation_plan.md
+  - TASK_MASTER.md
+  - supabase/migrations/20260221175500_books_account_type_hardening.sql
+  - src/actions/accounting.ts
+  - src/components/modules/books/BooksPage.tsx
+  - src/components/modules/books/BankDetailWorkspace.tsx
+- next action: Begin Phase 3: Add Private Mode Masking, Explicit Reveal logic, and Audit Events to the Books module.
+
+### T-CODEX-020: Lead Module Improvisation Program (Backlog)
+- status: queued
+- owner: Codex
+- goal: Improve overall Lead module and current Lead Index view with phased UX + ops hardening (speed, quality, conversion readiness).
+- progress: Roadmap defined with dependency order and sprint checkpoints (P0/P1/P2).
+- outcome: Execution-ready backlog captured; implementation intentionally deferred for later.
+- blockers: none
+- sprint checkpoints:
+  - P0: Real KPI engine, list pagination/performance, filter v1, row enrichment, follow-up SLA foundation.
+  - P1: Stage transition guardrails, assignment/workload balancing, unified activity timeline, duplicate merge workflow.
+  - P2: Automation rules, source/referral ROI analytics, smart prioritization scoring.
+- files:
+  - TASK_MASTER.md
+- file tree impact:
+  - TASK_MASTER.md
+- next action: Start P0 when approved.
+
 ## Antigravity Tasks
 
 ### T-AG-001: (empty)
@@ -298,8 +448,18 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
 
 ```
 .
+├── bclub.md
+├── supabase/migrations/20260221101500_add_updated_at_to_crm_leads.sql
+├── supabase/migrations/20260221114500_backfill_crm_member_documents_to_id_member_assets.sql
+├── src/actions/crm.ts
+├── src/components/modules/leads/LeadEditorTable.tsx
+├── src/components/modules/leads/LeadForm.tsx
+├── src/components/modules/leads/LeadsPage.tsx
+├── src/components/modules/quotes/MemberMediaManager.tsx
 ├── supabase/migrations/20260207_make_ingestion_item_nullable.sql
 ├── supabase/migrations/20260207_add_ingestion_ignore_rules.sql
+├── TASK_MASTER.md
+├── /Users/rathoreajitmsingh/.gemini/antigravity/brain/9f8a88f2-a2e2-4fdd-ad80-fbcffbf2202b/implementation_plan.md.resolved
 ├── src/actions/catalog/syncAction.ts
 ├── src/actions/catalog/scraperAction.ts
 ├── src/components/catalog/SyncComparisonView.tsx
@@ -322,3 +482,11 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
 - 2026-02-07: Added per-model template assignment and duplicate linking in Template step.
 - 2026-02-07: Added card-level Inbound Source CTAs for Brand/Model/Variant.
 - 2026-02-07: Added discovery ignore rules and series expansion for TVS series items.
+- 2026-02-21: Added O-Circle independent secure schema and referral attribution plan in `bclub.md`.
+- 2026-02-21: Wired lead modules and added lead interest + attachment capture to member document vault.
+- 2026-02-21: Added `crm_leads.updated_at` compatibility hotfix (code fallback + migration).
+- 2026-02-21: Added note author/attachment support and unified legacy member documents into `id_member_assets` with backfill migration.
+- 2026-02-21: Added pincode-based location auto-resolution (state/district/taluka/area) and persisted it into lead/member records.
+- 2026-02-21: Added mandatory CRM referral flow with referrer lookup and repeat-delivery no-benefit rule.
+- 2026-02-21: Reviewed and upgraded Books module implementation plan with DB hardening, ledger scoping, access control, and phased verification.
+- 2026-02-21: Added T-CODEX-020 backlog for Lead Module Improvisation Program (P0/P1/P2 checkpoints) for deferred execution.

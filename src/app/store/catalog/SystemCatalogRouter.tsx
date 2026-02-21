@@ -14,16 +14,17 @@ interface SystemCatalogRouterProps {
     initialItems: ProductVariant[];
     basePath?: string;
     mode?: 'default' | 'smart';
+    initialDevice?: 'phone' | 'desktop';
 }
 
-function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
+function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
     const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic(leadId || undefined);
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
-    const { device } = useBreakpoint();
+    const { device } = useBreakpoint(initialDevice || 'desktop');
     const isPhone = device === 'phone';
 
     if (isPhone) {
@@ -51,7 +52,7 @@ function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalog
     );
 }
 
-function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
+function DefaultCatalogRouter({ initialItems, basePath = '/store', initialDevice }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
     const {
@@ -64,7 +65,7 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatal
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
-    const { device } = useBreakpoint();
+    const { device } = useBreakpoint(initialDevice || 'desktop');
     const isPhone = device === 'phone';
 
     if (isPhone) {

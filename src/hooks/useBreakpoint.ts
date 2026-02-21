@@ -49,9 +49,12 @@ function getBreakpoint(): DeviceBreakpoint {
     return 'desktop';
 }
 
-export function useBreakpoint(): { device: DeviceBreakpoint; hydrated: boolean } {
-    // SSR-safe: always start with 'desktop' to match server render
-    const [device, setDevice] = useState<DeviceBreakpoint>('desktop');
+export function useBreakpoint(initialDevice: DeviceBreakpoint = 'desktop'): {
+    device: DeviceBreakpoint;
+    hydrated: boolean;
+} {
+    // SSR-safe: start with initialDevice (from server) to match server render perfectly
+    const [device, setDevice] = useState<DeviceBreakpoint>(initialDevice);
     const [hydrated, setHydrated] = useState(false);
 
     useEffect(() => {

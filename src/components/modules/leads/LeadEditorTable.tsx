@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -22,10 +22,22 @@ import {
     Flame,
     MapPin,
     FileText,
+    Paperclip,
+    X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDisplayId } from '@/utils/displayId';
 import { toast } from 'sonner';
+import DocumentManager from '@/components/modules/leads/DocumentManager';
+import {
+    addLeadNoteAction,
+    addLeadTaskAction,
+    getMemberDocumentUrl,
+    getLeadModuleStateAction,
+    toggleLeadTaskAction,
+} from '@/actions/crm';
+import { getOClubLedger, getOClubWallet } from '@/actions/oclub';
+import { createClient } from '@/lib/supabase/client';
 
 interface LeadProfile {
     lead: any;
@@ -34,10 +46,42 @@ interface LeadProfile {
     receipts: any[];
 }
 
+type LeadNoteAttachment = {
+    path: string;
+    name: string;
+    file_type: string | null;
+    size: number | null;
+};
+
+type LeadModuleNote = {
+    id: string;
+    body: string;
+    created_at: string;
+    created_by: string | null;
+    created_by_name?: string | null;
+    attachments?: LeadNoteAttachment[];
+};
+
 const formatDate = (value?: string | null) => {
     if (!value) return '—';
     try {
         return new Date(value).toLocaleDateString();
+    } catch {
+        return value;
+    }
+};
+
+const formatDateTime = (value?: string | null) => {
+    if (!value) return '—';
+    try {
+        return new Date(value).toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+        });
     } catch {
         return value;
     }
@@ -58,7 +102,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
-    const { tenantSlug } = useTenant();
+    const { tenantSlug, tenantId } = useTenant();
 
     const [activeTab, setActiveTab] = useState<
         'LEAD' | 'FINANCE' | 'TRANSACTIONS' | 'MEMBER' | 'DOCUMENTS' | 'TASKS' | 'NOTES' | 'TIMELINE' | 'OCLUB'
@@ -68,10 +112,41 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         transactionBookings: true,
         transactionReceipts: true,
     });
+    const [moduleLoading, setModuleLoading] = useState(false);
+    const [notes, setNotes] = useState<LeadModuleNote[]>([]);
+    const [tasks, setTasks] = useState<
+        Array<{
+            id: string;
+            title: string;
+            due_date: string | null;
+            completed: boolean;
+            completed_at: string | null;
+            created_at: string;
+            created_by: string | null;
+        }>
+    >([]);
+    const [noteDraft, setNoteDraft] = useState('');
+    const [noteAttachments, setNoteAttachments] = useState<File[]>([]);
+    const [noteAttachmentUrls, setNoteAttachmentUrls] = useState<Record<string, string>>({});
+    const [taskDraft, setTaskDraft] = useState('');
+    const [taskDueDate, setTaskDueDate] = useState('');
+    const [savingNote, setSavingNote] = useState(false);
+    const [savingTask, setSavingTask] = useState(false);
+    const [walletLoading, setWalletLoading] = useState(false);
+    const [wallet, setWallet] = useState<any | null>(null);
+    const [ledger, setLedger] = useState<any[]>([]);
+    const noteAttachmentInputRef = useRef<HTMLInputElement>(null);
+    const supabase = useMemo(() => createClient(), []);
 
     const quoteCount = profile.quotes?.length || 0;
     const bookingCount = profile.bookings?.length || 0;
     const receiptCount = profile.receipts?.length || 0;
+    const lead = profile.lead || {};
+    const leadLocationProfile =
+        lead?.raw?.utm_data && typeof lead.raw.utm_data === 'object' ? (lead.raw.utm_data.location_profile as any) : {};
+    const leadArea = lead.area || leadLocationProfile?.area || '—';
+    const leadDistrict = lead.district || leadLocationProfile?.district || '—';
+    const leadState = lead.state || leadLocationProfile?.state || '—';
 
     const tabs = useMemo(
         () => [
@@ -79,14 +154,93 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             { key: 'FINANCE', label: 'FINANCE', count: quoteCount },
             { key: 'TRANSACTIONS', label: 'TRANSACTION', count: quoteCount + bookingCount + receiptCount },
             { key: 'MEMBER', label: 'MEMBER', count: 0 },
-            { key: 'DOCUMENTS', label: 'DOCUMENTS', count: 0 },
-            { key: 'TASKS', label: 'TASK', count: 0 },
-            { key: 'NOTES', label: 'NOTES', count: 0 },
-            { key: 'TIMELINE', label: 'TIMELINE', count: 0 },
+            { key: 'DOCUMENTS', label: 'DOCUMENTS', count: lead.customerId ? 1 : 0 },
+            { key: 'TASKS', label: 'TASK', count: tasks.filter(task => !task.completed).length },
+            { key: 'NOTES', label: 'NOTES', count: notes.length },
+            {
+                key: 'TIMELINE',
+                label: 'TIMELINE',
+                count: Array.isArray((profile.lead as any)?.events_log) ? (profile.lead as any).events_log.length : 0,
+            },
             { key: 'OCLUB', label: 'O CLUB', count: 0 },
         ],
-        [quoteCount, bookingCount, receiptCount]
+        [quoteCount, bookingCount, receiptCount, lead.customerId, tasks, notes, profile.lead]
     );
+
+    useEffect(() => {
+        const loadLeadModules = async () => {
+            if (!lead?.id) {
+                setNotes([]);
+                setTasks([]);
+                return;
+            }
+
+            setModuleLoading(true);
+            const result = await getLeadModuleStateAction(lead.id);
+            if (result.success) {
+                setNotes(result.notes || []);
+                setTasks(result.tasks || []);
+            } else {
+                setNotes([]);
+                setTasks([]);
+            }
+            setModuleLoading(false);
+        };
+
+        loadLeadModules();
+    }, [lead?.id]);
+
+    useEffect(() => {
+        const uniquePaths = Array.from(
+            new Set(notes.flatMap(note => (Array.isArray(note.attachments) ? note.attachments : [])).map(a => a.path))
+        ).filter(Boolean);
+
+        if (uniquePaths.length === 0) {
+            setNoteAttachmentUrls({});
+            return;
+        }
+
+        let active = true;
+        const loadAttachmentUrls = async () => {
+            const urlEntries = await Promise.all(
+                uniquePaths.map(async path => {
+                    try {
+                        const url = await getMemberDocumentUrl(path);
+                        return [path, url] as const;
+                    } catch {
+                        return [path, ''] as const;
+                    }
+                })
+            );
+            if (!active) return;
+            const nextMap: Record<string, string> = {};
+            for (const [path, url] of urlEntries) {
+                if (url) nextMap[path] = url;
+            }
+            setNoteAttachmentUrls(nextMap);
+        };
+
+        loadAttachmentUrls();
+        return () => {
+            active = false;
+        };
+    }, [notes]);
+
+    useEffect(() => {
+        const loadWallet = async () => {
+            if (activeTab !== 'OCLUB' || !lead?.customerId) return;
+            setWalletLoading(true);
+            const [walletResult, ledgerResult] = await Promise.all([
+                getOClubWallet(lead.customerId),
+                getOClubLedger(lead.customerId, 20),
+            ]);
+            setWallet(walletResult.success ? walletResult.wallet : null);
+            setLedger(ledgerResult.success ? ledgerResult.ledger || [] : []);
+            setWalletLoading(false);
+        };
+
+        loadWallet();
+    }, [activeTab, lead?.customerId]);
 
     const TransactionSection = ({
         title,
@@ -144,13 +298,134 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         </div>
     );
 
-    const lead = profile.lead || {};
     const handleGenerateQuote = () => {
         if (!lead?.id) {
             toast.error('Lead context missing. Please refresh and try again.');
             return;
         }
         window.location.href = `/store/catalog?leadId=${encodeURIComponent(lead.id)}`;
+    };
+
+    const handleNoteAttachmentSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFiles = Array.from(event.target.files || []);
+        if (selectedFiles.length > 10) {
+            toast.error('Max 10 attachments allowed per note');
+            setNoteAttachments(selectedFiles.slice(0, 10));
+            return;
+        }
+        setNoteAttachments(selectedFiles);
+    };
+
+    const memberId = lead.customerId || null;
+    const leadTenantId = tenantId || lead?.raw?.owner_tenant_id || null;
+    const timelineEvents = Array.isArray(lead?.events_log) ? lead.events_log : [];
+
+    const handleAddNote = async () => {
+        if (!lead?.id) return;
+        const body = noteDraft.trim();
+        if (!body) {
+            toast.error('Note cannot be empty');
+            return;
+        }
+        setSavingNote(true);
+        const uploadedAttachments: LeadNoteAttachment[] = [];
+        try {
+            for (const [index, file] of noteAttachments.entries()) {
+                const extension = file.name.includes('.') ? file.name.split('.').pop() || 'bin' : 'bin';
+                const baseName = file.name.replace(/\.[^/.]+$/, '');
+                const safeBaseName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'attachment';
+                const storagePath = `lead-notes/${lead.id}/${Date.now()}_${index}_${safeBaseName}.${extension}`;
+                const { data: storageData, error: storageError } = await supabase.storage
+                    .from('id_documents')
+                    .upload(storagePath, file, { upsert: false });
+                if (storageError || !storageData?.path) {
+                    throw new Error(storageError?.message || 'Attachment upload failed');
+                }
+                uploadedAttachments.push({
+                    path: storageData.path,
+                    name: file.name,
+                    file_type: file.type || null,
+                    size: file.size || null,
+                });
+            }
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to upload note attachments');
+            setSavingNote(false);
+            return;
+        }
+
+        const result = await addLeadNoteAction({ leadId: lead.id, body, attachments: uploadedAttachments });
+        if (!result.success) {
+            if (uploadedAttachments.length > 0) {
+                await supabase.storage
+                    .from('id_documents')
+                    .remove(uploadedAttachments.map(attachment => attachment.path));
+            }
+            toast.error(result.message || 'Failed to save note');
+            setSavingNote(false);
+            return;
+        }
+        if ((result as any).note) {
+            setNotes(prev => [(result as any).note, ...prev]);
+        }
+        setNoteDraft('');
+        setNoteAttachments([]);
+        if (noteAttachmentInputRef.current) {
+            noteAttachmentInputRef.current.value = '';
+        }
+        setSavingNote(false);
+        toast.success('Note saved');
+    };
+
+    const handleAddTask = async () => {
+        if (!lead?.id) return;
+        const title = taskDraft.trim();
+        if (!title) {
+            toast.error('Task title is required');
+            return;
+        }
+        setSavingTask(true);
+        const result = await addLeadTaskAction({
+            leadId: lead.id,
+            title,
+            dueDate: taskDueDate || null,
+        });
+        if (!result.success) {
+            toast.error(result.message || 'Failed to add task');
+            setSavingTask(false);
+            return;
+        }
+        if ((result as any).task) {
+            setTasks(prev => [(result as any).task, ...prev]);
+        }
+        setTaskDraft('');
+        setTaskDueDate('');
+        setSavingTask(false);
+        toast.success('Task added');
+    };
+
+    const handleToggleTask = async (taskId: string, completed: boolean) => {
+        if (!lead?.id) return;
+        const result = await toggleLeadTaskAction({
+            leadId: lead.id,
+            taskId,
+            completed,
+        });
+        if (!result.success) {
+            toast.error(result.message || 'Failed to update task');
+            return;
+        }
+        setTasks(prev =>
+            prev.map(task =>
+                task.id === taskId
+                    ? {
+                          ...task,
+                          completed,
+                          completed_at: completed ? new Date().toISOString() : null,
+                      }
+                    : task
+            )
+        );
     };
 
     const intentBadge =
@@ -165,7 +440,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         const resolveHref = (path: string) => (tenantSlug ? `/app/${tenantSlug}${path}` : path);
         const phoneNumber = lead.phone?.replace(/\D/g, '') || '';
         const waPhone = phoneNumber.startsWith('91') ? phoneNumber : `91${phoneNumber}`;
-        const timelineEvents = (lead as any).events_log || [];
 
         const PhoneSection = ({
             title,
@@ -315,6 +589,9 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                 { label: 'DOB', value: formatDate(lead.dob) },
                                 { label: 'Pincode', value: lead.pincode || '—' },
                                 { label: 'Taluka', value: lead.taluka || '—' },
+                                { label: 'District', value: leadDistrict },
+                                { label: 'State', value: leadState },
+                                { label: 'Area', value: leadArea },
                             ].map(row => (
                                 <div
                                     key={row.label}
@@ -435,30 +712,173 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
 
                     {/* Notes */}
                     <PhoneSection title="Notes">
-                        <textarea
-                            placeholder="Add a note about this lead..."
-                            className="w-full h-24 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-3 text-[11px] font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 placeholder:text-slate-400 resize-none"
-                        />
+                        <div className="space-y-2">
+                            <textarea
+                                value={noteDraft}
+                                onChange={e => setNoteDraft(e.target.value)}
+                                placeholder="Add a note about this lead..."
+                                className="w-full h-24 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-3 text-[11px] font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 placeholder:text-slate-400 resize-none"
+                            />
+                            <div className="flex items-center gap-2">
+                                <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500 cursor-pointer">
+                                    <Paperclip size={11} />
+                                    Attach
+                                    <input
+                                        ref={noteAttachmentInputRef}
+                                        type="file"
+                                        multiple
+                                        className="hidden"
+                                        onChange={handleNoteAttachmentSelection}
+                                        accept="image/*,.pdf,.doc,.docx"
+                                    />
+                                </label>
+                                {noteAttachments.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setNoteAttachments([]);
+                                            if (noteAttachmentInputRef.current)
+                                                noteAttachmentInputRef.current.value = '';
+                                        }}
+                                        className="inline-flex items-center gap-1 text-[9px] font-bold text-rose-500"
+                                    >
+                                        <X size={11} />
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+                            {noteAttachments.length > 0 && (
+                                <div className="space-y-1">
+                                    {noteAttachments.map(file => (
+                                        <div
+                                            key={`${file.name}_${file.size}`}
+                                            className="text-[9px] text-slate-500 bg-slate-50 dark:bg-white/5 rounded-md px-2 py-1 truncate"
+                                        >
+                                            {file.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <button
+                                onClick={handleAddNote}
+                                disabled={savingNote}
+                                className="w-full py-2 rounded-lg bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                            >
+                                {savingNote ? 'Saving...' : 'Save Note'}
+                            </button>
+                            <div className="space-y-1">
+                                {notes.slice(0, 5).map(note => (
+                                    <div
+                                        key={note.id}
+                                        className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2.5"
+                                    >
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 truncate">
+                                                {note.created_by_name || 'Team'}
+                                            </p>
+                                            <p className="text-[9px] text-slate-400">
+                                                {formatDateTime(note.created_at)}
+                                            </p>
+                                        </div>
+                                        <p className="text-[10px] font-semibold text-slate-700 dark:text-slate-200">
+                                            {note.body}
+                                        </p>
+                                        {(note.attachments || []).length > 0 && (
+                                            <div className="mt-2 space-y-1">
+                                                {(note.attachments || []).map(attachment => {
+                                                    const signedUrl = noteAttachmentUrls[attachment.path] || null;
+                                                    return (
+                                                        <a
+                                                            key={`${note.id}-${attachment.path}`}
+                                                            href={signedUrl || '#'}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className={cn(
+                                                                'flex items-center gap-1.5 text-[9px] font-bold',
+                                                                signedUrl
+                                                                    ? 'text-indigo-600 hover:underline'
+                                                                    : 'text-slate-400 pointer-events-none'
+                                                            )}
+                                                        >
+                                                            <FileText size={10} />
+                                                            {attachment.name}
+                                                        </a>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </PhoneSection>
 
                     {/* Tasks */}
                     <PhoneSection title="Tasks">
-                        <div className="py-4 text-center">
-                            <Clock size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                Tasks coming soon
-                            </p>
+                        <div className="space-y-2">
+                            <div className="flex gap-1.5">
+                                <input
+                                    value={taskDraft}
+                                    onChange={e => setTaskDraft(e.target.value)}
+                                    placeholder="Add task"
+                                    className="flex-1 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-[10px] font-bold"
+                                />
+                                <button
+                                    onClick={handleAddTask}
+                                    disabled={savingTask}
+                                    className="px-3 rounded-lg bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
+                                >
+                                    Add
+                                </button>
+                            </div>
+                            <div className="space-y-1">
+                                {tasks.slice(0, 8).map(task => (
+                                    <button
+                                        key={task.id}
+                                        onClick={() => handleToggleTask(task.id, !task.completed)}
+                                        className="w-full text-left bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2.5"
+                                    >
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span
+                                                className={cn(
+                                                    'text-[10px] font-semibold',
+                                                    task.completed
+                                                        ? 'line-through text-slate-400'
+                                                        : 'text-slate-700 dark:text-slate-200'
+                                                )}
+                                            >
+                                                {task.title}
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    'text-[8px] font-black uppercase tracking-widest',
+                                                    task.completed ? 'text-emerald-600' : 'text-amber-600'
+                                                )}
+                                            >
+                                                {task.completed ? 'Done' : 'Open'}
+                                            </span>
+                                        </div>
+                                    </button>
+                                ))}
+                                {tasks.length === 0 && (
+                                    <p className="text-[10px] text-slate-400 font-bold py-2">No tasks yet</p>
+                                )}
+                            </div>
                         </div>
                     </PhoneSection>
 
                     {/* Documents */}
                     <PhoneSection title="Documents">
-                        <div className="py-4 text-center">
-                            <FileText size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                Documents coming soon
-                            </p>
-                        </div>
+                        {memberId && leadTenantId ? (
+                            <DocumentManager memberId={memberId} tenantId={leadTenantId} />
+                        ) : (
+                            <div className="py-4 text-center">
+                                <FileText size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                    Member not linked yet
+                                </p>
+                            </div>
+                        )}
                     </PhoneSection>
 
                     {/* Timeline */}
@@ -673,6 +1093,30 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                         </span>
                                         <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300">
                                             {lead.taluka || '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            District
+                                        </span>
+                                        <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                                            {leadDistrict}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            State
+                                        </span>
+                                        <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                                            {leadState}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Area
+                                        </span>
+                                        <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                                            {leadArea}
                                         </span>
                                     </div>
                                 </div>
@@ -1083,20 +1527,209 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                 )}
 
                 {activeTab === 'TASKS' && (
-                    <div className="mx-4 mt-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
-                        Tasks module coming soon.
+                    <div className="mx-4 mt-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Lead Tasks
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600">
+                                {tasks.filter(task => !task.completed).length} Open
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 mb-4">
+                            <input
+                                value={taskDraft}
+                                onChange={e => setTaskDraft(e.target.value)}
+                                placeholder="Add follow-up task..."
+                                className="h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 text-xs font-bold"
+                            />
+                            <input
+                                type="date"
+                                value={taskDueDate}
+                                onChange={e => setTaskDueDate(e.target.value)}
+                                className="h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 text-xs font-bold"
+                            />
+                            <button
+                                onClick={handleAddTask}
+                                disabled={savingTask}
+                                className="h-11 px-4 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                            >
+                                {savingTask ? 'Saving...' : 'Add Task'}
+                            </button>
+                        </div>
+                        {moduleLoading ? (
+                            <div className="text-xs text-slate-400">Loading tasks...</div>
+                        ) : (
+                            <div className="space-y-2">
+                                {tasks.map(task => (
+                                    <button
+                                        key={task.id}
+                                        onClick={() => handleToggleTask(task.id, !task.completed)}
+                                        className="w-full text-left bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/10 rounded-xl p-3"
+                                    >
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div>
+                                                <div
+                                                    className={cn(
+                                                        'text-sm font-black tracking-tight',
+                                                        task.completed
+                                                            ? 'line-through text-slate-400'
+                                                            : 'text-slate-900 dark:text-white'
+                                                    )}
+                                                >
+                                                    {task.title}
+                                                </div>
+                                                <div className="text-[10px] text-slate-400 mt-1">
+                                                    Due: {task.due_date ? formatDate(task.due_date) : 'Not set'}
+                                                </div>
+                                            </div>
+                                            <span
+                                                className={cn(
+                                                    'px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest',
+                                                    task.completed
+                                                        ? 'bg-emerald-500/10 text-emerald-600'
+                                                        : 'bg-amber-500/10 text-amber-600'
+                                                )}
+                                            >
+                                                {task.completed ? 'Done' : 'Open'}
+                                            </span>
+                                        </div>
+                                    </button>
+                                ))}
+                                {tasks.length === 0 && (
+                                    <div className="text-xs text-slate-400">No tasks available.</div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 
                 {activeTab === 'NOTES' && (
-                    <div className="mx-4 mt-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
-                        Notes module coming soon.
+                    <div className="mx-4 mt-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
+                            Lead Notes
+                        </div>
+                        <div className="space-y-3">
+                            <textarea
+                                value={noteDraft}
+                                onChange={e => setNoteDraft(e.target.value)}
+                                placeholder="Write internal note for this lead..."
+                                className="w-full h-28 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4 text-sm font-medium text-slate-700 dark:text-slate-200 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer">
+                                    <Paperclip size={13} />
+                                    Attach Files
+                                    <input
+                                        ref={noteAttachmentInputRef}
+                                        type="file"
+                                        multiple
+                                        className="hidden"
+                                        onChange={handleNoteAttachmentSelection}
+                                        accept="image/*,.pdf,.doc,.docx"
+                                    />
+                                </label>
+                                {noteAttachments.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setNoteAttachments([]);
+                                            if (noteAttachmentInputRef.current)
+                                                noteAttachmentInputRef.current.value = '';
+                                        }}
+                                        className="inline-flex items-center gap-1.5 text-[10px] font-bold text-rose-500"
+                                    >
+                                        <X size={13} />
+                                        Clear {noteAttachments.length} file(s)
+                                    </button>
+                                )}
+                            </div>
+                            {noteAttachments.length > 0 && (
+                                <div className="rounded-xl border border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] p-3">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                        Ready To Upload
+                                    </div>
+                                    <div className="space-y-1">
+                                        {noteAttachments.map(file => (
+                                            <div
+                                                key={`${file.name}_${file.size}`}
+                                                className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate"
+                                            >
+                                                {file.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            <button
+                                onClick={handleAddNote}
+                                disabled={savingNote}
+                                className="h-10 px-4 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                            >
+                                {savingNote ? 'Saving...' : 'Save Note'}
+                            </button>
+                        </div>
+                        {moduleLoading ? (
+                            <div className="text-xs text-slate-400 mt-4">Loading notes...</div>
+                        ) : (
+                            <div className="space-y-2 mt-4">
+                                {notes.map(note => (
+                                    <div
+                                        key={note.id}
+                                        className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/10 rounded-xl p-3"
+                                    >
+                                        <div className="flex items-center justify-between gap-3 mb-2">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                                {note.created_by_name || 'Team'}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400">
+                                                {formatDateTime(note.created_at)}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                            {note.body}
+                                        </p>
+                                        {(note.attachments || []).length > 0 && (
+                                            <div className="mt-3 space-y-1">
+                                                {(note.attachments || []).map(attachment => {
+                                                    const signedUrl = noteAttachmentUrls[attachment.path] || null;
+                                                    return (
+                                                        <a
+                                                            key={`${note.id}-${attachment.path}`}
+                                                            href={signedUrl || '#'}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className={cn(
+                                                                'inline-flex items-center gap-1.5 text-xs font-bold',
+                                                                signedUrl
+                                                                    ? 'text-indigo-600 hover:underline'
+                                                                    : 'text-slate-400 pointer-events-none'
+                                                            )}
+                                                        >
+                                                            <FileText size={13} />
+                                                            {attachment.name}
+                                                        </a>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                {notes.length === 0 && <div className="text-xs text-slate-400">No notes yet.</div>}
+                            </div>
+                        )}
                     </div>
                 )}
 
                 {activeTab === 'DOCUMENTS' && (
-                    <div className="mx-4 mt-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
-                        Documents module coming soon.
+                    <div className="mx-4 mt-4">
+                        {memberId && leadTenantId ? (
+                            <DocumentManager memberId={memberId} tenantId={leadTenantId} />
+                        ) : (
+                            <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
+                                Member not linked yet. Attach documents after member linkage.
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1108,14 +1741,110 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             </div>
                         </div>
                         <div className="divide-y divide-slate-100 dark:divide-white/5">
-                            <div className="px-6 py-6 text-xs text-slate-400">No timeline events.</div>
+                            {timelineEvents.length === 0 ? (
+                                <div className="px-6 py-6 text-xs text-slate-400">No timeline events.</div>
+                            ) : (
+                                timelineEvents.map((event: any, idx: number) => (
+                                    <div key={`${event.timestamp || 'event'}-${idx}`} className="px-6 py-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <p className="text-sm font-black text-slate-900 dark:text-white">
+                                                {event.title || event.type || 'System Event'}
+                                            </p>
+                                            <span className="text-[10px] text-slate-400">
+                                                {event.timestamp ? formatDate(event.timestamp) : '—'}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            {event.description || 'No details available'}
+                                        </p>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 )}
 
                 {activeTab === 'OCLUB' && (
-                    <div className="mx-4 mt-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
-                        O Club module coming soon.
+                    <div className="mx-4 mt-4 space-y-4">
+                        {!memberId ? (
+                            <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
+                                Member not linked yet. O Club wallet becomes available after member linkage.
+                            </div>
+                        ) : walletLoading ? (
+                            <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
+                                Loading O Club wallet...
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-5">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            System Coins
+                                        </div>
+                                        <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">
+                                            {(wallet?.available_system || 0).toLocaleString('en-IN')}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-5">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Referral Coins
+                                        </div>
+                                        <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">
+                                            {(wallet?.available_referral || 0).toLocaleString('en-IN')}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-5">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Lifetime Earned
+                                        </div>
+                                        <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">
+                                            {(wallet?.lifetime_earned || 0).toLocaleString('en-IN')}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden">
+                                    <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            O Club Ledger
+                                        </div>
+                                    </div>
+                                    <div className="divide-y divide-slate-100 dark:divide-white/5">
+                                        {ledger.length === 0 ? (
+                                            <div className="px-6 py-6 text-xs text-slate-400">
+                                                No ledger entries found.
+                                            </div>
+                                        ) : (
+                                            ledger.map((entry: any) => (
+                                                <div
+                                                    key={entry.id}
+                                                    className="px-6 py-3 flex items-center justify-between gap-3"
+                                                >
+                                                    <div>
+                                                        <div className="text-xs font-black text-slate-900 dark:text-white">
+                                                            {entry.source_type || entry.coin_type || 'ENTRY'}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400">
+                                                            {formatDate(entry.created_at)}
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        className={cn(
+                                                            'text-sm font-black',
+                                                            Number(entry.delta || 0) >= 0
+                                                                ? 'text-emerald-600'
+                                                                : 'text-rose-600'
+                                                        )}
+                                                    >
+                                                        {Number(entry.delta || 0) > 0 ? '+' : ''}
+                                                        {Number(entry.delta || 0).toLocaleString('en-IN')}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </div>

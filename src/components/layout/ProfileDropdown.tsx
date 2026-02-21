@@ -81,6 +81,7 @@ export function ProfileDropdown({
     const [user, setUser] = useState<User | null>(null);
     const [memberships, setProfileMemberships] = useState<ProfileMembership[]>([]);
     const [internalOpen, setInternalOpen] = useState(false);
+    const [bCoins, setBCoins] = useState<number | null>(null);
 
     const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
     const setIsOpen = (open: boolean) => {
@@ -108,6 +109,18 @@ export function ProfileDropdown({
 
     useEffect(() => {
         setUser(authUser);
+
+        if (authUser?.id) {
+            import('@/actions/oclub').then(({ getOClubWallet }) => {
+                getOClubWallet(authUser.id).then(res => {
+                    if (res.success && res.wallet) {
+                        setBCoins((res.wallet as any).available_system || 0);
+                    }
+                });
+            });
+        } else {
+            setBCoins(null);
+        }
     }, [authUser]);
 
     useEffect(() => {
@@ -474,7 +487,7 @@ export function ProfileDropdown({
                     ref={dropdownRef}
                     className={`flex h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
                 >
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all">
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner">
                         <img
                             src={user.user_metadata?.avatar_url || getDefaultAvatar(user.id, displayName)}
                             alt="Profile"
@@ -651,6 +664,53 @@ export function ProfileDropdown({
                                                     >
                                                         Sign In Now
                                                     </button>
+                                                </motion.div>
+                                            )}
+
+                                            {/* O-CLUB WALLET HERO CARD (Moves inside sidebar) */}
+                                            {user && bCoins !== null && (
+                                                <motion.div
+                                                    variants={itemVariants}
+                                                    className="w-full relative overflow-hidden bg-gradient-to-br from-[#1E293B] to-[#0F172A] rounded-3xl border border-[#F4B000]/20 p-5 mt-2 group shadow-[0_10px_30px_rgba(244,176,0,0.1)]"
+                                                >
+                                                    {/* Background Glows and Shapes */}
+                                                    <div className="absolute top-0 right-0 w-48 h-48 bg-[#F4B000]/10 rounded-full blur-[40px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
+                                                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#F4B000]/5 rounded-full blur-[30px] pointer-events-none -translate-x-1/3 translate-y-1/3" />
+
+                                                    {/* Header */}
+                                                    <div className="flex justify-between items-start mb-6 relative z-10">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 rounded-xl bg-[#F4B000]/10 border border-[#F4B000]/20 flex items-center justify-center">
+                                                                <Logo variant="icon" size={16} />
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
+                                                                    O-Club Wallet
+                                                                </h4>
+                                                                <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">
+                                                                    Available Balance
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <button className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10">
+                                                            View Ledger
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Balance */}
+                                                    <div className="relative z-10 flex flex-col pt-2 border-t border-white/5">
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className="text-4xl font-black text-white italic tracking-tighter">
+                                                                {bCoins.toLocaleString('en-IN')}
+                                                            </span>
+                                                            <span className="text-[10px] font-black uppercase text-[#F4B000] tracking-widest opacity-80">
+                                                                B-Coins
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-500 font-medium mt-1">
+                                                            1 B-Coin = ₹1 when purchasing vehicles or services
+                                                        </p>
+                                                    </div>
                                                 </motion.div>
                                             )}
 

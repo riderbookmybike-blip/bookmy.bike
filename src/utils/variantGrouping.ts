@@ -22,7 +22,7 @@ export function groupProductsByModel(products: ProductVariant[]): ModelGroup[] {
                 make: product.make,
                 model: product.model,
                 modelSlug: product.modelSlug,
-                variants: []
+                variants: [],
             });
         }
 
@@ -32,12 +32,20 @@ export function groupProductsByModel(products: ProductVariant[]): ModelGroup[] {
     // Sort variants within each group (Drum → Disc → Premium)
     return Array.from(grouped.values()).map(group => ({
         ...group,
-        variants: sortVariants(group.variants)
+        variants: sortVariants(group.variants),
     }));
 }
 
 function sortVariants(variants: ProductVariant[]): ProductVariant[] {
     return [...variants].sort((a, b) => {
+        // 1. Primary Sort: Lowest Price First
+        const priceA = a.price?.exShowroom || 0;
+        const priceB = b.price?.exShowroom || 0;
+        if (priceA !== priceB && priceA !== 0 && priceB !== 0) {
+            return priceA - priceB;
+        }
+
+        // 2. Fallback: Text-based Sorting
         const aVar = a.variant.toLowerCase();
         const bVar = b.variant.toLowerCase();
 

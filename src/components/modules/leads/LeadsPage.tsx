@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
-import { createLeadAction } from '@/actions/crm';
+import { createLeadAction, uploadMemberDocumentAction } from '@/actions/crm';
 
 export interface LeadRow {
     id: string;
@@ -186,9 +186,15 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         customerName: string;
         phone: string;
         pincode: string;
+        interestText: string;
         model?: string;
         dob?: string;
         selectedDealerId?: string;
+        attachmentPurpose?: string;
+        attachments?: File[];
+        referredByCode?: string;
+        referredByPhone?: string;
+        referredByName?: string;
     }) => {
         if (!tenantId) {
             toast.error('Tenant context missing. Please refresh.');
@@ -200,14 +206,70 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
             customer_phone: formData.phone,
             customer_pincode: formData.pincode,
             customer_dob: formData.dob,
+            interest_text: formData.interestText,
             model: formData.model,
             source: 'CRM_MANUAL',
             owner_tenant_id: tenantId,
             selected_dealer_id: formData.selectedDealerId,
+            referred_by_code: formData.referredByCode,
+            referred_by_phone: formData.referredByPhone,
+            referred_by_name: formData.referredByName,
         });
 
         if (!result?.success || !('leadId' in result) || !result.leadId) {
             throw new Error(result?.message || 'Failed to create lead');
+        }
+
+        const createdMemberId = 'memberId' in result ? (result as any).memberId : null;
+        const files = formData.attachments || [];
+        if (files.length > 0) {
+            if (!createdMemberId) {
+                toast.warning('Lead created, but member link missing. Attachment upload skipped.');
+            } else {
+                const supabase = createClient();
+                const uploadResults = await Promise.allSettled(
+                    files.map(async (file, index) => {
+                        const fileExt = file.name.includes('.')
+                            ? file.name.split('.').pop()?.toLowerCase() || 'bin'
+                            : 'bin';
+                        const sanitizedPurpose = (formData.attachmentPurpose || 'ID_PROOF')
+                            .toUpperCase()
+                            .replace(/[^A-Z0-9]+/g, '_');
+                        const filePath = `${createdMemberId}/LEAD_${sanitizedPurpose}_${Date.now()}_${index}.${fileExt}`;
+
+                        const { data: storageData, error: storageError } = await supabase.storage
+                            .from('id_documents')
+                            .upload(filePath, file, { upsert: false });
+
+                        if (storageError || !storageData?.path) {
+                            throw new Error(storageError?.message || 'Storage upload failed');
+                        }
+
+                        await uploadMemberDocumentAction({
+                            memberId: createdMemberId,
+                            tenantId: formData.selectedDealerId || tenantId,
+                            path: storageData.path,
+                            fileType: file.type || 'application/octet-stream',
+                            purpose: formData.attachmentPurpose || 'ID_PROOF',
+                            metadata: {
+                                source: 'LEAD_CREATE_FORM',
+                                lead_id: result.leadId,
+                                originalName: file.name,
+                                size: file.size,
+                            },
+                        });
+                    })
+                );
+
+                const failedCount = uploadResults.filter(r => r.status === 'rejected').length;
+                if (failedCount === 0) {
+                    toast.success(`${files.length} document(s) saved to member vault`);
+                } else {
+                    toast.warning(
+                        `${files.length - failedCount}/${files.length} documents uploaded. ${failedCount} failed.`
+                    );
+                }
+            }
         }
 
         toast.success('duplicate' in result && result.duplicate ? 'Existing lead opened' : 'Lead created successfully');

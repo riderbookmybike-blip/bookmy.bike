@@ -171,6 +171,7 @@ export async function checkExistingCustomer(phone: string) {
     }
 
     if (profile) {
+        const hasActiveDelivery = await hasMemberActiveDelivery(profile.id);
         return {
             data: {
                 name: profile.full_name,
@@ -178,10 +179,159 @@ export async function checkExistingCustomer(phone: string) {
                 dob: profile.date_of_birth,
             },
             memberId: profile.id,
+            hasActiveDelivery,
         };
     }
 
-    return { data: null, memberId: null };
+    return { data: null, memberId: null, hasActiveDelivery: false };
+}
+
+const REPEAT_DELIVERY_BOOKING_STATUSES = ['ACTIVE', 'CONFIRMED', 'BOOKED', 'DELIVERED'] as const;
+
+async function hasMemberActiveDelivery(memberId: string): Promise<boolean> {
+    const { data, error } = await adminClient
+        .from('crm_bookings')
+        .select('id')
+        .eq('is_deleted', false)
+        .eq('user_id', memberId)
+        .in('status', [...REPEAT_DELIVERY_BOOKING_STATUSES])
+        .limit(1);
+
+    if (error) {
+        console.error('hasMemberActiveDelivery Error:', error);
+        return false;
+    }
+    return (data || []).length > 0;
+}
+
+type LeadLocationProfile = {
+    pincode: string;
+    area: string | null;
+    taluka: string | null;
+    district: string | null;
+    state: string | null;
+    state_code: string | null;
+    is_serviceable: boolean;
+    serviceability_status: string | null;
+    resolved_at: string;
+};
+
+function normalizeLeadLocationProfile(raw: any): LeadLocationProfile | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const pincode = String(raw.pincode || '').trim();
+    if (!/^\d{6}$/.test(pincode)) return null;
+
+    return {
+        pincode,
+        area: raw.area || null,
+        taluka: raw.taluka || null,
+        district: raw.district || null,
+        state: raw.state || null,
+        state_code: raw.state_code || raw.stateCode || null,
+        is_serviceable: raw.is_serviceable === true || raw.isServiceable === true,
+        serviceability_status: raw.serviceability_status || raw.status || null,
+        resolved_at: raw.resolved_at || raw.resolvedAt || new Date().toISOString(),
+    };
+}
+
+function extractLeadLocationProfile(utmData: any): LeadLocationProfile | null {
+    const normalizedUtm = utmData && typeof utmData === 'object' ? utmData : {};
+    return normalizeLeadLocationProfile((normalizedUtm as any).location_profile);
+}
+
+export async function resolveLeadPincodeLocationAction(pincode: string) {
+    const normalized = (pincode || '').replace(/\D/g, '');
+    if (normalized.length !== 6) {
+        return { success: false, message: 'Invalid pincode' };
+    }
+
+    const result = await checkServiceability(normalized);
+    const locationProfile: LeadLocationProfile = {
+        pincode: normalized,
+        area: result?.area || null,
+        taluka: result?.taluka || null,
+        district: result?.district || null,
+        state: result?.state || null,
+        state_code: result?.stateCode || null,
+        is_serviceable: !!result?.isServiceable,
+        serviceability_status: result?.status || null,
+        resolved_at: new Date().toISOString(),
+    };
+
+    return { success: true, location: locationProfile };
+}
+
+type LeadReferrerLookup = {
+    memberId: string;
+    name: string | null;
+    phone: string | null;
+    referralCode: string | null;
+};
+
+async function findLeadReferrerByCodeOrPhone(input: {
+    referralCode?: string;
+    referralPhone?: string;
+}): Promise<LeadReferrerLookup | null> {
+    const code = (input.referralCode || '').trim().toUpperCase();
+    const normalizedPhone = toAppStorageFormat(input.referralPhone || '');
+
+    if (!code && (!normalizedPhone || normalizedPhone.length !== 10)) {
+        return null;
+    }
+
+    if (code) {
+        const { data } = await adminClient
+            .from('id_members')
+            .select('id, full_name, referral_code, primary_phone, whatsapp')
+            .eq('referral_code', code)
+            .maybeSingle();
+
+        if (data?.id) {
+            return {
+                memberId: data.id,
+                name: data.full_name || null,
+                phone: data.primary_phone || data.whatsapp || null,
+                referralCode: data.referral_code || null,
+            };
+        }
+    }
+
+    if (normalizedPhone && normalizedPhone.length === 10) {
+        const { data } = await adminClient
+            .from('id_members')
+            .select('id, full_name, referral_code, primary_phone, whatsapp')
+            .or(`primary_phone.eq.${normalizedPhone},whatsapp.eq.${normalizedPhone}`)
+            .maybeSingle();
+
+        if (data?.id) {
+            return {
+                memberId: data.id,
+                name: data.full_name || null,
+                phone: data.primary_phone || data.whatsapp || null,
+                referralCode: data.referral_code || null,
+            };
+        }
+    }
+
+    return null;
+}
+
+export async function resolveLeadReferrerAction(input: { referralCode?: string; referralPhone?: string }) {
+    const referralCode = (input.referralCode || '').trim();
+    const referralPhone = toAppStorageFormat(input.referralPhone || '');
+    const match = await findLeadReferrerByCodeOrPhone({
+        referralCode,
+        referralPhone,
+    });
+
+    if (!referralCode && !referralPhone) {
+        return { success: true, match: null };
+    }
+
+    return {
+        success: true,
+        match,
+    };
 }
 
 // --- LEADS ---
@@ -223,6 +373,9 @@ export async function getLeads(tenantId?: string, status?: string) {
     return data.map((l: any) => {
         const last9 = l.id.replace(/-/g, '').slice(-9).toUpperCase();
         const displayId = `${last9.slice(0, 3)}-${last9.slice(3, 6)}-${last9.slice(6, 9)}`;
+        const utmData = (l.utm_data as any) || {};
+        const referralData = (l.referral_data as any) || {};
+        const locationProfile = extractLeadLocationProfile(utmData);
 
         return {
             id: l.id,
@@ -232,13 +385,22 @@ export async function getLeads(tenantId?: string, status?: string) {
             phone: l.customer_phone,
             pincode: l.customer_pincode,
             taluka: l.customer_taluka,
+            district: locationProfile?.district || null,
+            state: locationProfile?.state || null,
+            area: locationProfile?.area || null,
             dob: l.customer_dob,
             status: l.status,
-            source: l.utm_data?.utm_source || 'WEBSITE',
+            source: utmData.utm_source || 'WEBSITE',
             interestModel: l.interest_model,
             created_at: l.created_at,
             intentScore: l.intent_score || 'COLD',
-            referralSource: l.referral_data?.referred_by_name || l.referral_data?.source,
+            referralSource:
+                l.referred_by_name ||
+                referralData.resolved_referrer_name ||
+                referralData.input_name ||
+                referralData.input_phone ||
+                referralData.referred_by_name ||
+                referralData.source,
             events_log: l.events_log || [],
         };
     });
@@ -258,6 +420,7 @@ export async function getLeadById(leadId: string) {
 
     const utmData = (data.utm_data as any) || {};
     const referralData = (data.referral_data as any) || {};
+    const locationProfile = extractLeadLocationProfile(utmData);
 
     return {
         id: data.id,
@@ -267,16 +430,377 @@ export async function getLeadById(leadId: string) {
         phone: data.customer_phone,
         pincode: data.customer_pincode,
         taluka: data.customer_taluka,
+        district: locationProfile?.district || null,
+        state: locationProfile?.state || null,
+        area: locationProfile?.area || null,
         dob: data.customer_dob,
         status: data.status,
         source: utmData.utm_source || 'WEBSITE',
         interestModel: data.interest_model,
         created_at: data.created_at,
         intentScore: data.intent_score || 'COLD',
-        referralSource: referralData.referred_by_name || referralData.source,
+        referralSource:
+            data.referred_by_name ||
+            referralData.resolved_referrer_name ||
+            referralData.input_name ||
+            referralData.input_phone ||
+            referralData.referred_by_name ||
+            referralData.source,
         events_log: data.events_log || [],
         raw: data,
     };
+}
+
+type LeadModuleNote = {
+    id: string;
+    body: string;
+    created_at: string;
+    created_by: string | null;
+    created_by_name?: string | null;
+    attachments?: LeadNoteAttachment[];
+};
+
+type LeadNoteAttachment = {
+    path: string;
+    name: string;
+    file_type: string | null;
+    size: number | null;
+};
+
+type LeadModuleTask = {
+    id: string;
+    title: string;
+    due_date: string | null;
+    completed: boolean;
+    completed_at: string | null;
+    created_at: string;
+    created_by: string | null;
+};
+
+function readLeadModuleData(utmData: any): { notes: LeadModuleNote[]; tasks: LeadModuleTask[] } {
+    const moduleData = utmData && typeof utmData === 'object' ? (utmData.module_data as any) || {} : {};
+    const notes = Array.isArray(moduleData.notes) ? (moduleData.notes as LeadModuleNote[]) : [];
+    const tasks = Array.isArray(moduleData.tasks) ? (moduleData.tasks as LeadModuleTask[]) : [];
+    return { notes, tasks };
+}
+
+function mergeLeadModuleData(
+    utmData: any,
+    updates: Partial<{ notes: LeadModuleNote[]; tasks: LeadModuleTask[] }>
+): Record<string, any> {
+    const safeUtmData = utmData && typeof utmData === 'object' ? { ...utmData } : {};
+    const moduleData =
+        safeUtmData.module_data && typeof safeUtmData.module_data === 'object' ? safeUtmData.module_data : {};
+    safeUtmData.module_data = {
+        ...moduleData,
+        ...(updates.notes ? { notes: updates.notes } : {}),
+        ...(updates.tasks ? { tasks: updates.tasks } : {}),
+    };
+    return safeUtmData;
+}
+
+function buildLeadModuleEvent(input: {
+    type: string;
+    title: string;
+    description: string;
+    actorId: string | null;
+    metadata?: Record<string, any>;
+}) {
+    return {
+        type: input.type,
+        title: input.title,
+        description: input.description,
+        actor_id: input.actorId,
+        timestamp: new Date().toISOString(),
+        ...(input.metadata ? { metadata: input.metadata } : {}),
+    };
+}
+
+async function updateCrmLeadCompat(
+    leadId: string,
+    payload: Record<string, any>,
+    updatedAtIso?: string
+): Promise<{ success: boolean; message?: string }> {
+    const withUpdatedAt = {
+        ...payload,
+        updated_at: updatedAtIso || new Date().toISOString(),
+    };
+
+    const firstAttempt = await adminClient
+        .from('crm_leads')
+        .update(withUpdatedAt as any)
+        .eq('id', leadId);
+    if (!firstAttempt.error) {
+        return { success: true };
+    }
+
+    const errMsg = String(firstAttempt.error.message || '');
+    const isUpdatedAtSchemaIssue =
+        errMsg.includes("'updated_at'") ||
+        errMsg.toLowerCase().includes('updated_at column') ||
+        errMsg.toLowerCase().includes('schema cache');
+
+    if (!isUpdatedAtSchemaIssue) {
+        return { success: false, message: firstAttempt.error.message };
+    }
+
+    const fallbackAttempt = await adminClient
+        .from('crm_leads')
+        .update(payload as any)
+        .eq('id', leadId);
+    if (fallbackAttempt.error) {
+        return { success: false, message: fallbackAttempt.error.message };
+    }
+
+    return { success: true };
+}
+
+export async function getLeadModuleStateAction(
+    leadId: string
+): Promise<{ success: boolean; notes: LeadModuleNote[]; tasks: LeadModuleTask[]; message?: string }> {
+    const user = await getAuthUser();
+    if (!user?.id) {
+        return { success: false, notes: [], tasks: [], message: 'Authentication required' };
+    }
+
+    const { data, error } = await adminClient.from('crm_leads').select('utm_data').eq('id', leadId).maybeSingle();
+    if (error || !data) {
+        return { success: false, notes: [], tasks: [], message: error?.message || 'Lead not found' };
+    }
+
+    const { notes, tasks } = readLeadModuleData((data as any).utm_data);
+    return { success: true, notes, tasks };
+}
+
+export async function addLeadNoteAction(input: { leadId: string; body: string; attachments?: LeadNoteAttachment[] }) {
+    const user = await getAuthUser();
+    if (!user?.id) {
+        return { success: false, message: 'Authentication required' };
+    }
+
+    const body = input.body.trim();
+    if (!body) {
+        return { success: false, message: 'Note text is required' };
+    }
+
+    const normalizedAttachments = (Array.isArray(input.attachments) ? input.attachments : [])
+        .filter(attachment => attachment && typeof attachment.path === 'string' && attachment.path.length > 0)
+        .slice(0, 10)
+        .map(attachment => ({
+            path: attachment.path,
+            name: attachment.name || 'attachment',
+            file_type: attachment.file_type || null,
+            size: typeof attachment.size === 'number' ? attachment.size : null,
+        }));
+
+    const { data, error } = await adminClient
+        .from('crm_leads')
+        .select('utm_data, events_log, customer_id, owner_tenant_id')
+        .eq('id', input.leadId)
+        .maybeSingle();
+
+    if (error || !data) {
+        return { success: false, message: error?.message || 'Lead not found' };
+    }
+
+    const now = new Date().toISOString();
+    const note: LeadModuleNote = {
+        id: `NOTE_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        body,
+        created_at: now,
+        created_by: user.id,
+        created_by_name:
+            ((user as any)?.user_metadata?.full_name as string | undefined) ||
+            ((user as any)?.user_metadata?.name as string | undefined) ||
+            ((user as any)?.email as string | undefined) ||
+            null,
+        attachments: normalizedAttachments,
+    };
+
+    const { notes } = readLeadModuleData((data as any).utm_data);
+    const nextNotes = [note, ...notes];
+    const nextUtmData = mergeLeadModuleData((data as any).utm_data, { notes: nextNotes });
+    const existingEvents = Array.isArray((data as any).events_log) ? ((data as any).events_log as any[]) : [];
+    const nextEvents = [
+        buildLeadModuleEvent({
+            type: 'NOTE_ADDED',
+            title: 'Lead Note Added',
+            description: body,
+            actorId: user.id,
+            metadata: { note_id: note.id, attachment_count: normalizedAttachments.length },
+        }),
+        ...existingEvents,
+    ];
+
+    const updateResult = await updateCrmLeadCompat(
+        input.leadId,
+        {
+            utm_data: nextUtmData,
+            events_log: nextEvents,
+        },
+        now
+    );
+
+    if (!updateResult.success) {
+        return { success: false, message: updateResult.message || 'Lead update failed' };
+    }
+
+    if (normalizedAttachments.length > 0 && (data as any)?.customer_id) {
+        const memberId = (data as any).customer_id as string;
+        const ownerTenantId = (data as any).owner_tenant_id as string | null;
+        const assetRows = normalizedAttachments.map(attachment => ({
+            entity_id: memberId,
+            tenant_id: ownerTenantId,
+            path: attachment.path,
+            file_type: attachment.file_type,
+            purpose: 'LEAD_NOTE_ATTACHMENT',
+            metadata: {
+                source: 'LEAD_NOTE',
+                lead_id: input.leadId,
+                note_id: note.id,
+                originalName: attachment.name,
+                size: attachment.size,
+                created_by: user.id,
+            },
+            updated_at: now,
+            uploaded_by: user.id,
+        }));
+
+        const { error: assetInsertError } = await adminClient.from('id_member_assets').insert(assetRows as any);
+        if (assetInsertError) {
+            console.error('addLeadNoteAction attachment asset insert error:', assetInsertError);
+        }
+    }
+
+    revalidatePath('/app/[slug]/leads');
+    return { success: true, note };
+}
+
+export async function addLeadTaskAction(input: { leadId: string; title: string; dueDate?: string | null }) {
+    const user = await getAuthUser();
+    if (!user?.id) {
+        return { success: false, message: 'Authentication required' };
+    }
+
+    const title = input.title.trim();
+    if (!title) {
+        return { success: false, message: 'Task title is required' };
+    }
+
+    const { data, error } = await adminClient
+        .from('crm_leads')
+        .select('utm_data, events_log')
+        .eq('id', input.leadId)
+        .maybeSingle();
+
+    if (error || !data) {
+        return { success: false, message: error?.message || 'Lead not found' };
+    }
+
+    const now = new Date().toISOString();
+    const task: LeadModuleTask = {
+        id: `TASK_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        title,
+        due_date: input.dueDate || null,
+        completed: false,
+        completed_at: null,
+        created_at: now,
+        created_by: user.id,
+    };
+
+    const { tasks } = readLeadModuleData((data as any).utm_data);
+    const nextTasks = [task, ...tasks];
+    const nextUtmData = mergeLeadModuleData((data as any).utm_data, { tasks: nextTasks });
+    const existingEvents = Array.isArray((data as any).events_log) ? ((data as any).events_log as any[]) : [];
+    const nextEvents = [
+        buildLeadModuleEvent({
+            type: 'TASK_ADDED',
+            title: 'Lead Task Added',
+            description: title,
+            actorId: user.id,
+            metadata: { task_id: task.id, due_date: task.due_date },
+        }),
+        ...existingEvents,
+    ];
+
+    const updateResult = await updateCrmLeadCompat(
+        input.leadId,
+        {
+            utm_data: nextUtmData,
+            events_log: nextEvents,
+        },
+        now
+    );
+
+    if (!updateResult.success) {
+        return { success: false, message: updateResult.message || 'Lead update failed' };
+    }
+
+    revalidatePath('/app/[slug]/leads');
+    return { success: true, task };
+}
+
+export async function toggleLeadTaskAction(input: { leadId: string; taskId: string; completed: boolean }) {
+    const user = await getAuthUser();
+    if (!user?.id) {
+        return { success: false, message: 'Authentication required' };
+    }
+
+    const { data, error } = await adminClient
+        .from('crm_leads')
+        .select('utm_data, events_log')
+        .eq('id', input.leadId)
+        .maybeSingle();
+
+    if (error || !data) {
+        return { success: false, message: error?.message || 'Lead not found' };
+    }
+
+    const now = new Date().toISOString();
+    const { tasks } = readLeadModuleData((data as any).utm_data);
+    const targetTask = tasks.find(task => task.id === input.taskId);
+    if (!targetTask) {
+        return { success: false, message: 'Task not found' };
+    }
+
+    const nextTasks = tasks.map(task =>
+        task.id === input.taskId
+            ? {
+                  ...task,
+                  completed: input.completed,
+                  completed_at: input.completed ? now : null,
+              }
+            : task
+    );
+
+    const nextUtmData = mergeLeadModuleData((data as any).utm_data, { tasks: nextTasks });
+    const existingEvents = Array.isArray((data as any).events_log) ? ((data as any).events_log as any[]) : [];
+    const nextEvents = [
+        buildLeadModuleEvent({
+            type: input.completed ? 'TASK_COMPLETED' : 'TASK_REOPENED',
+            title: input.completed ? 'Lead Task Completed' : 'Lead Task Reopened',
+            description: targetTask.title,
+            actorId: user.id,
+            metadata: { task_id: targetTask.id },
+        }),
+        ...existingEvents,
+    ];
+
+    const updateResult = await updateCrmLeadCompat(
+        input.leadId,
+        {
+            utm_data: nextUtmData,
+            events_log: nextEvents,
+        },
+        now
+    );
+
+    if (!updateResult.success) {
+        return { success: false, message: updateResult.message || 'Lead update failed' };
+    }
+
+    revalidatePath('/app/[slug]/leads');
+    return { success: true };
 }
 
 export async function getCustomerHistory(customerId: string) {
@@ -347,12 +871,21 @@ export async function createLeadAction(data: {
     customer_taluka?: string;
     customer_id?: string; // If provided, use directly (for logged-in users)
     interest_model?: string;
+    interest_text?: string;
     model?: string;
     owner_tenant_id?: string;
     selected_dealer_id?: string;
     source?: string;
+    referred_by_code?: string;
+    referred_by_phone?: string;
+    referred_by_name?: string;
 }) {
     const interestModel = data.interest_model || data.model || 'GENERAL_ENQUIRY';
+    const interestText = (data.interest_text || '').trim();
+    const referredByCodeInput = (data.referred_by_code || '').trim().toUpperCase();
+    const referredByPhoneInput = toAppStorageFormat(data.referred_by_phone || '') || '';
+    const referredByNameInput = (data.referred_by_name || '').trim();
+    const isCrmManualSource = (data.source || '').trim().toUpperCase() === 'CRM_MANUAL';
     const authUser = await getAuthUser();
     let actorIsStaff = false;
 
@@ -454,14 +987,43 @@ export async function createLeadAction(data: {
             };
         }
 
-        // Update member with any collected profile fields (only non-null values, to avoid wiping existing data)
+        const normalizedPincode = (data.customer_pincode || '').replace(/\D/g, '').slice(0, 6);
+        const nowIso = new Date().toISOString();
+        let locationProfile: LeadLocationProfile | null = null;
+        let status = 'NEW';
+        let isServiceable: boolean | null = null;
+
+        if (normalizedPincode.length === 6) {
+            const serviceabilityResult = await checkServiceability(normalizedPincode);
+            isServiceable = !!serviceabilityResult?.isServiceable;
+            if (isServiceable === false) {
+                status = 'JUNK';
+            }
+            locationProfile = {
+                pincode: normalizedPincode,
+                area: serviceabilityResult?.area || null,
+                taluka: serviceabilityResult?.taluka || null,
+                district: serviceabilityResult?.district || null,
+                state: serviceabilityResult?.state || null,
+                state_code: serviceabilityResult?.stateCode || null,
+                is_serviceable: isServiceable,
+                serviceability_status: serviceabilityResult?.status || null,
+                resolved_at: nowIso,
+            };
+        }
+
+        const resolvedTaluka = (data.customer_taluka || '').trim() || locationProfile?.taluka || null;
+
+        // Update member with collected profile fields (without wiping existing values)
         const memberUpdate: Record<string, any> = {};
         if (data.customer_dob) memberUpdate.date_of_birth = data.customer_dob;
-        if (data.customer_pincode) {
-            memberUpdate.pincode = data.customer_pincode;
-            memberUpdate.aadhaar_pincode = data.customer_pincode;
+        if (normalizedPincode.length === 6) {
+            memberUpdate.pincode = normalizedPincode;
+            memberUpdate.aadhaar_pincode = normalizedPincode;
         }
-        if (data.customer_taluka) memberUpdate.taluka = data.customer_taluka;
+        if (resolvedTaluka) memberUpdate.taluka = resolvedTaluka;
+        if (locationProfile?.district) memberUpdate.district = locationProfile.district;
+        if (locationProfile?.state) memberUpdate.state = locationProfile.state;
         if (data.customer_name) memberUpdate.full_name = data.customer_name;
 
         if (Object.keys(memberUpdate).length > 0) {
@@ -469,11 +1031,45 @@ export async function createLeadAction(data: {
         }
 
         console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
+        const hasActiveDelivery = await hasMemberActiveDelivery(customerId);
+        const referralBenefitEligible = !hasActiveDelivery;
+        const hasReferralInput = Boolean(referredByCodeInput || referredByPhoneInput || referredByNameInput);
+        const resolvedReferrer = hasReferralInput
+            ? await findLeadReferrerByCodeOrPhone({
+                  referralCode: referredByCodeInput,
+                  referralPhone: referredByPhoneInput,
+              })
+            : null;
+
+        if (resolvedReferrer?.memberId && resolvedReferrer.memberId === customerId) {
+            return { success: false, message: 'Self referral is not allowed' };
+        }
+
+        const referralContext = hasReferralInput
+            ? {
+                  input_code: referredByCodeInput || null,
+                  input_phone: referredByPhoneInput || null,
+                  input_name: referredByNameInput || null,
+                  resolved: !!resolvedReferrer?.memberId,
+                  resolved_referrer_member_id: resolvedReferrer?.memberId || null,
+                  resolved_referrer_name: resolvedReferrer?.name || null,
+                  resolved_referrer_phone: resolvedReferrer?.phone || null,
+                  resolved_referrer_code: resolvedReferrer?.referralCode || null,
+                  referrer_type: resolvedReferrer?.memberId ? 'MEMBER' : 'EXTERNAL',
+                  repeat_delivery_member: hasActiveDelivery,
+                  referral_bonus_eligible: referralBenefitEligible,
+                  referral_bonus_reason: referralBenefitEligible ? null : 'REPEAT_ACTIVE_DELIVERY',
+                  captured_at: nowIso,
+                  captured_by: authUser?.id || null,
+              }
+            : null;
 
         // 1.5. Prevent duplicate active leads for same customer (by id OR phone)
         const { data: existingLeadCandidates, error: existingLeadError } = await adminClient
             .from('crm_leads')
-            .select('id, status, events_log, customer_id, customer_phone, selected_dealer_tenant_id')
+            .select(
+                'id, status, events_log, customer_id, customer_phone, selected_dealer_tenant_id, utm_data, referred_by_id, referred_by_name, referral_data'
+            )
             .eq('is_deleted', false)
             .eq('owner_tenant_id', effectiveOwnerId)
             .or(`customer_id.eq.${customerId},customer_phone.eq.${strictPhone}`)
@@ -492,6 +1088,10 @@ export async function createLeadAction(data: {
             selected_dealer_tenant_id: string | null;
             customer_id: string | null;
             customer_phone: string | null;
+            utm_data: any | null;
+            referred_by_id: string | null;
+            referred_by_name: string | null;
+            referral_data: any | null;
         }>;
 
         const existingLead = data.selected_dealer_id
@@ -506,20 +1106,48 @@ export async function createLeadAction(data: {
                 attempted_by: authUser?.id || null,
                 attempted_phone: strictPhone,
                 attempted_name: data.customer_name || null,
+                attempted_interest: interestText || interestModel,
+                attempted_location: locationProfile,
+                attempted_referral: referralContext,
+                referral_locked: true,
                 source: data.source || 'UNKNOWN',
                 note: 'Active lead exists; reusing lead for quote creation.',
             };
 
             const existingEvents = (existingLead.events_log as any[]) || [];
+            const existingUtmData =
+                existingLead.utm_data && typeof existingLead.utm_data === 'object' ? existingLead.utm_data : {};
             const duplicateUpdatePayload: Record<string, any> = {
                 events_log: [...existingEvents, duplicateEvent],
-                updated_at: nowIso,
+                interest_model: interestModel,
+                interest_text: interestText || interestModel,
+                ...(data.customer_name ? { customer_name: data.customer_name } : {}),
+                ...(data.customer_dob ? { customer_dob: data.customer_dob } : {}),
+                ...(normalizedPincode.length === 6
+                    ? {
+                          customer_pincode: normalizedPincode,
+                          is_serviceable: isServiceable,
+                      }
+                    : {}),
+                ...(resolvedTaluka ? { customer_taluka: resolvedTaluka } : {}),
+                ...(data.source ? { source: data.source } : {}),
+                utm_data: {
+                    ...existingUtmData,
+                    utm_source: data.source || existingUtmData.utm_source || 'MANUAL',
+                    ...(locationProfile ? { location_profile: locationProfile } : {}),
+                },
             };
             // Backfill dealer lock on legacy leads when reusing under an explicit dealer context.
             if (data.selected_dealer_id && !existingLead.selected_dealer_tenant_id) {
                 duplicateUpdatePayload.selected_dealer_tenant_id = data.selected_dealer_id;
             }
-            await adminClient.from('crm_leads').update(duplicateUpdatePayload).eq('id', existingLead.id);
+            const duplicateUpdateResult = await updateCrmLeadCompat(existingLead.id, duplicateUpdatePayload, nowIso);
+            if (!duplicateUpdateResult.success) {
+                return {
+                    success: false,
+                    message: duplicateUpdateResult.message || 'Failed to refresh existing lead',
+                };
+            }
 
             try {
                 await adminClient.from('crm_audit_log').insert({
@@ -541,20 +1169,33 @@ export async function createLeadAction(data: {
                 console.error('[DEBUG] crm_audit_log insert failed:', auditError);
             }
 
-            return { success: true, leadId: existingLead.id, duplicate: true };
+            return {
+                success: true,
+                leadId: existingLead.id,
+                memberId: existingLead.customer_id || customerId,
+                duplicate: true,
+            };
         }
 
-        // 2. Automated Segregation Logic (Pincode & Junking)
-        let status = 'NEW';
-        let isServiceable = false;
+        if (isCrmManualSource && referralBenefitEligible && !hasReferralInput) {
+            return {
+                success: false,
+                message: 'Referral is mandatory for new lead. Enter referral code or referrer contact.',
+            };
+        }
 
-        if (data.customer_pincode) {
-            const result = await checkServiceability(data.customer_pincode);
-            isServiceable = result.isServiceable;
-
-            if (!isServiceable) {
-                status = 'JUNK';
-            }
+        if (
+            isCrmManualSource &&
+            referralBenefitEligible &&
+            hasReferralInput &&
+            !resolvedReferrer?.memberId &&
+            !referredByPhoneInput &&
+            !referredByNameInput
+        ) {
+            return {
+                success: false,
+                message: 'Referral code not found. Add referrer phone or name to continue.',
+            };
         }
 
         const { data: lead, error } = await adminClient
@@ -563,21 +1204,25 @@ export async function createLeadAction(data: {
                 customer_id: customerId,
                 customer_name: data.customer_name,
                 customer_phone: strictPhone,
-                customer_pincode: data.customer_pincode || null,
-                customer_taluka: data.customer_taluka || null,
+                customer_pincode: normalizedPincode.length === 6 ? normalizedPincode : null,
+                customer_taluka: resolvedTaluka,
                 customer_dob: data.customer_dob || null,
                 interest_model: interestModel,
-                interest_text: interestModel,
+                interest_text: interestText || interestModel,
                 interest_variant: data.model === 'GENERAL_ENQUIRY' ? null : null,
                 owner_tenant_id: effectiveOwnerId,
                 selected_dealer_tenant_id: data.selected_dealer_id || null,
+                referred_by_id: resolvedReferrer?.memberId || null,
+                referred_by_name: resolvedReferrer?.name || referredByNameInput || null,
                 status: status,
                 is_serviceable: isServiceable,
                 source: data.source || 'WALKIN',
+                referral_data: referralContext,
                 utm_data: {
                     utm_source: data.source || 'MANUAL',
                     auto_segregated: status === 'JUNK',
                     segregation_reason: status === 'JUNK' ? 'Unserviceable Pincode' : null,
+                    ...(locationProfile ? { location_profile: locationProfile } : {}),
                 },
                 intent_score: status === 'JUNK' ? 'COLD' : 'WARM',
             })
@@ -589,9 +1234,48 @@ export async function createLeadAction(data: {
             return { success: false, message: error.message };
         }
 
+        let referralBonusApplied = false;
+        if (resolvedReferrer?.memberId && referralBenefitEligible) {
+            try {
+                await adminClient.rpc(
+                    'oclub_credit_referral' as any,
+                    {
+                        p_referrer_id: resolvedReferrer.memberId,
+                        p_lead_id: lead.id,
+                        p_referred_member_id: customerId,
+                    } as any
+                );
+                referralBonusApplied = true;
+            } catch (referralCreditError) {
+                console.error('[DEBUG] oclub_credit_referral failed:', referralCreditError);
+            }
+        }
+
+        if (referralContext) {
+            const finalizedReferralData = {
+                ...referralContext,
+                referral_bonus_applied: referralBonusApplied,
+                referral_bonus_status: referralBenefitEligible
+                    ? resolvedReferrer?.memberId
+                        ? referralBonusApplied
+                            ? 'LOCKED'
+                            : 'ERROR'
+                        : 'PENDING_EXTERNAL_REFERRER'
+                    : 'NOT_APPLICABLE_REPEAT_DELIVERY',
+            };
+            const referralUpdateResult = await updateCrmLeadCompat(
+                lead.id,
+                { referral_data: finalizedReferralData },
+                new Date().toISOString()
+            );
+            if (!referralUpdateResult.success) {
+                console.error('[DEBUG] lead referral_data finalize failed:', referralUpdateResult.message);
+            }
+        }
+
         console.log('[DEBUG] Lead created successfully:', lead.id);
         revalidatePath('/app/[slug]/leads', 'page');
-        return { success: true, leadId: lead.id };
+        return { success: true, leadId: lead.id, memberId: customerId };
     } catch (error) {
         console.error('[DEBUG] Lead creation process CRASHED:', error);
         return {
@@ -1355,6 +2039,47 @@ export async function uploadMemberDocumentAction(data: {
     return asset;
 }
 
+type LegacyMemberDocument = {
+    id: string;
+    member_id: string | null;
+    name: string;
+    category: string | null;
+    label: string | null;
+    file_type: string | null;
+    file_path: string;
+    file_size: number | null;
+    created_at: string | null;
+    updated_at: string | null;
+    metadata?: Record<string, any>;
+};
+
+function mapMemberAssetToLegacyDocument(asset: any): LegacyMemberDocument {
+    const metadata =
+        asset?.metadata && typeof asset.metadata === 'object' && !Array.isArray(asset.metadata)
+            ? (asset.metadata as Record<string, any>)
+            : {};
+    const pathParts = String(asset?.path || '').split('/');
+    const fallbackName = pathParts[pathParts.length - 1] || 'document';
+    const category = (metadata.category as string | undefined) || asset?.purpose || 'MEMBER_DOCUMENT';
+    const label = (metadata.label as string | undefined) || (metadata.category as string | undefined) || category;
+    const fileSizeRaw = metadata.file_size ?? metadata.size ?? null;
+    const fileSize = typeof fileSizeRaw === 'number' ? fileSizeRaw : null;
+
+    return {
+        id: asset?.id,
+        member_id: asset?.entity_id || null,
+        name: (metadata.name as string | undefined) || (metadata.originalName as string | undefined) || fallbackName,
+        category,
+        label,
+        file_type: asset?.file_type || null,
+        file_path: asset?.path,
+        file_size: fileSize,
+        created_at: asset?.created_at || null,
+        updated_at: asset?.updated_at || null,
+        metadata,
+    };
+}
+
 export async function uploadMemberDocument(data: {
     memberId: string;
     name: string;
@@ -1365,19 +2090,32 @@ export async function uploadMemberDocument(data: {
     fileSize?: number;
 }) {
     const supabase = await createClient();
-    const { data: doc, error } = await supabase
-        .from('crm_member_documents')
+    const { data: member } = await supabase
+        .from('id_members')
+        .select('tenant_id')
+        .eq('id', data.memberId)
+        .maybeSingle();
+    const purpose = (data.category || 'MEMBER_DOCUMENT').trim();
+    const { data: asset, error } = await supabase
+        .from('id_member_assets')
         .insert({
-            member_id: data.memberId,
-            name: data.name,
-            file_path: data.filePath,
+            entity_id: data.memberId,
+            tenant_id: member?.tenant_id || null,
+            path: data.filePath,
             file_type: data.fileType,
-            category: data.category,
-            label: data.label || data.category,
-            file_size: data.fileSize || null,
+            purpose,
+            metadata: {
+                source: 'CRM_MEMBER_DOCUMENT_COMPAT',
+                name: data.name,
+                originalName: data.name,
+                category: data.category,
+                label: data.label || data.category,
+                file_size: data.fileSize || null,
+            },
             updated_at: new Date().toISOString(),
+            uploaded_by: null,
         })
-        .select()
+        .select('*')
         .single();
 
     if (error) {
@@ -1385,15 +2123,15 @@ export async function uploadMemberDocument(data: {
         throw error;
     }
 
-    return doc;
+    return mapMemberAssetToLegacyDocument(asset);
 }
 
 export async function getCrmMemberDocuments(memberId: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
-        .from('crm_member_documents')
+        .from('id_member_assets')
         .select('*')
-        .eq('member_id', memberId)
+        .eq('entity_id', memberId)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -1401,7 +2139,7 @@ export async function getCrmMemberDocuments(memberId: string) {
         return [];
     }
 
-    return data || [];
+    return ((data as any[]) || []).map(mapMemberAssetToLegacyDocument);
 }
 
 export async function deleteCrmMemberDocument(documentId: string) {
@@ -1409,8 +2147,8 @@ export async function deleteCrmMemberDocument(documentId: string) {
 
     // Get the file path first
     const { data: doc, error: fetchError } = await supabase
-        .from('crm_member_documents')
-        .select('file_path')
+        .from('id_member_assets')
+        .select('path')
         .eq('id', documentId)
         .single();
 
@@ -1420,16 +2158,19 @@ export async function deleteCrmMemberDocument(documentId: string) {
     }
 
     // Delete from storage
-    if (doc?.file_path) {
-        const { error: storageError } = await supabase.storage.from('member-documents').remove([doc.file_path]);
-
-        if (storageError) {
-            console.error('Error removing file from storage:', storageError);
-            // We continue to delete from DB even if storage delete fails (maybe it was already gone)
+    if (doc?.path && !String(doc.path).startsWith('/uploads/')) {
+        const bucketRemovals = await Promise.allSettled([
+            supabase.storage.from('id_documents').remove([doc.path]),
+            supabase.storage.from('member-documents').remove([doc.path]),
+        ]);
+        for (const result of bucketRemovals) {
+            if (result.status === 'fulfilled' && result.value.error) {
+                console.error('Error removing file from storage:', result.value.error);
+            }
         }
     }
 
-    const { error } = await supabase.from('crm_member_documents').delete().eq('id', documentId);
+    const { error } = await supabase.from('id_member_assets').delete().eq('id', documentId);
 
     if (error) {
         console.error('deleteCrmMemberDocument Error:', error);
@@ -1488,14 +2229,19 @@ export async function getSignedUrlAction(path: string) {
 
 export async function getMemberDocumentUrl(path: string) {
     const supabase = await createClient();
-    const { data, error } = await supabase.storage.from('member-documents').createSignedUrl(path, 3600); // 1 hour expiry
+    if (path.startsWith('/uploads/')) {
+        return path;
+    }
+    const primary = await supabase.storage.from('id_documents').createSignedUrl(path, 3600); // 1 hour expiry
+    if (!primary.error) return primary.data.signedUrl;
 
-    if (error) {
-        console.error('Error creating signed URL:', error);
+    const fallback = await supabase.storage.from('member-documents').createSignedUrl(path, 3600);
+    if (fallback.error) {
+        console.error('Error creating signed URL:', fallback.error);
         return null;
     }
 
-    return data.signedUrl;
+    return fallback.data.signedUrl;
 }
 
 export async function getQuotePdpUrl(quoteId: string) {

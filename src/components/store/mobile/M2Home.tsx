@@ -7,6 +7,7 @@ import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import {
     ArrowRight,
     ChevronRight,
+    ArrowRightLeft,
     Zap,
     Shield,
     Clock,
@@ -26,6 +27,9 @@ import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 import { M2Footer } from './M2Footer';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { coinsNeededForPrice } from '@/lib/oclub/coin';
+import { Logo } from '@/components/brand/Logo';
 
 /* ────────── Palette ────────── */
 const GOLD = '#FFD700';
@@ -95,9 +99,108 @@ export function M2Home() {
     const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
     const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
     const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
+    const trendingItems = React.useMemo(() => {
+        if (!items) return [];
 
-    const trendingItems = items?.slice(0, 8) ?? [];
+        // 1. Filter out surge pricing (where discount is negative)
+        const validItems = items.filter((item: any) => {
+            const discount = item.price?.discount ?? 0;
+            return discount >= 0;
+        });
+
+        // 2. Group by model and keep only the best variant (highest discount, then lowest price)
+        const modelMap = new Map<string, (typeof items)[0]>();
+
+        for (const item of validItems) {
+            const modelKey = item.modelSlug;
+            if (!modelKey) continue;
+
+            const existing = modelMap.get(modelKey);
+            if (!existing) {
+                modelMap.set(modelKey, item);
+                continue;
+            }
+
+            // Compare: Which goes first?
+            const currentDiscount = item.price?.discount ?? 0;
+            const existingDiscount = existing.price?.discount ?? 0;
+
+            if (currentDiscount > existingDiscount) {
+                modelMap.set(modelKey, item);
+            } else if (currentDiscount === existingDiscount) {
+                const currentPrice = item.price?.onRoad ?? item.price?.exShowroom ?? Number.MAX_SAFE_INTEGER;
+                const existingPrice = existing.price?.onRoad ?? existing.price?.exShowroom ?? Number.MAX_SAFE_INTEGER;
+                if (currentPrice < existingPrice) {
+                    modelMap.set(modelKey, item);
+                }
+            }
+        }
+
+        // 3. Convert Map back to array and apply final sorting across all unique models
+        const uniqueModelItems = Array.from(modelMap.values());
+
+        uniqueModelItems.sort((a, b) => {
+            const discountA = a.price?.discount ?? 0;
+            const discountB = b.price?.discount ?? 0;
+
+            if (discountA !== discountB) {
+                return discountB - discountA; // Descending discount
+            }
+
+            const priceA = a.price?.onRoad ?? a.price?.exShowroom ?? Number.MAX_SAFE_INTEGER;
+            const priceB = b.price?.onRoad ?? b.price?.exShowroom ?? Number.MAX_SAFE_INTEGER;
+            return priceA - priceB; // Ascending price
+        });
+
+        return uniqueModelItems.slice(0, 8);
+    }, [items]);
+
     const [activeTestimonial, setActiveTestimonial] = useState(0);
+
+    // Feature hooks
+    const { user } = useAuth();
+    const [userLocationStr, setUserLocationStr] = useState('');
+
+    // EMI Calculator state
+    const basePrice = 120000;
+    const [downpayment, setDownpayment] = useState(25000);
+    const tenure = 36;
+    const interestRate = 9.5; // 9.5% p.a
+
+    // Extract location cookie purely on client to avoid hydration mismatch
+    useEffect(() => {
+        const getCookie = (name: string) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop()?.split(';').shift();
+            return null;
+        };
+        const loc = getCookie('bmb_user_location');
+        if (loc) setUserLocationStr(loc);
+    }, []);
+
+    // Parse the location string safely
+    const parsedLocation = React.useMemo(() => {
+        try {
+            if (userLocationStr) return JSON.parse(decodeURIComponent(userLocationStr));
+        } catch (e) {
+            return null;
+        }
+        return null;
+    }, [userLocationStr]);
+
+    const trendingLocationName = parsedLocation?.district || 'Maharashtra';
+    const riderName = user?.user_metadata?.first_name || 'Rider';
+    const isReturningUser = !!user;
+
+    // Calculate real-time EMI
+    const calculateEMI = () => {
+        const principal = basePrice - downpayment;
+        const ratePerMonth = interestRate / 12 / 100;
+        const emi =
+            (principal * ratePerMonth * Math.pow(1 + ratePerMonth, tenure)) / (Math.pow(1 + ratePerMonth, tenure) - 1);
+        return Math.round(emi);
+    };
 
     // Auto-rotate testimonials
     useEffect(() => {
@@ -108,7 +211,7 @@ export function M2Home() {
     }, []);
 
     return (
-        <div className="flex flex-col bg-[#0b0d10] text-white overflow-x-hidden min-h-screen">
+        <div className="flex flex-col bg-[#0b0d10] text-white overflow-x-hidden min-h-[100dvh]">
             {/* ══════════════════════════════════════════════
                 SECTION 1: IMMERSIVE HERO (full viewport)
             ══════════════════════════════════════════════ */}
@@ -164,16 +267,33 @@ export function M2Home() {
                         transition={{ duration: 1, delay: 0.4 }}
                         className="text-[40px] font-black leading-[0.95] tracking-tight"
                     >
-                        Find your
-                        <br />
-                        <span
-                            className="text-transparent bg-clip-text"
-                            style={{
-                                backgroundImage: `linear-gradient(135deg, ${GOLD}, ${GOLD_INT}, #fff)`,
-                            }}
-                        >
-                            perfect ride.
-                        </span>
+                        {isReturningUser ? (
+                            <>
+                                Welcome back,
+                                <br />
+                                <span
+                                    className="text-transparent bg-clip-text"
+                                    style={{
+                                        backgroundImage: `linear-gradient(135deg, ${GOLD}, ${GOLD_INT}, #fff)`,
+                                    }}
+                                >
+                                    {riderName}.
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                Find your
+                                <br />
+                                <span
+                                    className="text-transparent bg-clip-text"
+                                    style={{
+                                        backgroundImage: `linear-gradient(135deg, ${GOLD}, ${GOLD_INT}, #fff)`,
+                                    }}
+                                >
+                                    perfect ride.
+                                </span>
+                            </>
+                        )}
                     </motion.h1>
 
                     {/* Subhead */}
@@ -183,29 +303,42 @@ export function M2Home() {
                         transition={{ duration: 0.8, delay: 0.6 }}
                         className="text-sm text-white/60 font-medium leading-relaxed max-w-[280px]"
                     >
-                        Compare on-road prices, get instant quotes, and book your bike — all in one place.
+                        {isReturningUser
+                            ? 'Ready to pick up where you left off? Compare prices and book instantly.'
+                            : 'Compare on-road prices, get instant quotes, and book your bike — all in one place.'}
                     </motion.p>
+
+                    {/* Quick Filter Pills */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.7 }}
+                        className="flex gap-2.5 mt-2"
+                    >
+                        {['Scooter', 'Motorcycle', 'Moped'].map(type => (
+                            <Link
+                                key={type}
+                                href={`/store/catalog?bodyType=${type.toUpperCase()}`}
+                                className="flex-1 py-2.5 rounded-xl border border-white/20 bg-white/5 active:bg-white/10 backdrop-blur-md text-center text-[10px] font-black uppercase tracking-wider text-white transition-colors"
+                            >
+                                {type}
+                            </Link>
+                        ))}
+                    </motion.div>
 
                     {/* CTA Group */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.8 }}
-                        className="flex gap-3"
                     >
                         <Link
                             href="/store/catalog"
-                            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-sm uppercase tracking-wider text-black active:scale-[0.97] transition-transform"
+                            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-xs uppercase tracking-[0.15em] text-black active:scale-[0.97] transition-transform shadow-[0_0_20px_rgba(255,215,0,0.15)]"
                             style={{ background: GOLD }}
                         >
-                            <Bike size={18} />
-                            Explore Bikes
-                        </Link>
-                        <Link
-                            href="/store/compare"
-                            className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl border border-white/20 font-black text-xs uppercase tracking-wider text-white/80 backdrop-blur-xl bg-white/5 active:scale-[0.97] transition-transform"
-                        >
-                            Compare
+                            <Bike size={16} className="shrink-0" />
+                            <span className="truncate">Explore Bikes</span>
                         </Link>
                     </motion.div>
 
@@ -214,19 +347,19 @@ export function M2Home() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 1.2 }}
-                        className="flex items-center gap-3 mt-1"
+                        className="flex items-center justify-center flex-wrap gap-x-2.5 gap-y-1 mt-3"
                     >
                         {[
-                            `${skuCount || '130'}+ Models`,
-                            `${MARKET_METRICS.avgSavings} Avg Savings`,
-                            '4-Hour Delivery',
-                        ].map((stat, i) => (
-                            <React.Fragment key={stat}>
-                                {i > 0 && <div className="w-[3px] h-[3px] rounded-full bg-white/20" />}
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-white/35">
+                            `${skuCount || '130'}+ MODELS`,
+                            `${MARKET_METRICS.avgSavings?.toUpperCase()} AVG SAVINGS`,
+                            '4-HOUR DELIVERY',
+                        ].map((stat: string, i: number) => (
+                            <div key={stat} className="flex items-center gap-2.5">
+                                {i > 0 && <span className="text-white/20 text-[10px] leading-none">&bull;</span>}
+                                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white/40">
                                     {stat}
                                 </span>
-                            </React.Fragment>
+                            </div>
                         ))}
                     </motion.div>
                 </div>
@@ -321,7 +454,9 @@ export function M2Home() {
                             <p className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: GOLD }}>
                                 Popular Right Now
                             </p>
-                            <h2 className="text-2xl font-black tracking-tight text-white mt-1">Trending Rides</h2>
+                            <h2 className="text-2xl font-black tracking-tight text-white mt-1">
+                                Trending in {trendingLocationName}
+                            </h2>
                         </div>
                         <Link
                             href="/store/catalog"
@@ -333,11 +468,18 @@ export function M2Home() {
                     </div>
 
                     <div className="flex gap-3.5 overflow-x-auto snap-x snap-mandatory px-5 pb-4 no-scrollbar">
-                        {trendingItems.map((item, i) => {
+                        {trendingItems.map((item: any, i: number) => {
                             const name = item.displayName || 'Unknown';
                             const brand = item.make || '';
                             const img = item.imageUrl;
-                            const price = item.price?.onRoad || item.price?.exShowroom;
+
+                            // Pricing Logic identical to Catalog Cards
+                            const displayPrice =
+                                item.price?.offerPrice || item.price?.onRoad || item.price?.exShowroom || 0;
+                            const hasDiscount = (item.price?.discount ?? 0) > 0;
+                            const exShowroom = item.price?.exShowroom || 0;
+                            const bcoinTotal = coinsNeededForPrice(displayPrice);
+
                             const isBestSeller = i < 3;
 
                             return (
@@ -388,19 +530,36 @@ export function M2Home() {
                                         <h3 className="text-sm font-black uppercase tracking-tight text-white mt-0.5 truncate">
                                             {name}
                                         </h3>
-                                        <div className="mt-2 flex items-baseline gap-2">
-                                            {price ? (
-                                                <>
-                                                    <span className="text-base font-black text-white">
-                                                        ₹{Math.round(price).toLocaleString('en-IN')}
-                                                    </span>
-                                                    <span className="text-[9px] text-white/30 font-medium">
-                                                        on-road
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                <span className="text-sm font-bold text-white/40">Get Quote</span>
+                                        <div className="mt-2 flex flex-col gap-1.5">
+                                            {hasDiscount && exShowroom > 0 && (
+                                                <p className="text-[11px] font-bold text-slate-400 line-through decoration-[#FFD700] decoration-2">
+                                                    ₹{Math.round(exShowroom).toLocaleString('en-IN')}
+                                                </p>
                                             )}
+
+                                            <div className="flex flex-col gap-1">
+                                                {displayPrice ? (
+                                                    <div className="flex items-baseline gap-1.5">
+                                                        <span className="text-base font-black text-white">
+                                                            ₹{Math.round(displayPrice).toLocaleString('en-IN')}
+                                                        </span>
+                                                        <span className="text-[10px] text-white/60 font-bold uppercase tracking-wide">
+                                                            on-road
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm font-bold text-white/40">Get Quote</span>
+                                                )}
+
+                                                {displayPrice > 0 && (
+                                                    <div className="flex items-center gap-1.5 pt-[2px]">
+                                                        <Logo variant="icon" size={13} />
+                                                        <span className="text-[12px] font-black text-[#F4B000] italic leading-none pt-[1px]">
+                                                            {bcoinTotal.toLocaleString('en-IN')}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </Link>
@@ -556,7 +715,7 @@ export function M2Home() {
                 </h2>
 
                 <div className="grid grid-cols-4 gap-2.5">
-                    {brands.slice(0, 12).map((brand, i) => {
+                    {brands.slice(0, 12).map((brand: any, i: number) => {
                         const color = BRAND_COLORS[brand.name.toUpperCase()] || '#ffffff';
                         return (
                             <motion.div

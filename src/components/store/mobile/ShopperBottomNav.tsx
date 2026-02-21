@@ -19,12 +19,14 @@ import {
     Globe,
     Bike,
     ChevronRight,
+    MapPin,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { Logo } from '@/components/brand/Logo';
 
 const TABS = [
     { key: 'home', label: 'Home', icon: Home, href: '/' },
@@ -55,6 +57,56 @@ export function ShopperBottomNav() {
     const { user } = useAuth();
     const { favorites } = useFavorites();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [bCoins, setBCoins] = useState<number | null>(null);
+    const [location, setLocation] = useState<{
+        area: string;
+        taluka: string;
+        district?: string;
+        state?: string;
+        stateCode?: string;
+    } | null>(null);
+
+    React.useEffect(() => {
+        const handleLocationChange = () => {
+            const stored = localStorage.getItem('bkmb_user_pincode');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    setLocation({
+                        area: parsed.area,
+                        taluka: parsed.taluka || parsed.city,
+                        district: parsed.district,
+                        stateCode: parsed.stateCode,
+                    });
+                } catch (e) {
+                    console.error('Error parsing stored location:', e);
+                }
+            }
+        };
+
+        handleLocationChange();
+        window.addEventListener('locationChanged', handleLocationChange);
+        window.addEventListener('storage', handleLocationChange);
+
+        return () => {
+            window.removeEventListener('locationChanged', handleLocationChange);
+            window.removeEventListener('storage', handleLocationChange);
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (user?.id) {
+            import('@/actions/oclub').then(({ getOClubWallet }) => {
+                getOClubWallet(user.id).then(res => {
+                    if (res.success && res.wallet) {
+                        setBCoins((res.wallet as any).available_system || 0);
+                    }
+                });
+            });
+        } else {
+            setBCoins(null);
+        }
+    }, [user?.id]);
 
     const isTabActive = (href: string) => {
         if (!pathname) return false;
@@ -79,7 +131,7 @@ export function ShopperBottomNav() {
         <>
             {/* Bottom Nav Bar */}
             <nav
-                className="fixed bottom-0 left-0 right-0 z-[55] bg-black/40 backdrop-blur-2xl border-t border-white/8"
+                className="fixed bottom-0 left-0 right-0 z-[55] bg-[#0b0d10]/95 backdrop-blur-2xl border-t border-white/5"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             >
                 <div className="flex items-stretch justify-around h-[60px]">
@@ -130,7 +182,6 @@ export function ShopperBottomNav() {
                                 </button>
                             );
                         }
-
                         if (tab.key === 'search') {
                             return (
                                 <button
@@ -148,7 +199,6 @@ export function ShopperBottomNav() {
                                 </button>
                             );
                         }
-
                         return (
                             <Link key={tab.key} href={tab.href!} className={cls} onClick={() => setSidebarOpen(false)}>
                                 {inner}
@@ -193,14 +243,26 @@ export function ShopperBottomNav() {
                                             ).toUpperCase()}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-xs font-black text-white uppercase tracking-wide truncate">
-                                                {user.user_metadata?.full_name?.split(' ')[0] ||
+                                            <p className="text-[13px] font-black text-white uppercase tracking-wide truncate">
+                                                {user.user_metadata?.full_name ||
+                                                    user.user_metadata?.name ||
                                                     user.email?.split('@')[0] ||
                                                     'User'}
                                             </p>
-                                            <p className="text-[9px] text-slate-500 truncate mt-0.5">
+                                            <p className="text-[10px] text-slate-400 truncate mt-0.5">
                                                 {user.email || user.phone}
                                             </p>
+                                            {location && (
+                                                <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-blue-500/10 text-[9px] font-black uppercase tracking-[0.05em] text-blue-400">
+                                                    <MapPin size={9} className="fill-blue-500/20" strokeWidth={2.5} />
+                                                    {location.district || location.taluka}{' '}
+                                                    {location.stateCode
+                                                        ? `(${location.stateCode})`
+                                                        : location.state
+                                                          ? `(${location.state})`
+                                                          : ''}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (
@@ -233,10 +295,22 @@ export function ShopperBottomNav() {
                                             }`}
                                         >
                                             <item.icon size={18} strokeWidth={active ? 2.5 : 1.5} />
-                                            <span className="text-[11px] font-bold uppercase tracking-widest flex-1">
-                                                {item.label}
-                                            </span>
-                                            {active && <div className="w-1.5 h-1.5 rounded-full bg-[#FFD700]" />}
+                                            <div className="flex-1 flex items-center justify-between">
+                                                <span className="text-[11px] font-bold uppercase tracking-widest">
+                                                    {item.label}
+                                                </span>
+                                                {item.label === "O' Circle" && bCoins !== null && (
+                                                    <div className="flex items-center gap-1 bg-[#F4B000]/10 px-1.5 py-[2px] rounded-md border border-[#F4B000]/20 mr-2">
+                                                        <Logo variant="icon" size={8} />
+                                                        <span className="text-[9px] font-black text-[#F4B000] italic leading-none pt-[1px]">
+                                                            {bCoins.toLocaleString('en-IN')}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {active && (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[#FFD700] shrink-0" />
+                                            )}
                                         </Link>
                                     );
                                 })}

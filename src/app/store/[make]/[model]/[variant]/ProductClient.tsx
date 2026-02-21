@@ -56,6 +56,7 @@ interface ProductClientProps {
     initialServices?: any[];
     initialFinance?: any;
     initialDealerId?: string | null;
+    initialDevice?: 'phone' | 'desktop';
 }
 
 export default function ProductClient({
@@ -71,6 +72,7 @@ export default function ProductClient({
     initialServices = [],
     initialFinance,
     initialDealerId = null,
+    initialDevice = 'desktop',
 }: ProductClientProps) {
     const [clientAccessories, setClientAccessories] = useState(initialAccessories);
     const [clientColors, setClientColors] = useState(product.colors);
@@ -87,7 +89,7 @@ export default function ProductClient({
     const [isTeamMember, setIsTeamMember] = useState(false);
     const { availableCoins, isLoggedIn } = useOClubWallet();
     const { dealerId: sessionDealerId } = useDealerSession();
-    const { device } = useBreakpoint();
+    const { device } = useBreakpoint(initialDevice);
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
 
     // Authority: Determine if team member is gated (Marketplace without lead context)
