@@ -58,7 +58,9 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
     }, []);
 
-    const isHome = pathname === '/' || pathname === '/store';
+    const isHome = pathname === '/' || pathname === '/store' || pathname === '/m2';
+    const isM2 = pathname === '/m2';
+    const isMobileCatalog = isPhone && pathname === '/store/catalog';
     const isLight = mounted ? resolvedTheme === 'light' : true;
 
     // Quick rollback: set navPreset to 'wide'.
@@ -67,11 +69,17 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
     const isHeaderTransparent = isHome && !scrolled;
 
-    const mobileMenuButtonClass = !isHeaderTransparent
-        ? 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
-        : isLight
-          ? 'text-slate-900 hover:bg-slate-900/5'
-          : 'text-white hover:bg-white/10';
+    const mobileMenuButtonClass = isM2
+        ? 'text-white hover:bg-white/10'
+        : !isHeaderTransparent
+          ? isMobileCatalog
+              ? 'text-white hover:bg-white/10'
+              : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+          : isLight && !isMobileCatalog
+            ? 'text-slate-900 hover:bg-slate-900/5'
+            : 'text-white hover:bg-white/10';
+
+    const profileTone = isM2 ? 'dark' : 'light';
 
     return (
         <AppHeaderShell
@@ -79,11 +87,11 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             visible={isVisible}
             transparentAtTop={true}
             variant="marketplace"
-            className="header-transparent"
+            className={`${isHeaderTransparent ? 'header-transparent' : ''} ${isM2 || isMobileCatalog || (!isLight && !isHome) ? 'dark-theme' : ''}`}
             left={
-                <Link href="/" className="flex items-center group h-full">
+                <Link href={isM2 ? '/m2' : '/'} className="flex items-center group h-full">
                     <div className="flex items-center justify-center transition-all duration-300">
-                        <Logo mode="light" size={40} variant="full" />
+                        <Logo mode="dark" size={30} variant="full" />
                     </div>
                 </Link>
             }
@@ -121,7 +129,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         onLoginClick={onLoginClick}
                         scrolled={!isHeaderTransparent}
                         theme={resolvedTheme}
-                        tone="light"
+                        tone={profileTone}
                         externalOpen={isSidebarOpen}
                         onOpenChange={setIsSidebarOpen}
                     />

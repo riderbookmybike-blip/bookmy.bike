@@ -116,7 +116,8 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
     }, []);
 
     const pathname = usePathname();
-    const isLandingPage = pathname === '/store' || pathname === '/';
+    const isM2 = pathname === '/m2';
+    const isLandingPage = pathname === '/store' || pathname === '/' || isM2;
 
     return (
         <FavoritesProvider>

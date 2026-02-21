@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 import type { ProductVariant } from '@/types/productMaster';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
+import { coinsNeededForPrice } from '@/lib/oclub/coin';
+import { Logo } from '@/components/brand/Logo';
 
 const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
 
@@ -43,6 +45,7 @@ export function CompactProductCard({ v, downpayment, tenure, basePath = '/store'
     const loanAmount = Math.max(0, displayPrice - downpayment);
     const factor = EMI_FACTORS[activeTenure] ?? EMI_FACTORS[36];
     const emiValue = Math.max(0, Math.round(loanAmount * factor));
+    const bcoinTotal = coinsNeededForPrice(displayPrice);
 
     // Swatches (max 4 visible)
     const swatches = (v.availableColors || []).slice(0, 4);
@@ -62,7 +65,7 @@ export function CompactProductCard({ v, downpayment, tenure, basePath = '/store'
     }).url;
 
     return (
-        <div className="group relative flex flex-col bg-white dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/8 rounded-2xl overflow-hidden transition-all duration-300 active:scale-[0.98]">
+        <div className="group relative flex flex-col bg-[#0f1115] border border-white/10 rounded-2xl overflow-hidden transition-all duration-300 active:scale-[0.98]">
             {/* Favorite Button */}
             <button
                 onClick={e => {
@@ -88,7 +91,7 @@ export function CompactProductCard({ v, downpayment, tenure, basePath = '/store'
             </button>
 
             {/* Vehicle Image */}
-            <Link href={href} className="block relative aspect-[4/3] bg-slate-100 dark:bg-white/[0.02] overflow-hidden">
+            <Link href={href} className="block relative aspect-[4/3] bg-white/[0.02] overflow-hidden">
                 {selectedImage ? (
                     <img
                         src={selectedImage}
@@ -97,7 +100,7 @@ export function CompactProductCard({ v, downpayment, tenure, basePath = '/store'
                         loading="lazy"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-700 text-[10px] font-black uppercase tracking-widest">
+                    <div className="w-full h-full flex items-center justify-center text-white/20 text-[10px] font-black uppercase tracking-widest">
                         No Image
                     </div>
                 )}
@@ -107,27 +110,31 @@ export function CompactProductCard({ v, downpayment, tenure, basePath = '/store'
             <Link href={href} className="flex flex-col gap-1.5 p-3 pt-2">
                 {/* Make & Model */}
                 <div>
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 leading-none">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 leading-none">
                         {v.make}
                     </p>
-                    <h3 className="text-[13px] font-black text-slate-900 dark:text-white leading-tight mt-0.5 line-clamp-1">
-                        {v.model}
-                    </h3>
-                    <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 leading-tight line-clamp-1">
-                        {v.variant}
-                    </p>
+                    <h3 className="text-[13px] font-black text-white leading-tight mt-0.5 line-clamp-1">{v.model}</h3>
+                    <p className="text-[10px] font-semibold text-slate-400 leading-tight line-clamp-1">{v.variant}</p>
                 </div>
 
                 {/* Price */}
-                <div className="mt-auto">
-                    <p className="text-[16px] font-black text-slate-900 dark:text-white leading-none">
-                        ₹{displayPrice.toLocaleString('en-IN')}
-                    </p>
-                    {emiValue > 0 && (
-                        <p className="text-[10px] font-bold text-[#F4B000] mt-0.5">
-                            ₹{emiValue.toLocaleString('en-IN')}/mo
+                <div className="mt-auto flex justify-between items-end">
+                    <div>
+                        <p className="text-[16px] font-black text-white leading-none">
+                            ₹{displayPrice.toLocaleString('en-IN')}
                         </p>
-                    )}
+                        {emiValue > 0 && (
+                            <p className="text-[10px] font-bold text-[#F4B000] mt-0.5">
+                                ₹{emiValue.toLocaleString('en-IN')}/mo
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg border border-white/10">
+                        <Logo variant="icon" size={10} />
+                        <span className="text-[10px] font-black text-[#F4B000] italic leading-none">
+                            {bcoinTotal.toLocaleString('en-IN')}
+                        </span>
+                    </div>
                 </div>
             </Link>
 
@@ -142,19 +149,24 @@ export function CompactProductCard({ v, downpayment, tenure, basePath = '/store'
                                 e.stopPropagation();
                                 handleColorTap(color);
                             }}
-                            className={`w-5 h-5 rounded-full border-2 transition-all ${
+                            className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all ${
                                 selectedHex === color.hexCode
-                                    ? 'border-[#FFD700] scale-110 shadow-[0_0_6px_#FFD700]'
-                                    : 'border-slate-200 dark:border-white/15'
+                                    ? 'border-[#FFD700] scale-110 shadow-[0_0_6px_rgba(255,215,0,0.5)]'
+                                    : 'border-white/15'
                             }`}
                             style={{ backgroundColor: color.hexCode || '#999' }}
                             title={color.name}
-                        />
+                        >
+                            {color.finish === 'MATTE' && (
+                                <span className="text-[8px] font-black mix-blend-difference text-white/50">M</span>
+                            )}
+                            {color.finish === 'GLOSS' && (
+                                <span className="text-[8px] font-black mix-blend-difference text-white/50">G</span>
+                            )}
+                        </button>
                     ))}
                     {extraCount > 0 && (
-                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 ml-0.5">
-                            +{extraCount}
-                        </span>
+                        <span className="text-[9px] font-bold text-slate-500 ml-0.5">+{extraCount}</span>
                     )}
                 </div>
             )}

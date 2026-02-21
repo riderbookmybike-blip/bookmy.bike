@@ -472,7 +472,7 @@ export function ProfileDropdown({
                 <button
                     onClick={() => setIsOpen(!isOpen)}
                     ref={dropdownRef}
-                    className={`hidden lg:flex h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
+                    className={`flex h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
                 >
                     <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all">
                         <img
@@ -493,7 +493,7 @@ export function ProfileDropdown({
             ) : (
                 <button
                     onClick={onLoginClick}
-                    className={`hidden lg:flex w-10 h-10 rounded-full border items-center justify-center transition-all duration-300 group ${triggerClass}`}
+                    className={`flex w-10 h-10 rounded-full border items-center justify-center transition-all duration-300 group ${triggerClass}`}
                     title="Sign In"
                 >
                     <LucideUser size={20} />

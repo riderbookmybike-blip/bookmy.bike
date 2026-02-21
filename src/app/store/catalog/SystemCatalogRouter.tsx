@@ -2,11 +2,13 @@
 
 import React from 'react';
 import { DesktopCatalog } from '@/components/store/DesktopCatalog';
+import { MobileCatalog } from '@/components/store/mobile/MobileCatalog';
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { ProductVariant } from '@/types/productMaster';
 import { useSearchParams } from 'next/navigation';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface SystemCatalogRouterProps {
     initialItems: ProductVariant[];
@@ -21,6 +23,21 @@ function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalog
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
+    const { device } = useBreakpoint();
+    const isPhone = device === 'phone';
+
+    if (isPhone) {
+        return (
+            <MobileCatalog
+                filters={filters}
+                leadId={leadId || undefined}
+                basePath={basePath}
+                items={currentItems}
+                isLoading={loading}
+                mode="smart"
+            />
+        );
+    }
 
     return (
         <DesktopCatalog
@@ -47,6 +64,24 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatal
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
+    const { device } = useBreakpoint();
+    const isPhone = device === 'phone';
+
+    if (isPhone) {
+        return (
+            <MobileCatalog
+                filters={filters}
+                leadId={leadId || undefined}
+                basePath={basePath}
+                items={currentItems}
+                isLoading={loading}
+                mode="default"
+                needsLocation={needsLocation}
+                resolvedStudioId={resolvedStudioId}
+                resolvedDealerName={resolvedDealerName}
+            />
+        );
+    }
 
     return (
         <DesktopCatalog

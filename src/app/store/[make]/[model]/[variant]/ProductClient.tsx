@@ -38,6 +38,11 @@ const DesktopPDP = dynamic(() => import('@/components/store/DesktopPDP').then(mo
     ssr: false,
 });
 
+const MobilePDP = dynamic(() => import('@/components/store/mobile/MobilePDP').then(mod => mod.MobilePDP), {
+    loading: () => <PDPSkeleton />,
+    ssr: false,
+});
+
 interface ProductClientProps {
     product: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     makeParam: string;
@@ -684,7 +689,8 @@ export default function ProductClient({
 
     return (
         <>
-            <DesktopPDP {...commonProps} />
+            {/* Condition on forceMobileLayout to trigger MobilePDP */}
+            {forceMobileLayout ? <MobilePDP {...commonProps} /> : <DesktopPDP {...commonProps} />}
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}

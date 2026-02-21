@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
                 hostname: 'aytdeqjxxjxbgiyslubx.supabase.co',
             },
+            {
+                protocol: 'https',
+                hostname: 'www.heromotocorp.com',
+            },
         ],
     },
 };
