@@ -1,10 +1,14 @@
 import StorePage from './store/page';
-import StoreLayout from './store/layout';
+import StoreLayoutClient from './store/StoreLayoutClient';
+import { isMobileDevice } from '@/lib/utils/device';
 
-export default function RootPage() {
+export default async function RootPage() {
+    const isMobile = await isMobileDevice();
+    const initialDevice = isMobile ? 'phone' : 'desktop';
+
     return (
-        <StoreLayout>
+        <StoreLayoutClient initialDevice={initialDevice}>
             <StorePage />
-        </StoreLayout>
+        </StoreLayoutClient>
     );
 }
