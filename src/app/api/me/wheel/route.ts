@@ -238,4 +238,3 @@ export async function POST() {
         reward: buildReward(updated),
     });
 }
-// @ts-nocheck
