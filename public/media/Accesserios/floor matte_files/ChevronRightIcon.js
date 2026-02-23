@@ -1,2 +1,0 @@
-"use strict";(self.__LOADABLE_LOADED_CHUNKS__=self.__LOADABLE_LOADED_CHUNKS__||[]).push([[55181],{661762:(e,t,r)=>{r.r(t),r.d(t,{default:()=>s});var o=r(296540);const s=function(e){var t;return o.createElement("svg",{width:e.width,height:e.height,viewBox:"0 0 24 24",fill:"none",style:e.style},o.createElement("path",{d:"M10 7L15 12L10 17",stroke:e.strokeColor,strokeWidth:null!==(t=e.strokeWidth)&&void 0!==t?t:1.2,strokeLinecap:"round",strokeLinejoin:"round"}))}}}]);
-//# sourceMappingURL=ChevronRightIcon.js.map

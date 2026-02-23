@@ -1,2 +1,0 @@
-"use strict";(self.__LOADABLE_LOADED_CHUNKS__=self.__LOADABLE_LOADED_CHUNKS__||[]).push([[91764],{859201:(e,t,r)=>{r.r(t),r.d(t,{default:()=>n});var o=r(296540);const n=function(e){return o.createElement("svg",{width:e.width,height:e.height,viewBox:"0 0 18 18",fill:"none"},o.createElement("path",{d:"M14.75 6L9.125 11.5L3.5 6",stroke:e.strokeColor,strokeWidth:"1.6",strokeLinecap:"round",strokeLinejoin:"round"}))}}}]);
-//# sourceMappingURL=StepperChevronIcon.js.map
