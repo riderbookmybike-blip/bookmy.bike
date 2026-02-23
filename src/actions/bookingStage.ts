@@ -83,7 +83,7 @@ export async function advanceBookingStage(
 
     try {
         // DB function enforces transition matrix + proof checks + event logging atomically.
-        const { data, error } = await (supabase as any).rpc('transition_booking_stage', {
+        const { data, error } = await supabase.rpc('transition_booking_stage', {
             p_booking_id: bookingId,
             p_to_stage: newStage,
             p_reason: reason || null,

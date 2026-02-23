@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-            await adminClient.rpc('oclub_credit_signup' as any, { p_member_id: userId } as any);
+            await adminClient.rpc('oclub_credit_signup', { p_member_id: userId });
         } catch (err) {
             console.error('Signup O-Club bonus error:', err);
         }

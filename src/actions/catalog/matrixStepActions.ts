@@ -101,7 +101,7 @@ export async function saveMatrixSkuEditor(input: SaveMatrixSkuInput): Promise<Sa
         }
 
         const { error: deleteCompatibilityError } = await adminClient
-            .from('cat_accessory_suitable_for' as any)
+            .from('cat_accessory_suitable_for')
             .delete()
             .eq('variant_id', skuId);
         if (deleteCompatibilityError) {
@@ -126,7 +126,7 @@ export async function saveMatrixSkuEditor(input: SaveMatrixSkuInput): Promise<Sa
 
         if (compatRows.length > 0) {
             const { error: insertCompatibilityError } = await adminClient
-                .from('cat_accessory_suitable_for' as any)
+                .from('cat_accessory_suitable_for')
                 .insert(compatRows);
             if (insertCompatibilityError) {
                 return { success: false, error: insertCompatibilityError.message };

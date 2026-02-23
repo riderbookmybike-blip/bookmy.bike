@@ -660,7 +660,7 @@ export async function reorderColours(modelId: string, orderedIds: string[]) {
 
 export async function listSuitableFor(variantId: string) {
     const { data, error } = await adminClient
-        .from('cat_accessory_suitable_for' as any)
+        .from('cat_accessory_suitable_for')
         .select('*, target_brand:cat_brands!target_brand_id(name), target_model:cat_models!target_model_id(name)')
         .eq('variant_id', variantId);
 
@@ -674,21 +674,14 @@ export async function addSuitableFor(payload: {
     target_model_id?: string;
     target_variant_id?: string;
 }) {
-    const { data, error } = await adminClient
-        .from('cat_accessory_suitable_for' as any)
-        .insert(payload)
-        .select()
-        .single();
+    const { data, error } = await adminClient.from('cat_accessory_suitable_for').insert(payload).select().single();
 
     if (error) throw new Error(`addSuitableFor failed: ${error.message}`);
     return data;
 }
 
 export async function removeSuitableFor(id: string) {
-    const { error } = await adminClient
-        .from('cat_accessory_suitable_for' as any)
-        .delete()
-        .eq('id', id);
+    const { error } = await adminClient.from('cat_accessory_suitable_for').delete().eq('id', id);
     if (error) throw new Error(`removeSuitableFor failed: ${error.message}`);
     return true;
 }

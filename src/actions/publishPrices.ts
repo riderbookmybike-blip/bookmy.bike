@@ -685,7 +685,7 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
     let notificationsSent = 0;
     for (const tenantId of affectedTenants) {
         try {
-            await (supabase as any).from('notifications').insert({
+            await supabase.from('notifications').insert({
                 tenant_id: tenantId,
                 title: 'AUMS Price Update',
                 message: `On-road prices updated for ${results.length} SKU(s) in ${stateCode}. Your offers have been auto-adjusted to maintain margins. Review in Pricing Dashboard.`,

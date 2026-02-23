@@ -27,7 +27,7 @@ interface AuditLogParams {
 
 export async function logAudit(params: AuditLogParams) {
     try {
-        const { error } = await adminClient.from('audit_logs' as any).insert({
+        const { error } = await adminClient.from('audit_logs').insert({
             tenant_id: params.tenantId,
             actor_id: params.actorId,
             action: params.action,

@@ -44,7 +44,7 @@ export async function syncMemberLocation(input: LocationSyncInput) {
     const resolvedArea = formatLocationName(input.area || pinData?.area || null);
 
     const { data: existingPin } = await adminClient
-        .from('loc_pincodes' as any)
+        .from('loc_pincodes')
         .select('areas, area')
         .eq('pincode', pincode)
         .maybeSingle();
@@ -53,7 +53,7 @@ export async function syncMemberLocation(input: LocationSyncInput) {
     const existingAreas = Array.isArray(existingPinData?.areas) ? (existingPinData?.areas as string[]) : [];
     const mergedAreas = mergeAreas(existingAreas, resolvedArea || existingPinData?.area || undefined);
 
-    await adminClient.from('loc_pincodes' as any).upsert(
+    await adminClient.from('loc_pincodes').upsert(
         {
             pincode,
             state: resolvedState,
@@ -72,11 +72,7 @@ export async function syncMemberLocation(input: LocationSyncInput) {
         { onConflict: 'pincode' }
     );
 
-    const { data: member } = await adminClient
-        .from('id_members' as any)
-        .select('metadata')
-        .eq('id', user.id)
-        .maybeSingle();
+    const { data: member } = await adminClient.from('id_members').select('metadata').eq('id', user.id).maybeSingle();
     const memberData = member as any;
 
     const updatedMetadata = {
@@ -90,7 +86,7 @@ export async function syncMemberLocation(input: LocationSyncInput) {
     };
 
     await adminClient
-        .from('id_members' as any)
+        .from('id_members')
         .update({
             pincode,
             state: resolvedState,

@@ -64,8 +64,8 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
     if (itemIds.size > 0) {
         const idsArr = Array.from(itemIds);
         const [skuRes, modelRes] = await Promise.all([
-            (adminClient as any).from('cat_skus').select('id, name').in('id', idsArr),
-            (adminClient as any).from('cat_models').select('id, name').in('id', idsArr),
+            adminClient.from('cat_skus').select('id, name').in('id', idsArr),
+            adminClient.from('cat_models').select('id, name').in('id', idsArr),
         ]);
         skuRes.data?.forEach((item: any) => nameMap.set(item.id, `${item.name} (SKU)`));
         modelRes.data?.forEach((item: any) => {

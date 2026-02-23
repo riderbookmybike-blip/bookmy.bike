@@ -79,7 +79,7 @@ async function getDealerIdByStudioId(studioId: string) {
 }
 
 async function getTenantName(tenantId: string) {
-    const { data } = await (adminClient as any).from('id_tenants').select('name').eq('id', tenantId).maybeSingle();
+    const { data } = await adminClient.from('id_tenants').select('name').eq('id', tenantId).maybeSingle();
     return data?.name || null;
 }
 

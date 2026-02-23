@@ -415,7 +415,7 @@ async function syncChild(
             const { data, error } =
                 item.type === 'VARIANT'
                     ? await supabase
-                          .from('cat_variants_vehicle' as any)
+                          .from('cat_variants_vehicle')
                           .insert({
                               model_id: parentId,
                               brand_id: plan.brand_id,
@@ -427,7 +427,7 @@ async function syncChild(
                           .select('id')
                           .single()
                     : await supabase
-                          .from('cat_skus' as any)
+                          .from('cat_skus')
                           .insert({
                               vehicle_variant_id: parentId,
                               brand_id: plan.brand_id,

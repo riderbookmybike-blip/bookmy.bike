@@ -82,7 +82,7 @@ export async function calculatePricingBySkuIds(
     // Ensure draft state rows exist + optional ex_showroom preseed.
     for (const item of deduped) {
         if (item.exShowroom && item.exShowroom > 0) {
-            await (adminClient as any).from('cat_price_state_mh').upsert(
+            await adminClient.from('cat_price_state_mh').upsert(
                 {
                     sku_id: item.skuId,
                     state_code: stateCode,

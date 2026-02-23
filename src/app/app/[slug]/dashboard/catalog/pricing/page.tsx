@@ -555,7 +555,7 @@ export default function PricingPage() {
                         data: { user },
                     } = await supabase.auth.getUser();
                     if (user?.id && tenantId) {
-                        await supabase.from('audit_logs' as any).insert({
+                        await supabase.from('audit_logs').insert({
                             tenant_id: tenantId,
                             actor_id: user.id,
                             action: 'PRICING_PUBLISH_STAGE_UPDATED',
@@ -602,7 +602,7 @@ export default function PricingPage() {
                         data: { user },
                     } = await supabase.auth.getUser();
                     if (user?.id && tenantId) {
-                        await supabase.from('audit_logs' as any).insert({
+                        await supabase.from('audit_logs').insert({
                             tenant_id: tenantId,
                             actor_id: user.id,
                             action: 'DEALER_PRICING_UPDATED',
@@ -674,7 +674,7 @@ export default function PricingPage() {
                         data: { user },
                     } = await supabase.auth.getUser();
                     if (user?.id && tenantId) {
-                        await supabase.from('audit_logs' as any).insert({
+                        await supabase.from('audit_logs').insert({
                             tenant_id: tenantId,
                             actor_id: user.id,
                             action: 'PRICING_RECALCULATED',

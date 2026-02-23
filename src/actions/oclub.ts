@@ -4,7 +4,7 @@ import { adminClient } from '@/lib/supabase/admin';
 
 export async function getOClubWallet(memberId: string) {
     const { data, error } = await adminClient
-        .from('oclub_wallets' as any)
+        .from('oclub_wallets')
         .select(
             'available_system, available_referral, available_sponsored, locked_referral, pending_sponsored, lifetime_earned, lifetime_redeemed, updated_at'
         )
@@ -20,7 +20,7 @@ export async function getOClubWallet(memberId: string) {
 
 export async function getOClubLedger(memberId: string, limit = 50) {
     const { data, error } = await adminClient
-        .from('oclub_coin_ledger' as any)
+        .from('oclub_coin_ledger')
         .select('id, coin_type, delta, status, source_type, source_id, sponsor_id, metadata, created_at')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false })
@@ -35,7 +35,7 @@ export async function getOClubLedger(memberId: string, limit = 50) {
 
 export async function getSponsorByTenant(tenantId: string) {
     const { data, error } = await adminClient
-        .from('oclub_sponsors' as any)
+        .from('oclub_sponsors')
         .select('*')
         .eq('tenant_id', tenantId)
         .maybeSingle();
@@ -49,14 +49,14 @@ export async function getSponsorByTenant(tenantId: string) {
 
 export async function getSponsorDashboard(sponsorId: string) {
     const { data: allocations } = await adminClient
-        .from('oclub_sponsor_allocations' as any)
+        .from('oclub_sponsor_allocations')
         .select('coins')
         .eq('sponsor_id', sponsorId);
 
     const totalAssigned = (allocations || []).reduce((sum: number, r: any) => sum + (r.coins || 0), 0);
 
     const { data: redemptions } = await adminClient
-        .from('oclub_redemption_requests' as any)
+        .from('oclub_redemption_requests')
         .select('coin_amount, status, agent_id')
         .eq('sponsor_id', sponsorId);
 
@@ -91,7 +91,7 @@ export async function getSponsorDashboard(sponsorId: string) {
 
 export async function listSponsorRedemptions(sponsorId: string, status?: string) {
     let query = adminClient
-        .from('oclub_redemption_requests' as any)
+        .from('oclub_redemption_requests')
         .select('id, booking_id, agent_id, coin_amount, status, requested_at, approved_at, payment_ref')
         .eq('sponsor_id', sponsorId)
         .order('requested_at', { ascending: false });
@@ -115,7 +115,7 @@ export async function createSponsorAllocation(input: {
     notes?: string | null;
 }) {
     const { data: allocation, error } = await adminClient
-        .from('oclub_sponsor_allocations' as any)
+        .from('oclub_sponsor_allocations')
         .insert({
             sponsor_id: input.sponsorId,
             agent_id: input.agentId,

@@ -72,7 +72,7 @@ export async function validateDealerAuthorization(
 ): Promise<{ success: boolean; message?: string }> {
     // Check if user has an active membership for this tenant
     const { data: membership } = await supabase
-        .from('memberships' as any)
+        .from('memberships')
         .select('id')
         .eq('user_id', userId)
         .eq('tenant_id', requestedTenantId)

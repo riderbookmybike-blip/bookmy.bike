@@ -206,7 +206,7 @@ export default function ProductStep({
                 error = result.error;
             } else {
                 // INSERT new record
-                const result = await (supabase as any).from('cat_models').insert(payload).select().maybeSingle();
+                const result = await supabase.from('cat_models').insert(payload).select().maybeSingle();
                 data = result.data;
                 error = result.error;
             }

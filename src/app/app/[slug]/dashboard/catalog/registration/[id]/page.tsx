@@ -83,7 +83,7 @@ export default function RegistrationDetailPage() {
     const fetchAuditLogs = async (targetId: string) => {
         const supabase = createClient();
         const { data, error } = await supabase
-            .from('audit_logs' as any)
+            .from('audit_logs')
             .select('*')
             .eq('entity_id', targetId)
             .order('created_at', { ascending: false })
@@ -118,7 +118,7 @@ export default function RegistrationDetailPage() {
             if (!user || !tenantId) return;
 
             // Log action with proper tenant_id
-            await supabase.from('audit_logs' as any).insert({
+            await supabase.from('audit_logs').insert({
                 action,
                 entity_type: 'REGISTRATION_RULE',
                 entity_id: ruleId,

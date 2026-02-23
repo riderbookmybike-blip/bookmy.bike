@@ -1587,10 +1587,7 @@ export async function getCustomerHistory(customerId: string) {
 
 export async function getCatalogModels() {
     const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('cat_models' as any)
-        .select('name')
-        .eq('status', 'ACTIVE');
+    const { data, error } = await supabase.from('cat_models').select('name').eq('status', 'ACTIVE');
 
     if (error) {
         console.error('Error fetching catalog models:', error);
@@ -1653,7 +1650,7 @@ export async function createLeadAction(data: {
         let isStrict = true; // Default to strict
 
         const { data: settings } = await (adminClient
-            .from('sys_settings' as any)
+            .from('sys_settings')
             .select('default_owner_tenant_id, unified_context_strict_mode')
             .single() as any);
 
@@ -2931,7 +2928,7 @@ export async function upsertBookingFeedbackAction(input: {
     let stageTransition: { success: boolean; message?: string; warning?: string } | null = null;
     const shouldAdvance = input.autoAdvanceStage !== false;
     if (shouldAdvance && booking.operational_stage === 'DELIVERED') {
-        const { data: stageData, error: stageError } = await (supabase as any).rpc('transition_booking_stage', {
+        const { data: stageData, error: stageError } = await supabase.rpc('transition_booking_stage', {
             p_booking_id: input.bookingId,
             p_to_stage: 'FEEDBACK',
             p_reason: 'feedback_submitted',
@@ -2974,14 +2971,14 @@ export async function createBookingFromQuote(quoteId: string) {
 
     // Fetch strict mode setting
     const { data: settings } = await (adminClient
-        .from('sys_settings' as any)
+        .from('sys_settings')
         .select('unified_context_strict_mode')
         .single() as any);
     const isStrict = settings?.unified_context_strict_mode !== false;
 
     // Fetch authorized tenants for the user
     const { data: userMemberships } = await supabase
-        .from('memberships' as any)
+        .from('memberships')
         .select('tenant_id')
         .eq('user_id', user.id)
         .eq('status', 'ACTIVE');
@@ -2998,7 +2995,7 @@ export async function createBookingFromQuote(quoteId: string) {
     }
 
     try {
-        const { data: bookingId, error: rpcError } = await (adminClient as any).rpc('create_booking_from_quote', {
+        const { data: bookingId, error: rpcError } = await adminClient.rpc('create_booking_from_quote', {
             quote_id: quoteId,
         });
 
@@ -3054,7 +3051,7 @@ export async function confirmSalesOrder(bookingId: string): Promise<{ success: b
 
     // Fetch strict mode setting
     const { data: settings } = await (adminClient
-        .from('sys_settings' as any)
+        .from('sys_settings')
         .select('unified_context_strict_mode')
         .single() as any);
     const isStrict = settings?.unified_context_strict_mode !== false;
@@ -3099,7 +3096,7 @@ export async function updateBookingStage(id: string, stage: string, statusUpdate
 
     // Fetch strict mode setting
     const { data: settings } = await (adminClient
-        .from('sys_settings' as any)
+        .from('sys_settings')
         .select('unified_context_strict_mode')
         .single() as any);
     const isStrict = settings?.unified_context_strict_mode !== false;
@@ -6359,7 +6356,7 @@ export async function logQuoteEvent(
         return parts.join(' | ').slice(0, 500);
     })();
 
-    const { error: quoteEventError } = await (adminClient as any).from('crm_quote_events').insert({
+    const { error: quoteEventError } = await adminClient.from('crm_quote_events').insert({
         quote_id: quoteId,
         event_type: eventType || 'EVENT',
         actor_tenant_id: actorContext.actorTenantId || tenantId || null,
@@ -6406,7 +6403,7 @@ export async function getBookingsForLead(leadId: string) {
 export async function getReceiptsForEntity(leadId?: string | null, memberId?: string | null) {
     const supabase = await createClient();
     let query = supabase
-        .from('crm_payments' as any)
+        .from('crm_payments')
         .select('*')
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
@@ -6435,7 +6432,7 @@ export const getPaymentsForEntity = getReceiptsForEntity;
 export async function getReceiptsForTenant(tenantId?: string) {
     const supabase = await createClient();
     let query = supabase
-        .from('crm_payments' as any)
+        .from('crm_payments')
         .select('*')
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
@@ -6455,7 +6452,7 @@ export async function getReceiptsForTenant(tenantId?: string) {
 export async function getReceiptById(receiptId: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
-        .from('crm_payments' as any)
+        .from('crm_payments')
         .select('*')
         .eq('id', receiptId)
         .eq('is_deleted', false)
@@ -6471,7 +6468,7 @@ export async function getReceiptById(receiptId: string) {
 
 export async function updateReceipt(receiptId: string, updates: Record<string, any>) {
     const { data: existing, error: fetchError } = await adminClient
-        .from('crm_payments' as any)
+        .from('crm_payments')
         .select('is_reconciled')
         .eq('id', receiptId)
         .maybeSingle();
@@ -6485,7 +6482,7 @@ export async function updateReceipt(receiptId: string, updates: Record<string, a
     }
 
     const { error } = await adminClient
-        .from('crm_payments' as any)
+        .from('crm_payments')
         .update({
             ...updates,
             updated_at: new Date().toISOString(),
@@ -6505,7 +6502,7 @@ export async function reconcileReceipt(receiptId: string) {
     const userId = userData?.user?.id || null;
 
     const { error } = await adminClient
-        .from('crm_payments' as any)
+        .from('crm_payments')
         .update({
             is_reconciled: true,
             reconciled_at: new Date().toISOString(),
@@ -6566,7 +6563,7 @@ export async function getAccountingData(tenantId: string) {
 
     // 1. Fetch unified payments ledger
     const { data: receipts, error: receiptsError } = await supabase
-        .from('crm_payments' as any)
+        .from('crm_payments')
         .select('*, member:id_members(full_name)')
         .eq('tenant_id', tenantId)
         .eq('is_deleted', false)
@@ -6743,7 +6740,7 @@ export async function getAlternativeRecommendations(variantId: string) {
         if (ids.length === 0) return [];
 
         const [{ data: variants }, { data: variantSkus }] = await Promise.all([
-            (adminClient as any).from('cat_variants_vehicle').select('id, name').in('id', ids),
+            adminClient.from('cat_variants_vehicle').select('id, name').in('id', ids),
             (adminClient as any)
                 .from('cat_skus')
                 .select('id, vehicle_variant_id, primary_image, price_base, is_primary')

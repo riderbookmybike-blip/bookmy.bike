@@ -274,7 +274,7 @@ export default function UnifiedStudioPage() {
             }
 
             // Fetch variants
-            const { data: allVariants } = await (supabase as any).from('cat_variants_vehicle').select('*');
+            const { data: allVariants } = await supabase.from('cat_variants_vehicle').select('*');
             if (allVariants) {
                 allItems = allItems.concat(
                     allVariants.map((v: any) => ({ ...v, type: 'VARIANT', parent_id: v.model_id }))
@@ -282,7 +282,7 @@ export default function UnifiedStudioPage() {
             }
 
             // Fetch SKUs
-            const { data: allSkus } = await (supabase as any).from('cat_skus').select('*');
+            const { data: allSkus } = await supabase.from('cat_skus').select('*');
             if (allSkus) {
                 allItems = allItems.concat(
                     allSkus.map((s: any) => ({ ...s, type: 'SKU', parent_id: s.vehicle_variant_id }))
@@ -364,7 +364,7 @@ export default function UnifiedStudioPage() {
                     .eq('id', id)
                     .maybeSingle();
                 if (variant) return { ...variant, type: 'VARIANT', parent_id: variant.model_id };
-                const { data: sku } = await (supabase as any).from('cat_skus').select('*').eq('id', id).maybeSingle();
+                const { data: sku } = await supabase.from('cat_skus').select('*').eq('id', id).maybeSingle();
                 if (sku) return { ...sku, type: 'SKU', parent_id: sku.vehicle_variant_id };
                 return null;
             };
@@ -616,7 +616,7 @@ export default function UnifiedStudioPage() {
                                     )
                                 ) {
                                     const supabase = createClient();
-                                    const { error } = await (supabase as any).from('cat_models').delete().eq('id', id);
+                                    const { error } = await supabase.from('cat_models').delete().eq('id', id);
                                     if (!error) {
                                         setCatalogItems(prev => prev.filter(item => item.id !== id));
                                         if (familyData?.id === id) setFamilyData(null);

@@ -259,7 +259,7 @@ export async function createOrLinkMember(input: MemberCreateInput) {
 
     // Always attempt signup bonus — DB function is idempotent (checks for existing SIGNUP entry)
     try {
-        await adminClient.rpc('oclub_credit_signup' as any, { p_member_id: memberId } as any);
+        await adminClient.rpc('oclub_credit_signup', { p_member_id: memberId });
     } catch (err) {
         console.error('[createOrLinkMember] O-Club signup bonus error:', err);
     }
@@ -601,20 +601,20 @@ export async function getMemberFullProfile(memberId: string) {
             .eq('entity_id', memberId)
             .order('created_at', { ascending: false }),
         adminClient
-            .from('crm_payments' as any)
+            .from('crm_payments')
             .select('*')
             .eq('member_id', memberId)
             .order('created_at', { ascending: false }),
         adminClient.from('crm_leads').select('*').eq('customer_id', memberId).order('created_at', { ascending: false }),
         adminClient
-            .from('oclub_wallets' as any)
+            .from('oclub_wallets')
             .select(
                 'available_system, available_referral, available_sponsored, locked_referral, pending_sponsored, lifetime_earned, lifetime_redeemed, updated_at'
             )
             .eq('member_id', memberId)
             .maybeSingle(),
         adminClient
-            .from('oclub_coin_ledger' as any)
+            .from('oclub_coin_ledger')
             .select('id, coin_type, delta, status, source_type, source_id, sponsor_id, metadata, created_at')
             .eq('member_id', memberId)
             .order('created_at', { ascending: false })
@@ -723,7 +723,7 @@ export async function addMemberEvent(
     eventType: string,
     payload?: Record<string, unknown>
 ) {
-    const { error } = await (adminClient as any).from('id_member_events').insert({
+    const { error } = await adminClient.from('id_member_events').insert({
         member_id: memberId,
         tenant_id: tenantId,
         event_type: eventType,

@@ -241,7 +241,7 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
             setIsReorderSaving(true);
             await Promise.all(
                 updatedList.map((item: any) =>
-                    (supabase as any).from('cat_skus').update({ position: item.position }).eq('id', item.id)
+                    supabase.from('cat_skus').update({ position: item.position }).eq('id', item.id)
                 )
             );
             setShowReorderSaved(true);
@@ -398,7 +398,7 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
             if (applyVideosToAll) {
                 // Update cat_skus for all colors (specs)
                 const updatePromises = updatedList.map((item: any) =>
-                    (supabase as any).from('cat_skus').update({ specs: item.specs }).eq('id', item.id)
+                    supabase.from('cat_skus').update({ specs: item.specs }).eq('id', item.id)
                 );
                 await Promise.all(updatePromises);
 
@@ -1070,7 +1070,7 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
                     }}
                     onConfirm={async () => {
                         const supabase = createClient();
-                        const { error } = await (supabase as any).from('cat_skus').delete().eq('id', colorToDelete.id);
+                        const { error } = await supabase.from('cat_skus').delete().eq('id', colorToDelete.id);
                         if (error) {
                             toast.error(`Failed to delete ${l2Label.toLowerCase()}`);
                         } else {

@@ -81,7 +81,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         const supabase = createClient();
         const variantIds = existingVariants.map((v: any) => v.id);
         const { data: allCompat } = await supabase
-            .from('cat_accessory_suitable_for' as any)
+            .from('cat_accessory_suitable_for')
             .select('variant_id, is_universal, target_brand_id, target_model_id, target_variant_id')
             .in('variant_id', variantIds);
         if (!allCompat || allCompat.length === 0) {
@@ -104,10 +104,10 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                 ? supabase.from('cat_brands').select('id, name').in('id', Array.from(brandIds))
                 : { data: [] },
             familyIds.size > 0
-                ? (supabase as any).from('cat_models').select('id, name').in('id', Array.from(familyIds))
+                ? supabase.from('cat_models').select('id, name').in('id', Array.from(familyIds))
                 : { data: [] },
             varIds.size > 0
-                ? (supabase as any).from('cat_variants_vehicle').select('id, name').in('id', Array.from(varIds))
+                ? supabase.from('cat_variants_vehicle').select('id, name').in('id', Array.from(varIds))
                 : { data: [] },
         ]);
         const brandMap = new Map<string, string>(
@@ -182,7 +182,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
     const fetchCompatibility = async (variantId: string) => {
         const supabase = createClient();
         const { data: compat } = await supabase
-            .from('cat_accessory_suitable_for' as any)
+            .from('cat_accessory_suitable_for')
             .select('id, is_universal, target_brand_id, target_model_id, target_variant_id')
             .eq('variant_id', variantId);
         if (compat && compat.length > 0) {
@@ -427,7 +427,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         if (selectedBrandId) {
             const fetchFamilies = async () => {
                 const supabase = createClient();
-                let query = (supabase as any).from('cat_models').select('id, name, brand_id, brands:cat_brands(name)');
+                let query = supabase.from('cat_models').select('id, name, brand_id, brands:cat_brands(name)');
 
                 if (selectedBrandId !== 'ALL') {
                     query = query.eq('brand_id', selectedBrandId);
@@ -567,7 +567,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
             setIsReorderSaving(true);
             await Promise.all(
                 updatedList.map((item: any) =>
-                    (supabase as any).from('cat_variants_vehicle').update({ position: item.position }).eq('id', item.id)
+                    supabase.from('cat_variants_vehicle').update({ position: item.position }).eq('id', item.id)
                 )
             );
             setShowReorderSaved(true);
@@ -590,7 +590,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         if (!confirm(`Are you sure you want to delete this ${l1Label.toLowerCase()}?`)) return;
         try {
             const supabase = createClient();
-            const { error } = await (supabase as any).from('cat_variants_vehicle').delete().eq('id', id);
+            const { error } = await supabase.from('cat_variants_vehicle').delete().eq('id', id);
             if (error) throw error;
             onUpdate(existingVariants.filter((v: any) => v.id !== id));
             toast.success('Variant deleted');
@@ -1294,7 +1294,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                         // 3. Sync compatibility entries (ACCESSORY only)
                                         if (family?.category === 'ACCESSORY') {
                                             await supabase
-                                                .from('cat_accessory_suitable_for' as any)
+                                                .from('cat_accessory_suitable_for')
                                                 .delete()
                                                 .eq('variant_id', editingVariant.id);
                                             if (compatEntries.length > 0) {
@@ -1306,7 +1306,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                                     target_variant_id: c.target_variant_id || null,
                                                 }));
                                                 const { error: compatErr } = await supabase
-                                                    .from('cat_accessory_suitable_for' as any)
+                                                    .from('cat_accessory_suitable_for')
                                                     .insert(compatRows);
                                                 if (compatErr)
                                                     console.error('Compatibility insert warning:', compatErr);

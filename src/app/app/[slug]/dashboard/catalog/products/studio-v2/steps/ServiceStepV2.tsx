@@ -89,10 +89,7 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
     // ── Fetch all services ──
     const fetchServices = useCallback(async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('cat_services' as any)
-            .select('*')
-            .order('position', { ascending: true });
+        const { data, error } = await supabase.from('cat_services').select('*').order('position', { ascending: true });
         if (error) {
             toast.error('Failed to load services');
             console.error(error);
@@ -139,17 +136,14 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
         };
 
         if (service.isNew) {
-            const { error } = await supabase.from('cat_services' as any).insert({ id: service.id, ...payload });
+            const { error } = await supabase.from('cat_services').insert({ id: service.id, ...payload });
             if (error) {
                 toast.error(`Failed to create: ${error.message}`);
             } else {
                 toast.success(`Created "${service.name}"`);
             }
         } else {
-            const { error } = await supabase
-                .from('cat_services' as any)
-                .update(payload)
-                .eq('id', service.id);
+            const { error } = await supabase.from('cat_services').update(payload).eq('id', service.id);
             if (error) {
                 toast.error(`Failed to save: ${error.message}`);
             } else {
@@ -166,15 +160,9 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
         // Delete children first
         const children = services.filter(s => s.parent_id === id);
         for (const child of children) {
-            await supabase
-                .from('cat_services' as any)
-                .delete()
-                .eq('id', child.id);
+            await supabase.from('cat_services').delete().eq('id', child.id);
         }
-        const { error } = await supabase
-            .from('cat_services' as any)
-            .delete()
-            .eq('id', id);
+        const { error } = await supabase.from('cat_services').delete().eq('id', id);
         if (error) {
             toast.error(`Failed to delete: ${error.message}`);
         } else {

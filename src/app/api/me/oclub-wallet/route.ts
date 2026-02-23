@@ -11,7 +11,7 @@ export async function GET() {
 
     const memberId = userData.user.id;
     const { data: wallet, error } = await supabase
-        .from('oclub_wallets' as any)
+        .from('oclub_wallets')
         .select('available_system, available_referral, available_sponsored, locked_referral, pending_sponsored')
         .eq('member_id', memberId)
         .maybeSingle();
