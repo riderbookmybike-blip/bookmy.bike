@@ -118,6 +118,44 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            cat_accessory_suitable_for: {
+                Row: {
+                    created_at: string;
+                    id: string;
+                    is_universal: boolean;
+                    target_brand_id: string | null;
+                    target_model_id: string | null;
+                    target_variant_id: string | null;
+                    variant_id: string;
+                };
+                Insert: {
+                    created_at?: string;
+                    id?: string;
+                    is_universal?: boolean;
+                    target_brand_id?: string | null;
+                    target_model_id?: string | null;
+                    target_variant_id?: string | null;
+                    variant_id: string;
+                };
+                Update: {
+                    created_at?: string;
+                    id?: string;
+                    is_universal?: boolean;
+                    target_brand_id?: string | null;
+                    target_model_id?: string | null;
+                    target_variant_id?: string | null;
+                    variant_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_item_compatibility_target_brand_id_fkey';
+                        columns: ['target_brand_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_brands';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             cat_assets: {
                 Row: {
                     created_at: string | null;
@@ -356,44 +394,6 @@ export type Database = {
                     version?: number | null;
                 };
                 Relationships: [];
-            };
-            cat_item_compatibility: {
-                Row: {
-                    created_at: string;
-                    id: string;
-                    is_universal: boolean;
-                    item_id: string;
-                    target_brand_id: string | null;
-                    target_family_id: string | null;
-                    target_variant_id: string | null;
-                };
-                Insert: {
-                    created_at?: string;
-                    id?: string;
-                    is_universal?: boolean;
-                    item_id: string;
-                    target_brand_id?: string | null;
-                    target_family_id?: string | null;
-                    target_variant_id?: string | null;
-                };
-                Update: {
-                    created_at?: string;
-                    id?: string;
-                    is_universal?: boolean;
-                    item_id?: string;
-                    target_brand_id?: string | null;
-                    target_family_id?: string | null;
-                    target_variant_id?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'cat_item_compatibility_target_brand_id_fkey';
-                        columns: ['target_brand_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_brands';
-                        referencedColumns: ['id'];
-                    },
-                ];
             };
             cat_item_hierarchy_archive: {
                 Row: {
@@ -1077,45 +1077,68 @@ export type Database = {
             };
             cat_services: {
                 Row: {
+                    config: Json | null;
                     created_at: string | null;
                     description: string | null;
                     discount_price: number | null;
+                    display_tab: string | null;
                     duration_months: number | null;
                     id: string;
                     is_mandatory: boolean | null;
                     max_qty: number | null;
                     name: string;
+                    parent_id: string | null;
+                    position: number | null;
                     price: number;
+                    service_category: string | null;
                     status: string | null;
                     updated_at: string | null;
                 };
                 Insert: {
+                    config?: Json | null;
                     created_at?: string | null;
                     description?: string | null;
                     discount_price?: number | null;
+                    display_tab?: string | null;
                     duration_months?: number | null;
                     id: string;
                     is_mandatory?: boolean | null;
                     max_qty?: number | null;
                     name: string;
+                    parent_id?: string | null;
+                    position?: number | null;
                     price?: number;
+                    service_category?: string | null;
                     status?: string | null;
                     updated_at?: string | null;
                 };
                 Update: {
+                    config?: Json | null;
                     created_at?: string | null;
                     description?: string | null;
                     discount_price?: number | null;
+                    display_tab?: string | null;
                     duration_months?: number | null;
                     id?: string;
                     is_mandatory?: boolean | null;
                     max_qty?: number | null;
                     name?: string;
+                    parent_id?: string | null;
+                    position?: number | null;
                     price?: number;
+                    service_category?: string | null;
                     status?: string | null;
                     updated_at?: string | null;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: 'cat_services_parent_id_fkey';
+                        columns: ['parent_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_services';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             cat_skus: {
                 Row: {
@@ -1137,7 +1160,9 @@ export type Database = {
                     id: string;
                     is_flipped: boolean | null;
                     is_primary: boolean | null;
+                    max_qty: number;
                     media_shared: boolean | null;
+                    min_qty: number;
                     model_id: string;
                     name: string;
                     offset_x: number | null;
@@ -1176,7 +1201,9 @@ export type Database = {
                     id?: string;
                     is_flipped?: boolean | null;
                     is_primary?: boolean | null;
+                    max_qty?: number;
                     media_shared?: boolean | null;
+                    min_qty?: number;
                     model_id: string;
                     name: string;
                     offset_x?: number | null;
@@ -1215,7 +1242,9 @@ export type Database = {
                     id?: string;
                     is_flipped?: boolean | null;
                     is_primary?: boolean | null;
+                    max_qty?: number;
                     media_shared?: boolean | null;
+                    min_qty?: number;
                     model_id?: string;
                     name?: string;
                     offset_x?: number | null;
@@ -1354,55 +1383,6 @@ export type Database = {
                     updated_at?: string | null;
                 };
                 Relationships: [];
-            };
-            cat_suitable_for: {
-                Row: {
-                    created_at: string | null;
-                    id: string;
-                    sku_id: string;
-                    target_brand_id: string | null;
-                    target_model_id: string | null;
-                    target_variant_id: string | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    id?: string;
-                    sku_id: string;
-                    target_brand_id?: string | null;
-                    target_model_id?: string | null;
-                    target_variant_id?: string | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    id?: string;
-                    sku_id?: string;
-                    target_brand_id?: string | null;
-                    target_model_id?: string | null;
-                    target_variant_id?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'cat_suitable_for_sku_id_fkey';
-                        columns: ['sku_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_skus';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'cat_suitable_for_target_brand_id_fkey';
-                        columns: ['target_brand_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_brands';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'cat_suitable_for_target_model_id_fkey';
-                        columns: ['target_model_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_models';
-                        referencedColumns: ['id'];
-                    },
-                ];
             };
             cat_variants_accessory: {
                 Row: {
@@ -3378,6 +3358,52 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            dealer_brands: {
+                Row: {
+                    brand_id: string;
+                    created_at: string | null;
+                    id: string;
+                    is_primary: boolean | null;
+                    tenant_id: string;
+                };
+                Insert: {
+                    brand_id: string;
+                    created_at?: string | null;
+                    id?: string;
+                    is_primary?: boolean | null;
+                    tenant_id: string;
+                };
+                Update: {
+                    brand_id?: string;
+                    created_at?: string | null;
+                    id?: string;
+                    is_primary?: boolean | null;
+                    tenant_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'dealer_brands_brand_id_fkey';
+                        columns: ['brand_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_brands';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_brands_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'dealer_brands_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             dealer_finance_access: {
                 Row: {
                     created_at: string | null;
@@ -4696,45 +4722,6 @@ export type Database = {
                         columns: ['tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            dealer_brands: {
-                Row: {
-                    id: string;
-                    tenant_id: string;
-                    brand_id: string;
-                    is_primary: boolean | null;
-                    created_at: string | null;
-                };
-                Insert: {
-                    id?: string;
-                    tenant_id: string;
-                    brand_id: string;
-                    is_primary?: boolean | null;
-                    created_at?: string | null;
-                };
-                Update: {
-                    id?: string;
-                    tenant_id?: string;
-                    brand_id?: string;
-                    is_primary?: boolean | null;
-                    created_at?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'dealer_brands_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'dealer_brands_brand_id_fkey';
-                        columns: ['brand_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_brands';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -6355,46 +6342,46 @@ export type Database = {
             allotment_status: 'NONE' | 'SOFT_LOCK' | 'HARD_LOCK';
             app_role: 'SUPER_ADMIN' | 'MARKETPLACE_ADMIN' | 'DEALER_ADMIN' | 'BANK_ADMIN' | 'STAFF';
             bank_app_status:
-            | 'REQUESTED'
-            | 'DOCS_PENDING'
-            | 'SUBMITTED'
-            | 'APPROVED'
-            | 'REJECTED'
-            | 'DISBURSED'
-            | 'CLOSED';
+                | 'REQUESTED'
+                | 'DOCS_PENDING'
+                | 'SUBMITTED'
+                | 'APPROVED'
+                | 'REJECTED'
+                | 'DISBURSED'
+                | 'CLOSED';
             crm_operational_stage:
-            | 'QUOTE'
-            | 'BOOKING'
-            | 'PAYMENT'
-            | 'FINANCE'
-            | 'ALLOTMENT'
-            | 'PDI'
-            | 'INSURANCE'
-            | 'REGISTRATION'
-            | 'COMPLIANCE'
-            | 'DELIVERY'
-            | 'DELIVERED'
-            | 'FEEDBACK';
+                | 'QUOTE'
+                | 'BOOKING'
+                | 'PAYMENT'
+                | 'FINANCE'
+                | 'ALLOTMENT'
+                | 'PDI'
+                | 'INSURANCE'
+                | 'REGISTRATION'
+                | 'COMPLIANCE'
+                | 'DELIVERY'
+                | 'DELIVERED'
+                | 'FEEDBACK';
             fuel_type: 'PETROL' | 'ELECTRIC' | 'CNG' | 'HYBRID';
             inv_cost_type:
-            | 'EX_SHOWROOM'
-            | 'INSURANCE_TP'
-            | 'INSURANCE_ZD'
-            | 'RTO_REGISTRATION'
-            | 'HYPOTHECATION'
-            | 'TRANSPORT'
-            | 'ACCESSORY'
-            | 'OTHER';
+                | 'EX_SHOWROOM'
+                | 'INSURANCE_TP'
+                | 'INSURANCE_ZD'
+                | 'RTO_REGISTRATION'
+                | 'HYPOTHECATION'
+                | 'TRANSPORT'
+                | 'ACCESSORY'
+                | 'OTHER';
             inv_ledger_action:
-            | 'RECEIVED'
-            | 'QC_PASSED'
-            | 'QC_FAILED'
-            | 'SOFT_LOCKED'
-            | 'HARD_LOCKED'
-            | 'UNLOCKED'
-            | 'SOLD'
-            | 'TRANSFERRED'
-            | 'DAMAGED';
+                | 'RECEIVED'
+                | 'QC_PASSED'
+                | 'QC_FAILED'
+                | 'SOFT_LOCKED'
+                | 'HARD_LOCKED'
+                | 'UNLOCKED'
+                | 'SOLD'
+                | 'TRANSFERRED'
+                | 'DAMAGED';
             inv_payment_status: 'UNPAID' | 'PARTIAL_PAID' | 'FULLY_PAID';
             inv_po_status: 'DRAFT' | 'SENT' | 'SHIPPED' | 'RECEIVED';
             inv_qc_status: 'PENDING' | 'PASSED' | 'FAILED_DAMAGE' | 'FAILED_MISSING';
@@ -6420,108 +6407,108 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
 
 export type Tables<
     DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    | { schema: keyof DatabaseWithoutInternals },
+        | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+        | { schema: keyof DatabaseWithoutInternals },
     TableName extends DefaultSchemaTableNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
-    : never = never,
+        ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+              DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+        : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+          DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+          Row: infer R;
+      }
+        ? R
+        : never
+    : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+      ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
             Row: infer R;
         }
-    ? R
-    : never
-    : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R;
-    }
-    ? R
-    : never
-    : never;
+          ? R
+          : never
+      : never;
 
 export type TablesInsert<
     DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
     TableName extends DefaultSchemaTableNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never,
+        ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+        : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-        Insert: infer I;
-    }
-    ? I
-    : never
+          Insert: infer I;
+      }
+        ? I
+        : never
     : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I;
-    }
-    ? I
-    : never
-    : never;
+      ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+            Insert: infer I;
+        }
+          ? I
+          : never
+      : never;
 
 export type TablesUpdate<
     DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
     TableName extends DefaultSchemaTableNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never,
+        ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+        : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-        Update: infer U;
-    }
-    ? U
-    : never
+          Update: infer U;
+      }
+        ? U
+        : never
     : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U;
-    }
-    ? U
-    : never
-    : never;
+      ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+            Update: infer U;
+        }
+          ? U
+          : never
+      : never;
 
 export type Enums<
     DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums'] | { schema: keyof DatabaseWithoutInternals },
     EnumName extends DefaultSchemaEnumNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
-    : never = never,
+        ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+        : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
     : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
-    : never;
+      ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+      : never;
 
 export type CompositeTypes<
     PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
-    | { schema: keyof DatabaseWithoutInternals },
+        | keyof DefaultSchema['CompositeTypes']
+        | { schema: keyof DatabaseWithoutInternals },
     CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
-    : never = never,
+        ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+        : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
     : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
-    : never;
+      ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+      : never;
 
 export const Constants = {
     public: {
