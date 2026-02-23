@@ -2,6 +2,7 @@
 
 import { adminClient } from '@/lib/supabase/admin';
 import { getAuthUser } from '@/lib/auth/resolver';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 type MatrixStatePriceInput = {
     state_code: string;
@@ -135,6 +136,6 @@ export async function saveMatrixSkuEditor(input: SaveMatrixSkuInput): Promise<Sa
 
         return { success: true, sku: updatedSku as Record<string, any> };
     } catch (err: unknown) {
-        return { success: false, error: err?.message || 'Failed to save SKU editor state' };
+        return { success: false, error: getErrorMessage(err) || 'Failed to save SKU editor state' };
     }
 }

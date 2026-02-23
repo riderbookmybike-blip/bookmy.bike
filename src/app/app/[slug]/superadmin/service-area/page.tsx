@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 // Haversine Distance Helper
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -495,7 +496,7 @@ export default function ServiceAreaPage() {
             }
             setPincodes(allPincodes);
         } catch (err: unknown) {
-            toast.error('Failed to load pincodes: ' + err.message);
+            toast.error('Failed to load pincodes: ' + getErrorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -513,7 +514,7 @@ export default function ServiceAreaPage() {
 
             toast.success(`${pincode} marked as ${newStatus}`);
         } catch (err: unknown) {
-            toast.error('Update failed: ' + err.message);
+            toast.error('Update failed: ' + getErrorMessage(err));
         } finally {
             setUpdating(null);
         }
@@ -563,7 +564,7 @@ export default function ServiceAreaPage() {
 
             toast.success(`District ${district} is now ${statusValue}`);
         } catch (err: unknown) {
-            toast.error('Failed to update district: ' + err.message);
+            toast.error('Failed to update district: ' + getErrorMessage(err));
         } finally {
             setUpdating(null);
         }
@@ -636,7 +637,7 @@ export default function ServiceAreaPage() {
             toast.success(`Pincode ${editingPincode.pincode} updated successfully`);
             setEditingPincode(null);
         } catch (err: unknown) {
-            toast.error('Failed to update: ' + err.message);
+            toast.error('Failed to update: ' + getErrorMessage(err));
         } finally {
             setUpdating(null);
         }
@@ -737,7 +738,7 @@ export default function ServiceAreaPage() {
             setUpdating(null);
         } catch (err: unknown) {
             console.error('Error saving district:', err);
-            toast.error('Failed to update district: ' + err.message);
+            toast.error('Failed to update district: ' + getErrorMessage(err));
             setUpdating(null);
         }
     };

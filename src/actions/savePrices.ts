@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidateTag } from 'next/cache';
 import { CACHE_TAGS, districtTag } from '@/lib/cache/tags';
 import { getAuthUser } from '@/lib/auth/resolver';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface PricePayload {
     vehicle_color_id: string; // SKU id (cat_skus.id). Legacy column name.
@@ -115,7 +116,7 @@ export async function savePrices(
 
         return { success: true };
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = err instanceof Error ? getErrorMessage(err) : String(err);
         console.error('[savePrices] Exception:', err);
         return { success: false, error: message };
     }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { MapPin, Plus, Store, Warehouse, Wrench, Building, Trash2, Edit2, X, Save, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { ServiceAreaManager } from '@/components/dashboard/dealers/ServiceAreaManager';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface LocationSettingsProps {
     dealerId: string;
@@ -300,13 +301,13 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
 
             if (error) {
                 console.error('[LOCATION_DEBUG] Save error:', error);
-                alert(`Failed to save location: ${error.message}`);
+                alert(`Failed to save location: ${getErrorMessage(error)}`);
             } else {
                 onSuccess();
             }
         } catch (error: unknown) {
             console.error('[LOCATION_DEBUG] Exception:', error);
-            alert(`Failed to save location: ${error?.message || 'Unknown error'}`);
+            alert(`Failed to save location: ${getErrorMessage(error) || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }

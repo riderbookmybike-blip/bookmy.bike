@@ -5,6 +5,7 @@ import { Booking } from '@/types/booking';
 import { getVins, assignVinToBooking } from '@/lib/dataStore';
 import { VehicleUnit } from '@/types/vehicleUnit';
 import { Fingerprint, Check } from 'lucide-react';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export function VinAssignmentSection({ booking, onAssign }: { booking: Booking; onAssign: () => void }) {
     const [availableVins, setAvailableVins] = useState<VehicleUnit[]>([]);
@@ -30,7 +31,7 @@ export function VinAssignmentSection({ booking, onAssign }: { booking: Booking; 
             assignVinToBooking(booking.id, selectedVin);
             onAssign();
         } catch (e: unknown) {
-            setError(e.message);
+            setError(getErrorMessage(e));
         }
     };
 

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 import { checkServiceability } from '@/actions/serviceArea';
 import LogoCropper from '@/components/ui/LogoCropper';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 const formatStudioId = (value: string) => {
     const upper = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -189,7 +190,7 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
             alert('Details updated successfully');
         } catch (error: unknown) {
             console.error('Error updating details:', error);
-            const message = error instanceof Error ? error.message : 'Failed to update details';
+            const message = error instanceof Error ? getErrorMessage(error) : 'Failed to update details';
             alert(message);
         } finally {
             setLoading(false);

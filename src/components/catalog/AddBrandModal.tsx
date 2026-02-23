@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Loader2, ShoppingBag, Globe, ChevronRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface AddBrandModalProps {
     isOpen: boolean;
@@ -147,7 +148,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
             });
         } catch (error: unknown) {
             console.error('Error adding brand:', error);
-            alert('Failed to add brand: ' + error.message);
+            alert('Failed to add brand: ' + getErrorMessage(error));
         } finally {
             setLoading(false);
         }

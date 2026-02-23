@@ -23,6 +23,7 @@ import {
 import { BankPartner } from '@/types/bankPartner';
 import { createClient } from '@/lib/supabase/client';
 import { updateBankIdentity, getBankActivityLog } from '../actions';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 type ActivityItem = {
     id: string;
@@ -92,7 +93,7 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
             }
         } catch (error: unknown) {
             console.error('Logo upload error:', error);
-            alert('Failed to upload logo: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            alert('Failed to upload logo: ' + (error instanceof Error ? getErrorMessage(error) : 'Unknown error'));
         } finally {
             setUploading(null);
         }

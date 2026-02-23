@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { formatLocationName, mergeAreas, normalizeLocationKey } from '@/lib/location/locationNormalizer';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 // Initialize Admin Client for Writes
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -110,7 +111,7 @@ export async function getPincodeDetails(pincode: string) {
             return { success: false, error: 'Pincode not found.' };
         }
     } catch (error: unknown) {
-        console.error('Pincode Lookup Error:', error.message);
+        console.error('Pincode Lookup Error:', getErrorMessage(error));
         return { success: false, error: 'Service Unavailable' };
     }
 }
@@ -135,7 +136,7 @@ export async function getDistrictDetails(districtName: string, stateCode?: strin
 
         return { success: false, error: 'District not found in database' };
     } catch (error: unknown) {
-        console.error('District Lookup Error:', error.message);
+        console.error('District Lookup Error:', getErrorMessage(error));
         return { success: false, error: 'Service Unavailable' };
     }
 }

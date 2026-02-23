@@ -86,6 +86,7 @@ import { createClient } from '@/lib/supabase/client';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import { formatDisplayId } from '@/utils/displayId';
 import jsPDF from 'jspdf';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 /**
  * Utility for conditional class names
@@ -979,7 +980,7 @@ export default function QuoteEditorTable({
             }));
             toast.success('Finance milestone updated');
         } catch (err: unknown) {
-            toast.error(err?.message || 'Failed to update');
+            toast.error(getErrorMessage(err) || 'Failed to update');
         }
     };
 
@@ -1921,7 +1922,7 @@ export default function QuoteEditorTable({
                 toast.error(result.error || 'Failed to save');
             }
         } catch (err: unknown) {
-            toast.error(err.message || 'Save failed');
+            toast.error(getErrorMessage(err) || 'Save failed');
         } finally {
             setIsSaving(false);
         }

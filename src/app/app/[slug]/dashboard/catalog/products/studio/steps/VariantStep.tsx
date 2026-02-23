@@ -21,6 +21,7 @@ import Modal from '@/components/ui/Modal';
 import AttributeInput from '@/components/catalog/AttributeInput';
 import { toast } from 'sonner';
 import CopyableId from '@/components/ui/CopyableId';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 // Helper to format text as Title Case
 function toTitleCase(str: string): string {
@@ -536,7 +537,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
             toast.success(`${l1Label} added successfully`);
         } catch (err: unknown) {
             console.error(err);
-            setError(err.message);
+            setError(getErrorMessage(err));
             toast.error(`Failed to add ${l1Label}`);
         }
     };
@@ -595,7 +596,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
             onUpdate(existingVariants.filter((v: any) => v.id !== id));
             toast.success('Variant deleted');
         } catch (err: unknown) {
-            toast.error('Failed to delete: ' + err.message);
+            toast.error('Failed to delete: ' + getErrorMessage(err));
         }
     };
 
@@ -1333,7 +1334,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                                 (family?.category === 'ACCESSORY' ? ' with compatibility' : '')
                                         );
                                     } catch (err: unknown) {
-                                        toast.error('Failed to update variant: ' + err.message);
+                                        toast.error('Failed to update variant: ' + getErrorMessage(err));
                                     } finally {
                                         setIsSavingVariant(false);
                                     }

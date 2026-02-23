@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { assignTemplateToRole } from '@/modules/templates/templateService';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export async function POST(request: Request) {
     try {
@@ -14,6 +15,6 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true });
     } catch (error: unknown) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
     }
 }

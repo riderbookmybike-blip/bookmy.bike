@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { WHEEL_REWARDS, type WheelReward } from '@/lib/rewards/wheel';
 import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 const formatRewards = (rewards: WheelReward[]) => JSON.stringify(rewards, null, 2);
 
@@ -105,7 +106,7 @@ export default function RewardWheelSettingsPage() {
             if (saveError) throw saveError;
             setSuccess('Reward wheel configuration saved.');
         } catch (err: unknown) {
-            setError(err?.message || 'Failed to save rewards.');
+            setError(getErrorMessage(err) || 'Failed to save rewards.');
         } finally {
             setSaving(false);
         }
@@ -137,7 +138,7 @@ export default function RewardWheelSettingsPage() {
             }
             setGrantMessage('Spin granted successfully.');
         } catch (err: unknown) {
-            setGrantMessage(err?.message || 'Failed to grant spin.');
+            setGrantMessage(getErrorMessage(err) || 'Failed to grant spin.');
         } finally {
             setGranting(false);
         }

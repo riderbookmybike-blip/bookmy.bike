@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Link as LinkIcon, Loader2, Image as ImageIcon, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface MediaUploadModalProps {
     isOpen: boolean;
@@ -60,7 +61,7 @@ export default function MediaUploadModal({
             onClose();
         } catch (err: unknown) {
             console.error('Upload error:', err);
-            setError(err.message || 'Failed to upload image. Please ensure "vehicles" storage bucket exists.');
+            setError(getErrorMessage(err) || 'Failed to upload image. Please ensure "vehicles" storage bucket exists.');
         } finally {
             setIsUploading(false);
         }

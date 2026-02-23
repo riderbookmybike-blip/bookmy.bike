@@ -28,6 +28,7 @@ function cn(...inputs: any[]) {
 }
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 import {
     getCrmMemberDocuments,
     uploadMemberDocument,
@@ -178,7 +179,7 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate, onDocC
             if (onUpdate) onUpdate();
         } catch (error: unknown) {
             console.error('Upload error:', error);
-            toast.error(error.message || 'Upload failed');
+            toast.error(getErrorMessage(error) || 'Upload failed');
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';

@@ -32,6 +32,7 @@ import { KPIItem } from '@/components/layout/KPIBar';
 import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
 import { savePrices } from '@/actions/savePrices';
 import { formatCurrencyCompact } from '@/utils/formatVehicleSpec';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface SKUPriceRow {
     id: string; // vehicle_color_id
@@ -165,7 +166,7 @@ export default function PricingPage() {
 
         if (error) {
             console.error('Fetch Rules Error:', error);
-            if (error.message) console.error('Fetch Rules Message:', error.message);
+            if (getErrorMessage(error)) console.error('Fetch Rules Message:', getErrorMessage(error));
             return;
         }
 
@@ -585,7 +586,7 @@ export default function PricingPage() {
             const { error } = await supabase.rpc('upsert_dealer_offers', { offers: offerPayload });
 
             if (error) {
-                alert(`Failed to save changes: ${error.message}`);
+                alert(`Failed to save changes: ${getErrorMessage(error)}`);
             } else {
                 setHasUnsavedChanges(false);
                 setSkus(prev =>

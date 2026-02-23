@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 const adminClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -56,6 +57,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ member: contactMember });
     } catch (error: unknown) {
         console.error('[FinancePartnerLookup] Error:', error);
-        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) || 'Internal server error' }, { status: 500 });
     }
 }

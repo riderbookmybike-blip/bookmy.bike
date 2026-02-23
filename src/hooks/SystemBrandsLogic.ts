@@ -13,6 +13,7 @@ export interface Brand {
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export function useSystemBrandsLogic() {
     const [brands, setBrands] = useState<Brand[]>([]);
@@ -49,7 +50,7 @@ export function useSystemBrandsLogic() {
                 }
                 const errorMessage =
                     err instanceof Error
-                        ? err.message
+                        ? getErrorMessage(err)
                         : ((err as { message?: string })?.message ?? JSON.stringify(err));
                 console.error('Error fetching brands:', errorMessage);
                 setError(errorMessage);

@@ -20,6 +20,7 @@ import { createVariant, updateVariant, deleteVariant, reorderVariants } from '@/
 import type { CatalogModel, ProductType } from '@/actions/catalog/catalogV2Actions';
 import CopyableId from '@/components/ui/CopyableId';
 import { createClient } from '@/lib/supabase/client';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 function slugify(name: string): string {
     return name
@@ -346,7 +347,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
             }
             toast.success('Compatibility saved');
         } catch (err: unknown) {
-            toast.error('Failed to save compatibility: ' + (err?.message || 'Unknown'));
+            toast.error('Failed to save compatibility: ' + (getErrorMessage(err) || 'Unknown'));
         } finally {
             setIsSavingCompat(null);
         }
@@ -518,7 +519,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
             toast.success(`${labels.variant} deleted`);
         } catch (err: unknown) {
             console.error('Variant delete failed:', err);
-            const msg = err?.message || 'Unknown error';
+            const msg = getErrorMessage(err) || 'Unknown error';
             toast.error(`Failed to delete: ${msg}`);
         }
     };

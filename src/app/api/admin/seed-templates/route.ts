@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { TEMPLATES } from '@/modules/templates/seedData';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export async function POST(request: Request) {
     const adminSecret = process.env.ADMIN_API_SECRET;
@@ -82,6 +83,6 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, results });
     } catch (error: unknown) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
     }
 }

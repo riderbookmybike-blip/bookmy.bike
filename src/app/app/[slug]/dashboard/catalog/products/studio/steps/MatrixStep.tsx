@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { INDIAN_STATES, DEFAULT_STATE_CODE, getStateName } from '@/constants/indianStates';
 import CopyableId from '@/components/ui/CopyableId';
 import { saveMatrixSkuEditor } from '@/actions/catalog/matrixStepActions';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 const getYoutubeThumbnail = (url: string) => {
     if (!url) return null;
@@ -436,7 +437,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                 }
             }
         } catch (error: unknown) {
-            toast.error('Failed to toggle SKU: ' + error.message);
+            toast.error('Failed to toggle SKU: ' + getErrorMessage(error));
         }
     };
 
@@ -472,7 +473,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                 toast.success(`${sku.name} is now primary`);
             }
         } catch (err: unknown) {
-            toast.error('Failed to set primary: ' + err.message);
+            toast.error('Failed to set primary: ' + getErrorMessage(err));
         }
     };
 
@@ -598,7 +599,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
             toast.success('Media saved successfully');
         } catch (error: unknown) {
             console.error('MatrixStep save failed:', error);
-            toast.error('Failed to save media: ' + error.message);
+            toast.error('Failed to save media: ' + getErrorMessage(error));
         }
     };
 
@@ -1285,7 +1286,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                         setIsEditModalOpen(false);
                                         toast.success('SKU updated with pricing, compatibility & inclusion type');
                                     } catch (err: unknown) {
-                                        toast.error('Failed to update SKU: ' + err.message);
+                                        toast.error('Failed to update SKU: ' + getErrorMessage(err));
                                     } finally {
                                         setIsSavingSku(false);
                                     }

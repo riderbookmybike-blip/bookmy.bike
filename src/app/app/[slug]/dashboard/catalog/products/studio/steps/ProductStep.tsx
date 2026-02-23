@@ -28,6 +28,7 @@ import AttributeInput from '@/components/catalog/AttributeInput';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import { toast } from 'sonner';
 import CopyableId from '@/components/ui/CopyableId';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 const getYoutubeThumbnail = (url: string) => {
     if (!url) return null;
@@ -286,7 +287,7 @@ export default function ProductStep({
             return true;
         } catch (error: unknown) {
             console.error('Save failed details:', JSON.stringify(error, null, 2));
-            toast.error('Failed to save product: ' + (error.message || 'Unknown error'));
+            toast.error('Failed to save product: ' + (getErrorMessage(error) || 'Unknown error'));
             return false;
         } finally {
             setIsSaving(false);

@@ -26,6 +26,7 @@ import { createClient } from '@/lib/supabase/client';
 import { getSmartPincode } from '@/lib/location/geocode';
 import { syncMemberLocation } from '@/actions/locationSync';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface LoginSidebarProps {
     isOpen: boolean;
@@ -417,7 +418,7 @@ export default function LoginSidebar({
 
                 await completeLogin(user, null);
             } catch (err) {
-                const message = err instanceof Error ? err.message : 'Failed to update location';
+                const message = err instanceof Error ? getErrorMessage(err) : 'Failed to update location';
                 setLoginError(message);
             } finally {
                 setLoading(false);
@@ -471,7 +472,7 @@ export default function LoginSidebar({
             // Sync & Complete
             await completeLogin(userData, sessionData);
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Verification failed.';
+            const message = err instanceof Error ? getErrorMessage(err) : 'Verification failed.';
             setLoginError(message);
             if (securityTimer > 15) setShowEmailFallback(true);
         } finally {

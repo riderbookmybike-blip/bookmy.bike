@@ -2,6 +2,7 @@
 
 import { adminClient } from '@/lib/supabase/admin';
 import { RoutingStrategy, BankScheme } from '@/types/bankPartner';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -168,14 +169,14 @@ export async function resolveFinanceRoute(dealerTenantId: string): Promise<Resol
             reason: 'Unknown strategy',
         };
     } catch (error: unknown) {
-        console.error('[resolveFinanceRoute] Error:', error.message);
+        console.error('[resolveFinanceRoute] Error:', getErrorMessage(error));
         return {
             strategy: 'MANUAL',
             partnerId: null,
             partnerName: null,
             scheme: null,
             allSchemes: [],
-            reason: `Error: ${error.message}`,
+            reason: `Error: ${getErrorMessage(error)}`,
         };
     }
 }

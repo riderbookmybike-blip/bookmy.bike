@@ -8,6 +8,7 @@ import { updateSku, createSku, deleteSku } from '@/actions/catalog/catalogV2Acti
 import type { CatalogModel, CatalogSku, CatalogColour, ProductType } from '@/actions/catalog/catalogV2Actions';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface SKUStepProps {
     model: CatalogModel;
@@ -134,7 +135,7 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
             }
         } catch (err: unknown) {
             console.error('SKU toggle failed:', err);
-            const msg = err?.message || 'Unknown error';
+            const msg = getErrorMessage(err) || 'Unknown error';
             toast.error(existingSku ? `Failed to remove SKU: ${msg}` : `Failed to create SKU: ${msg}`);
         } finally {
             setBusyCells(prev => {
@@ -233,7 +234,7 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
             }
         } catch (err: unknown) {
             console.error('Media save failed:', err);
-            toast.error('Failed to save media: ' + err.message);
+            toast.error('Failed to save media: ' + getErrorMessage(err));
         }
     };
 
@@ -268,7 +269,7 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                 toast.success('Image copied from sibling!');
             }
         } catch (err: unknown) {
-            toast.error('Copy failed: ' + err.message);
+            toast.error('Copy failed: ' + getErrorMessage(err));
         }
     };
 

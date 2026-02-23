@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 // =============================================================================
 // BOOKING STAGE TRANSITION SERVICE
@@ -105,7 +106,7 @@ export async function advanceBookingStage(
         return { success: true, message: payload.message, warning: payload.warning };
     } catch (err: unknown) {
         console.error('[advanceBookingStage] Error:', err);
-        return { success: false, message: err.message };
+        return { success: false, message: getErrorMessage(err) };
     }
 }
 

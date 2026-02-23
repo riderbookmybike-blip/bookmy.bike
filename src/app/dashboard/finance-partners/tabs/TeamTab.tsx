@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { normalizeIndianPhone, parseDateToISO } from '@/lib/utils/inputFormatters';
 import { createClient } from '@/lib/supabase/client';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 const DESIGNATIONS: { value: BankDesignation; label: string; level: number }[] = [
     { value: 'SYSTEM_ADMIN', label: 'System Admin', level: 7 },
@@ -224,7 +225,7 @@ export default function TeamTab({
             setFoundMemberId(data?.member?.id || null);
             setHasFoundExisting(true);
         } catch (error: unknown) {
-            setLookupError(error?.message || 'Unable to find user');
+            setLookupError(getErrorMessage(error) || 'Unable to find user');
             setHasFoundExisting(false);
             setFoundMemberId(null);
         } finally {
@@ -293,7 +294,7 @@ export default function TeamTab({
             setSelectedDealerIds([]);
             setFoundMemberId(null);
         } catch (error: unknown) {
-            setSubmitError(error?.message || 'Unable to add member');
+            setSubmitError(getErrorMessage(error) || 'Unable to add member');
         } finally {
             setIsSubmitting(false);
         }

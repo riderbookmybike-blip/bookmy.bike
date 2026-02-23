@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
 import { getAllProducts } from '@/actions/product';
 import { getDealerOfferDeltasAction, getResolvedPricingContextAction } from '@/actions/pricingActions';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export function useSystemCatalogLogic(leadId?: string) {
     const [items, setItems] = useState<ProductVariant[]>([]);
@@ -237,7 +238,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                         studio_code: resolvedStudioIdLocal || null,
                                     }));
                                 } catch (err: unknown) {
-                                    console.error('[CATALOG] SOT offer fetch error:', err?.message || err);
+                                    console.error('[CATALOG] SOT offer fetch error:', getErrorMessage(err) || err);
                                     disableOffersRef.current = true;
                                     offerData = [];
                                 }
@@ -340,19 +341,19 @@ export function useSystemCatalogLogic(leadId?: string) {
                 }
             } catch (err: unknown) {
                 // Ignore AbortError - expected in React StrictMode double-render
-                if (err?.name === 'AbortError' || err?.message?.includes('AbortError')) {
+                if (err?.name === 'AbortError' || getErrorMessage(err)?.includes('AbortError')) {
                     return;
                 }
                 console.error('Error fetching catalog:', err);
-                if (err.message && err.details) {
+                if (getErrorMessage(err) && err.details) {
                     console.error('Supabase Error Details:', {
-                        message: err.message,
+                        message: getErrorMessage(err),
                         details: err.details,
                         hint: err.hint,
                         code: err.code,
                     });
                 }
-                setError(err instanceof Error ? err.message : 'Unknown error');
+                setError(err instanceof Error ? getErrorMessage(err) : 'Unknown error');
                 setItems([]);
             } finally {
                 setIsLoading(false);

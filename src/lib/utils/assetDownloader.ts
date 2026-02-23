@@ -13,6 +13,7 @@
 import { createHash } from 'crypto';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, statSync } from 'fs';
 import { join, resolve, basename, extname } from 'path';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 // ─── Configuration ──────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ export async function preflightCheck(): Promise<{
         unlinkSync(testFile);
         return { ok: true, mediaRoot: MEDIA_ROOT };
     } catch (e: unknown) {
-        return { ok: false, mediaRoot: MEDIA_ROOT, error: e.message };
+        return { ok: false, mediaRoot: MEDIA_ROOT, error: getErrorMessage(e) };
     }
 }
 
@@ -284,7 +285,7 @@ export async function downloadAsset(request: DownloadRequest, existingHashes?: S
             fileSize: 0,
             contentType: '',
             status: 'error',
-            error: e.message,
+            error: getErrorMessage(e),
         };
     }
 }

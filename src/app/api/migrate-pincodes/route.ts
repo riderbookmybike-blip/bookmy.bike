@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { MAHARASHTRA_PINCODES } from '@/data/maharashtraPincodes';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export async function GET(request: NextRequest) {
     const adminSecret = process.env.ADMIN_API_SECRET;
@@ -54,6 +55,6 @@ export async function GET(request: NextRequest) {
             message: `Migration Complete. Processed: ${MAHARASHTRA_PINCODES.length}, Success: ${successCount}, Errors: ${errorCount}`,
         });
     } catch (e: unknown) {
-        return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: getErrorMessage(e) }, { status: 500 });
     }
 }

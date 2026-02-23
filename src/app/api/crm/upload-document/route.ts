@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export async function POST(req: NextRequest) {
     try {
@@ -39,6 +40,6 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: unknown) {
         console.error('Upload document error:', error);
-        return NextResponse.json({ error: error.message || 'Upload failed' }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) || 'Upload failed' }, { status: 500 });
     }
 }

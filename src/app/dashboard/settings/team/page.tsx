@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 
 import { can } from '@/lib/auth/rbac';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 type Member = {
     id: string; // membership id
@@ -91,7 +92,7 @@ export default function TeamPage() {
                 window.location.reload(); // Refresh to reflect role change
             }
         } catch (err: unknown) {
-            alert(err.message);
+            alert(getErrorMessage(err));
         }
     };
 

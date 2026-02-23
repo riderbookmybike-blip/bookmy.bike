@@ -2,6 +2,7 @@
 
 import { adminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 /**
  * Lookup member by phone number - used for dealer onboarding verification
@@ -30,7 +31,7 @@ export async function lookupMemberByPhone(phone: string): Promise<{
 
         if (error) {
             console.error('[LookupMember] Error:', error);
-            return { found: false, error: error.message };
+            return { found: false, error: getErrorMessage(error) };
         }
 
         if (!member) {
@@ -47,7 +48,7 @@ export async function lookupMemberByPhone(phone: string): Promise<{
         };
     } catch (err: unknown) {
         console.error('[LookupMember] Fatal:', err);
-        return { found: false, error: err.message };
+        return { found: false, error: getErrorMessage(err) };
     }
 }
 
@@ -161,6 +162,6 @@ export async function onboardDealer(formData: {
         return { success: true, tenant };
     } catch (error: unknown) {
         console.error('[OnboardDealer] Fatal Error:', error);
-        return { success: false, error: error.message || 'Check server logs' };
+        return { success: false, error: getErrorMessage(error) || 'Check server logs' };
     }
 }

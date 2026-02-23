@@ -19,6 +19,7 @@ import crypto from 'crypto';
 import { validateCatalogRow } from '@/lib/validation/catalogSpecs';
 import { normalizeSpecsForLinear, segregateSpecs, generateSlug } from './catalogUtils';
 import type { Provenance, ExtractedModel, ExtractedVariant, ExtractedColor } from './scraperAction';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 import {
     downloadBatch,
     generateAssetPath,
@@ -375,7 +376,7 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
                 }
             }
         } catch (e: unknown) {
-            result.errors.push(`Family "${family.name}": ${e.message}`);
+            result.errors.push(`Family "${family.name}": ${getErrorMessage(e)}`);
             result.success = false;
         }
     }
@@ -650,7 +651,7 @@ export async function linkAssets(params: {
             if (error) errors.push(`Asset ${asset.localPath}: ${error.message}`);
             else linked++;
         } catch (e: unknown) {
-            errors.push(`Asset ${asset.localPath}: ${e.message}`);
+            errors.push(`Asset ${asset.localPath}: ${getErrorMessage(e)}`);
         }
     }
     return { linked, errors };

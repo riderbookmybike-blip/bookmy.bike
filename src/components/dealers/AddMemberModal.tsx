@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Phone, User, Shield, CheckCircle2, AlertCircle, Loader2, UserPlus } from 'lucide-react';
 import { lookupMemberByPhone } from '@/app/dashboard/dealers/actions';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface AddMemberModalProps {
     isOpen: boolean;
@@ -63,7 +64,7 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
                 setError('No member found with this phone number. Member must register first.');
             }
         } catch (err: unknown) {
-            setError(err.message || 'Verification failed');
+            setError(getErrorMessage(err) || 'Verification failed');
         } finally {
             setIsLoading(false);
         }
@@ -98,7 +99,7 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
                 onClose();
             }, 1500);
         } catch (err: unknown) {
-            setError(err.message || 'Failed to add member');
+            setError(getErrorMessage(err) || 'Failed to add member');
         } finally {
             setIsLoading(false);
         }

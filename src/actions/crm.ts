@@ -243,7 +243,7 @@ export async function updateMemberProfile(
 
     if (error) {
         console.error('updateMemberProfile Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     return { success: true };
@@ -777,7 +777,7 @@ export async function getLeadIndexAction(input: {
             console.error('getLeadIndexAction query error:', error);
             return {
                 ...defaultLeadIndexResponse(page, pageSize),
-                message: error.message,
+                message: getErrorMessage(error),
             };
         }
 
@@ -799,7 +799,7 @@ export async function getLeadIndexAction(input: {
             console.error('getLeadIndexAction SLA query error:', error);
             return {
                 ...defaultLeadIndexResponse(page, pageSize),
-                message: error.message,
+                message: getErrorMessage(error),
             };
         }
 
@@ -977,7 +977,7 @@ export async function getLeadEventsAction(
 
     if (error) {
         console.error('getLeadEventsAction Error:', error);
-        return { success: false, events: [], message: error.message };
+        return { success: false, events: [], message: getErrorMessage(error) };
     }
 
     const events = (data || []) as LeadEventRecord[];
@@ -1090,14 +1090,14 @@ async function updateCrmLeadCompat(
         return { success: true };
     }
 
-    const errMsg = String(firstAttempt.error.message || '');
+    const errMsg = String(firstAttempt.getErrorMessage(error) || '');
     const isUpdatedAtSchemaIssue =
         errMsg.includes("'updated_at'") ||
         errMsg.toLowerCase().includes('updated_at column') ||
         errMsg.toLowerCase().includes('schema cache');
 
     if (!isUpdatedAtSchemaIssue) {
-        return { success: false, message: firstAttempt.error.message };
+        return { success: false, message: firstAttempt.getErrorMessage(error) };
     }
 
     const fallbackAttempt = await adminClient
@@ -1105,7 +1105,7 @@ async function updateCrmLeadCompat(
         .update(payload as any)
         .eq('id', leadId);
     if (fallbackAttempt.error) {
-        return { success: false, message: fallbackAttempt.error.message };
+        return { success: false, message: fallbackAttempt.getErrorMessage(error) };
     }
 
     return { success: true };
@@ -1254,7 +1254,7 @@ export async function getLeadModuleStateAction(
 
     const { data, error } = await adminClient.from('crm_leads').select('utm_data').eq('id', leadId).maybeSingle();
     if (error || !data) {
-        return { success: false, notes: [], tasks: [], message: error?.message || 'Lead not found' };
+        return { success: false, notes: [], tasks: [], message: getErrorMessage(error) || 'Lead not found' };
     }
 
     const { notes, tasks } = readLeadModuleData((data as any).utm_data);
@@ -1289,7 +1289,7 @@ export async function addLeadNoteAction(input: { leadId: string; body: string; a
         .maybeSingle();
 
     if (error || !data) {
-        return { success: false, message: error?.message || 'Lead not found' };
+        return { success: false, message: getErrorMessage(error) || 'Lead not found' };
     }
 
     const now = new Date().toISOString();
@@ -1388,7 +1388,7 @@ export async function addLeadTaskAction(input: {
         .maybeSingle();
 
     if (error || !data) {
-        return { success: false, message: error?.message || 'Lead not found' };
+        return { success: false, message: getErrorMessage(error) || 'Lead not found' };
     }
 
     const now = new Date().toISOString();
@@ -1488,7 +1488,7 @@ export async function toggleLeadTaskAction(input: { leadId: string; taskId: stri
         .maybeSingle();
 
     if (error || !data) {
-        return { success: false, message: error?.message || 'Lead not found' };
+        return { success: false, message: getErrorMessage(error) || 'Lead not found' };
     }
 
     const now = new Date().toISOString();
@@ -2013,7 +2013,7 @@ export async function createLeadAction(data: {
 
         if (error) {
             console.error('[DEBUG] crm_leads insertion failed:', error);
-            return { success: false, message: error.message };
+            return { success: false, message: getErrorMessage(error) };
         }
 
         let referralBonusApplied = false;
@@ -2081,7 +2081,7 @@ export async function createLeadAction(data: {
             success: false,
             message:
                 error instanceof Error
-                    ? error.message
+                    ? getErrorMessage(error)
                     : (error as any)?.message || (typeof error === 'string' ? error : 'Unknown error'),
         };
     }
@@ -2286,6 +2286,7 @@ export async function getBookingsForMember(memberId: string) {
 }
 
 import { getAuthUser } from '@/lib/auth/resolver';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export async function createQuoteAction(data: {
     tenant_id?: string;
@@ -2488,12 +2489,12 @@ export async function createQuoteAction(data: {
     if (error) {
         console.error('Create Quote Logic Failure:', {
             code: error.code,
-            message: error.message,
+            message: getErrorMessage(error),
             details: error.details,
             hint: error.hint,
             context: { tenant_id: resolvedTenantId, lead_id: data.lead_id, sku: data.variant_id },
         });
-        return { success: false, message: error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 
     await logQuoteEvent(quote.id, 'Quote Created', null, isGuestMarketplaceQuote ? 'customer' : 'team', {
@@ -2602,7 +2603,7 @@ export async function acceptQuoteAction(id: string): Promise<{ success: boolean;
 
     if (error) {
         console.error('Accept Quote Error:', error);
-        return { success: false, message: error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 
     // Log timeline event
@@ -2623,7 +2624,7 @@ export async function confirmQuoteAction(id: string): Promise<{ success: boolean
 
     if (error) {
         console.error('Confirm Quote Error:', error);
-        return { success: false, message: error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 
     // Log timeline event
@@ -2643,7 +2644,7 @@ export async function lockQuoteAction(id: string): Promise<{ success: boolean; m
 
     if (error) {
         console.error('Lock Quote Error:', error);
-        return { success: false, message: error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
     await logQuoteEvent(id, 'Quote Denied', 'Team Member', 'team', { source: 'CRM' });
     revalidatePath('/app/[slug]/quotes');
@@ -2660,7 +2661,7 @@ export async function cancelQuoteAction(id: string): Promise<{ success: boolean;
 
     if (error) {
         console.error('Cancel Quote Error:', error);
-        return { success: false, message: error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
     await logQuoteEvent(id, 'Quote Canceled', 'Customer', 'customer', { source: 'CUSTOMER' });
     revalidatePath('/app/[slug]/quotes');
@@ -2766,7 +2767,7 @@ export async function getBookingById(bookingId: string) {
 
     if (error) {
         console.error('getBookingById Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     return { success: true, booking: data };
@@ -2815,7 +2816,7 @@ export async function getBookingFeedbackAction(
 
     if (error) {
         console.error('getBookingFeedbackAction Error:', error);
-        return { success: false, message: error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 
     return { success: true, data: (data as BookingFeedbackRecord | null) || null };
@@ -3039,7 +3040,7 @@ export async function createBookingFromQuote(quoteId: string) {
         return { success: true, data: booking };
     } catch (err: unknown) {
         console.error('[createBookingFromQuote] CRITICAL CRASH:', err);
-        return { success: false, message: `Server Error: ${err.message || String(err)}` };
+        return { success: false, message: `Server Error: ${getErrorMessage(err) || String(err)}` };
     }
 }
 
@@ -3079,7 +3080,7 @@ export async function confirmSalesOrder(bookingId: string): Promise<{ success: b
 
     if (error) {
         console.error('Confirm Sales Order Error:', error);
-        return { success: false, message: error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
 
     revalidatePath('/app/[slug]/sales-orders');
@@ -3128,7 +3129,7 @@ export async function updateBookingStage(id: string, stage: string, statusUpdate
 
     if (error) {
         console.error('Update Booking Stage Error:', error);
-        return { success: false, message: error.message };
+        return { success: false, message: getErrorMessage(error) };
     }
     revalidatePath('/app/[slug]/sales-orders');
     return { success: true };
@@ -3640,7 +3641,7 @@ export async function getQuoteById(
 
     if (error || !quote) {
         console.error('getQuoteById Error:', error);
-        return { success: false, error: error?.message || 'Quote not found' };
+        return { success: false, error: getErrorMessage(error) || 'Quote not found' };
     }
 
     // Cast to any since we just added new columns that aren't in generated types yet
@@ -4412,7 +4413,7 @@ export async function updateQuoteManagerDiscount(
 
     if (error) {
         console.error('updateQuoteManagerDiscount Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     // Log timeline event
@@ -4456,7 +4457,7 @@ export async function markQuoteInReview(quoteId: string): Promise<{ success: boo
 
     if (error) {
         console.error('markQuoteInReview Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     await logQuoteEvent(quoteId, 'Quote Opened - In Review', 'Team Member', 'team', { source: 'CRM' });
@@ -4476,7 +4477,7 @@ export async function setQuoteFinanceMode(
         .eq('id', quoteId);
     if (error) {
         console.error('setQuoteFinanceMode Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
     await logQuoteEvent(quoteId, `Finance Mode Set: ${mode}`, 'Team Member', 'team', { source: 'CRM' });
     revalidatePath('/app/[slug]/quotes');
@@ -4551,7 +4552,7 @@ export async function createQuoteFinanceAttempt(
 
     if (error) {
         console.error('createQuoteFinanceAttempt Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     await supabase
@@ -4604,7 +4605,7 @@ export async function updateQuoteFinanceAttempt(
 
     if (error) {
         console.error('updateQuoteFinanceAttempt Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     return { success: true };
@@ -4620,7 +4621,7 @@ export async function setQuoteActiveFinanceAttempt(quoteId: string, attemptId: s
 
     if (error) {
         console.error('setQuoteActiveFinanceAttempt Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     await logQuoteEvent(quoteId, 'Primary Finance Attempt Updated', 'Team Member', 'team', { source: 'CRM' });
@@ -4648,7 +4649,7 @@ export async function updateQuoteFinanceStatus(
         .eq('id', attemptId);
     if (error) {
         console.error('updateQuoteFinanceStatus Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     await logQuoteEvent(attempt.quote_id as string, `Finance Status: ${status}`, 'Team Member', 'team', {
@@ -4702,7 +4703,7 @@ export async function createTask(input: {
 
     if (error) {
         console.error('createTask Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
     return { success: true };
 }
@@ -4730,7 +4731,7 @@ export async function updateTaskStatus(taskId: string, status: 'OPEN' | 'IN_PROG
         .eq('id', taskId);
     if (error) {
         console.error('updateTaskStatus Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
     return { success: true };
 }
@@ -5016,7 +5017,7 @@ export async function updateQuotePricing(
         const { error } = await supabase.from('crm_quotes').update(updatePayload).eq('id', quoteId);
         if (error) {
             console.error('updateQuotePricing Error:', error);
-            return { success: false, error: error.message };
+            return { success: false, error: getErrorMessage(error) };
         }
 
         await logQuoteEvent(
@@ -5131,7 +5132,7 @@ export async function sendQuoteToCustomer(quoteId: string): Promise<{ success: b
 
     if (error) {
         console.error('sendQuoteToCustomer Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     // Log timeline event
@@ -6460,7 +6461,7 @@ export async function getReceiptById(receiptId: string) {
 
     if (error) {
         console.error('getReceiptById Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     return { success: true, receipt: data };
@@ -6490,7 +6491,7 @@ export async function updateReceipt(receiptId: string, updates: Record<string, a
         .eq('id', receiptId);
 
     if (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     return { success: true };
@@ -6512,7 +6513,7 @@ export async function reconcileReceipt(receiptId: string) {
         .eq('id', receiptId);
 
     if (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 
     return { success: true };
@@ -6528,14 +6529,14 @@ export async function getBankSchemes(bankId: string) {
             .single();
 
         if (error || !data?.config) {
-            console.error('[getBankSchemes] Error:', error?.message || 'No config found');
+            console.error('[getBankSchemes] Error:', getErrorMessage(error) || 'No config found');
             return [];
         }
 
         const schemes = (data.config as any)?.schemes || [];
         return schemes.filter((s: any) => s.isActive !== false);
     } catch (error: unknown) {
-        console.error('[getBankSchemes] Fatal:', error.message);
+        console.error('[getBankSchemes] Fatal:', getErrorMessage(error));
         return [];
     }
 }
@@ -6726,7 +6727,7 @@ export async function reassignQuoteDealership(
         return { success: true };
     } catch (error: unknown) {
         console.error('reassignQuoteDealership Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 

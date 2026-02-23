@@ -43,6 +43,7 @@ import {
 import { getOClubLedger, getOClubWallet } from '@/actions/oclub';
 import { getMemberFullProfile } from '@/actions/members';
 import { createClient } from '@/lib/supabase/client';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface LeadProfile {
     lead: any;
@@ -448,7 +449,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                 });
             }
         } catch (error: unknown) {
-            toast.error(error?.message || 'Failed to upload note attachments');
+            toast.error(getErrorMessage(error) || 'Failed to upload note attachments');
             setSavingNote(false);
             return;
         }
@@ -1140,7 +1141,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                                     alert(res.message || 'Failed to save');
                                                 }
                                             } catch (err: unknown) {
-                                                alert(err?.message || 'Save failed');
+                                                alert(getErrorMessage(err) || 'Save failed');
                                             } finally {
                                                 setEditSaving(false);
                                             }

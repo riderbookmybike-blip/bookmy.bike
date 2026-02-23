@@ -1,6 +1,7 @@
 'use server';
 
 import { adminClient } from '@/lib/supabase/admin';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export async function getOClubWallet(memberId: string) {
     const { data, error } = await adminClient
@@ -145,7 +146,7 @@ export async function createSponsorAllocation(input: {
             } as any
         );
     } catch (err: unknown) {
-        return { success: false, error: err?.message || 'Ledger update failed' };
+        return { success: false, error: getErrorMessage(err) || 'Ledger update failed' };
     }
 
     return { success: true, allocationId };

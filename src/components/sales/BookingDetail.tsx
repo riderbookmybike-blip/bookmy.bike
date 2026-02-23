@@ -48,6 +48,7 @@ import { VinAssignmentSection } from './VinAssignmentSection';
 import { PaymentMode } from '@/types/payment';
 import LifecycleSidebar from './LifecycleSidebar';
 import { getLifecycleConfig } from './LifecycleManager';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface BookingDetailProps {
     booking: Booking | null;
@@ -95,7 +96,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
             updateBookingStatus(booking.id, updates, reason);
             onUpdate();
         } catch (e: unknown) {
-            alert(`Stock Error: ${e.message}`);
+            alert(`Stock Error: ${getErrorMessage(e)}`);
         }
     };
 
@@ -115,7 +116,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
             );
             onUpdate();
         } catch (e: unknown) {
-            alert(e.message);
+            alert(getErrorMessage(e));
         }
     };
 
@@ -141,7 +142,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                 );
                 onUpdate();
             } catch (e: unknown) {
-                alert(e.message);
+                alert(getErrorMessage(e));
             }
         } else {
             // PDI Rejected -> Allot Another (Refined logic)
@@ -160,7 +161,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                 onUpdate();
                 alert('Vehicle released. Please soft-lock another unit from the inventory.');
             } catch (e: unknown) {
-                alert(e.message);
+                alert(getErrorMessage(e));
             }
         }
     };
@@ -177,7 +178,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
             );
             onUpdate();
         } catch (e: unknown) {
-            alert(e.message);
+            alert(getErrorMessage(e));
         }
     };
 
@@ -186,7 +187,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
             updateBookingStatus(booking.id, { operationalStage: nextStage }, `Promoted to ${nextStage} stage.`);
             onUpdate();
         } catch (e: unknown) {
-            alert(e.message);
+            alert(getErrorMessage(e));
         }
     };
 
@@ -210,7 +211,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
             );
             onUpdate();
         } catch (e: unknown) {
-            alert(e.message);
+            alert(getErrorMessage(e));
         }
     };
 

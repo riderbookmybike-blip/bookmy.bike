@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getLeadById, getQuotesForLead, getBookingsForLead, getReceiptsForEntity } from '@/actions/crm';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 const LeadEditorTable = dynamic(() => import('@/components/modules/leads/LeadEditorTable'), {
     loading: () => (
@@ -46,7 +47,7 @@ export default function LeadEditorWrapper({ leadId }: { leadId: string }) {
                 });
             } catch (err: unknown) {
                 console.error('LeadEditorWrapper: failed to load profile', { leadId, err });
-                setError(err?.message || 'Failed to load lead profile');
+                setError(getErrorMessage(err) || 'Failed to load lead profile');
                 setProfile(null);
             } finally {
                 setLoading(false);

@@ -154,8 +154,8 @@ const TvsExtractor: BaseExtractor = {
         try {
             jssData = JSON.parse(jssMatch[1]);
         } catch (e: unknown) {
-            errors.push(`Failed to parse JSS_STATE JSON: ${e.message}`);
-            logs.push(log('PARSE_FAIL', 'JSON parse error', { error: e.message }));
+            errors.push(`Failed to parse JSS_STATE JSON: ${getErrorMessage(e)}`);
+            logs.push(log('PARSE_FAIL', 'JSON parse error', { error: getErrorMessage(e) }));
             return { success: false, brand_slug: 'tvs', models, errors, logs };
         }
 
@@ -1172,7 +1172,7 @@ function extractHeroModelsFromDataVehicles(
                 }
             }
         } catch (e: unknown) {
-            logs.push(log('PARSE_FAIL', `Failed to parse data-vehicles JSON: ${e.message}`));
+            logs.push(log('PARSE_FAIL', `Failed to parse data-vehicles JSON: ${getErrorMessage(e)}`));
         }
     }
 

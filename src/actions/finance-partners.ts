@@ -2,6 +2,7 @@
 
 import { adminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 /**
  * Fetches all financer IDs linked to a specific dealer
@@ -17,7 +18,7 @@ export async function getDealerFinancers(dealerId: string) {
         return { success: true, financerIds: data.map(d => d.finance_tenant_id) };
     } catch (error: unknown) {
         console.error('[getDealerFinancers] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -48,7 +49,7 @@ export async function toggleDealerFinancer(dealerId: string, financeId: string, 
         return { success: true };
     } catch (error: unknown) {
         console.error('[toggleDealerFinancer] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -102,7 +103,7 @@ export async function getFinancerTeamAccess(dealerId: string, financeId: string)
         return { success: true, members };
     } catch (error: unknown) {
         console.error('[getFinancerTeamAccess] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -140,6 +141,6 @@ export async function updateFinancerUserAccess(
         return { success: true };
     } catch (error: unknown) {
         console.error('[updateFinancerUserAccess] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }

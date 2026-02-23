@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronRight, Plus, Loader2, AlertCircle, CheckCircle2, Users, Package, ArrowRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 interface ModalProps {
     isOpen: boolean;
@@ -139,7 +140,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
             onClose();
         } catch (err: unknown) {
             console.error('Submission Error:', err);
-            setError(err.message || 'Failed to create requisition');
+            setError(getErrorMessage(err) || 'Failed to create requisition');
         } finally {
             setLoading(false);
         }

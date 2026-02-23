@@ -3,6 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { getAuthUser } from '@/lib/auth/resolver';
 import { revalidatePath } from 'next/cache';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 import type {
     CreateRequestInput,
     AddDealerQuoteInput,
@@ -68,7 +69,7 @@ export async function createRequest(input: CreateRequestInput): Promise<ActionRe
         revalidatePath('/dashboard/inventory');
         return { success: true, data: request };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -117,7 +118,7 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
         revalidatePath('/dashboard/inventory');
         return { success: true, data: quote };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -182,7 +183,7 @@ export async function selectQuote(quoteId: string): Promise<ActionResult> {
         revalidatePath('/dashboard/inventory');
         return { success: true, data: po, message: `PO ${po.display_id} created` };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -237,7 +238,7 @@ export async function recordPoPayment(poId: string, amountPaid: number, transact
         revalidatePath('/dashboard/inventory');
         return { success: true, message: `₹${amountPaid} recorded against PO` };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -317,7 +318,7 @@ export async function receiveStock(input: ReceiveStockInput): Promise<ActionResu
         revalidatePath('/dashboard/inventory');
         return { success: true, data: stock, message: `Stock ${stock.chassis_number} received` };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -348,7 +349,7 @@ export async function getAvailableStock(
         if (error) return { success: false, message: error.message };
         return { success: true, data };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -371,7 +372,7 @@ export async function toggleStockSharing(stockId: string, isShared: boolean): Pr
         revalidatePath('/dashboard/inventory');
         return { success: true, message: isShared ? 'Stock shared across tenants' : 'Stock unshared' };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -420,7 +421,7 @@ export async function softLockStock(stockId: string, lockingTenantId: string): P
         revalidatePath('/dashboard/inventory');
         return { success: true, message: 'Stock soft-locked' };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -454,7 +455,7 @@ export async function unlockStock(stockId: string): Promise<ActionResult> {
         revalidatePath('/dashboard/inventory');
         return { success: true, message: 'Stock unlocked' };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -473,7 +474,7 @@ export async function getRequests(tenantId: string): Promise<ActionResult> {
         if (error) return { success: false, message: error.message };
         return { success: true, data };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -499,7 +500,7 @@ export async function getRequestById(requestId: string): Promise<ActionResult> {
         if (error) return { success: false, message: error.message };
         return { success: true, data };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -518,7 +519,7 @@ export async function getStockById(stockId: string): Promise<ActionResult> {
         if (error) return { success: false, message: error.message };
         return { success: true, data };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -537,7 +538,7 @@ export async function getSupplierTenants(): Promise<ActionResult> {
         if (error) return { success: false, message: error.message };
         return { success: true, data };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -568,7 +569,7 @@ export async function checkStockAvailability(
             data: { available, shortage, has_shortage: shortage > 0 },
         };
     } catch (err: unknown) {
-        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
 
@@ -618,6 +619,6 @@ export async function bookingShortageCheck(bookingId: string) {
         return { status: 'ERROR', message: result.message };
     } catch (err: unknown) {
         console.error('[bookingShortageCheck] Exception:', err);
-        return { status: 'ERROR', message: err instanceof Error ? err.message : 'Unknown error' };
+        return { status: 'ERROR', message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }

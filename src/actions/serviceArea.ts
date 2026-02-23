@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { formatLocationName, mergeAreas, normalizeLocationKey } from '@/lib/location/locationNormalizer';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 // Hardcoded Serviceable Districts for now
 const SERVICEABLE_DISTRICTS = ['MUMBAI', 'MUMBAI SUBURBAN', 'THANE', 'PALGHAR', 'RAIGAD', 'PUNE', 'NASHIK'];
@@ -133,7 +134,7 @@ export async function bulkUpdateServiceability(pincodes: string[], isServiceable
         if (error) throw error;
         return { success: true };
     } catch (err: unknown) {
-        return { success: false, error: err.message };
+        return { success: false, error: getErrorMessage(err) };
     }
 }
 
@@ -195,6 +196,6 @@ export async function upsertLocation(data: {
         return { success: true };
     } catch (err: unknown) {
         console.error('Location Upsert Failed:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: getErrorMessage(err) };
     }
 }

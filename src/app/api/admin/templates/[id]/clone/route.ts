@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cloneTemplate } from '@/modules/templates/templateService';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export async function POST(
     request: Request,
@@ -21,6 +22,6 @@ export async function POST(
 
         return NextResponse.json({ success: true, data: newTemplate });
     } catch (error: unknown) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
     }
 }
