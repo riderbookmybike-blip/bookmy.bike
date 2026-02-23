@@ -634,7 +634,7 @@ export function DesktopPDP({
             const toTitle = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 
             return (
-                <div className="rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.02] overflow-hidden shadow-sm">
+                <>
                     {sortedAccessories.map((acc: any, idx: number) => {
                         const isSelected = acc.isMandatory || selectedAccessories.includes(acc.id);
                         const finalPrice = acc.discountPrice > 0 ? acc.discountPrice : acc.price;
@@ -645,9 +645,20 @@ export function DesktopPDP({
                         const maxQty = acc.maxQty || 99;
                         const skuImg = acc.image || null;
 
-                        // Two-line label
-                        const line1 = toTitle([acc.productGroup, acc.variantName].filter(Boolean).join(' · '));
-                        const line2 = toTitle([acc.unit, acc.brand].filter(Boolean).join(' · '));
+                        // Line 1: Product group (e.g., "Crash Guard")
+                        const line1 = toTitle(acc.productGroup || acc.name);
+                        // Line 2: Sub-variant (e.g., "Premium Mild Steel (Black)")
+                        const rawName = acc.name || '';
+                        const groupName = acc.productGroup || '';
+                        const subVariant = rawName
+                            .replace(new RegExp(`^${groupName}\\s*`, 'i'), '')
+                            .replace(/\s+for\s+.*/i, '')
+                            .trim();
+                        // Line 3: "Generic For Activa"
+                        const vehicleModel = (acc.variantName || '').split('›').pop()?.trim() || '';
+                        const line3 = vehicleModel
+                            ? toTitle([acc.brand, 'for', vehicleModel].filter(Boolean).join(' '))
+                            : toTitle(acc.brand || '');
 
                         return (
                             <div
@@ -691,10 +702,10 @@ export function DesktopPDP({
                                     )}
                                 </div>
 
-                                {/* Name — two lines */}
+                                {/* Name — three lines */}
                                 <div className="flex-1 min-w-0">
                                     <p
-                                        className={`text-[12px] font-semibold leading-tight truncate ${
+                                        className={`text-[12px] font-black tracking-tight leading-tight truncate ${
                                             isSelected
                                                 ? 'text-slate-900 dark:text-white'
                                                 : 'text-slate-700 dark:text-zinc-300'
@@ -702,9 +713,16 @@ export function DesktopPDP({
                                     >
                                         {line1 || toTitle(acc.name)}
                                     </p>
-                                    {line2 && (
+                                    {subVariant && (
+                                        <p
+                                            className={`text-[11px] font-medium mt-0.5 truncate leading-tight ${isSelected ? 'text-slate-600 dark:text-zinc-400' : 'text-slate-500 dark:text-zinc-400'}`}
+                                        >
+                                            {toTitle(subVariant)}
+                                        </p>
+                                    )}
+                                    {line3 && (
                                         <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 truncate leading-tight">
-                                            {line2}
+                                            {line3}
                                         </p>
                                     )}
                                 </div>
@@ -761,7 +779,7 @@ export function DesktopPDP({
                             </div>
                         );
                     })}
-                </div>
+                </>
             );
         }
 
@@ -782,7 +800,7 @@ export function DesktopPDP({
         ) => {
             const toTitle = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
             return (
-                <div className="rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.02] overflow-hidden shadow-sm">
+                <>
                     {items.map((item: any, idx: number) => {
                         const selected = getSelected(item.id);
                         const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
@@ -888,7 +906,7 @@ export function DesktopPDP({
                             </div>
                         );
                     })}
-                </div>
+                </>
             );
         };
 
@@ -968,7 +986,7 @@ export function DesktopPDP({
 
             return (
                 <>
-                    <div className="rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.02] shadow-sm overflow-visible">
+                    <div>
                         {/* Header: INSURANCE PACKAGE */}
                         <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 flex items-center gap-2">
                             <Shield size={14} className="text-emerald-500" />

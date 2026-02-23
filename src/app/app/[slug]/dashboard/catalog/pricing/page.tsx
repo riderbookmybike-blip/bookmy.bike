@@ -103,7 +103,16 @@ export default function PricingPage() {
     const [tableSummary, setTableSummary] = useState<{ count: number; value: number }>({ count: 0, value: 0 });
     const [quickFilter, setQuickFilter] = useState<'inventory' | 'market_ready' | 'pipeline' | 'critical' | null>(null);
     const toggleQuickFilter = (value: 'inventory' | 'market_ready' | 'pipeline' | 'critical') => {
-        setQuickFilter(prev => (prev === value ? null : value));
+        const next = quickFilter === value ? null : value;
+        setQuickFilter(next);
+        // Critical fix: reset all filters to show ALL zero-price SKUs cleanly
+        if (next === 'critical') {
+            setSelectedBrand('ALL');
+            setSelectedCategory('ALL');
+            setSelectedSubCategory('ALL');
+            setSelectedModel('ALL');
+            setSelectedVariant('ALL');
+        }
     };
     const [isPublishing, setIsPublishing] = useState(false);
 
@@ -752,6 +761,11 @@ export default function PricingPage() {
     }, [uniqueVariants, selectedVariant]);
 
     const filteredSkus = useMemo(() => {
+        // Critical fix bypasses all category filters — show ALL zero-price SKUs
+        if (quickFilter === 'critical') {
+            return skus.filter(s => s.exShowroom === 0);
+        }
+
         const baseFiltered = skus.filter(s => {
             const matchesBrand = selectedBrand === 'ALL' || s.brand === selectedBrand;
             const matchesCategory = selectedCategory === 'ALL' || s.category === selectedCategory;
@@ -769,7 +783,6 @@ export default function PricingPage() {
 
         if (quickFilter === 'market_ready') return baseFiltered.filter(isMarketReady);
         if (quickFilter === 'pipeline') return baseFiltered.filter(s => s.status !== 'ACTIVE');
-        if (quickFilter === 'critical') return baseFiltered.filter(s => s.exShowroom === 0);
         return baseFiltered;
     }, [
         skus,
@@ -1037,6 +1050,7 @@ export default function PricingPage() {
                         <PricingLedgerTable
                             initialSkus={skus}
                             processedSkus={filteredSkus}
+                            quickFilter={quickFilter}
                             activeRule={activeRule}
                             onUpdatePrice={handleUpdatePrice}
                             onUpdateOffer={handleUpdateOffer}

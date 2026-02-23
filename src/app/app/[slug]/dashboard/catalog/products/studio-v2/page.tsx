@@ -37,9 +37,19 @@ import ColourPoolStepV2 from './steps/ColourPoolStepV2';
 import SKUStepV2 from './steps/SKUStepV2';
 import ReviewStepV2 from './steps/ReviewStepV2';
 import PublishStepV2 from './steps/PublishStepV2';
+import ServiceStepV2 from './steps/ServiceStepV2';
 
 // Steps dynamically label based on selected category
 const getSteps = (category: string | null) => {
+    // SERVICE has a simplified flow
+    if (category === 'SERVICE') {
+        return [
+            { id: 'type', title: 'Type', icon: Landmark, color: 'text-blue-500' },
+            { id: 'services', title: 'Services', icon: Layers, color: 'text-indigo-500' },
+            { id: 'review', title: 'Review', icon: FileCheck, color: 'text-slate-500' },
+            { id: 'activate', title: 'Activate', icon: Rocket, color: 'text-orange-500' },
+        ];
+    }
     const labels = getHierarchyLabels(category);
     return [
         { id: 'type', title: 'Type', icon: Landmark, color: 'text-blue-500' },
@@ -314,7 +324,26 @@ export default function StudioV2Page() {
                             }}
                         />
                     )}
-                    {currentStep === 1 && brand && (
+                    {/* SERVICE category: simplified flow */}
+                    {selectedCategory === 'SERVICE' && currentStep === 1 && (
+                        <ServiceStepV2 modelId={modelData?.id || ''} brandName={brand?.name} />
+                    )}
+                    {selectedCategory === 'SERVICE' && currentStep === 2 && (
+                        <div className="max-w-[1200px] mx-auto py-12 text-center">
+                            <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white mb-2">
+                                Review
+                            </h2>
+                            <p className="text-sm text-slate-400">
+                                Services are saved in real-time. Review your changes in the PDP to verify.
+                            </p>
+                        </div>
+                    )}
+                    {selectedCategory === 'SERVICE' && currentStep === 3 && (
+                        <PublishStepV2 modelId={modelData?.id || null} onFinish={handleNext} />
+                    )}
+
+                    {/* NON-SERVICE categories: full flow */}
+                    {selectedCategory !== 'SERVICE' && currentStep === 1 && brand && (
                         <ModelStepV2
                             brand={brand}
                             category={selectedCategory}
@@ -322,17 +351,17 @@ export default function StudioV2Page() {
                             onSave={(model: CatalogModel | null) => setModelData(model)}
                         />
                     )}
-                    {currentStep === 2 && modelData && (
+                    {selectedCategory !== 'SERVICE' && currentStep === 2 && modelData && (
                         <VariantStepV2 model={modelData} variants={variants} onUpdate={(v: any[]) => setVariants(v)} />
                     )}
-                    {currentStep === 3 && modelData && (
+                    {selectedCategory !== 'SERVICE' && currentStep === 3 && modelData && (
                         <ColourPoolStepV2
                             model={modelData}
                             colours={colours}
                             onUpdate={(c: CatalogColour[]) => setColours(c)}
                         />
                     )}
-                    {currentStep === 4 && modelData && (
+                    {selectedCategory !== 'SERVICE' && currentStep === 4 && modelData && (
                         <SKUStepV2
                             model={modelData}
                             variants={variants}
@@ -341,8 +370,12 @@ export default function StudioV2Page() {
                             onUpdate={(s: CatalogSku[]) => setSkus(s)}
                         />
                     )}
-                    {currentStep === 5 && modelData && <ReviewStepV2 modelId={modelData.id} />}
-                    {currentStep === 6 && <PublishStepV2 modelId={modelData?.id || null} onFinish={handleNext} />}
+                    {selectedCategory !== 'SERVICE' && currentStep === 5 && modelData && (
+                        <ReviewStepV2 modelId={modelData.id} />
+                    )}
+                    {selectedCategory !== 'SERVICE' && currentStep === 6 && (
+                        <PublishStepV2 modelId={modelData?.id || null} onFinish={handleNext} />
+                    )}
                 </div>
             </main>
 
@@ -364,8 +397,9 @@ export default function StudioV2Page() {
                         <button
                             onClick={handleNext}
                             disabled={
-                                (currentStep === 0 && (!brand || !selectedCategory)) ||
-                                (currentStep === 1 && !modelData)
+                                (currentStep === 0 && !selectedCategory) ||
+                                (currentStep === 0 && selectedCategory !== 'SERVICE' && !brand) ||
+                                (selectedCategory !== 'SERVICE' && currentStep === 1 && !modelData)
                             }
                             className="flex items-center gap-3 px-8 py-3 bg-slate-900 text-white rounded-[1.25rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
                         >

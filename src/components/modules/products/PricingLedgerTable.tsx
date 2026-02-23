@@ -90,6 +90,7 @@ interface SKUPriceRow {
 interface PricingLedgerTableProps {
     initialSkus: SKUPriceRow[];
     processedSkus: SKUPriceRow[];
+    quickFilter?: 'inventory' | 'market_ready' | 'pipeline' | 'critical' | null;
     activeRule: RegistrationRule | null;
     onUpdatePrice: (skuId: string, price: number) => void;
     onUpdateOffer: (skuId: string, offer: number) => void;
@@ -162,6 +163,7 @@ const BrandAvatar = ({ name, logo }: { name: string; logo?: string }) => {
 export default function PricingLedgerTable({
     initialSkus,
     processedSkus,
+    quickFilter,
     onUpdatePrice,
     onUpdateOffer,
     onUpdateInclusion,
@@ -416,6 +418,7 @@ export default function PricingLedgerTable({
     const [filters, setFilters] = useState<Partial<Record<keyof SKUPriceRow, string>>>({});
     const [sortConfig, setSortConfig] = useState<{ key: keyof SKUPriceRow; direction: 'asc' | 'desc' } | null>(null);
     const [deltaDrafts, setDeltaDrafts] = useState<Record<string, string>>({});
+    const [searchText, setSearchText] = useState('');
     const [prevSelectedCategory, setPrevSelectedCategory] = useState(selectedCategory);
     const [prevFilters, setPrevFilters] = useState({ filters, selectedBrand, selectedSubCategory, selectedStateId });
 
@@ -552,8 +555,8 @@ export default function PricingLedgerTable({
         // Start with processed dataset (which reflects parent Filters like Brand/Category)
         let baseSet = [...processedSkus];
 
-        // 0. Filter by Active Category (Tab)
-        if (activeCategory) {
+        // 0. Filter by Active Category (Tab) — skip in critical mode to show ALL zero-price items
+        if (activeCategory && quickFilter !== 'critical') {
             baseSet = baseSet.filter(sku => (sku.type || 'vehicles').toLowerCase() === activeCategory.toLowerCase());
         }
 
@@ -581,9 +584,21 @@ export default function PricingLedgerTable({
     const { tableSkus, summary } = useMemo(() => {
         let result = [...processedSkus];
 
-        // 0. Filter by Active Category (Tab)
-        if (activeCategory) {
+        // 0. Filter by Active Category (Tab) — skip in critical mode to show ALL zero-price items
+        if (activeCategory && quickFilter !== 'critical') {
             result = result.filter(sku => (sku.type || 'vehicles').toLowerCase() === activeCategory.toLowerCase());
+        }
+
+        // 0.5 Text search filter
+        if (searchText.trim()) {
+            const q = searchText.trim().toLowerCase();
+            result = result.filter(sku => {
+                const haystack = [sku.brand, sku.model, sku.variant, sku.color, (sku as any).finish]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase();
+                return haystack.includes(q);
+            });
         }
 
         // 1. Filter Dropdowns
@@ -669,7 +684,7 @@ export default function PricingLedgerTable({
             tableSkus: result,
             summary: { count: result.length, value: totalValue },
         };
-    }, [processedSkus, filters, sortConfig, activeCategory]);
+    }, [processedSkus, filters, sortConfig, activeCategory, searchText, quickFilter]);
 
     // Pagination Logic
     const totalPages = Math.ceil(tableSkus.length / ITEMS_PER_PAGE);
@@ -785,6 +800,11 @@ export default function PricingLedgerTable({
                         <input
                             type="text"
                             placeholder="Search..."
+                            value={searchText}
+                            onChange={e => {
+                                setSearchText(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className="w-full pl-6 pr-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[9px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide placeholder:text-slate-400 placeholder:normal-case focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
                         />
                     </div>

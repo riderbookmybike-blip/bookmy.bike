@@ -555,24 +555,61 @@ export default async function Page({ params, searchParams }: Props) {
         .eq('status', 'ACTIVE');
 
     const accessoryIds = (accessorySkus || []).map((a: any) => a.id).filter(Boolean);
-    const { data: suitableForRows } =
-        accessoryIds.length > 0
-            ? await (supabase as any)
-                  .from('cat_suitable_for')
-                  .select('sku_id, target_brand_id, target_model_id, target_variant_id')
-                  .in('sku_id', accessoryIds)
-            : ({ data: [] } as any);
+    const accessoryVariantIds = (accessorySkus || []).map((a: any) => a.accessory_variant?.id).filter(Boolean);
 
+    // Fetch compatibility from SOT (cat_accessory_suitable_for, variant-level) AND pricing in parallel
+    const [compatResult, accPricingResult] = await Promise.all([
+        accessoryVariantIds.length > 0
+            ? (supabase as any)
+                  .from('cat_accessory_suitable_for')
+                  .select('variant_id, is_universal, target_brand_id, target_model_id, target_variant_id')
+                  .in('variant_id', accessoryVariantIds)
+            : Promise.resolve({ data: [] }),
+        accessoryIds.length > 0
+            ? (supabase as any)
+                  .from('cat_price_state_mh')
+                  .select('sku_id, ex_showroom')
+                  .in('sku_id', accessoryIds)
+                  .eq('state_code', stateCode)
+                  .eq('publish_stage', 'PUBLISHED')
+            : Promise.resolve({ data: [] }),
+    ]);
+    const compatRows = compatResult.data || [];
+    const accPricingRows = accPricingResult.data || [];
+
+    // Build variant→compat map, then fan out to SKU-level for the compatibility checker
+    const variantCompatMap = new Map<string, any[]>();
+    compatRows.forEach((row: any) => {
+        if (!variantCompatMap.has(row.variant_id)) variantCompatMap.set(row.variant_id, []);
+        variantCompatMap.get(row.variant_id)!.push({
+            target_brand_id: row.target_brand_id,
+            target_model_id: row.target_model_id,
+            target_variant_id: row.target_variant_id,
+            is_universal: row.is_universal,
+        });
+    });
+
+    // Map compatibility from variant to each SKU under that variant
     const suitableForMap = new Map<string, any[]>();
-    (suitableForRows || []).forEach((row: any) => {
-        if (!suitableForMap.has(row.sku_id)) suitableForMap.set(row.sku_id, []);
-        suitableForMap.get(row.sku_id)!.push(row);
+    (accessorySkus || []).forEach((a: any) => {
+        const variantId = a.accessory_variant?.id;
+        if (variantId && variantCompatMap.has(variantId)) {
+            suitableForMap.set(a.id, variantCompatMap.get(variantId)!);
+        }
+    });
+
+    // Build MRP lookup from cat_price_state_mh (SOT for accessory pricing too)
+    const accMrpMap = new Map<string, number>();
+    (accPricingRows || []).forEach((row: any) => {
+        if (row.sku_id && Number(row.ex_showroom) > 0) {
+            accMrpMap.set(row.sku_id, Number(row.ex_showroom));
+        }
     });
 
     const accessoriesData = (accessorySkus || []).map((a: any) => ({
         id: a.id,
         name: a.name,
-        price_base: a.price_base,
+        price_base: accMrpMap.get(a.id) || a.price_base,
         image_url: a.primary_image,
         category: 'ACCESSORY',
         brand: a.brand,
@@ -1027,16 +1064,16 @@ export default async function Page({ params, searchParams }: Props) {
             const basePrice = Number(a.price_base) || 0;
 
             // Pricing logic for accessories:
-            // - offer < 0: abs(offer) IS the sell price (dealer commercial stores sell price as negative)
-            // - offer > 0: offer IS the sell price (e.g. helmets at ₹499)
-            // - offer = 0: no dealer pricing, fall back to price_base
-            // - price_base > 0: this is the MRP (for strikethrough display)
+            // offer_amount is a DELTA/adjustment to the MRP (price_base):
+            //   - offer < 0: discount (e.g., MRP 850 + offer -551 = sell price 299)
+            //   - offer > 0: surge/markup
+            //   - offer = 0 or no rule: sell at MRP (no discount)
+            // price_base > 0: this is the MRP (for strikethrough display)
             let mrp = basePrice;
             let sellPrice = basePrice; // default: sell = MRP (no discount)
-            if (offer < 0) {
-                sellPrice = Math.abs(offer);
-            } else if (offer > 0) {
-                sellPrice = offer;
+            if (offer !== 0) {
+                sellPrice = basePrice + offer; // delta applied to MRP
+                if (sellPrice < 0) sellPrice = 0; // safety clamp
             }
             // If MRP not set, use sell price as MRP (no strikethrough)
             if (mrp === 0) mrp = sellPrice;
@@ -1060,14 +1097,17 @@ export default async function Page({ params, searchParams }: Props) {
                 nameBase = stripColorFromName(a.name, colorLabel);
             }
 
-            const accessoryName = nameBase || a.name;
-            const displayName = [a.brand?.name, a.name].filter(Boolean).join(' ');
+            // Title Case for clean display (DB stores uppercase like "CRASH GUARD")
+            const toTitle = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+
+            const accessoryName = toTitle(nameBase || a.name);
+            const displayName = [a.brand?.name, toTitle(a.name)].filter(Boolean).join(' ');
             const descriptionLabel = [accessoryName, colorLabel].filter(Boolean).join(' ');
 
             // Resolve product group from parent chain
             const parentVariant = accVariantMap.get(a.parent_id);
             const parentProduct = parentVariant ? accProductMap.get(parentVariant.parent_id) : null;
-            const productGroupName = parentProduct?.name || parentVariant?.name || accessoryName;
+            const productGroupName = toTitle(parentProduct?.name || parentVariant?.name || accessoryName);
             const productGroupImage = parentProduct?.image_url || parentVariant?.image_url || null;
             const skuImage =
                 a.image_url ||

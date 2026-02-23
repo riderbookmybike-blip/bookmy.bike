@@ -30,6 +30,142 @@ function isStaffContextSource(source?: string | null) {
     return STAFF_SOURCE_HINTS.has((source || '').trim().toUpperCase());
 }
 
+function normalizeLeadSource(source?: string | null) {
+    const normalized = (source || '').trim().toUpperCase();
+    if (normalized === 'WEBSITE_PDP') return 'PDP_QUICK_QUOTE';
+    return normalized || undefined;
+}
+
+function asRecord(value: any): Record<string, any> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return value as Record<string, any>;
+}
+
+function normalizeDealerPayload(rawDealer: any): Record<string, any> | null {
+    const dealer = asRecord(rawDealer);
+    const dealerId = dealer.dealer_id || dealer.dealerId || dealer.id || dealer.tenant_id || null;
+    const studioId = dealer.studio_id || dealer.studioId || null;
+    const dealerName = dealer.dealer_name || dealer.dealerName || dealer.name || null;
+    if (!dealerId && !studioId && !dealerName) return null;
+
+    return {
+        ...dealer,
+        dealer_id: dealerId,
+        id: dealerId || dealer.id || null,
+        studio_id: studioId,
+        dealer_name: dealerName,
+    };
+}
+
+function normalizeCommercialsPayload(rawCommercials: any): Record<string, any> {
+    const commercials = asRecord(rawCommercials);
+    const pricingSnapshot = asRecord(commercials.pricing_snapshot);
+    const normalizedSnapshot: Record<string, any> = {
+        ...pricingSnapshot,
+        ex_showroom:
+            pricingSnapshot.ex_showroom ??
+            pricingSnapshot.base_price ??
+            commercials.ex_showroom ??
+            commercials.base_price ??
+            null,
+        rto_total: pricingSnapshot.rto_total ?? commercials.rto_total ?? commercials.rto ?? 0,
+        insurance_total: pricingSnapshot.insurance_total ?? commercials.insurance_total ?? commercials.insurance ?? 0,
+        grand_total: pricingSnapshot.grand_total ?? commercials.grand_total ?? commercials.onRoad ?? null,
+        color_name: pricingSnapshot.color_name ?? commercials.color_name ?? commercials.color ?? null,
+    };
+
+    const normalizedDealer = normalizeDealerPayload(normalizedSnapshot.dealer || commercials.dealer);
+    if (normalizedDealer) {
+        normalizedSnapshot.dealer = normalizedDealer;
+    }
+
+    return {
+        ...commercials,
+        dealer: normalizedDealer || commercials.dealer || null,
+        pricing_snapshot: normalizedSnapshot,
+    };
+}
+
+type ActorContext = {
+    actorUserId: string | null;
+    actorTenantId: string | null;
+};
+
+async function resolveActorContext(preferredTenantId?: string | null): Promise<ActorContext> {
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    const actorUserId = user?.id || null;
+    let actorTenantId = preferredTenantId || null;
+
+    if (!actorTenantId && actorUserId) {
+        const { data: teamMembership } = await adminClient
+            .from('id_team')
+            .select('tenant_id')
+            .eq('user_id', actorUserId)
+            .eq('status', 'ACTIVE')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        actorTenantId = teamMembership?.tenant_id || null;
+    }
+
+    return { actorUserId, actorTenantId };
+}
+
+function normalizeEventChangedValue(changedValue?: unknown): string | null {
+    if (changedValue === undefined || changedValue === null) return null;
+
+    if (typeof changedValue === 'string') {
+        const normalized = changedValue.trim();
+        return normalized.length > 0 ? normalized.slice(0, 500) : null;
+    }
+
+    try {
+        return JSON.stringify(changedValue).slice(0, 500);
+    } catch {
+        return String(changedValue).slice(0, 500);
+    }
+}
+
+async function logLeadEvent(input: {
+    leadId: string;
+    eventType: string;
+    notes?: string | null;
+    changedValue?: unknown;
+    actorUserId?: string | null;
+    actorTenantId?: string | null;
+}) {
+    if (!input.leadId) return;
+
+    const normalizedType = (input.eventType || '').trim().toUpperCase();
+    if (!normalizedType) return;
+
+    const context =
+        input.actorUserId !== undefined || input.actorTenantId !== undefined
+            ? {
+                  actorUserId: input.actorUserId || null,
+                  actorTenantId: input.actorTenantId || null,
+              }
+            : await resolveActorContext(input.actorTenantId || null);
+
+    const { error } = await adminClient.from('crm_lead_events').insert({
+        lead_id: input.leadId,
+        event_type: normalizedType,
+        actor_user_id: context.actorUserId,
+        actor_tenant_id: context.actorTenantId,
+        notes: input.notes || null,
+        changed_value: normalizeEventChangedValue(input.changedValue),
+    });
+
+    if (error) {
+        console.error('logLeadEvent Error:', error);
+    }
+}
+
 // --- CUSTOMER PROFILES ---
 
 // function getOrCreateCustomerProfile removed - using createOrLinkMember from members.ts instead
@@ -336,74 +472,463 @@ export async function resolveLeadReferrerAction(input: { referralCode?: string; 
 
 // --- LEADS ---
 
-export async function getLeads(tenantId?: string, status?: string) {
-    console.log('Fetching leads for tenantId:', tenantId);
-    const supabase = await createClient();
-    let query = supabase
-        .from('crm_leads')
-        .select('*')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
+const LEAD_INDEX_DEFAULT_PAGE_SIZE = 20;
+const LEAD_INDEX_MAX_PAGE_SIZE = 100;
+const LEAD_SEARCH_MAX_LENGTH = 60;
 
-    if (status && status !== 'ALL') {
-        query = query.eq('status', status);
-    } else if (!status || status === 'ACTIVE') {
-        // Default: Don't show JUNK leads in the main list
-        query = query.neq('status', 'JUNK');
+export type LeadSlaBucket = 'OVERDUE' | 'DUE_TODAY' | 'UPCOMING' | 'UNSCHEDULED' | 'CLEAR';
+
+export type LeadIndexRow = {
+    id: string;
+    displayId: string;
+    customerId?: string | null;
+    customerName: string;
+    phone: string;
+    pincode?: string | null;
+    taluka?: string | null;
+    district?: string | null;
+    state?: string | null;
+    area?: string | null;
+    dob?: string | null;
+    status: string;
+    source: string;
+    interestModel?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+    intentScore?: string;
+    referralSource?: string | null;
+    events_log?: any[];
+    openTaskCount: number;
+    nextFollowUpAt: string | null;
+    slaBucket: LeadSlaBucket;
+    lastActivityAt: string | null;
+};
+
+export type LeadIndexFilters = {
+    search?: string;
+    status?: string;
+    intent?: string;
+    sla?: LeadSlaBucket | 'ALL';
+};
+
+export type LeadIndexKpis = {
+    totalLeads: number;
+    hotLeads: number;
+    qualifiedLeads: number;
+    inPipeline: number;
+    overdueFollowUps: number;
+    dueTodayFollowUps: number;
+};
+
+export type LeadIndexPagination = {
+    page: number;
+    pageSize: number;
+    totalRows: number;
+    totalPages: number;
+    hasPrev: boolean;
+    hasNext: boolean;
+};
+
+export type LeadIndexResponse = {
+    success: boolean;
+    rows: LeadIndexRow[];
+    pagination: LeadIndexPagination;
+    kpis: LeadIndexKpis;
+    message?: string;
+};
+
+function normalizeLeadDisplayId(lead: any) {
+    const rawDisplayId = String(lead?.display_id || lead?.displayId || '').trim();
+    if (rawDisplayId) return rawDisplayId;
+
+    const id = String(lead?.id || '');
+    if (!id) return '---';
+    const last9 = id.replace(/-/g, '').slice(-9).toUpperCase();
+    return `${last9.slice(0, 3)}-${last9.slice(3, 6)}-${last9.slice(6, 9)}`;
+}
+
+function normalizeLeadSearch(search?: string) {
+    if (!search) return '';
+    return search
+        .trim()
+        .slice(0, LEAD_SEARCH_MAX_LENGTH)
+        .replace(/[%*,]+/g, ' ')
+        .replace(/\s+/g, ' ');
+}
+
+function startOfDay(input: Date) {
+    const d = new Date(input);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+function endOfDay(input: Date) {
+    const d = new Date(input);
+    d.setHours(23, 59, 59, 999);
+    return d;
+}
+
+function parseDateValue(value: unknown): Date | null {
+    if (!value || typeof value !== 'string') return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function deriveLeadSla(utmData: any): {
+    slaBucket: LeadSlaBucket;
+    openTaskCount: number;
+    nextFollowUpAt: string | null;
+} {
+    const moduleData = utmData && typeof utmData === 'object' ? ((utmData as any).module_data as any) || {} : {};
+    const tasks = Array.isArray(moduleData.tasks) ? (moduleData.tasks as any[]) : [];
+    const openTasks = tasks.filter(task => task && task.completed !== true);
+    const dueDates = openTasks.map(task => parseDateValue(task?.due_date)).filter(Boolean) as Date[];
+
+    if (openTasks.length === 0) {
+        return { slaBucket: 'CLEAR', openTaskCount: 0, nextFollowUpAt: null };
     }
 
+    if (dueDates.length === 0) {
+        return { slaBucket: 'UNSCHEDULED', openTaskCount: openTasks.length, nextFollowUpAt: null };
+    }
+
+    const nextDate = dueDates.reduce((earliest, current) =>
+        current.getTime() < earliest.getTime() ? current : earliest
+    );
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+    const upcomingThreshold = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+
+    let slaBucket: LeadSlaBucket = 'UPCOMING';
+    if (nextDate.getTime() < todayStart.getTime()) slaBucket = 'OVERDUE';
+    else if (nextDate.getTime() <= todayEnd.getTime()) slaBucket = 'DUE_TODAY';
+    else if (nextDate.getTime() > upcomingThreshold.getTime()) slaBucket = 'CLEAR';
+
+    return {
+        slaBucket,
+        openTaskCount: openTasks.length,
+        nextFollowUpAt: nextDate.toISOString(),
+    };
+}
+
+function mapCrmLeadToIndexRow(lead: any): LeadIndexRow {
+    const utmData = (lead.utm_data as any) || {};
+    const referralData = (lead.referral_data as any) || {};
+    const locationProfile = extractLeadLocationProfile(utmData);
+    const sla = deriveLeadSla(utmData);
+
+    const createdAt = lead.created_at || null;
+    const updatedAt = lead.updated_at || null;
+    const lastActivityAt = updatedAt || createdAt;
+
+    return {
+        id: lead.id,
+        displayId: normalizeLeadDisplayId(lead),
+        customerId: lead.customer_id || null,
+        customerName: lead.customer_name || 'Lead',
+        phone: lead.customer_phone || '—',
+        pincode: lead.customer_pincode || null,
+        taluka: lead.customer_taluka || null,
+        district: locationProfile?.district || null,
+        state: locationProfile?.state || null,
+        area: locationProfile?.area || null,
+        dob: lead.customer_dob || null,
+        status: lead.status || 'NEW',
+        source: lead.source || utmData.utm_source || 'WEBSITE',
+        interestModel: lead.interest_model || null,
+        created_at: createdAt,
+        updated_at: updatedAt,
+        intentScore: lead.intent_score || 'COLD',
+        referralSource:
+            lead.referred_by_name ||
+            referralData.resolved_referrer_name ||
+            referralData.input_name ||
+            referralData.input_phone ||
+            referralData.referred_by_name ||
+            referralData.source,
+        events_log: lead.events_log || [],
+        openTaskCount: sla.openTaskCount,
+        nextFollowUpAt: sla.nextFollowUpAt,
+        slaBucket: sla.slaBucket,
+        lastActivityAt,
+    };
+}
+
+function matchesSlaFilter(row: LeadIndexRow, filter?: LeadSlaBucket | 'ALL') {
+    if (!filter || filter === 'ALL') return true;
+    return row.slaBucket === filter;
+}
+
+function applyLeadBaseFilters(
+    query: any,
+    input: {
+        tenantId?: string;
+        status?: string;
+        intent?: string;
+        search?: string;
+    }
+) {
+    let next = query.eq('is_deleted', false);
+
+    if (input.tenantId && input.tenantId !== 'undefined') {
+        next = next.eq('owner_tenant_id', input.tenantId);
+    }
+
+    const status = (input.status || '').trim().toUpperCase();
+    if (status && status !== 'ALL' && status !== 'ACTIVE') {
+        next = next.eq('status', status);
+    } else {
+        next = next.neq('status', 'JUNK');
+    }
+
+    const intent = (input.intent || '').trim().toUpperCase();
+    if (intent && intent !== 'ALL') {
+        next = next.eq('intent_score', intent);
+    }
+
+    const search = normalizeLeadSearch(input.search);
+    if (search) {
+        next = next.or(
+            [
+                `customer_name.ilike.%${search}%`,
+                `customer_phone.ilike.%${search}%`,
+                `interest_model.ilike.%${search}%`,
+                `display_id.ilike.%${search}%`,
+            ].join(',')
+        );
+    }
+
+    return next;
+}
+
+function applyLeadTenantScope(query: any, tenantId?: string) {
     if (tenantId && tenantId !== 'undefined') {
-        query = query.eq('owner_tenant_id', tenantId);
+        return query.eq('owner_tenant_id', tenantId);
+    }
+    return query;
+}
+
+function applyTaskTenantScope(query: any, tenantId?: string) {
+    if (tenantId && tenantId !== 'undefined') {
+        return query.eq('tenant_id', tenantId);
+    }
+    return query;
+}
+
+function defaultLeadIndexResponse(page = 1, pageSize = LEAD_INDEX_DEFAULT_PAGE_SIZE): LeadIndexResponse {
+    return {
+        success: false,
+        rows: [],
+        pagination: {
+            page,
+            pageSize,
+            totalRows: 0,
+            totalPages: 0,
+            hasPrev: false,
+            hasNext: false,
+        },
+        kpis: {
+            totalLeads: 0,
+            hotLeads: 0,
+            qualifiedLeads: 0,
+            inPipeline: 0,
+            overdueFollowUps: 0,
+            dueTodayFollowUps: 0,
+        },
+    };
+}
+
+export async function getLeadIndexAction(input: {
+    tenantId?: string;
+    page?: number;
+    pageSize?: number;
+    filters?: LeadIndexFilters;
+}): Promise<LeadIndexResponse> {
+    const page = Math.max(1, Number.isFinite(input?.page) ? Number(input.page) : 1);
+    const rawPageSize = Number.isFinite(input?.pageSize) ? Number(input.pageSize) : LEAD_INDEX_DEFAULT_PAGE_SIZE;
+    const pageSize = Math.min(LEAD_INDEX_MAX_PAGE_SIZE, Math.max(5, rawPageSize));
+    const filters = input?.filters || {};
+    const status = (filters.status || 'ALL').toUpperCase();
+    const intent = (filters.intent || 'ALL').toUpperCase();
+    const slaFilter = ((filters.sla || 'ALL').toUpperCase() as LeadSlaBucket | 'ALL') || 'ALL';
+    const search = filters.search || '';
+
+    const supabase = await createClient();
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let rows: LeadIndexRow[] = [];
+    let totalRows = 0;
+
+    if (slaFilter === 'ALL') {
+        const baseQuery = applyLeadBaseFilters(
+            supabase.from('crm_leads').select('*', { count: 'exact' }).order('created_at', { ascending: false }),
+            {
+                tenantId: input.tenantId,
+                status,
+                intent,
+                search,
+            }
+        );
+
+        const { data, error, count } = await baseQuery.range(from, to);
+        if (error) {
+            console.error('getLeadIndexAction query error:', error);
+            return {
+                ...defaultLeadIndexResponse(page, pageSize),
+                message: error.message,
+            };
+        }
+
+        rows = (data || []).map(mapCrmLeadToIndexRow);
+        totalRows = count || 0;
+    } else {
+        const baseQuery = applyLeadBaseFilters(
+            supabase.from('crm_leads').select('*').order('created_at', { ascending: false }),
+            {
+                tenantId: input.tenantId,
+                status,
+                intent,
+                search,
+            }
+        );
+
+        const { data, error } = await baseQuery;
+        if (error) {
+            console.error('getLeadIndexAction SLA query error:', error);
+            return {
+                ...defaultLeadIndexResponse(page, pageSize),
+                message: error.message,
+            };
+        }
+
+        const filtered = ((data || []) as any[])
+            .map(mapCrmLeadToIndexRow)
+            .filter((row: LeadIndexRow) => matchesSlaFilter(row, slaFilter));
+        totalRows = filtered.length;
+        rows = filtered.slice(from, to + 1);
     }
 
+    const todayStart = startOfDay(new Date()).toISOString();
+    const todayEnd = endOfDay(new Date()).toISOString();
+
+    const totalKpiQuery = applyLeadBaseFilters(
+        supabase.from('crm_leads').select('id', { count: 'exact', head: true }),
+        {
+            tenantId: input.tenantId,
+            status: 'ALL',
+            intent: 'ALL',
+        }
+    );
+    const hotKpiQuery = applyLeadBaseFilters(supabase.from('crm_leads').select('id', { count: 'exact', head: true }), {
+        tenantId: input.tenantId,
+        status: 'ALL',
+        intent: 'HOT',
+    });
+    const qualifiedKpiQuery = applyLeadTenantScope(
+        supabase
+            .from('crm_leads')
+            .select('id', { count: 'exact', head: true })
+            .eq('is_deleted', false)
+            .neq('status', 'JUNK')
+            .neq('status', 'NEW'),
+        input.tenantId
+    );
+    const pipelineKpiQuery = applyLeadTenantScope(
+        supabase
+            .from('crm_leads')
+            .select('id', { count: 'exact', head: true })
+            .eq('is_deleted', false)
+            .in('status', ['QUOTE', 'BOOKING']),
+        input.tenantId
+    );
+    const overdueSlaKpiQuery = applyTaskTenantScope(
+        supabase
+            .from('crm_tasks')
+            .select('id', { count: 'exact', head: true })
+            .eq('linked_type', 'LEAD')
+            .neq('status', 'DONE')
+            .lt('due_date', todayStart),
+        input.tenantId
+    );
+    const dueTodaySlaKpiQuery = applyTaskTenantScope(
+        supabase
+            .from('crm_tasks')
+            .select('id', { count: 'exact', head: true })
+            .eq('linked_type', 'LEAD')
+            .neq('status', 'DONE')
+            .gte('due_date', todayStart)
+            .lte('due_date', todayEnd),
+        input.tenantId
+    );
+
+    const [
+        totalKpiResult,
+        hotKpiResult,
+        qualifiedKpiResult,
+        pipelineKpiResult,
+        overdueSlaKpiResult,
+        dueTodaySlaKpiResult,
+    ] = await Promise.all([
+        totalKpiQuery,
+        hotKpiQuery,
+        qualifiedKpiQuery,
+        pipelineKpiQuery,
+        overdueSlaKpiQuery,
+        dueTodaySlaKpiQuery,
+    ]);
+
+    if (totalKpiResult.error) console.error('getLeadIndexAction total KPI error:', totalKpiResult.error);
+    if (hotKpiResult.error) console.error('getLeadIndexAction hot KPI error:', hotKpiResult.error);
+    if (qualifiedKpiResult.error) console.error('getLeadIndexAction qualified KPI error:', qualifiedKpiResult.error);
+    if (pipelineKpiResult.error) console.error('getLeadIndexAction pipeline KPI error:', pipelineKpiResult.error);
+    if (overdueSlaKpiResult.error)
+        console.error('getLeadIndexAction overdue SLA KPI error:', overdueSlaKpiResult.error);
+    if (dueTodaySlaKpiResult.error)
+        console.error('getLeadIndexAction due-today SLA KPI error:', dueTodaySlaKpiResult.error);
+
+    const totalPages = totalRows === 0 ? 0 : Math.ceil(totalRows / pageSize);
+
+    return {
+        success: true,
+        rows,
+        pagination: {
+            page,
+            pageSize,
+            totalRows,
+            totalPages,
+            hasPrev: page > 1,
+            hasNext: page < totalPages,
+        },
+        kpis: {
+            totalLeads: totalKpiResult.count || 0,
+            hotLeads: hotKpiResult.count || 0,
+            qualifiedLeads: qualifiedKpiResult.count || 0,
+            inPipeline: pipelineKpiResult.count || 0,
+            overdueFollowUps: overdueSlaKpiResult.count || 0,
+            dueTodayFollowUps: dueTodaySlaKpiResult.count || 0,
+        },
+    };
+}
+
+export async function getLeads(tenantId?: string, status?: string) {
+    const supabase = await createClient();
+    const query = applyLeadBaseFilters(
+        supabase.from('crm_leads').select('*').order('created_at', { ascending: false }),
+        {
+            tenantId,
+            status: status || 'ALL',
+            intent: 'ALL',
+            search: '',
+        }
+    );
     const { data, error } = await query;
     if (error) {
-        console.error('Database error in getLeads:', error);
+        console.error('getLeads query error:', error);
         return [];
     }
-
-    if (!data) {
-        console.log('No leads found (null data)');
-        return [];
-    }
-
-    console.log(`Mapping ${data.length} leads for UI`);
-
-    // Map to UI interface
-    return data.map((l: any) => {
-        const last9 = l.id.replace(/-/g, '').slice(-9).toUpperCase();
-        const displayId = `${last9.slice(0, 3)}-${last9.slice(3, 6)}-${last9.slice(6, 9)}`;
-        const utmData = (l.utm_data as any) || {};
-        const referralData = (l.referral_data as any) || {};
-        const locationProfile = extractLeadLocationProfile(utmData);
-
-        return {
-            id: l.id,
-            displayId,
-            customerId: l.customer_id,
-            customerName: l.customer_name,
-            phone: l.customer_phone,
-            pincode: l.customer_pincode,
-            taluka: l.customer_taluka,
-            district: locationProfile?.district || null,
-            state: locationProfile?.state || null,
-            area: locationProfile?.area || null,
-            dob: l.customer_dob,
-            status: l.status,
-            source: utmData.utm_source || 'WEBSITE',
-            interestModel: l.interest_model,
-            created_at: l.created_at,
-            intentScore: l.intent_score || 'COLD',
-            referralSource:
-                l.referred_by_name ||
-                referralData.resolved_referrer_name ||
-                referralData.input_name ||
-                referralData.input_phone ||
-                referralData.referred_by_name ||
-                referralData.source,
-            events_log: l.events_log || [],
-        };
-    });
+    return ((data || []) as any[]).map(mapCrmLeadToIndexRow);
 }
 
 export async function getLeadById(leadId: string) {
@@ -415,39 +940,67 @@ export async function getLeadById(leadId: string) {
     }
     if (!data) return null;
 
-    const last9 = data.id.replace(/-/g, '').slice(-9).toUpperCase();
-    const displayId = `${last9.slice(0, 3)}-${last9.slice(3, 6)}-${last9.slice(6, 9)}`;
+    return {
+        ...mapCrmLeadToIndexRow(data),
+        raw: data,
+    };
+}
 
-    const utmData = (data.utm_data as any) || {};
-    const referralData = (data.referral_data as any) || {};
-    const locationProfile = extractLeadLocationProfile(utmData);
+export type LeadEventRecord = {
+    id: string;
+    lead_id: string;
+    event_type: string;
+    notes: string | null;
+    changed_value: string | null;
+    actor_user_id: string | null;
+    actor_tenant_id: string | null;
+    created_at: string;
+    actor_name?: string | null;
+};
+
+export async function getLeadEventsAction(
+    leadId: string,
+    limit = 120
+): Promise<{ success: boolean; events: LeadEventRecord[]; message?: string }> {
+    if (!leadId) {
+        return { success: false, events: [], message: 'Lead ID is required' };
+    }
+
+    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(500, Math.floor(limit))) : 120;
+
+    const { data, error } = await adminClient
+        .from('crm_lead_events')
+        .select('id, lead_id, event_type, notes, changed_value, actor_user_id, actor_tenant_id, created_at')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false })
+        .limit(safeLimit);
+
+    if (error) {
+        console.error('getLeadEventsAction Error:', error);
+        return { success: false, events: [], message: error.message };
+    }
+
+    const events = (data || []) as LeadEventRecord[];
+    const actorIds = Array.from(
+        new Set(events.map(event => event.actor_user_id).filter((value): value is string => !!value))
+    );
+
+    let actorNameMap = new Map<string, string>();
+    if (actorIds.length > 0) {
+        const { data: members } = await adminClient.from('id_members').select('id, full_name').in('id', actorIds);
+        for (const member of members || []) {
+            if (member.id && member.full_name) {
+                actorNameMap.set(member.id, member.full_name);
+            }
+        }
+    }
 
     return {
-        id: data.id,
-        displayId,
-        customerId: data.customer_id,
-        customerName: data.customer_name,
-        phone: data.customer_phone,
-        pincode: data.customer_pincode,
-        taluka: data.customer_taluka,
-        district: locationProfile?.district || null,
-        state: locationProfile?.state || null,
-        area: locationProfile?.area || null,
-        dob: data.customer_dob,
-        status: data.status,
-        source: utmData.utm_source || 'WEBSITE',
-        interestModel: data.interest_model,
-        created_at: data.created_at,
-        intentScore: data.intent_score || 'COLD',
-        referralSource:
-            data.referred_by_name ||
-            referralData.resolved_referrer_name ||
-            referralData.input_name ||
-            referralData.input_phone ||
-            referralData.referred_by_name ||
-            referralData.source,
-        events_log: data.events_log || [],
-        raw: data,
+        success: true,
+        events: events.map(event => ({
+            ...event,
+            actor_name: event.actor_user_id ? actorNameMap.get(event.actor_user_id) || null : null,
+        })),
     };
 }
 
@@ -475,6 +1028,7 @@ type LeadModuleTask = {
     completed_at: string | null;
     created_at: string;
     created_by: string | null;
+    crm_task_id?: string | null;
 };
 
 function readLeadModuleData(utmData: any): { notes: LeadModuleNote[]; tasks: LeadModuleTask[] } {
@@ -689,7 +1243,7 @@ export async function addLeadTaskAction(input: { leadId: string; title: string; 
 
     const { data, error } = await adminClient
         .from('crm_leads')
-        .select('utm_data, events_log')
+        .select('utm_data, events_log, owner_tenant_id')
         .eq('id', input.leadId)
         .maybeSingle();
 
@@ -698,14 +1252,40 @@ export async function addLeadTaskAction(input: { leadId: string; title: string; 
     }
 
     const now = new Date().toISOString();
+    const parsedDueDate = parseDateValue(input.dueDate || '');
+    const normalizedDueDate = parsedDueDate ? parsedDueDate.toISOString() : null;
+
+    const { data: crmTask, error: crmTaskError } = await adminClient
+        .from('crm_tasks')
+        .insert({
+            tenant_id: (data as any).owner_tenant_id || null,
+            linked_type: 'LEAD',
+            linked_id: input.leadId,
+            title,
+            description: 'Lead follow-up task',
+            status: 'OPEN',
+            primary_assignee_id: user.id,
+            assignee_ids: [user.id],
+            due_date: normalizedDueDate,
+            created_by: user.id,
+            updated_at: now,
+        })
+        .select('id')
+        .maybeSingle();
+
+    if (crmTaskError) {
+        console.error('addLeadTaskAction crm_tasks sync error:', crmTaskError);
+    }
+
     const task: LeadModuleTask = {
         id: `TASK_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         title,
-        due_date: input.dueDate || null,
+        due_date: normalizedDueDate,
         completed: false,
         completed_at: null,
         created_at: now,
         created_by: user.id,
+        crm_task_id: (crmTask as any)?.id || null,
     };
 
     const { tasks } = readLeadModuleData((data as any).utm_data);
@@ -718,7 +1298,11 @@ export async function addLeadTaskAction(input: { leadId: string; title: string; 
             title: 'Lead Task Added',
             description: title,
             actorId: user.id,
-            metadata: { task_id: task.id, due_date: task.due_date },
+            metadata: {
+                task_id: task.id,
+                crm_task_id: task.crm_task_id || null,
+                due_date: task.due_date,
+            },
         }),
         ...existingEvents,
     ];
@@ -733,6 +1317,15 @@ export async function addLeadTaskAction(input: { leadId: string; title: string; 
     );
 
     if (!updateResult.success) {
+        if ((crmTask as any)?.id) {
+            const { error: rollbackError } = await adminClient
+                .from('crm_tasks')
+                .delete()
+                .eq('id', (crmTask as any).id);
+            if (rollbackError) {
+                console.error('addLeadTaskAction crm_tasks rollback error:', rollbackError);
+            }
+        }
         return { success: false, message: updateResult.message || 'Lead update failed' };
     }
 
@@ -797,6 +1390,19 @@ export async function toggleLeadTaskAction(input: { leadId: string; taskId: stri
 
     if (!updateResult.success) {
         return { success: false, message: updateResult.message || 'Lead update failed' };
+    }
+
+    if (targetTask.crm_task_id) {
+        const { error: crmTaskSyncError } = await adminClient
+            .from('crm_tasks')
+            .update({
+                status: input.completed ? 'DONE' : 'OPEN',
+                updated_at: now,
+            })
+            .eq('id', targetTask.crm_task_id);
+        if (crmTaskSyncError) {
+            console.error('toggleLeadTaskAction crm_tasks sync error:', crmTaskSyncError);
+        }
     }
 
     revalidatePath('/app/[slug]/leads');
@@ -880,12 +1486,13 @@ export async function createLeadAction(data: {
     referred_by_phone?: string;
     referred_by_name?: string;
 }) {
+    const normalizedSource = normalizeLeadSource(data.source);
     const interestModel = data.interest_model || data.model || 'GENERAL_ENQUIRY';
     const interestText = (data.interest_text || '').trim();
     const referredByCodeInput = (data.referred_by_code || '').trim().toUpperCase();
     const referredByPhoneInput = toAppStorageFormat(data.referred_by_phone || '') || '';
     const referredByNameInput = (data.referred_by_name || '').trim();
-    const isCrmManualSource = (data.source || '').trim().toUpperCase() === 'CRM_MANUAL';
+    const isCrmManualSource = normalizedSource === 'CRM_MANUAL';
     const authUser = await getAuthUser();
     let actorIsStaff = false;
 
@@ -1068,7 +1675,7 @@ export async function createLeadAction(data: {
         const { data: existingLeadCandidates, error: existingLeadError } = await adminClient
             .from('crm_leads')
             .select(
-                'id, status, events_log, customer_id, customer_phone, selected_dealer_tenant_id, utm_data, referred_by_id, referred_by_name, referral_data'
+                'id, status, customer_id, customer_phone, selected_dealer_tenant_id, referred_by_id, referred_by_name, utm_source'
             )
             .eq('is_deleted', false)
             .eq('owner_tenant_id', effectiveOwnerId)
@@ -1084,14 +1691,12 @@ export async function createLeadAction(data: {
         const candidateLeads = (existingLeadCandidates || []) as Array<{
             id: string;
             status: string;
-            events_log: any[] | null;
             selected_dealer_tenant_id: string | null;
             customer_id: string | null;
             customer_phone: string | null;
-            utm_data: any | null;
+            utm_source: string | null;
             referred_by_id: string | null;
             referred_by_name: string | null;
-            referral_data: any | null;
         }>;
 
         const existingLead = data.selected_dealer_id
@@ -1110,15 +1715,11 @@ export async function createLeadAction(data: {
                 attempted_location: locationProfile,
                 attempted_referral: referralContext,
                 referral_locked: true,
-                source: data.source || 'UNKNOWN',
+                source: normalizedSource || 'UNKNOWN',
                 note: 'Active lead exists; reusing lead for quote creation.',
             };
 
-            const existingEvents = (existingLead.events_log as any[]) || [];
-            const existingUtmData =
-                existingLead.utm_data && typeof existingLead.utm_data === 'object' ? existingLead.utm_data : {};
             const duplicateUpdatePayload: Record<string, any> = {
-                events_log: [...existingEvents, duplicateEvent],
                 interest_model: interestModel,
                 interest_text: interestText || interestModel,
                 ...(data.customer_name ? { customer_name: data.customer_name } : {}),
@@ -1130,12 +1731,8 @@ export async function createLeadAction(data: {
                       }
                     : {}),
                 ...(resolvedTaluka ? { customer_taluka: resolvedTaluka } : {}),
-                ...(data.source ? { source: data.source } : {}),
-                utm_data: {
-                    ...existingUtmData,
-                    utm_source: data.source || existingUtmData.utm_source || 'MANUAL',
-                    ...(locationProfile ? { location_profile: locationProfile } : {}),
-                },
+                ...(normalizedSource ? { source: normalizedSource } : {}),
+                utm_source: normalizedSource || existingLead.utm_source || 'MANUAL',
             };
             // Backfill dealer lock on legacy leads when reusing under an explicit dealer context.
             if (data.selected_dealer_id && !existingLead.selected_dealer_tenant_id) {
@@ -1150,24 +1747,37 @@ export async function createLeadAction(data: {
             }
 
             try {
-                await adminClient.from('crm_audit_log').insert({
-                    entity_type: 'LEAD',
-                    entity_id: existingLead.id,
+                await adminClient.from('catalog_audit_log').insert({
+                    table_name: 'crm_leads',
+                    record_id: existingLead.id,
                     action: 'DUPLICATE_ATTEMPT',
                     new_data: {
                         attempted_by: authUser?.id || null,
                         attempted_phone: strictPhone,
                         attempted_name: data.customer_name || null,
-                        source: data.source || 'UNKNOWN',
+                        source: normalizedSource || 'UNKNOWN',
                         owner_tenant_id: effectiveOwnerId,
+                        duplicate_event: duplicateEvent,
                     },
-                    performed_by: authUser?.id || null,
-                    performed_at: nowIso,
-                    source: 'APP',
+                    actor_id: authUser?.id || null,
+                    created_at: nowIso,
+                    actor_label: 'APP',
                 });
             } catch (auditError) {
-                console.error('[DEBUG] crm_audit_log insert failed:', auditError);
+                console.error('[DEBUG] catalog_audit_log insert failed:', auditError);
             }
+
+            await logLeadEvent({
+                leadId: existingLead.id,
+                eventType: 'DUPLICATE_ATTEMPT',
+                notes: 'Duplicate lead attempt captured and existing lead reused.',
+                changedValue: {
+                    source: normalizedSource || 'UNKNOWN',
+                    attempted_interest: interestText || interestModel,
+                },
+                actorUserId: authUser?.id || null,
+                actorTenantId: effectiveOwnerId || null,
+            });
 
             return {
                 success: true,
@@ -1216,14 +1826,14 @@ export async function createLeadAction(data: {
                 referred_by_name: resolvedReferrer?.name || referredByNameInput || null,
                 status: status,
                 is_serviceable: isServiceable,
-                source: data.source || 'WALKIN',
-                referral_data: referralContext,
-                utm_data: {
-                    utm_source: data.source || 'MANUAL',
-                    auto_segregated: status === 'JUNK',
-                    segregation_reason: status === 'JUNK' ? 'Unserviceable Pincode' : null,
-                    ...(locationProfile ? { location_profile: locationProfile } : {}),
-                },
+                source: normalizedSource || 'WALKIN',
+                utm_source: normalizedSource || 'MANUAL',
+                utm_medium: status === 'JUNK' ? 'AUTO_SEGREGATED' : null,
+                utm_campaign: status === 'JUNK' ? 'UNSERVICEABLE_PINCODE' : null,
+                utm_term: normalizedPincode.length === 6 ? normalizedPincode : null,
+                utm_content: locationProfile
+                    ? `${locationProfile.district || ''}|${locationProfile.state || ''}|${locationProfile.taluka || ''}`
+                    : null,
                 intent_score: status === 'JUNK' ? 'COLD' : 'WARM',
             })
             .select()
@@ -1263,15 +1873,32 @@ export async function createLeadAction(data: {
                         : 'PENDING_EXTERNAL_REFERRER'
                     : 'NOT_APPLICABLE_REPEAT_DELIVERY',
             };
-            const referralUpdateResult = await updateCrmLeadCompat(
-                lead.id,
-                { referral_data: finalizedReferralData },
-                new Date().toISOString()
-            );
-            if (!referralUpdateResult.success) {
-                console.error('[DEBUG] lead referral_data finalize failed:', referralUpdateResult.message);
+            try {
+                await adminClient.from('catalog_audit_log').insert({
+                    table_name: 'crm_leads',
+                    record_id: lead.id,
+                    action: 'REFERRAL_CONTEXT_CAPTURED',
+                    new_data: finalizedReferralData,
+                    actor_id: authUser?.id || null,
+                    created_at: new Date().toISOString(),
+                    actor_label: 'APP',
+                });
+            } catch (referralAuditError) {
+                console.error('[DEBUG] referral context audit insert failed:', referralAuditError);
             }
         }
+
+        await logLeadEvent({
+            leadId: lead.id,
+            eventType: 'LEAD_CREATED',
+            notes: `Lead created from ${normalizedSource || 'WALKIN'} source`,
+            changedValue: {
+                status,
+                intent_score: status === 'JUNK' ? 'COLD' : 'WARM',
+            },
+            actorUserId: authUser?.id || null,
+            actorTenantId: effectiveOwnerId || null,
+        });
 
         console.log('[DEBUG] Lead created successfully:', lead.id);
         revalidatePath('/app/[slug]/leads', 'page');
@@ -1322,15 +1949,15 @@ export async function getQuotes(tenantId?: string) {
         id: q.id,
         displayId: q.display_id || `QT-${q.id.slice(0, 4).toUpperCase()}`,
         customerName: leadNameMap[q.lead_id] || 'N/A',
-        productName: q.commercials?.label || q.snap_variant || 'Custom Quote',
+        productName: q.snap_variant || 'Custom Quote',
         productSku: q.variant_id || 'N/A',
-        price: q.on_road_price || q.commercials?.grand_total || 0,
+        price: q.on_road_price || 0,
         status: q.status,
-        date: q.created_at.split('T')[0],
-        vehicleBrand: q.commercials?.brand || q.snap_brand || '',
-        vehicleModel: q.commercials?.model || q.snap_model || '',
-        vehicleVariant: q.commercials?.variant || q.snap_variant || '',
-        vehicleColor: q.commercials?.color_name || q.commercials?.color || q.snap_color || '',
+        date: q.created_at ? q.created_at.split('T')[0] : '',
+        vehicleBrand: q.snap_brand || '',
+        vehicleModel: q.snap_model || '',
+        vehicleVariant: q.snap_variant || '',
+        vehicleColor: q.snap_color || '',
     }));
 }
 
@@ -1385,7 +2012,7 @@ export async function getBookingsForMember(memberId: string) {
 import { getAuthUser } from '@/lib/auth/resolver';
 
 export async function createQuoteAction(data: {
-    tenant_id: string;
+    tenant_id?: string;
     lead_id?: string;
     member_id?: string; // Direct member ID (for logged-in users)
     variant_id: string;
@@ -1395,78 +2022,61 @@ export async function createQuoteAction(data: {
     source?: 'STORE_PDP' | 'LEADS';
 }): Promise<{ success: boolean; data?: any; message?: string }> {
     const user = await getAuthUser();
-    if (!user) {
+    const isGuestMarketplaceQuote = !user && data.source === 'STORE_PDP' && !!data.lead_id;
+    if (!user && !isGuestMarketplaceQuote) {
         return {
             success: false,
             message: 'Authentication required to generate a quote.',
         };
     }
     const supabase = await createClient();
-    const { data: settings } = await supabase.from('sys_settings').select('unified_context_strict_mode').single();
+    const { data: settings } = await supabase
+        .from('sys_settings')
+        .select('unified_context_strict_mode, default_owner_tenant_id')
+        .single();
     const isStrict = settings?.unified_context_strict_mode !== false; // Active by default
+    let resolvedTenantId = (data.tenant_id || '').trim() || null;
 
-    const createdBy = user?.id;
-    const { data: actorMember } = await supabase
-        .from('id_members')
-        .select('id, role')
-        .eq('id', createdBy || '')
-        .maybeSingle();
+    const createdBy = user?.id || null;
+    let actorMember: { id: string; role: string | null } | null = null;
+    if (createdBy) {
+        const { data: actorMemberData } = await supabase
+            .from('id_members')
+            .select('id, role')
+            .eq('id', createdBy)
+            .maybeSingle();
+        actorMember = actorMemberData;
+    }
     const actorIsStaff = !!createdBy && !isEndCustomerRole(actorMember?.role);
 
     // Prefer explicit member_id or lead-linked customer_id (avoid using staff auth IDs)
     let memberId: string | null = data.member_id || null;
     let leadReferrerId: string | null = null;
 
-    const comms: any = data.commercials || {};
-    const snap = comms.pricing_snapshot || {};
-
-    if (!comms.dealer && data.tenant_id) {
-        const { data: tenant } = await supabase
-            .from('id_tenants')
-            .select('id, name, studio_id')
-            .eq('id', data.tenant_id)
-            .maybeSingle();
-        if (tenant) {
-            comms.dealer = {
-                dealer_id: tenant.id,
-                dealer_name: tenant.name,
-                studio_id: tenant.studio_id,
-            };
-        }
-    }
-
-    const dealer = snap.dealer || comms.dealer || null;
-    const missing: string[] = [];
-    if (!comms.label && (!comms.brand || !comms.model || !comms.variant)) missing.push('vehicle_label');
-    if (!snap || Object.keys(snap).length === 0) missing.push('pricing_snapshot');
-    if (!(snap.ex_showroom || comms.ex_showroom || comms.base_price)) missing.push('ex_showroom');
-    if (snap.rto_total === undefined || snap.rto_total === null) missing.push('rto_total');
-    if (snap.insurance_total === undefined || snap.insurance_total === null) missing.push('insurance_total');
-    if (!dealer?.dealer_id && !dealer?.studio_id && !dealer?.id) missing.push('dealer');
-    if (!comms.color_name && !comms.color && !data.color_id) missing.push('color');
-
-    if (missing.length > 0) {
-        return {
-            success: false,
-            message: `Quote creation blocked: missing ${missing.join(', ')}.`,
-        };
-    }
-
-    data.commercials = comms;
+    const comms: any = normalizeCommercialsPayload(data.commercials);
 
     if (data.lead_id) {
         const { data: lead } = await supabase
             .from('crm_leads')
-            .select('customer_id, referred_by_id, selected_dealer_tenant_id')
+            .select('customer_id, referred_by_id, selected_dealer_tenant_id, owner_tenant_id')
             .eq('is_deleted', false)
             .eq('id', data.lead_id)
             .maybeSingle();
 
         if (lead) {
+            if (!resolvedTenantId) {
+                resolvedTenantId = lead.selected_dealer_tenant_id || lead.owner_tenant_id || null;
+            }
+
             // Hardening: Enforce dealer context matching
-            const contextValidation = await validateQuoteDealerContext(supabase, data.lead_id!, data.tenant_id, {
-                unified_context_strict_mode: isStrict,
-            });
+            const contextValidation = await validateQuoteDealerContext(
+                supabase,
+                data.lead_id!,
+                resolvedTenantId || '',
+                {
+                    unified_context_strict_mode: isStrict,
+                }
+            );
             if (!contextValidation.success) {
                 return contextValidation;
             }
@@ -1487,6 +2097,58 @@ export async function createQuoteAction(data: {
             leadReferrerId = lead.referred_by_id || null;
         }
     }
+
+    if (!resolvedTenantId) {
+        resolvedTenantId = settings?.default_owner_tenant_id || null;
+    }
+    if (!resolvedTenantId) {
+        return {
+            success: false,
+            message: 'Quote creation blocked: tenant context is missing.',
+        };
+    }
+
+    let dealer = normalizeDealerPayload(comms.pricing_snapshot?.dealer || comms.dealer);
+    if (!dealer) {
+        const { data: tenant } = await supabase
+            .from('id_tenants')
+            .select('id, name, studio_id')
+            .eq('id', resolvedTenantId)
+            .maybeSingle();
+        if (tenant) {
+            dealer = normalizeDealerPayload({
+                dealer_id: tenant.id,
+                dealer_name: tenant.name,
+                studio_id: tenant.studio_id,
+            });
+        }
+    }
+    if (dealer) {
+        comms.dealer = dealer;
+        comms.pricing_snapshot = {
+            ...asRecord(comms.pricing_snapshot),
+            dealer,
+        };
+    }
+
+    const snap = asRecord(comms.pricing_snapshot);
+    const missing: string[] = [];
+    if (!comms.label && (!comms.brand || !comms.model || !comms.variant)) missing.push('vehicle_label');
+    if (!snap || Object.keys(snap).length === 0) missing.push('pricing_snapshot');
+    if (!(snap.ex_showroom || comms.ex_showroom || comms.base_price)) missing.push('ex_showroom');
+    if (snap.rto_total === undefined || snap.rto_total === null) missing.push('rto_total');
+    if (snap.insurance_total === undefined || snap.insurance_total === null) missing.push('insurance_total');
+    if (!dealer?.dealer_id && !dealer?.studio_id && !dealer?.id) missing.push('dealer');
+    if (!comms.color_name && !comms.color && !data.color_id) missing.push('color');
+
+    if (missing.length > 0) {
+        return {
+            success: false,
+            message: `Quote creation blocked: missing ${missing.join(', ')}.`,
+        };
+    }
+
+    data.commercials = comms;
 
     if (!memberId && actorMember && isEndCustomerRole(actorMember.role)) {
         memberId = actorMember.id;
@@ -1516,7 +2178,7 @@ export async function createQuoteAction(data: {
     const { data: quote, error } = await adminClient
         .from('crm_quotes')
         .insert({
-            tenant_id: data.tenant_id,
+            tenant_id: resolvedTenantId,
             lead_id: data.lead_id,
             member_id: memberId,
             lead_referrer_id: leadReferrerId,
@@ -1524,7 +2186,7 @@ export async function createQuoteAction(data: {
             variant_id: data.variant_id,
             color_id: data.color_id,
             vehicle_sku_id: vehicleSkuId, // Use SKU (color) when available
-            commercials: data.commercials,
+            vehicle_image: comms.image_url || comms.image || null,
 
             // Flat Columns (analytics + redundancy)
             on_road_price: onRoadPrice,
@@ -1539,6 +2201,7 @@ export async function createQuoteAction(data: {
             snap_variant: comms.variant || '',
             snap_color: comms.color_name || comms.color || '',
             snap_dealer_name: dealer?.dealer_name || '',
+            commercials: comms,
 
             status: 'DRAFT',
             created_by: createdBy,
@@ -1552,10 +2215,18 @@ export async function createQuoteAction(data: {
             message: error.message,
             details: error.details,
             hint: error.hint,
-            context: { tenant_id: data.tenant_id, lead_id: data.lead_id, sku: data.variant_id },
+            context: { tenant_id: resolvedTenantId, lead_id: data.lead_id, sku: data.variant_id },
         });
         return { success: false, message: error.message };
     }
+
+    await logQuoteEvent(quote.id, 'Quote Created', null, isGuestMarketplaceQuote ? 'customer' : 'team', {
+        source: data.source || 'CRM',
+        finance_mode:
+            (data.commercials as any)?.finance?.scheme_id || (data.commercials as any)?.finance?.bank_id
+                ? 'LOAN'
+                : 'CASH',
+    });
 
     // Supersede older quotes for same Lead + SKU (one SKU = one active quote per lead)
     if (data.lead_id && vehicleSkuId) {
@@ -1574,7 +2245,7 @@ export async function createQuoteAction(data: {
             .from('crm_quote_finance_attempts')
             .insert({
                 quote_id: quote.id,
-                tenant_id: data.tenant_id,
+                tenant_id: resolvedTenantId,
                 bank_id: finance.bank_id || null,
                 bank_name: finance.bank_name || null,
                 scheme_id: finance.scheme_id || null,
@@ -1629,6 +2300,14 @@ export async function createQuoteAction(data: {
         if (leadUpdateError) {
             console.error('Critical: Lead status sync failed after quote creation:', leadUpdateError);
         } else {
+            await logLeadEvent({
+                leadId: data.lead_id,
+                eventType: 'LEAD_STATUS_UPDATED',
+                notes: 'Lead moved to QUOTE stage after quote creation',
+                changedValue: 'QUOTE',
+                actorUserId: createdBy,
+                actorTenantId: resolvedTenantId,
+            });
             revalidatePath(`/app/[slug]/leads`);
         }
     }
@@ -1756,7 +2435,7 @@ export async function getBookings(tenantId?: string) {
                 price: b.grand_total || 0,
                 status: b.status || 'BOOKED',
                 date: b.created_at ? b.created_at.split('T')[0] : '',
-                currentStage: b.current_stage,
+                currentStage: b.operational_stage || b.current_stage || null,
             };
         });
     }
@@ -1779,7 +2458,7 @@ export async function getBookings(tenantId?: string) {
             price: b.grand_total || 0,
             status: b.status || 'BOOKED',
             date: b.created_at ? b.created_at.split('T')[0] : '',
-            currentStage: b.current_stage,
+            currentStage: b.operational_stage || b.current_stage || null,
         };
     });
 }
@@ -1815,6 +2494,197 @@ export async function getBookingById(bookingId: string) {
     }
 
     return { success: true, booking: data };
+}
+
+type BookingFeedbackRecord = {
+    id: string;
+    booking_id: string;
+    member_id: string | null;
+    tenant_id: string | null;
+    nps_score: number | null;
+    delivery_rating: number | null;
+    staff_rating: number | null;
+    review_text: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+function normalizeOptionalScore(
+    value: number | string | null | undefined,
+    min: number,
+    max: number
+): { value: number | null; error?: string } {
+    if (value === null || value === undefined || value === '') return { value: null };
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return { value: null, error: 'Invalid numeric score' };
+    const rounded = Math.round(parsed);
+    if (rounded < min || rounded > max) {
+        return { value: null, error: `Score must be between ${min} and ${max}` };
+    }
+    return { value: rounded };
+}
+
+export async function getBookingFeedbackAction(
+    bookingId: string
+): Promise<{ success: boolean; data?: BookingFeedbackRecord | null; message?: string }> {
+    if (!bookingId) return { success: false, message: 'Booking is required' };
+
+    const { data, error } = await (adminClient as any)
+        .from('crm_feedback')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.error('getBookingFeedbackAction Error:', error);
+        return { success: false, message: error.message };
+    }
+
+    return { success: true, data: (data as BookingFeedbackRecord | null) || null };
+}
+
+export async function upsertBookingFeedbackAction(input: {
+    bookingId: string;
+    npsScore?: number | string | null;
+    deliveryRating?: number | string | null;
+    staffRating?: number | string | null;
+    reviewText?: string | null;
+    autoAdvanceStage?: boolean;
+}) {
+    const user = await getAuthUser();
+    if (!user?.id) return { success: false, message: 'Authentication required' };
+
+    const supabase = await createClient();
+    const { data: bookingRow, error: bookingError } = await (adminClient as any)
+        .from('crm_bookings')
+        .select('id, tenant_id, user_id, lead_id, quote_id, operational_stage')
+        .eq('is_deleted', false)
+        .eq('id', input.bookingId)
+        .maybeSingle();
+    const booking = bookingRow as {
+        id: string;
+        tenant_id: string | null;
+        user_id: string | null;
+        lead_id: string | null;
+        quote_id: string | null;
+        operational_stage: string | null;
+    } | null;
+
+    if (bookingError || !booking) {
+        return { success: false, message: bookingError?.message || 'Booking not found' };
+    }
+
+    const nps = normalizeOptionalScore(input.npsScore, 1, 10);
+    if (nps.error) return { success: false, message: nps.error };
+    const delivery = normalizeOptionalScore(input.deliveryRating, 1, 5);
+    if (delivery.error) return { success: false, message: delivery.error };
+    const staff = normalizeOptionalScore(input.staffRating, 1, 5);
+    if (staff.error) return { success: false, message: staff.error };
+    const reviewText = (input.reviewText || '').trim();
+
+    if (!reviewText && nps.value === null && delivery.value === null && staff.value === null) {
+        return { success: false, message: 'Provide at least one feedback field before saving.' };
+    }
+
+    const payload = {
+        booking_id: booking.id,
+        member_id: booking.user_id || null,
+        tenant_id: booking.tenant_id || null,
+        nps_score: nps.value,
+        delivery_rating: delivery.value,
+        staff_rating: staff.value,
+        review_text: reviewText || null,
+        updated_at: new Date().toISOString(),
+    };
+
+    const { data: existing } = await (adminClient as any)
+        .from('crm_feedback')
+        .select('id')
+        .eq('booking_id', input.bookingId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    let saved: BookingFeedbackRecord | null = null;
+    if (existing?.id) {
+        const { data: updated, error: updateError } = await (adminClient as any)
+            .from('crm_feedback')
+            .update(payload)
+            .eq('id', existing.id)
+            .select('*')
+            .single();
+        if (updateError) return { success: false, message: updateError.message };
+        saved = updated as BookingFeedbackRecord;
+    } else {
+        const { data: inserted, error: insertError } = await (adminClient as any)
+            .from('crm_feedback')
+            .insert(payload)
+            .select('*')
+            .single();
+        if (insertError) return { success: false, message: insertError.message };
+        saved = inserted as BookingFeedbackRecord;
+    }
+
+    await logLeadEvent({
+        leadId: booking.lead_id || '',
+        eventType: 'FEEDBACK_CAPTURED',
+        notes: 'Booking feedback captured',
+        changedValue: {
+            nps_score: nps.value,
+            delivery_rating: delivery.value,
+            staff_rating: staff.value,
+        },
+        actorUserId: user.id,
+        actorTenantId: booking.tenant_id || null,
+    });
+
+    if (booking.quote_id) {
+        await logQuoteEvent(booking.quote_id, 'Feedback Captured', null, 'team', {
+            source: 'BOOKING',
+            nps_score: nps.value,
+            delivery_rating: delivery.value,
+            staff_rating: staff.value,
+        });
+    }
+
+    let stageTransition: { success: boolean; message?: string; warning?: string } | null = null;
+    const shouldAdvance = input.autoAdvanceStage !== false;
+    if (shouldAdvance && booking.operational_stage === 'DELIVERED') {
+        const { data: stageData, error: stageError } = await (supabase as any).rpc('transition_booking_stage', {
+            p_booking_id: input.bookingId,
+            p_to_stage: 'FEEDBACK',
+            p_reason: 'feedback_submitted',
+        });
+
+        if (stageError) {
+            stageTransition = { success: false, message: stageError.message };
+        } else {
+            const stagePayload = (stageData || {}) as { success?: boolean; message?: string; warning?: string };
+            stageTransition = {
+                success: stagePayload.success === true,
+                message: stagePayload.message,
+                warning: stagePayload.warning,
+            };
+        }
+    } else if (booking.operational_stage !== 'FEEDBACK') {
+        stageTransition = {
+            success: false,
+            warning: 'Stage not advanced. Booking must be in DELIVERED stage before FEEDBACK.',
+        };
+    } else {
+        stageTransition = { success: true, message: 'Booking already in FEEDBACK stage.' };
+    }
+
+    revalidatePath('/app/[slug]/sales-orders');
+    revalidatePath('/app/[slug]/leads');
+
+    return {
+        success: true,
+        data: saved,
+        stageTransition,
+    };
 }
 
 export async function createBookingFromQuote(quoteId: string) {
@@ -1880,9 +2750,7 @@ export async function createBookingFromQuote(quoteId: string) {
             const { bookingShortageCheck } = await import('@/actions/inventory');
             const shortageResult = await bookingShortageCheck(bookingIdValue);
             if (shortageResult.status === 'SHORTAGE_CREATED') {
-                console.log(
-                    `[createBookingFromQuote] Shortage detected → requisition ${shortageResult.requisition_id}`
-                );
+                console.log(`[createBookingFromQuote] Shortage detected → request ${shortageResult.request_id}`);
             }
         } catch (shortageErr) {
             // Non-blocking: booking succeeds even if shortage check fails
@@ -2160,7 +3028,7 @@ export async function deleteCrmMemberDocument(documentId: string) {
     // Delete from storage
     if (doc?.path && !String(doc.path).startsWith('/uploads/')) {
         const bucketRemovals = await Promise.allSettled([
-            supabase.storage.from('id_documents').remove([doc.path]),
+            supabase.storage.from('documents').remove([doc.path]),
             supabase.storage.from('member-documents').remove([doc.path]),
         ]);
         for (const result of bucketRemovals) {
@@ -2217,7 +3085,7 @@ export async function updateMemberDocumentAction(
 
 export async function getSignedUrlAction(path: string) {
     const supabase = await createClient();
-    const { data, error } = await supabase.storage.from('id_documents').createSignedUrl(path, 60); // 60 seconds expiry
+    const { data, error } = await supabase.storage.from('documents').createSignedUrl(path, 60); // 60 seconds expiry
 
     if (error) {
         console.error('Error creating signed URL:', error);
@@ -2232,7 +3100,7 @@ export async function getMemberDocumentUrl(path: string) {
     if (path.startsWith('/uploads/')) {
         return path;
     }
-    const primary = await supabase.storage.from('id_documents').createSignedUrl(path, 3600); // 1 hour expiry
+    const primary = await supabase.storage.from('documents').createSignedUrl(path, 3600); // 1 hour expiry
     if (!primary.error) return primary.data.signedUrl;
 
     const fallback = await supabase.storage.from('member-documents').createSignedUrl(path, 3600);
@@ -3074,7 +3942,9 @@ export async function getQuoteById(
             .maybeSingle();
         if (attempt) {
             const { upfront, funded, upfrontTotal, fundedTotal } = splitCharges(
-                (attempt.charges_breakup as any[]) || []
+                typeof attempt.charges_breakup === 'string'
+                    ? JSON.parse(attempt.charges_breakup)
+                    : (attempt.charges_breakup as unknown as any[]) || []
             );
             const resolvedBankName = await resolveBankName(attempt.bank_id, attempt.bank_name);
             result.finance = {
@@ -3216,7 +4086,10 @@ export async function getQuoteById(
                 loanAmount: attempt.loan_amount ?? null,
                 loanAddons: attempt.loan_addons ?? null,
                 processingFee: attempt.processing_fee ?? null,
-                chargesBreakup: (attempt.charges_breakup as any[]) || [],
+                chargesBreakup:
+                    typeof attempt.charges_breakup === 'string'
+                        ? JSON.parse(attempt.charges_breakup)
+                        : (attempt.charges_breakup as unknown as any[]) || [],
                 emi: attempt.emi ?? null,
                 createdAt: attempt.created_at || null,
             }))
@@ -3392,7 +4265,7 @@ export async function createQuoteFinanceAttempt(
             loan_amount: payload.loanAmount || null,
             loan_addons: payload.loanAddons || null,
             processing_fee: payload.processingFee || null,
-            charges_breakup: payload.chargesBreakup || [],
+            charges_breakup: JSON.stringify(payload.chargesBreakup || []),
             emi: payload.emi || null,
             status: 'IN_PROCESS',
             created_by: user?.id || null,
@@ -3446,7 +4319,7 @@ export async function updateQuoteFinanceAttempt(
             loan_amount: payload.loanAmount ?? null,
             loan_addons: payload.loanAddons ?? null,
             processing_fee: payload.processingFee ?? null,
-            charges_breakup: payload.chargesBreakup || [],
+            charges_breakup: JSON.stringify(payload.chargesBreakup || []),
             emi: payload.emi ?? null,
             updated_at: new Date().toISOString(),
         })
@@ -4613,18 +5486,29 @@ export async function getQuoteByDisplayId(
         .eq('status', 'ACTIVE');
 
     const accessorySkuIds = (accessorySkus || []).map((a: any) => a.id).filter(Boolean);
-    const { data: suitableForRows } =
-        accessorySkuIds.length > 0
+    const accessoryVariantIds = (accessorySkus || []).map((a: any) => a.accessory_variant?.id).filter(Boolean);
+
+    const { data: compatRows } =
+        accessoryVariantIds.length > 0
             ? await (supabase as any)
-                  .from('cat_suitable_for')
-                  .select('sku_id, target_brand_id, target_model_id, target_variant_id')
-                  .in('sku_id', accessorySkuIds)
+                  .from('cat_accessory_suitable_for')
+                  .select('variant_id, is_universal, target_brand_id, target_model_id, target_variant_id')
+                  .in('variant_id', accessoryVariantIds)
             : ({ data: [] } as any);
 
+    // Build variant→compat map, then fan out to SKU-level
+    const variantCompatMap = new Map<string, any[]>();
+    (compatRows || []).forEach((row: any) => {
+        if (!variantCompatMap.has(row.variant_id)) variantCompatMap.set(row.variant_id, []);
+        variantCompatMap.get(row.variant_id)!.push(row);
+    });
+
     const suitableForMap = new Map<string, any[]>();
-    (suitableForRows || []).forEach((row: any) => {
-        if (!suitableForMap.has(row.sku_id)) suitableForMap.set(row.sku_id, []);
-        suitableForMap.get(row.sku_id)!.push(row);
+    (accessorySkus || []).forEach((a: any) => {
+        const variantId = a.accessory_variant?.id;
+        if (variantId && variantCompatMap.has(variantId)) {
+            suitableForMap.set(a.id, variantCompatMap.get(variantId)!);
+        }
     });
 
     const accessoriesData = (accessorySkus || []).map((a: any) => ({
@@ -4704,16 +5588,15 @@ export async function getQuoteByDisplayId(
             const offer = rule ? rule.offer : 0;
             const basePrice = Number(a.price_base) || 0;
 
-            // Keep semantics aligned with store PDP:
-            // offer < 0 => absolute value is sell price
-            // offer > 0 => direct sell price
-            // offer = 0 => sell price is MRP/base price
+            // offer_amount is a DELTA/adjustment to the MRP (price_base):
+            //   offer < 0 => discount (e.g., MRP 850 + offer -551 = sell price 299)
+            //   offer > 0 => surge/markup
+            //   offer = 0 => sell at MRP (no discount)
             let mrp = basePrice;
             let discountPrice = basePrice;
-            if (offer < 0) {
-                discountPrice = Math.abs(offer);
-            } else if (offer > 0) {
-                discountPrice = offer;
+            if (offer !== 0) {
+                discountPrice = basePrice + offer; // delta applied to MRP
+                if (discountPrice < 0) discountPrice = 0; // safety clamp
             }
             if (mrp === 0) mrp = discountPrice;
 
@@ -5176,16 +6059,63 @@ export async function logQuoteEvent(
         return { success: false, error: updateError.message };
     }
 
+    const actorContext = await resolveActorContext(tenantId || null);
+    const eventType = event
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '_');
+    const eventNotes = (() => {
+        if (!details) return null;
+        const parts = Object.entries(details)
+            .filter(([, value]) => value !== undefined && value !== null && value !== '')
+            .map(([key, value]) => {
+                if (typeof value === 'string') return `${key}:${value}`;
+                try {
+                    return `${key}:${JSON.stringify(value)}`;
+                } catch {
+                    return `${key}:${String(value)}`;
+                }
+            });
+        if (parts.length === 0) return null;
+        return parts.join(' | ').slice(0, 500);
+    })();
+
+    const { error: quoteEventError } = await (adminClient as any).from('crm_quote_events').insert({
+        quote_id: quoteId,
+        event_type: eventType || 'EVENT',
+        actor_tenant_id: actorContext.actorTenantId || tenantId || null,
+        actor_user_id: actorContext.actorUserId,
+        notes: eventNotes,
+    });
+
+    if (quoteEventError) {
+        console.error('logQuoteEvent Error: crm_quote_events insert failed', quoteEventError);
+    }
+
     return { success: true };
 }
 
 export async function getBookingsForLead(leadId: string) {
     const supabase = await createClient();
+    const { data: quotes, error: quoteError } = await supabase
+        .from('crm_quotes')
+        .select('id')
+        .eq('lead_id', leadId)
+        .eq('is_deleted', false);
+
+    if (quoteError) {
+        console.error('getBookingsForLead quote fetch Error:', quoteError);
+        return [];
+    }
+
+    const quoteIds = (quotes || []).map((q: any) => q.id);
+    if (quoteIds.length === 0) return [];
+
     const { data, error } = await supabase
         .from('crm_bookings')
         .select('*')
         .eq('is_deleted', false)
-        .eq('lead_id', leadId)
+        .in('quote_id', quoteIds)
         .order('created_at', { ascending: false });
     if (error) {
         console.error('getBookingsForLead Error:', error);
@@ -5197,7 +6127,7 @@ export async function getBookingsForLead(leadId: string) {
 export async function getReceiptsForEntity(leadId?: string | null, memberId?: string | null) {
     const supabase = await createClient();
     let query = supabase
-        .from('crm_receipts' as any)
+        .from('crm_payments' as any)
         .select('*')
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
@@ -5226,7 +6156,7 @@ export const getPaymentsForEntity = getReceiptsForEntity;
 export async function getReceiptsForTenant(tenantId?: string) {
     const supabase = await createClient();
     let query = supabase
-        .from('crm_receipts' as any)
+        .from('crm_payments' as any)
         .select('*')
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
@@ -5246,7 +6176,7 @@ export async function getReceiptsForTenant(tenantId?: string) {
 export async function getReceiptById(receiptId: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
-        .from('crm_receipts' as any)
+        .from('crm_payments' as any)
         .select('*')
         .eq('id', receiptId)
         .eq('is_deleted', false)
@@ -5262,7 +6192,7 @@ export async function getReceiptById(receiptId: string) {
 
 export async function updateReceipt(receiptId: string, updates: Record<string, any>) {
     const { data: existing, error: fetchError } = await adminClient
-        .from('crm_receipts' as any)
+        .from('crm_payments' as any)
         .select('is_reconciled')
         .eq('id', receiptId)
         .maybeSingle();
@@ -5276,7 +6206,7 @@ export async function updateReceipt(receiptId: string, updates: Record<string, a
     }
 
     const { error } = await adminClient
-        .from('crm_receipts' as any)
+        .from('crm_payments' as any)
         .update({
             ...updates,
             updated_at: new Date().toISOString(),
@@ -5296,7 +6226,7 @@ export async function reconcileReceipt(receiptId: string) {
     const userId = userData?.user?.id || null;
 
     const { error } = await adminClient
-        .from('crm_receipts' as any)
+        .from('crm_payments' as any)
         .update({
             is_reconciled: true,
             reconciled_at: new Date().toISOString(),
@@ -5355,56 +6285,42 @@ export async function getBankAccounts(tenantId?: string) {
 export async function getAccountingData(tenantId: string) {
     const supabase = await createClient();
 
-    // 1. Fetch Receipts (Inflow)
+    // 1. Fetch unified payments ledger
     const { data: receipts, error: receiptsError } = await supabase
-        .from('crm_receipts' as any)
-        .select('*, member:id_members(full_name)')
-        .eq('tenant_id', tenantId)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
-
-    // 2. Fetch Payments (Outflow) - Using any cast as crm_payments might not be in types yet
-    const { data: payments, error: paymentsError } = await supabase
         .from('crm_payments' as any)
         .select('*, member:id_members(full_name)')
         .eq('tenant_id', tenantId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
-
-    if (receiptsError || paymentsError) {
-        console.error('getAccountingData Error:', receiptsError || paymentsError);
+    if (receiptsError) {
+        console.error('getAccountingData Error:', receiptsError);
     }
 
-    // 3. Map to unified transaction format
-    const transactions = [
-        ...(receipts || []).map((r: any) => ({
-            id: r.id,
-            type: 'INFLOW',
-            amount: r.amount,
-            method: r.method,
-            status: r.status,
-            date: r.created_at,
-            displayId: r.display_id,
-            description: `Payment from ${r.member?.full_name || 'Customer'}`,
-            entityId: r.lead_id || r.member_id,
-        })),
-        ...(payments || []).map((p: any) => ({
-            id: p.id,
-            type: 'OUTFLOW',
-            amount: p.amount,
-            method: p.method,
-            status: p.status,
-            date: p.created_at,
-            displayId: p.display_id,
-            description: p.provider_data?.description || `Payment to ${p.member?.full_name || 'Vendor'}`,
-            entityId: p.lead_id || p.member_id,
-        })),
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // 2. Map unified ledger to inflow/outflow transactions
+    const transactions = (receipts || [])
+        .map((p: any) => {
+            const flowRaw = String(p.provider_data?.flow || p.provider_data?.type || 'INFLOW').toUpperCase();
+            const isOutflow = flowRaw === 'OUTFLOW' || flowRaw === 'DEBIT';
+            return {
+                id: p.id,
+                type: isOutflow ? 'OUTFLOW' : 'INFLOW',
+                amount: p.amount,
+                method: p.method,
+                status: p.status,
+                date: p.created_at,
+                displayId: p.display_id,
+                description: isOutflow
+                    ? p.provider_data?.description || `Payment to ${p.member?.full_name || 'Vendor'}`
+                    : `Payment from ${p.member?.full_name || 'Customer'}`,
+                entityId: p.lead_id || p.member_id,
+            };
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return {
         transactions,
         receiptsCount: receipts?.length || 0,
-        paymentsCount: payments?.length || 0,
+        paymentsCount: receipts?.length || 0,
     };
 }
 
