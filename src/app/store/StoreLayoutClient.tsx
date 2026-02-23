@@ -122,14 +122,15 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
 
     const pathname = usePathname();
     const isLandingPage = pathname === '/store' || pathname === '/' || pathname?.match(/^\/d[2-8]$/);
+    const hideFooter = pathname === '/' || Boolean(pathname?.match(/^\/d[2-8]$/));
 
     return (
         <FavoritesProvider>
             <ColorProvider>
                 <div
                     className={`marketplace min-h-screen ${isLandingPage
-                            ? 'bg-white text-black'
-                            : 'bg-slate-50 text-slate-900'
+                        ? 'bg-white text-black'
+                        : 'bg-slate-50 text-slate-900'
                         } font-sans selection:bg-red-500/30 transition-colors duration-300`}
                 >
                     <Script
@@ -150,7 +151,7 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
                         {children}
                     </main>
 
-                    {!isLandingPage &&
+                    {!hideFooter &&
                         !(
                             isPhone &&
                             (pathname?.startsWith('/store/catalog') ||
