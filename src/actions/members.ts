@@ -318,7 +318,7 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
     const { data: queryData, error, count: queryCount } = await query;
     let data = queryData;
     let count = queryCount;
-    console.log('getMembersForTenant: query result', { count, dataLength: data?.length, tenantId });
+    // console.log('getMembersForTenant: query result', { count, dataLength: data?.length, tenantId });
     if (error) {
         console.error('getMembersForTenant: join query error', {
             tenantId,
@@ -364,10 +364,7 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
         }
 
         const fallback = await fallbackQuery;
-        console.log('getMembersForTenant: fallback result', {
-            count: fallback.count,
-            dataLength: fallback.data?.length,
-        });
+        // console.log('getMembersForTenant: fallback result', { count: fallback.count, dataLength: fallback.data?.length });
         if (fallback.error) {
             console.error('getMembersForTenant: fallback query error', {
                 tenantId,

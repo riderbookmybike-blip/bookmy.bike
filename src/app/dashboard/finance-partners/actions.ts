@@ -6,7 +6,7 @@ import { generateDisplayId } from '@/lib/displayId';
 import { FinanceRoutingTable, FinanceRoutingConfig, RoutingStrategy } from '@/types/bankPartner';
 
 export async function onboardBank(formData: { bankName: string; website: string; adminPhone: string; slug?: string }) {
-    console.log('[OnboardBank] Starting onboarding for:', formData.bankName);
+    // console.log('[OnboardBank] Starting onboarding for:', formData.bankName);
 
     try {
         // 1. Generate unique slug or use provided one
@@ -27,7 +27,7 @@ export async function onboardBank(formData: { bankName: string; website: string;
             slug = `${slug}-${Math.floor(Math.random() * 1000)}`;
         }
 
-        console.log('[OnboardBank] Created slug:', slug);
+        // console.log('[OnboardBank] Created slug:', slug);
 
         // 2. Create Tenant
         const { data: tenant, error: tenantError } = await adminClient
@@ -51,7 +51,7 @@ export async function onboardBank(formData: { bankName: string; website: string;
             throw tenantError;
         }
 
-        console.log('[OnboardBank] Tenant created:', tenant.id);
+        // console.log('[OnboardBank] Tenant created:', tenant.id);
 
         // 3. Normalize Phone
         const rawPhone = formData.adminPhone.replace(/\D/g, '');
@@ -72,11 +72,11 @@ export async function onboardBank(formData: { bankName: string; website: string;
         let memberId = existingMember?.id;
 
         if (!memberId) {
-            console.log('[OnboardBank] User not found with this mobile number');
+            // console.log('[OnboardBank] User not found with this mobile number');
             throw new Error('This mobile number is not registered. Please signup on BookMyBike first.');
         }
 
-        console.log('[OnboardBank] Member ID resolved:', memberId);
+        // console.log('[OnboardBank] Member ID resolved:', memberId);
 
         // 5. Link Member to Tenant in id_team
         const { error: teamError } = await adminClient.from('id_team').insert({
@@ -104,7 +104,7 @@ export async function onboardBank(formData: { bankName: string; website: string;
 }
 
 export async function updateBankSchemes(bankId: string, schemes: any[]) {
-    console.log('[UpdateBankSchemes] Updating schemes for:', bankId);
+    // console.log('[UpdateBankSchemes] Updating schemes for:', bankId);
 
     try {
         // 1. Fetch current config
@@ -129,7 +129,7 @@ export async function updateBankSchemes(bankId: string, schemes: any[]) {
 
         if (updateError) throw updateError;
 
-        console.log('[UpdateBankSchemes] Schemes updated successfully');
+        // console.log('[UpdateBankSchemes] Schemes updated successfully');
         return { success: true };
     } catch (error: any) {
         console.error('[UpdateBankSchemes] Fatal Error:', error);
@@ -150,7 +150,7 @@ export async function updateBankIdentity(
         appLinks?: { android?: string; ios?: string };
     }
 ) {
-    console.log('[UpdateBankIdentity] Updating identity for:', bankId);
+    // console.log('[UpdateBankIdentity] Updating identity for:', bankId);
 
     try {
         const { data: tenant, error: fetchError } = await adminClient
@@ -336,7 +336,7 @@ export async function getBankActivityLog(bankId: string, limit = 10) {
 }
 
 export async function updateBankChargesMaster(bankId: string, chargesMaster: any[]) {
-    console.log('[UpdateBankChargesMaster] Updating charges master for:', bankId);
+    // console.log('[UpdateBankChargesMaster] Updating charges master for:', bankId);
 
     try {
         const { data: tenant, error: fetchError } = await adminClient
@@ -359,7 +359,7 @@ export async function updateBankChargesMaster(bankId: string, chargesMaster: any
 
         if (updateError) throw updateError;
 
-        console.log('[UpdateBankChargesMaster] Charges master updated successfully');
+        // console.log('[UpdateBankChargesMaster] Charges master updated successfully');
         return { success: true };
     } catch (error: any) {
         console.error('[UpdateBankChargesMaster] Fatal Error:', error);

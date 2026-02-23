@@ -1645,7 +1645,7 @@ export async function createLeadAction(data: {
         return { success: false, message: 'Invalid customer phone number' };
     }
 
-    console.log('[DEBUG] createLeadAction triggered by client:', data.customer_phone, 'Sanitized:', strictPhone);
+    // console.log('[DEBUG] createLeadAction triggered by client:', data.customer_phone, 'Sanitized:', strictPhone);
 
     try {
         // Handle owner_tenant_id fallback
@@ -1683,7 +1683,7 @@ export async function createLeadAction(data: {
                 .single();
 
             if (creatorTenant?.type === 'BANK') {
-                console.log('[DEBUG] Finance partner lead swap: dealer becomes owner, bank gets shared access');
+                // console.log('[DEBUG] Finance partner lead swap: dealer becomes owner, bank gets shared access');
                 financeTenantId = effectiveOwnerId; // store bank as shared partner
                 effectiveOwnerId = data.selected_dealer_id; // dealer becomes owner
             }
@@ -1710,7 +1710,7 @@ export async function createLeadAction(data: {
 
         // If customer_id is provided (logged-in user), use it directly
         if (data.customer_id) {
-            console.log('[DEBUG] Using provided customer_id:', data.customer_id);
+            // console.log('[DEBUG] Using provided customer_id:', data.customer_id);
             customerId = data.customer_id;
             if (effectiveOwnerId) {
                 const { error: tenantLinkError } = await adminClient.from('id_member_tenants').upsert(
@@ -1727,7 +1727,7 @@ export async function createLeadAction(data: {
             }
         } else {
             // Create/Link member for anonymous or new users
-            console.log('[DEBUG] Step 1: createOrLinkMember...');
+            // console.log('[DEBUG] Step 1: createOrLinkMember...');
             const { member } = await createOrLinkMember({
                 tenantId: effectiveOwnerId,
                 fullName: data.customer_name,
@@ -1744,7 +1744,7 @@ export async function createLeadAction(data: {
             customerId = member.id;
         }
 
-        console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
+        // console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
 
         // Guardrail: staff should not accidentally create a lead mapped to their own team profile.
         if (authUser?.id && customerId === authUser.id && (actorIsStaff || isStaffContextSource(data.source))) {
@@ -1799,7 +1799,7 @@ export async function createLeadAction(data: {
             await adminClient.from('id_members').update(memberUpdate).eq('id', customerId);
         }
 
-        console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
+        // console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
         const hasActiveDelivery = await hasMemberActiveDelivery(customerId);
         const referralBenefitEligible = !hasActiveDelivery;
         const hasReferralInput = Boolean(referredByCodeInput || referredByPhoneInput || referredByNameInput);
@@ -2075,7 +2075,7 @@ export async function createLeadAction(data: {
             actorTenantId: effectiveOwnerId || null,
         });
 
-        console.log('[DEBUG] Lead created successfully:', lead.id);
+        // console.log('[DEBUG] Lead created successfully:', lead.id);
         revalidatePath('/app/[slug]/leads', 'page');
         return { success: true, leadId: lead.id, memberId: customerId };
     } catch (error) {
@@ -2185,7 +2185,7 @@ export async function backfillLeadLocationsAction() {
         }
     }
 
-    console.log(`[BACKFILL] Complete: ${totalUpdated} updated, ${totalSkipped} skipped, ${totalFailed} failed`);
+    // console.log(`[BACKFILL] Complete: ${totalUpdated} updated, ${totalSkipped} skipped, ${totalFailed} failed`);
     return {
         success: true,
         updated: totalUpdated,
@@ -3029,7 +3029,7 @@ export async function createBookingFromQuote(quoteId: string) {
             const { bookingShortageCheck } = await import('@/actions/inventory');
             const shortageResult = await bookingShortageCheck(bookingIdValue);
             if (shortageResult.status === 'SHORTAGE_CREATED') {
-                console.log(`[createBookingFromQuote] Shortage detected → request ${shortageResult.request_id}`);
+                // console.log(`[createBookingFromQuote] Shortage detected → request ${shortageResult.request_id}`);
             }
         } catch (shortageErr) {
             // Non-blocking: booking succeeds even if shortage check fails

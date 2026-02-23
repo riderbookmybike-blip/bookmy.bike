@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
             .maybeSingle();
 
         if (memberMatch) {
-            console.log('[CheckMembership] Member Match Found:', memberMatch.id);
+            // console.log('[CheckMembership] Member Match Found:', memberMatch.id);
             // Even if profile exists, we check if they have an Auth account
             const {
                 data: { user: authUser },

@@ -2,20 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 // Admin client for bypassing RLS
-const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const adminClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export async function POST(req: NextRequest) {
     try {
         const { tenantId, memberId, role } = await req.json();
 
         if (!tenantId || !memberId || !role) {
-            return NextResponse.json(
-                { error: 'Missing required fields: tenantId, memberId, role' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Missing required fields: tenantId, memberId, role' }, { status: 400 });
         }
 
         // Validate role
@@ -36,10 +30,7 @@ export async function POST(req: NextRequest) {
             .maybeSingle();
 
         if (existingMember) {
-            return NextResponse.json(
-                { error: 'This member is already part of the team' },
-                { status: 409 }
-            );
+            return NextResponse.json({ error: 'This member is already part of the team' }, { status: 409 });
         }
 
         // Add member to team
@@ -49,36 +40,24 @@ export async function POST(req: NextRequest) {
                 tenant_id: tenantId,
                 user_id: memberId,
                 role: role,
-                status: 'ACTIVE'
+                status: 'ACTIVE',
             })
             .select()
             .single();
 
         if (insertError) {
             console.error('[AddMember] Insert Error:', insertError);
-            return NextResponse.json(
-                { error: insertError.message },
-                { status: 500 }
-            );
+            return NextResponse.json({ error: insertError.message }, { status: 500 });
         }
 
-        console.log('[AddMember] Successfully added member:', {
-            teamMemberId: teamMember.id,
-            tenantId,
-            memberId,
-            role
-        });
+        // console.log('[AddMember] Successfully added member:', { teamMemberId: teamMember.id, tenantId, memberId, role });
 
         return NextResponse.json({
             success: true,
-            teamMember
+            teamMember,
         });
-
     } catch (error: any) {
         console.error('[AddMember] Error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Internal server error' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
     }
 }

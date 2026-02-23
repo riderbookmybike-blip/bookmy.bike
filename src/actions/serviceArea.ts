@@ -23,7 +23,7 @@ export async function checkServiceability(pincode: string) {
 
         // 1. If not found or missing critical data, try Google Maps
         if (error || !data || !data.taluka || !data.district) {
-            console.log(`[GEO] Local resolution failed for ${pincode}, trying Google Maps...`);
+            // console.log(`[GEO] Local resolution failed for ${pincode}, trying Google Maps...`);
             const googleData = await fetchFromGoogleMaps(pincode);
             if (googleData) {
                 // Upsert to local DB for future use
@@ -116,7 +116,7 @@ async function fetchFromGoogleMaps(pincode: string) {
                 longitude: result.geometry.location.lng,
             };
         }
-        console.log(`[GEO] Google Maps status: ${data.status}`);
+        // console.log(`[GEO] Google Maps status: ${data.status}`);
     } catch (e) {
         console.error('[GEO] Google Maps Geocoding failed:', e);
     }

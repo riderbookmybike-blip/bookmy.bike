@@ -59,7 +59,7 @@ export const GitReminder: React.FC = () => {
 
     const playAlarm = useCallback(() => {
         if (isMuted || hasAlarmed || !beepRef.current) return;
-        beepRef.current.play().catch(e => console.log('Audio play failed:', e));
+        beepRef.current.play().catch(e => console.warn('Audio play failed:', e));
         setHasAlarmed(true);
     }, [isMuted, hasAlarmed]);
 

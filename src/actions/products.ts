@@ -140,7 +140,7 @@ export async function getPricingLedger(tenantId: string) {
         };
     });
 
-    console.log(`getPricingLedger - Returning ${mappedSkus.length} SKUs`);
+    // console.log(`getPricingLedger - Returning ${mappedSkus.length} SKUs`);
 
     return {
         skus: mappedSkus,

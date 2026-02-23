@@ -38,14 +38,7 @@ export async function POST(req: NextRequest) {
         const isBypassEnv =
             isLocalhost || bypassFlag || isBypassHost || vercelEnv === 'preview' || vercelEnv === 'development';
 
-        console.log('[Login Debug] Request:', {
-            phone,
-            otp,
-            host,
-            isLocalhost,
-            isProduction,
-            env: process.env.NODE_ENV,
-        });
+        // console.log('[Login Debug] Request:', { phone, host, isLocalhost, isProduction });
 
         const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '').slice(-10);
         const targetPhone = normalizePhone(tenDigitPhone);
@@ -85,12 +78,12 @@ export async function POST(req: NextRequest) {
             });
 
             if (cachedUser) {
-                console.log(`[Login Debug] Found existing auth user: ${cachedUser.id}`);
+                // console.log(`[Login Debug] Found existing auth user: ${cachedUser.id}`);
                 return cachedUser;
             }
 
             // 2. JIT: Check profiles table if not in Auth
-            console.log(`[Login Debug] User not in Auth. Checking profiles for ${phone}...`);
+            // console.log(`[Login Debug] User not in Auth. Checking profiles for ${phone}...`);
             const { data: profile } = await adminClient
                 .from('id_members')
                 .select('id, full_name, email')
@@ -98,7 +91,7 @@ export async function POST(req: NextRequest) {
                 .maybeSingle();
 
             if (profile) {
-                console.log(`[Login Debug] JIT: Found migrated profile ${profile.id}. Provisioning Auth...`);
+                // console.log(`[Login Debug] JIT: Found migrated profile ${profile.id}. Provisioning Auth...`);
                 const jitPassword = getAuthPassword(phone);
                 const jitEmail = profile.email || `${phone}@bookmy.bike`;
 
@@ -148,10 +141,10 @@ export async function POST(req: NextRequest) {
         };
 
         if (await canBypassSuperadmin()) {
-            console.log('Using Superadmin Dev Bypass for OTP');
+            // console.log('Using Superadmin Dev Bypass for OTP');
             isVerified = true;
         } else if ((!isProduction || isLocalhost) && (otp === '1234' || otp === '0000')) {
-            console.log('Using Developer Bypass for OTP');
+            // console.log('Using Developer Bypass for OTP');
             isVerified = true;
         }
         // 2. Missing Config Check

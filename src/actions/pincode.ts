@@ -59,7 +59,7 @@ export async function getPincodeDetails(pincode: string) {
         }
 
         // 2. Fetch from External API (Fallback to Grow Database)
-        console.log(`Pincode ${pincode} not in DB. Fetching from External API...`);
+        // console.log(`Pincode ${pincode} not in DB. Fetching from External API...`);
         const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
         const apiData = await res.json();
 
@@ -102,7 +102,7 @@ export async function getPincodeDetails(pincode: string) {
             if (upsertError) {
                 console.error('Failed to grow location database:', upsertError.message);
             } else {
-                console.log(`Location Database Expanded: ${pincode} (${details.District})`);
+                // console.log(`Location Database Expanded: ${pincode} (${details.District})`);
             }
 
             return { success: true, data: newRecord };
