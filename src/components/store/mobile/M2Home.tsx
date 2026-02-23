@@ -27,7 +27,7 @@ import { CATEGORIES, MARKET_METRICS } from '@/config/market';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
-import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
+
 import { useAuth } from '@/components/providers/AuthProvider';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
@@ -893,7 +893,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
                     </div>
                 </div>
             </section>
-            <MarketplaceFooter />
+
         </div>
     );
 }
