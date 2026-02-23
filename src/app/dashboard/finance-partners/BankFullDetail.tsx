@@ -56,36 +56,33 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
             const { data, error } = await query.maybeSingle();
 
             if (data) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const cfg = (data.config as Record<string, any>) || {};
                 const mapped: BankPartner = {
                     id: data.id,
                     displayId: data.display_id || data.id.slice(0, 8).toUpperCase(),
                     name: data.name,
                     status: data.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
                     identity: {
-                        fullLogo: (data.config as any)?.fullLogo,
-                        iconLogo: (data.config as any)?.iconLogo,
+                        fullLogo: cfg?.fullLogo,
+                        iconLogo: cfg?.iconLogo,
                     },
-                    admin: (data.config as any)?.admin,
+                    admin: cfg?.admin,
                     overview: {
-                        description:
-                            (data.config as any)?.overview?.description ||
-                            'Financing partner on the BookMyBike platform.',
-                        website:
-                            (data.config as any)?.overview?.website ||
-                            (data.config as any)?.website ||
-                            'https://bookmy.bike',
-                        supportEmail: (data.config as any)?.overview?.supportEmail,
-                        supportPhone: (data.config as any)?.overview?.supportPhone,
-                        whatsapp: (data.config as any)?.overview?.whatsapp,
-                        customerCare: (data.config as any)?.overview?.customerCare,
-                        helpline: (data.config as any)?.overview?.helpline,
-                        appLinks: (data.config as any)?.overview?.appLinks,
+                        description: cfg?.overview?.description || 'Financing partner on the BookMyBike platform.',
+                        website: cfg?.overview?.website || cfg?.website || 'https://bookmy.bike',
+                        supportEmail: cfg?.overview?.supportEmail,
+                        supportPhone: cfg?.overview?.supportPhone,
+                        whatsapp: cfg?.overview?.whatsapp,
+                        customerCare: cfg?.overview?.customerCare,
+                        helpline: cfg?.overview?.helpline,
+                        appLinks: cfg?.overview?.appLinks,
                     },
-                    locations: (data.config as any)?.locations || [],
-                    team: (data.config as any)?.team || [],
-                    schemes: (data.config as any)?.schemes || [],
-                    chargesMaster: (data.config as any)?.chargesMaster || [],
-                    management: (data.config as any)?.management || { states: [], areas: [], dealerIds: [] },
+                    locations: cfg?.locations || [],
+                    team: cfg?.team || [],
+                    schemes: cfg?.schemes || [],
+                    chargesMaster: cfg?.chargesMaster || [],
+                    management: cfg?.management || { states: [], areas: [], dealerIds: [] },
                 };
                 setRealPartner(mapped);
             }

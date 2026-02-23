@@ -4,6 +4,7 @@ import { adminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { generateDisplayId } from '@/lib/displayId';
 import { FinanceRoutingTable, FinanceRoutingConfig, RoutingStrategy } from '@/types/bankPartner';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 export async function onboardBank(formData: { bankName: string; website: string; adminPhone: string; slug?: string }) {
     // console.log('[OnboardBank] Starting onboarding for:', formData.bankName);
@@ -99,7 +100,7 @@ export async function onboardBank(formData: { bankName: string; website: string;
         return { success: true, tenant };
     } catch (error: unknown) {
         console.error('[OnboardBank] Fatal Error:', error);
-        return { success: false, error: error.message || 'Check server logs' };
+        return { success: false, error: getErrorMessage(error) || 'Check server logs' };
     }
 }
 
@@ -118,7 +119,7 @@ export async function updateBankSchemes(bankId: string, schemes: any[]) {
 
         // 2. Update config with new schemes
         const newConfig = {
-            ...((tenant.config as any) || {}),
+            ...((tenant.config as Record<string, any>) || {}),
             schemes,
         };
 
@@ -133,7 +134,7 @@ export async function updateBankSchemes(bankId: string, schemes: any[]) {
         return { success: true };
     } catch (error: unknown) {
         console.error('[UpdateBankSchemes] Fatal Error:', error);
-        return { success: false, error: error.message || 'Check server logs' };
+        return { success: false, error: getErrorMessage(error) || 'Check server logs' };
     }
 }
 
@@ -161,7 +162,7 @@ export async function updateBankIdentity(
 
         if (fetchError) throw fetchError;
 
-        const cfg = (tenant?.config as any) || {};
+        const cfg = (tenant?.config as Record<string, any>) || {};
         const newConfig = {
             ...cfg,
             fullLogo: updates.fullLogo || cfg.fullLogo,
@@ -191,7 +192,7 @@ export async function updateBankIdentity(
         return { success: true };
     } catch (error: unknown) {
         console.error('[UpdateBankIdentity] Fatal Error:', error);
-        return { success: false, error: error.message || 'Check server logs' };
+        return { success: false, error: getErrorMessage(error) || 'Check server logs' };
     }
 }
 
@@ -205,7 +206,7 @@ export async function getBankPartners() {
         if (error) throw error;
         return { success: true, partners: data || [] };
     } catch (error: unknown) {
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -222,14 +223,14 @@ export async function getFinanceRouting(tenantId?: string) {
         const { data, error } = await query.single();
         if (error) throw error;
 
-        const config = (data.config as any) || {};
+        const config = (data.config as Record<string, any>) || {};
         return {
             success: true,
             routing: config.financeRouting as FinanceRoutingTable | undefined,
             strategy: (config.routingStrategy as RoutingStrategy) || 'MANUAL',
         };
     } catch (error: unknown) {
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -261,7 +262,7 @@ export async function saveFinanceRouting(
         }
 
         const newConfig = {
-            ...((tenant.config as any) || {}),
+            ...((tenant.config as Record<string, any>) || {}),
             financeRouting: routing,
             routingStrategy: strategy,
         };
@@ -276,7 +277,7 @@ export async function saveFinanceRouting(
         revalidatePath('/dashboard/finance-partners', 'page');
         return { success: true };
     } catch (error: unknown) {
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 export async function getBankActivityLog(bankId: string, limit = 10) {
@@ -331,7 +332,7 @@ export async function getBankActivityLog(bankId: string, limit = 10) {
         return { success: true, activities };
     } catch (error: unknown) {
         console.error('[getBankActivityLog] Error:', error);
-        return { success: false, error: error.message, activities: [] };
+        return { success: false, error: getErrorMessage(error), activities: [] };
     }
 }
 
@@ -348,7 +349,7 @@ export async function updateBankChargesMaster(bankId: string, chargesMaster: any
         if (fetchError) throw fetchError;
 
         const newConfig = {
-            ...((tenant.config as any) || {}),
+            ...((tenant.config as Record<string, any>) || {}),
             chargesMaster,
         };
 
@@ -363,6 +364,6 @@ export async function updateBankChargesMaster(bankId: string, chargesMaster: any
         return { success: true };
     } catch (error: unknown) {
         console.error('[UpdateBankChargesMaster] Fatal Error:', error);
-        return { success: false, error: error.message || 'Check server logs' };
+        return { success: false, error: getErrorMessage(error) || 'Check server logs' };
     }
 }
