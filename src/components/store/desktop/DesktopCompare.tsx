@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     ChevronDown,
     ChevronUp,
@@ -50,13 +50,23 @@ import {
     TrendingDown,
     type LucideIcon,
 } from 'lucide-react';
-import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
-import { groupProductsByModel } from '@/utils/variantGrouping';
 import { ProductCard } from '@/components/store/desktop/ProductCard';
-import { slugify } from '@/utils/slugs';
-import type { ProductVariant } from '@/types/productMaster';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
+import { useSystemCompareLogic } from '@/hooks/useSystemCompareLogic';
+import {
+    computeSpecRows,
+    findBestValueIndex,
+    extractNumeric,
+    formatSpecValue as formatSpecValuePlain,
+    getDisplayPrice,
+    getEmi,
+    EMI_FACTORS,
+    UNIT_MAP,
+    NUMERIC_BAR_SPECS,
+    getBarPercent,
+    type SpecRow,
+} from '@/hooks/compareUtils';
 
 // --- Spec Icon Mapping ---
 const SPEC_ICON_MAP: Record<string, LucideIcon> = {
@@ -135,224 +145,14 @@ function getCategoryIcon(category: string): LucideIcon | null {
     return CATEGORY_ICON_MAP[key] || null;
 }
 
-// --- Spec Diffing Engine ---
+// Spec utilities are imported from @/hooks/compareUtils
 
-function flattenObject(obj: Record<string, any>, prefix = ''): Record<string, string> {
-    const result: Record<string, string> = {};
-    if (!obj || typeof obj !== 'object') return result;
-    for (const [key, val] of Object.entries(obj)) {
-        const path = prefix ? `${prefix}.${key}` : key;
-        if (val !== null && val !== undefined && typeof val === 'object' && !Array.isArray(val)) {
-            Object.assign(result, flattenObject(val, path));
-        } else if (val !== null && val !== undefined && val !== '') {
-            result[path] = String(val);
-        }
-    }
-    return result;
-}
-
-const LABEL_OVERRIDES: Record<string, string> = {
-    mileage: 'ARAI Mileage',
-    headlampType: 'Headlamp',
-    tailLampType: 'Tail Lamp',
-    startType: 'Starting',
-    consoleType: 'Console',
-    usbCharging: 'USB Charging',
-    kerbWeight: 'Kerb Weight',
-    seatHeight: 'Seat Height',
-    groundClearance: 'Ground Clearance',
-    fuelCapacity: 'Fuel Capacity',
-    topSpeed: 'Top Speed',
-    maxPower: 'Max Power',
-    maxTorque: 'Max Torque',
-    numValves: 'Valves',
-    rideModes: 'Ride Modes',
-    boreStroke: 'Bore × Stroke',
-    compressionRatio: 'Compression Ratio',
-    overallLength: 'Length',
-    overallWidth: 'Width',
-    overallHeight: 'Height',
-    chassisType: 'Chassis',
-    wheelType: 'Wheel Type',
-    frontWheelSize: 'Front Wheel',
-    rearWheelSize: 'Rear Wheel',
-    lowFuelIndicator: 'Fuel Indicator',
-    lowOilIndicator: 'Oil Indicator',
-    lowBatteryIndicator: 'Battery Indicator',
-    pillionSeat: 'Pillion Seat',
-    pillionFootrest: 'Pillion Footrest',
-    standAlarm: 'Side Stand Alert',
-    passLight: 'Pass Light',
-    serviceInterval: 'Service Interval',
-    fuelType: 'Fuel',
-    bodyType: 'Body Type',
-    abs: 'Braking',
-    type: 'Type',
-    front: 'Front',
-    rear: 'Rear',
-    cooling: 'Cooling',
-};
-
-function labelFromKey(key: string): string {
-    const last = key.split('.').pop() || key;
-    if (LABEL_OVERRIDES[last]) return LABEL_OVERRIDES[last];
-    return last.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, s => s.toUpperCase());
-}
-
-function categoryFromKey(key: string): string {
-    const first = key.split('.')[0] || key;
-    return first.replace(/^./, s => s.toUpperCase());
-}
-
-type SpecRow = {
-    category: string;
-    label: string;
-    values: (string | null)[];
-    isDifferent: boolean;
-};
-
-const SPEC_SYNONYMS: Record<string, string> = {
-    'dimensions.curbWeight': 'dimensions.kerbWeight',
-    curbWeight: 'kerbWeight',
-};
-
-function normalizeFlatSpecs(flat: Record<string, string>): Record<string, string> {
-    const result: Record<string, string> = {};
-    for (const [key, val] of Object.entries(flat)) {
-        const canonical = SPEC_SYNONYMS[key] || key;
-        if (!result[canonical]) result[canonical] = val;
-    }
-    return result;
-}
-
-function normalizeForCompare(val: string): string {
-    let s = val.trim().replace(/\s+/g, ' ').toLowerCase();
-    s = s.replace(/(\d+\.\d*?)0+(\s|$)/g, '$1$2').replace(/\.(\s|$)/g, '$1');
-    return s;
-}
-
-function computeAllSpecs(variants: ProductVariant[]): SpecRow[] {
-    if (variants.length === 0) return [];
-    const flatSpecs = variants.map(v => {
-        const raw = flattenObject((v.specifications || {}) as Record<string, any>);
-        return normalizeFlatSpecs(raw);
-    });
-    const extraFields = ['displacement', 'fuelType', 'bodyType', 'segment'] as const;
-    for (let i = 0; i < variants.length; i++) {
-        for (const field of extraFields) {
-            const val = (variants[i] as any)[field];
-            if (val !== null && val !== undefined && val !== '') {
-                const canonical = SPEC_SYNONYMS[field] || field;
-                if (!flatSpecs[i][canonical]) flatSpecs[i][canonical] = String(val);
-            }
-        }
-    }
-    const allKeys = new Set<string>();
-    flatSpecs.forEach(fs => Object.keys(fs).forEach(k => allKeys.add(k)));
-    const rows: SpecRow[] = [];
-    for (const key of allKeys) {
-        const values = flatSpecs.map(fs => fs[key] || null);
-        const nonNull = values.filter((v): v is string => v !== null && v !== '');
-        if (nonNull.length === 0) continue;
-        const normalized = nonNull.map(normalizeForCompare);
-        const allSame = normalized.every(v => v === normalized[0]);
-        const isDifferent = !allSame || nonNull.length < variants.length;
-        rows.push({ category: categoryFromKey(key), label: labelFromKey(key), values, isDifferent });
-    }
-    rows.sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
-    return rows;
-}
-
-// --- Best Value ---
-const LOWER_IS_BETTER = new Set(['kerbweight', 'curbweight', 'weight', 'chargingtime']);
-const HIGHER_IS_BETTER = new Set([
-    'mileage',
-    'range',
-    'rangekm',
-    'fuelcapacity',
-    'groundclearance',
-    'maxpower',
-    'maxtorque',
-    'displacement',
-    'topspeed',
-]);
-
-function extractNumeric(val: string): number | null {
-    const match = val.match(/[\d,.]+/);
-    if (!match) return null;
-    const num = parseFloat(match[0].replace(/,/g, ''));
-    return isNaN(num) ? null : num;
-}
-
-function findBestValueIndex(row: SpecRow): number | null {
-    const labelLower = row.label.toLowerCase().replace(/\s+/g, '');
-    const isLowerBetter = LOWER_IS_BETTER.has(labelLower);
-    const isHigherBetter = HIGHER_IS_BETTER.has(labelLower);
-    if (!isLowerBetter && !isHigherBetter) return null;
-    const numerics = row.values.map(v => (v ? extractNumeric(v) : null));
-    const validIndices = numerics.map((n, i) => (n !== null ? i : -1)).filter(i => i >= 0);
-    if (validIndices.length < 2) return null;
-    let bestIdx = validIndices[0];
-    for (const idx of validIndices) {
-        const current = numerics[idx]!;
-        const best = numerics[bestIdx]!;
-        if (isLowerBetter && current < best) bestIdx = idx;
-        if (isHigherBetter && current > best) bestIdx = idx;
-    }
-    const bestVal = numerics[bestIdx]!;
-    if (validIndices.every(i => i === bestIdx || numerics[i] === bestVal)) return null;
-    return bestIdx;
-}
-
-// --- Value Formatting ---
-const UNIT_MAP: Record<string, string> = {
-    'arai mileage': 'km/l',
-    mileage: 'km/l',
-    'seat height': 'mm',
-    'ground clearance': 'mm',
-    wheelbase: 'mm',
-    'kerb weight': 'kg',
-    'fuel capacity': 'L',
-    'overall length': 'mm',
-    'overall width': 'mm',
-    'overall height': 'mm',
-};
-
-const NUMERIC_BAR_SPECS = new Set([
-    'arai mileage',
-    'mileage',
-    'seat height',
-    'ground clearance',
-    'kerb weight',
-    'fuel capacity',
-    'top speed',
-    'max power',
-    'max torque',
-    'displacement',
-    'overall length',
-    'overall width',
-    'overall height',
-    'wheelbase',
-]);
-
-function getBarPercent(val: string | null, allValues: (string | null)[]): number | null {
-    if (!val) return null;
-    const num = extractNumeric(val);
-    if (num === null) return null;
-    const nums = allValues.map(v => (v ? extractNumeric(v) : null)).filter((n): n is number => n !== null);
-    if (nums.length < 2) return null;
-    const max = Math.max(...nums);
-    const min = Math.min(...nums);
-    if (max === min) return 100;
-    return Math.round(((num - min) / (max - min)) * 60 + 40); // 40-100% range
-}
-
+// Desktop-specific formatSpecValue — returns React nodes (icons for booleans, styled units)
 function formatSpecValue(val: string | null, label: string): React.ReactNode {
     if (!val) return <span className="text-slate-300 italic">—</span>;
 
     const lower = val.trim().toLowerCase();
 
-    // Boolean → icon
     if (lower === 'true' || lower === 'yes') {
         return (
             <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -368,51 +168,8 @@ function formatSpecValue(val: string | null, label: string): React.ReactNode {
         );
     }
 
-    // Explicit value overrides for cleaner display
-    const VALUE_OVERRIDES: Record<string, string> = {
-        KICK_AND_ELECTRIC: 'Kick & Electric',
-        KICK: 'Kick Start',
-        ELECTRIC: 'Electric Start',
-        SELF_START: 'Self Start',
-        DIGITAL_TFT: 'Digital TFT',
-        DIGITAL_LCD: 'Digital LCD',
-        DIGITAL: 'Digital',
-        ANALOG: 'Analog',
-        COMBI_BRAKE: 'Combi Brake',
-        SINGLE_CHANNEL_ABS: 'Single Channel ABS',
-        DUAL_CHANNEL_ABS: 'Dual Channel ABS',
-        DISC_DRUM: 'Disc + Drum',
-        DRUM_DRUM: 'Drum + Drum',
-        DISC_DISC: 'Disc + Disc',
-        TUBELESS: 'Tubeless',
-        TUBE_TYPE: 'Tube Type',
-        ALLOY: 'Alloy',
-        SPOKE: 'Spoke',
-        STEEL: 'Steel',
-        CVT: 'CVT (Automatic)',
-        MANUAL: 'Manual',
-        AIR_COOLED: 'Air Cooled',
-        LIQUID_COOLED: 'Liquid Cooled',
-        OIL_COOLED: 'Oil Cooled',
-        TELESCOPIC: 'Telescopic',
-        UNDER_BONE: 'Under Bone',
-        DIAMOND: 'Diamond',
-        SBT: 'Combi Brake',
-        CBS: 'Combi Brake',
-        ABS: 'ABS',
-        NONE: 'None',
-    };
-
-    let display = val.trim();
-    if (VALUE_OVERRIDES[display]) {
-        display = VALUE_OVERRIDES[display];
-    } else if (/^[A-Z][A-Z_]+$/.test(display)) {
-        // ALL_CAPS or ALLCAPS → Title Case
-        display = display
-            .split('_')
-            .map(w => w.charAt(0) + w.slice(1).toLowerCase())
-            .join(' ');
-    }
+    // Use shared plain formatter for value display normalization
+    const display = formatSpecValuePlain(val);
 
     // Styled number + unit
     const labelLower = label.toLowerCase();
@@ -429,27 +186,28 @@ function formatSpecValue(val: string | null, label: string): React.ReactNode {
     return display;
 }
 
-// --- Pricing helpers (same as catalog) ---
-const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
-
-function getDisplayPrice(v: ProductVariant): number {
-    return v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
-}
-
-function getEmi(v: ProductVariant, downpayment = 15000, tenure = 36): number {
-    const loan = Math.max(0, getDisplayPrice(v) - downpayment);
-    return Math.max(0, Math.round(loan * (EMI_FACTORS[tenure] ?? EMI_FACTORS[36])));
-}
-
 // --- Page Component ---
 
 export default function DesktopCompare() {
-    const params = useParams();
     const router = useRouter();
-    const makeSlug = (params.make as string) || '';
-    const modelSlug = (params.model as string) || '';
 
-    const { items, isLoading } = useSystemCatalogLogic();
+    const {
+        makeSlug,
+        modelSlug,
+        items,
+        isLoading,
+        modelGroup,
+        activeVariants,
+        sortedVariants,
+        removedVariantIds,
+        removeVariant,
+        restoreAllVariants,
+        downpayment,
+        setDownpayment,
+        tenure,
+        setTenure,
+    } = useSystemCompareLogic();
+
     const [searchQuery, setSearchQuery] = useState('');
     const [showDiffOnly, setShowDiffOnly] = useState(false);
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -457,23 +215,7 @@ export default function DesktopCompare() {
     // Per-variant selected color image and hex for compact cards
     const [compactColorImages, setCompactColorImages] = useState<Record<string, string>>({});
     const [compactColorHexes, setCompactColorHexes] = useState<Record<string, string>>({});
-    // Removed variants
-    const [removedVariantIds, setRemovedVariantIds] = useState<Set<string>>(new Set());
-    // Editable finance params (shared across all variants) — localStorage-backed
-    const [downpayment, _setDownpayment] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('bkmb_downpayment');
-            if (stored) return parseInt(stored);
-        }
-        return 15000;
-    });
-    const setDownpayment = (val: number) => {
-        _setDownpayment(val);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('bkmb_downpayment', String(val));
-            window.dispatchEvent(new CustomEvent('bkmb_dp_changed', { detail: val }));
-        }
-    };
+    // Downpayment edit UI state (desktop-specific)
     const [isDpEditOpen, setIsDpEditOpen] = useState(false);
     const [dpDraft, setDpDraft] = useState(downpayment);
     const openDpEdit = () => {
@@ -484,7 +226,6 @@ export default function DesktopCompare() {
         setDownpayment(val);
         setIsDpEditOpen(false);
     };
-    const [tenure, setTenure] = useState(36);
     const [editingDownpayment, setEditingDownpayment] = useState(false);
     const [editingTenure, setEditingTenure] = useState(false);
     const [dpInputValue, setDpInputValue] = useState('15000');
@@ -515,54 +256,13 @@ export default function DesktopCompare() {
             const anchor = scrollAnchorRef.current;
             if (!anchor) return;
             const rect = anchor.getBoundingClientRect();
-            // When the bottom of the scroll-anchor (which reserves full card height)
-            // is near/above the viewport header area, switch to compact
             setCompactMode(rect.bottom < 160);
         };
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
-    const modelGroup = useMemo(() => {
-        if (!items.length) return null;
-        const groups = groupProductsByModel(items);
-        return (
-            groups.find(g => {
-                const gMake = slugify(g.make);
-                const gModel = slugify(g.model);
-                return gMake === makeSlug && (gModel === modelSlug || g.modelSlug === modelSlug);
-            }) || null
-        );
-    }, [items, makeSlug, modelSlug]);
-
-    const sortedVariants = useMemo(() => {
-        if (!modelGroup) return [];
-        return [...modelGroup.variants].sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
-    }, [modelGroup]);
-
-    const activeVariants = useMemo(
-        () => sortedVariants.filter(v => !removedVariantIds.has(v.id)),
-        [sortedVariants, removedVariantIds]
-    );
-
-    const removeVariant = useCallback(
-        (id: string) => {
-            // Don't allow removing if only 2 variants left
-            if (activeVariants.length <= 2) return;
-            setRemovedVariantIds(prev => {
-                const next = new Set(prev);
-                next.add(id);
-                return next;
-            });
-        },
-        [activeVariants.length]
-    );
-
-    const restoreAllVariants = useCallback(() => {
-        setRemovedVariantIds(new Set());
-    }, []);
-
-    const allSpecs = useMemo(() => computeAllSpecs(activeVariants), [activeVariants]);
+    const allSpecs = useMemo(() => computeSpecRows(activeVariants), [activeVariants]);
 
     // Smart sorting: differences first, then decision-important specs, then rest
     const DECISION_SPECS = new Set([
@@ -824,16 +524,17 @@ export default function DesktopCompare() {
                                                 return (
                                                     <div
                                                         key={v.id}
-                                                        className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${isCheapest
-                                                            ? 'border border-[#F4B000]/20'
-                                                            : 'border border-transparent'
-                                                            }`}
+                                                        className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${
+                                                            isCheapest
+                                                                ? 'border border-[#F4B000]/20'
+                                                                : 'border border-transparent'
+                                                        }`}
                                                         style={{
                                                             backgroundColor: currentHex
                                                                 ? `${currentHex}1A`
                                                                 : isCheapest
-                                                                    ? 'rgba(244,176,0,0.05)'
-                                                                    : 'rgba(248,250,252,0.6)',
+                                                                  ? 'rgba(244,176,0,0.05)'
+                                                                  : 'rgba(248,250,252,0.6)',
                                                         }}
                                                     >
                                                         {/* Remove Button */}
@@ -884,10 +585,11 @@ export default function DesktopCompare() {
                                                                                     }));
                                                                                 }
                                                                             }}
-                                                                            className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${currentHex === c.hexCode
-                                                                                ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
-                                                                                : ''
-                                                                                }`}
+                                                                            className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${
+                                                                                currentHex === c.hexCode
+                                                                                    ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
+                                                                                    : ''
+                                                                            }`}
                                                                             style={{ background: c.hexCode }}
                                                                             title={c.name}
                                                                         >
@@ -926,13 +628,8 @@ export default function DesktopCompare() {
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
                                         <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <IndianRupee
-                                                size={12}
-                                                className="text-slate-300 shrink-0"
-                                            />
-                                            <span className="text-[10px] font-bold text-slate-500">
-                                                On-Road Price
-                                            </span>
+                                            <IndianRupee size={12} className="text-slate-300 shrink-0" />
+                                            <span className="text-[10px] font-bold text-slate-500">On-Road Price</span>
                                         </div>
                                         {activeVariants.map((v, vIdx) => (
                                             <div
@@ -954,10 +651,7 @@ export default function DesktopCompare() {
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
                                         <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <TrendingDown
-                                                size={12}
-                                                className="text-slate-300 shrink-0"
-                                            />
+                                            <TrendingDown size={12} className="text-slate-300 shrink-0" />
                                             <span className="text-[10px] font-bold text-slate-500">
                                                 Platform Discount / Surge Charges
                                             </span>
@@ -977,8 +671,8 @@ export default function DesktopCompare() {
                                                         {isDiscount
                                                             ? `−₹${disc.toLocaleString('en-IN')}`
                                                             : isSurge
-                                                                ? `+₹${Math.abs(disc).toLocaleString('en-IN')}`
-                                                                : '—'}
+                                                              ? `+₹${Math.abs(disc).toLocaleString('en-IN')}`
+                                                              : '—'}
                                                     </span>
                                                 </div>
                                             );
@@ -991,9 +685,7 @@ export default function DesktopCompare() {
                                     >
                                         <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
                                             <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                            <span className="text-[10px] font-bold text-slate-700">
-                                                Offer Price
-                                            </span>
+                                            <span className="text-[10px] font-bold text-slate-700">Offer Price</span>
                                         </div>
                                         {activeVariants.map((v, vIdx) => {
                                             const offerPrice = getDisplayPrice(v);
@@ -1023,13 +715,8 @@ export default function DesktopCompare() {
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
                                         <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <CreditCard
-                                                size={12}
-                                                className="text-slate-300 shrink-0"
-                                            />
-                                            <span className="text-[10px] font-bold text-slate-500">
-                                                Downpayment
-                                            </span>
+                                            <CreditCard size={12} className="text-slate-300 shrink-0" />
+                                            <span className="text-[10px] font-bold text-slate-500">Downpayment</span>
                                             <button
                                                 onClick={() => {
                                                     setEditingDownpayment(true);
@@ -1080,13 +767,8 @@ export default function DesktopCompare() {
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
                                         <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <Calendar
-                                                size={12}
-                                                className="text-slate-300 shrink-0"
-                                            />
-                                            <span className="text-[10px] font-bold text-slate-500">
-                                                Tenure
-                                            </span>
+                                            <Calendar size={12} className="text-slate-300 shrink-0" />
+                                            <span className="text-[10px] font-bold text-slate-500">Tenure</span>
                                             <button
                                                 onClick={() => setEditingTenure(!editingTenure)}
                                                 className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
@@ -1109,10 +791,11 @@ export default function DesktopCompare() {
                                                                     setTenure(t);
                                                                     setEditingTenure(false);
                                                                 }}
-                                                                className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${tenure === t
-                                                                    ? 'bg-[#F4B000] text-black'
-                                                                    : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
-                                                                    }`}
+                                                                className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${
+                                                                    tenure === t
+                                                                        ? 'bg-[#F4B000] text-black'
+                                                                        : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
+                                                                }`}
                                                             >
                                                                 {t}mo
                                                             </button>
@@ -1250,10 +933,7 @@ export default function DesktopCompare() {
                                                     {(() => {
                                                         const SpecIcon = getSpecIcon(row.label);
                                                         return (
-                                                            <SpecIcon
-                                                                size={12}
-                                                                className="shrink-0 text-slate-300"
-                                                            />
+                                                            <SpecIcon size={12} className="shrink-0 text-slate-300" />
                                                         );
                                                     })()}
                                                     <span className="text-[10px] font-bold text-slate-500">
@@ -1359,9 +1039,7 @@ export default function DesktopCompare() {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                     Tenure
                                 </span>
-                                <span className="text-lg font-black text-emerald-600">
-                                    {tenure} months
-                                </span>
+                                <span className="text-lg font-black text-emerald-600">{tenure} months</span>
                             </div>
                             <div className="flex items-center justify-center gap-2">
                                 {[12, 24, 36, 48, 60].map(val => (

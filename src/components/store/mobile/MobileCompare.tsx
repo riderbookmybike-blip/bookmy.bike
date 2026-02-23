@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     ChevronDown,
     ChevronUp,
@@ -41,11 +41,17 @@ import {
     type LucideIcon,
     ChevronLeft,
 } from 'lucide-react';
-import type { ProductVariant } from '@/types/productMaster';
-import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
-import { groupProductsByModel } from '@/utils/variantGrouping';
-import { slugify } from '@/utils/slugs';
 import { Logo } from '@/components/brand/Logo';
+import { useSystemCompareLogic } from '@/hooks/useSystemCompareLogic';
+import {
+    flattenObject,
+    labelFromKey,
+    formatSpecValue,
+    computeSpecCategories,
+    getDisplayPrice,
+    getEmi,
+    EMI_FACTORS,
+} from '@/hooks/compareUtils';
 
 // --- Spec Icon Mapping ---
 const SPEC_ICON_MAP: Record<string, LucideIcon> = {
@@ -97,231 +103,22 @@ function getSpecIcon(label: string): LucideIcon {
     return SPEC_ICON_MAP[label.toLowerCase()] || CircleDot;
 }
 
-// --- Spec Extraction Functions ---
-function flattenObject(obj: Record<string, any>, prefix = ''): Record<string, string> {
-    const result: Record<string, string> = {};
-    if (!obj || typeof obj !== 'object') return result;
-    for (const [key, val] of Object.entries(obj)) {
-        const path = prefix ? `${prefix}.${key}` : key;
-        if (val !== null && val !== undefined && typeof val === 'object' && !Array.isArray(val)) {
-            Object.assign(result, flattenObject(val, path));
-        } else if (val !== null && val !== undefined && val !== '') {
-            result[path] = String(val);
-        }
-    }
-    return result;
-}
-
-const LABEL_OVERRIDES: Record<string, string> = {
-    mileage: 'ARAI Mileage',
-    headlampType: 'Headlamp',
-    tailLampType: 'Tail Lamp',
-    startType: 'Starting',
-    consoleType: 'Console',
-    usbCharging: 'USB Charging',
-    kerbWeight: 'Kerb Weight',
-    seatHeight: 'Seat Height',
-    groundClearance: 'Ground Clearance',
-    fuelCapacity: 'Fuel Capacity',
-    topSpeed: 'Top Speed',
-    maxPower: 'Max Power',
-    maxTorque: 'Max Torque',
-    numValves: 'Valves',
-    rideModes: 'Ride Modes',
-    boreStroke: 'Bore × Stroke',
-    compressionRatio: 'Compression Ratio',
-    overallLength: 'Length',
-    overallWidth: 'Width',
-    overallHeight: 'Height',
-    chassisType: 'Chassis',
-    wheelType: 'Wheel Type',
-    frontWheelSize: 'Front Wheel',
-    rearWheelSize: 'Rear Wheel',
-    lowFuelIndicator: 'Fuel Indicator',
-    lowOilIndicator: 'Oil Indicator',
-    lowBatteryIndicator: 'Battery Indicator',
-    pillionSeat: 'Pillion Seat',
-    pillionFootrest: 'Pillion Footrest',
-    standAlarm: 'Side Stand Alert',
-    passLight: 'Pass Light',
-    serviceInterval: 'Service Interval',
-    fuelType: 'Fuel',
-    bodyType: 'Body Type',
-    abs: 'Braking',
-    type: 'Type',
-    front: 'Front',
-    rear: 'Rear',
-    cooling: 'Cooling',
-};
-
-function labelFromKey(key: string): string {
-    const last = key.split('.').pop() || key;
-    if (LABEL_OVERRIDES[last]) return LABEL_OVERRIDES[last];
-    return last.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, s => s.toUpperCase());
-}
-
-function formatSpecValue(val: string): string {
-    if (val === 'true' || val === 'yes') return 'Yes';
-    if (val === 'false' || val === 'no') return 'No';
-    return val;
-}
-
-function computeAllSpecs(variants: ProductVariant[]) {
-    const allKeys = new Set<string>();
-    const vSpecs = variants.map(v => flattenObject(v.specifications || {}));
-    vSpecs.forEach(sp => Object.keys(sp).forEach(k => allKeys.add(k)));
-
-    const categories: Record<string, { label: string; key: string }[]> = {
-        Engine: [],
-        Transmission: [],
-        Brakes: [],
-        Suspension: [],
-        Battery: [],
-        Dimensions: [],
-        Tyres: [],
-        Features: [],
-        Other: [],
-    };
-
-    Array.from(allKeys).forEach(key => {
-        const p = key.toLowerCase();
-        let cat = 'Other';
-        if (
-            p.includes('engine') ||
-            p.includes('power') ||
-            p.includes('torque') ||
-            p.includes('cylinders') ||
-            p.includes('valves') ||
-            p.includes('stroke') ||
-            p.includes('compression') ||
-            p.includes('cooling') ||
-            p.includes('mileage') ||
-            p.includes('speed') ||
-            p.includes('fuel system')
-        )
-            cat = 'Engine';
-        else if (p.includes('gear') || p.includes('clutch') || p.includes('transmission')) cat = 'Transmission';
-        else if (p.includes('brake') || p.includes('abs') || p.includes('front') || p.includes('rear')) cat = 'Brakes';
-        else if (p.includes('suspension') || p.includes('fork') || p.includes('shock')) cat = 'Suspension';
-        else if (p.includes('battery') || p.includes('range') || p.includes('charging') || p.includes('motor'))
-            cat = 'Battery';
-        else if (
-            p.includes('weight') ||
-            p.includes('height') ||
-            p.includes('clearance') ||
-            p.includes('wheelbase') ||
-            p.includes('length') ||
-            p.includes('width') ||
-            p.includes('capacity') ||
-            p.includes('chassis')
-        )
-            cat = 'Dimensions';
-        else if (p.includes('tyre') || p.includes('wheel')) cat = 'Tyres';
-        else if (
-            p.includes('headlamp') ||
-            p.includes('tail') ||
-            p.includes('indicator') ||
-            p.includes('console') ||
-            p.includes('bluetooth') ||
-            p.includes('usb') ||
-            p.includes('navigation') ||
-            p.includes('seat') ||
-            p.includes('stand')
-        )
-            cat = 'Features';
-
-        categories[cat].push({ label: labelFromKey(key), key });
-    });
-
-    const orderedCats = [
-        'Engine',
-        'Battery',
-        'Transmission',
-        'Brakes',
-        'Suspension',
-        'Tyres',
-        'Dimensions',
-        'Features',
-        'Other',
-    ];
-    return orderedCats
-        .map(name => ({
-            name,
-            specs: categories[name].sort((a, b) => a.label.localeCompare(b.label)),
-        }))
-        .filter(c => c.specs.length > 0);
-}
+// Spec utilities and hook are now imported from shared modules
 
 // --- Main Mobile Component ---
 export function MobileCompare() {
     const router = useRouter();
-    const params = useParams();
 
-    const makeSlug = (params.make as string) || '';
-    const modelSlug = (params.model as string) || '';
+    const { activeVariants, removeVariantBySlug, downpayment, setDownpayment, tenure } = useSystemCompareLogic();
 
-    const { items } = useSystemCatalogLogic();
-    const [removedVariantIds, setRemovedVariantIds] = useState<Set<string>>(new Set());
-
-    const modelGroup = useMemo(() => {
-        if (!items.length) return null;
-        const groups = groupProductsByModel(items);
-        return (
-            groups.find(g => {
-                const gMake = slugify(g.make);
-                const gModel = slugify(g.model);
-                return gMake === makeSlug && (gModel === modelSlug || g.modelSlug === modelSlug);
-            }) || null
-        );
-    }, [items, makeSlug, modelSlug]);
-
-    const sortedVariants = useMemo(() => {
-        if (!modelGroup) return [];
-        return [...modelGroup.variants].sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
-    }, [modelGroup]);
-
-    const activeVariants = useMemo(
-        () => sortedVariants.filter(v => !removedVariantIds.has(v.id)),
-        [sortedVariants, removedVariantIds]
-    );
-
-    const onRemoveVariant = useCallback(
-        (slug: string) => {
-            if (activeVariants.length <= 2) return;
-            const target = activeVariants.find(v => v.slug === slug);
-            if (target) {
-                setRemovedVariantIds(prev => new Set(prev).add(target.id));
-            }
-        },
-        [activeVariants]
-    );
-
-    // Editable finance params — localStorage-backed
-    const [downpayment, _setDownpayment] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('bkmb_downpayment');
-            if (stored) return parseInt(stored);
-        }
-        return 15000;
-    });
-    const setDownpayment = (val: number) => {
-        _setDownpayment(val);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('bkmb_downpayment', String(val));
-            window.dispatchEvent(new CustomEvent('bkmb_dp_changed', { detail: val }));
-        }
-    };
-
-    // For now, hardcode tenure
-    const tenure = 36;
+    const onRemoveVariant = removeVariantBySlug;
 
     const onEditDownpayment = () => {
-        // Simple prompt for mobile edit as fallback, or use a modal later
         const newVal = prompt('Enter new downpayment amount:', downpayment.toString());
         if (newVal && !isNaN(Number(newVal))) setDownpayment(Number(newVal));
     };
 
-    const allSpecs = useMemo(() => computeAllSpecs(activeVariants), [activeVariants]);
+    const allSpecs = useMemo(() => computeSpecCategories(activeVariants), [activeVariants]);
 
     // Smart Specs
     const smartSpecs = useMemo(() => {
