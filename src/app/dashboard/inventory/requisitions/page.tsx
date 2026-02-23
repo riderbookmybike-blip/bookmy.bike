@@ -26,51 +26,34 @@ import NewRequisitionModal from './components/NewRequisitionModal';
 interface Requisition {
     id: string;
     display_id: string | null;
-    customer_name: string | null;
     status: string;
     source_type: string;
-    priority: string;
     booking_id: string | null;
-    request_branch_id: string | null;
     delivery_branch_id: string | null;
     created_at: string;
-    requested_by_user_id: string | null;
     items: Array<{
         id: string;
-        sku_id: string;
-        quantity: number;
-        notes: string | null;
-        status: string;
+        cost_type: string;
+        expected_amount: number;
+        description: string | null;
     }>;
 }
 
 const STATUS_COLORS: Record<string, string> = {
-    DRAFT: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
-    PENDING:
+    QUOTING:
         'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
-    SUBMITTED:
+    ORDERED:
         'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
-    IN_PROCUREMENT:
-        'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/20',
-    FULFILLED:
+    RECEIVED:
         'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
     CANCELLED:
         'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20',
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-    LOW: 'bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10',
-    MEDIUM: 'bg-sky-100 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400 border-sky-200 dark:border-sky-500/20',
-    HIGH: 'bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
-    URGENT: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20',
-};
-
 const STATUS_ICONS: Record<string, React.ReactNode> = {
-    DRAFT: <Clock size={14} />,
-    PENDING: <Clock size={14} />,
-    SUBMITTED: <ArrowRightCircle size={14} />,
-    IN_PROCUREMENT: <Package size={14} />,
-    FULFILLED: <CheckCircle2 size={14} />,
+    QUOTING: <Clock size={14} />,
+    ORDERED: <ArrowRightCircle size={14} />,
+    RECEIVED: <CheckCircle2 size={14} />,
     CANCELLED: <XCircle size={14} />,
 };
 
@@ -88,13 +71,13 @@ export default function RequisitionsPage() {
         if (!tenantId) return;
         setLoading(true);
         try {
-            let query = (supabase as any)
-                .from('inv_requisitions')
+            let query = supabase
+                .from('inv_requests')
                 .select(
                     `
                     *,
-                    items:inv_requisition_items (
-                        id, sku_id, quantity, notes, status
+                    items:inv_request_items (
+                        id, cost_type, expected_amount, description
                     )
                 `
                 )
@@ -102,12 +85,12 @@ export default function RequisitionsPage() {
                 .order('created_at', { ascending: false });
 
             if (statusFilter !== 'ALL') {
-                query = query.eq('status', statusFilter);
+                query = query.eq('status', statusFilter as any);
             }
 
             const { data, error } = await query;
             if (error) throw error;
-            setRequisitions((data as Requisition[]) || []);
+            setRequisitions((data as any[]) || []);
         } catch (err) {
             console.error('Error fetching requisitions:', err);
         } finally {
@@ -122,15 +105,14 @@ export default function RequisitionsPage() {
     const filteredRequisitions = requisitions.filter(req => {
         const query = searchQuery.toLowerCase().trim();
         if (!query) return true;
-        const customerMatch = req.customer_name?.toLowerCase().includes(query);
         const idMatch = (req.display_id || req.id).toLowerCase().includes(query);
-        return customerMatch || idMatch;
+        return idMatch;
     });
 
     const stats = {
-        submitted: requisitions.filter(r => r.status === 'SUBMITTED' || r.status === 'PENDING').length,
-        inProcurement: requisitions.filter(r => r.status === 'IN_PROCUREMENT').length,
-        fulfilled: requisitions.filter(r => r.status === 'FULFILLED').length,
+        quoting: requisitions.filter(r => r.status === 'QUOTING').length,
+        ordered: requisitions.filter(r => r.status === 'ORDERED').length,
+        received: requisitions.filter(r => r.status === 'RECEIVED').length,
         booking: requisitions.filter(r => r.source_type === 'BOOKING').length,
     };
 
@@ -159,14 +141,14 @@ export default function RequisitionsPage() {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'Submitted', value: stats.submitted, icon: <Clock size={24} />, color: 'amber' },
+                    { label: 'Quoting', value: stats.quoting, icon: <Clock size={24} />, color: 'amber' },
                     {
-                        label: 'In Procurement',
-                        value: stats.inProcurement,
+                        label: 'Ordered',
+                        value: stats.ordered,
                         icon: <ArrowRightCircle size={24} />,
                         color: 'indigo',
                     },
-                    { label: 'Fulfilled', value: stats.fulfilled, icon: <CheckCircle2 size={24} />, color: 'emerald' },
+                    { label: 'Received', value: stats.received, icon: <CheckCircle2 size={24} />, color: 'emerald' },
                     { label: 'Booking-Triggered', value: stats.booking, icon: <Bookmark size={24} />, color: 'purple' },
                 ].map(s => (
                     <div
@@ -191,14 +173,14 @@ export default function RequisitionsPage() {
                     />
                     <input
                         type="text"
-                        placeholder="SEARCH BY ID OR CUSTOMER..."
+                        placeholder="SEARCH BY ID..."
                         className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-12 pr-4 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all uppercase tracking-widest placeholder:text-slate-400/50"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
                 </div>
                 <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-none">
-                    {['ALL', 'SUBMITTED', 'IN_PROCUREMENT', 'FULFILLED', 'CANCELLED'].map(status => (
+                    {['ALL', 'QUOTING', 'ORDERED', 'RECEIVED', 'CANCELLED'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
@@ -248,14 +230,8 @@ export default function RequisitionsPage() {
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Source
                                     </th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Customer
-                                    </th>
                                     <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Items
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Priority
+                                        Cost Lines
                                     </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Status
@@ -296,30 +272,15 @@ export default function RequisitionsPage() {
                                                 {req.source_type}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase truncate max-w-[150px] block">
-                                                {req.customer_name || '—'}
-                                            </span>
-                                        </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className="text-sm font-black text-slate-900 dark:text-white">
-                                                {req.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest ${
-                                                    PRIORITY_COLORS[req.priority] || PRIORITY_COLORS.MEDIUM
-                                                }`}
-                                            >
-                                                {req.priority === 'URGENT' && <ShieldAlert size={10} />}
-                                                {req.priority}
+                                                {req.items?.length || 0}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span
                                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${
-                                                    STATUS_COLORS[req.status] || STATUS_COLORS.DRAFT
+                                                    STATUS_COLORS[req.status] || STATUS_COLORS.QUOTING
                                                 }`}
                                             >
                                                 {STATUS_ICONS[req.status] || <Clock size={14} />}

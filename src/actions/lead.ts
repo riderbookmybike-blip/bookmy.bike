@@ -6,6 +6,7 @@ import { createOrLinkMember } from '@/actions/members';
 import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
 import { headers } from 'next/headers';
 import { validateFinanceLeadDealer } from '@/lib/crm/contextHardening';
+import { createClient } from '@/lib/supabase/server';
 
 // --- Validation Key ---
 const leadSchema = z.object({
@@ -161,6 +162,24 @@ export async function submitLead(formData: FormData) {
         if (insertError) {
             console.error('Lead Insert Error:', insertError);
             return { success: false, message: 'System busy (db). Please try WhatsApp.' };
+        }
+
+        try {
+            const supabase = await createClient();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+
+            await adminClient.from('crm_lead_events').insert({
+                lead_id: lead.id,
+                actor_user_id: user?.id || null,
+                actor_tenant_id: ownerTenantId,
+                event_type: 'LEAD_CAPTURED',
+                notes: 'Marketplace lead captured via public form.',
+                changed_value: 'NEW',
+            });
+        } catch (leadEventError) {
+            console.error('Lead event insert failed:', leadEventError);
         }
 
         if (referrerUserId && lead?.id) {

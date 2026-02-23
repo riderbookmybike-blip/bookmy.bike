@@ -19,6 +19,10 @@ import {
     CheckCircle2,
     Plus,
     ArrowRight,
+    Gauge,
+    Fuel,
+    Weight,
+    Bike,
 } from 'lucide-react';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
@@ -384,7 +388,91 @@ export const MobilePDP = ({
                 </div>
             )}
 
-            {/* 5. Configuration Accordions */}
+            {/* 5. Specifications Section */}
+            {product?.specs && Object.keys(product.specs).length > 0 && (
+                <div className="px-5 mb-2">
+                    <MobileAccordion title="Specifications" icon={Gauge} defaultOpen={false}>
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                            {product.specs.displacement && (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                        Engine
+                                    </span>
+                                    <span className="text-[13px] font-black text-white">
+                                        {product.specs.displacement}
+                                    </span>
+                                </div>
+                            )}
+                            {product.specs.mileage && (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                        Mileage
+                                    </span>
+                                    <span className="text-[13px] font-black text-emerald-400">
+                                        {product.specs.mileage}
+                                    </span>
+                                </div>
+                            )}
+                            {product.specs.maxPower && (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                        Power
+                                    </span>
+                                    <span className="text-[13px] font-black text-white">{product.specs.maxPower}</span>
+                                </div>
+                            )}
+                            {product.specs.maxTorque && (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                        Torque
+                                    </span>
+                                    <span className="text-[13px] font-black text-white">{product.specs.maxTorque}</span>
+                                </div>
+                            )}
+                            {product.specs.kerbWeight && (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                        Weight
+                                    </span>
+                                    <span className="text-[13px] font-black text-white">
+                                        {product.specs.kerbWeight}
+                                    </span>
+                                </div>
+                            )}
+                            {product.specs.seatHeight && (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                        Seat Height
+                                    </span>
+                                    <span className="text-[13px] font-black text-white">
+                                        {product.specs.seatHeight}
+                                    </span>
+                                </div>
+                            )}
+                            {product.specs.fuelCapacity && (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                        Fuel Tank
+                                    </span>
+                                    <span className="text-[13px] font-black text-white">
+                                        {product.specs.fuelCapacity}
+                                    </span>
+                                </div>
+                            )}
+                            {product.specs.abs && (
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                        Braking
+                                    </span>
+                                    <span className="text-[13px] font-black text-white">{product.specs.abs}</span>
+                                </div>
+                            )}
+                        </div>
+                    </MobileAccordion>
+                </div>
+            )}
+
+            {/* 6. Configuration Accordions */}
             <div className="px-5 space-y-2">
                 {/* Accessories */}
                 {activeAccessories && activeAccessories.length > 0 && (
@@ -441,21 +529,26 @@ export const MobilePDP = ({
                 )}
             </div>
 
-            {/* 6. Sticky Bottom Action Bar */}
+            {/* 7. Sticky Bottom Action Bar (single bar — no duplicate) */}
             <div className="fixed bottom-0 inset-x-0 z-50 bg-[#0b0d10]/95 backdrop-blur-2xl border-t border-white/5 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
                 <div className="flex items-center gap-3 max-w-md mx-auto">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">
                             Total On-Road
                         </p>
-                        <p className="text-xl font-black text-white">₹{displayOnRoad.toLocaleString()}</p>
+                        <p className="text-xl font-black text-white tabular-nums">₹{displayOnRoad.toLocaleString()}</p>
+                        {emi > 0 && (
+                            <p className="text-[11px] font-bold text-[#F4B000] mt-0.5">
+                                ₹{Math.round(emi).toLocaleString()}/mo EMI
+                            </p>
+                        )}
                     </div>
                     <button
                         onClick={handleBookingRequest}
-                        className="flex-shrink-0 px-8 h-12 rounded-2xl bg-[#F4B000] text-black text-[12px] font-black uppercase tracking-[0.15em] flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(244,176,0,0.3)] active:scale-95 transition-all"
+                        className="flex-shrink-0 px-6 h-12 rounded-2xl bg-[#F4B000] text-black text-[11px] font-black uppercase tracking-[0.15em] flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(244,176,0,0.3)] active:scale-95 transition-all whitespace-nowrap"
                     >
-                        Save Quote
-                        <ArrowRight size={16} />
+                        Get Quote
+                        <ArrowRight size={14} strokeWidth={2.5} />
                     </button>
                 </div>
             </div>

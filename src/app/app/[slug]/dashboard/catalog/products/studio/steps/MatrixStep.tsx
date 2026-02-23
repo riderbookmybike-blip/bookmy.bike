@@ -68,7 +68,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
     // Inclusion Type State
     const [inclusionType, setInclusionType] = useState<string>('OPTIONAL');
 
-    // Compatibility (Suitable For) State — relational via cat_item_compatibility
+    // Compatibility (Suitable For) State — relational via cat_accessory_suitable_for
     const [compatEntries, setCompatEntries] = useState<any[]>([]);
 
     // Cascading Selection State
@@ -157,14 +157,14 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
         }
         // Fetch compatibility entries
         const { data: compat } = await supabase
-            .from('cat_item_compatibility')
+            .from('cat_accessory_suitable_for' as any)
             .select(
                 `
                 id, is_universal,
-                target_brand_id, target_family_id, target_variant_id
+                target_brand_id, target_model_id, target_variant_id
             `
             )
-            .eq('item_id', skuId);
+            .eq('variant_id', skuId);
         if (compat) {
             // Enrich with names
             const enriched = await Promise.all(
@@ -182,15 +182,15 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                 .single();
                             parts.push(brand?.name || 'Unknown Brand');
                         }
-                        if (c.target_family_id) {
+                        if (c.target_model_id) {
                             const { data: fam } = await (supabase as any)
                                 .from('cat_models')
                                 .select('name')
-                                .eq('id', c.target_family_id)
+                                .eq('id', c.target_model_id)
                                 .single();
                             if (!c.target_variant_id) parts.push(`${fam?.name || 'All Models'}`);
                             else parts.push(fam?.name || '');
-                        } else if (c.target_brand_id && !c.target_family_id) {
+                        } else if (c.target_brand_id && !c.target_model_id) {
                             parts.push('(All Models)');
                         }
                         if (c.target_variant_id) {
@@ -1092,7 +1092,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
 
                         {/* ─── INCLUSION TYPE & SUITABLE FOR ─── */}
                         <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 mt-6 border-t border-slate-100 dark:border-white/5">
-                            {/* Suitable For — cat_item_compatibility backed */}
+                            {/* Suitable For — cat_accessory_suitable_for backed */}
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                                     <Link2 size={12} className="text-indigo-500" /> Suitable For

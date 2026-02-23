@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { User, Mail, Phone, Shield, Building, MapPin, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { ThemeModeSelector } from '@/components/ui/ThemeModeSelector';
+import { ThemeModeSelector } from '@/components/ui/theme-mode-selector';
 
 export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
@@ -164,7 +164,7 @@ export default function ProfilePage() {
                             Theme Preferences
                         </h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                            Select Light, Dark, or System mode for this account.
+                            Light mode is enabled for this account across all devices.
                         </p>
                         <ThemeModeSelector className="w-full justify-between" />
                     </div>

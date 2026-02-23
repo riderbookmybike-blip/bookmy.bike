@@ -66,6 +66,7 @@ export const ProductCard = ({
     onCompare,
     isInCompare = false,
     onEditDownpayment,
+    fallbackDealerId,
 }: {
     v: ProductVariant;
     viewMode?: 'grid' | 'list';
@@ -111,6 +112,7 @@ export const ProductCard = ({
     onCompare?: () => void;
     isInCompare?: boolean;
     onEditDownpayment?: () => void;
+    fallbackDealerId?: string | null;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { language } = useI18n();
@@ -196,6 +198,16 @@ export const ProductCard = ({
             : cleanedPriceSourceLocation
         : undefined;
 
+    const normalizeDistrictForUrl = (value?: string | null) => {
+        if (!value) return undefined;
+        const cleaned = String(value)
+            .replace(/^(Best:|Base:)\s*/i, '')
+            .split(',')[0]
+            .trim();
+        if (!cleaned || cleaned.toUpperCase() === 'ALL') return undefined;
+        return cleaned;
+    };
+
     const districtLabel = (() => {
         if (!cleanedPriceSourceLocation) return null;
         const STATE_NAMES = [
@@ -229,6 +241,10 @@ export const ProductCard = ({
             : districtLabelDisplay
         : studioDisplayLabel || null;
 
+    const navigableDistrict = normalizeDistrictForUrl(
+        serviceability?.district || serviceability?.location || v.dealerLocation || cleanedPriceSourceLocation
+    );
+
     const priceSourceDisplay = combinedLocationLabel || priceSourceLabel || '—';
     const isTrulyOnRoad = effectiveServerPricing
         ? effectiveServerPricing.final_on_road > effectiveServerPricing.ex_showroom
@@ -238,6 +254,7 @@ export const ProductCard = ({
 
     const onRoad = v.price?.onRoad || 0;
     const offerPrice = v.price?.offerPrice || basePrice;
+    const offerDeltaForParity = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
 
     // SSPP v1: B-Coin Integration
     const params = useSearchParams();
@@ -333,6 +350,11 @@ export const ProductCard = ({
         return (
             <div
                 key={v.id}
+                data-testid="catalog-product-card"
+                data-product-id={v.id}
+                data-dealer-id={v.dealerId || bestOffer?.dealerId || fallbackDealerId || ''}
+                data-offer-delta={offerDeltaForParity}
+                data-district={districtLabelDisplay || ''}
                 className="group bg-white dark:bg-[#0f1115] dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex shadow-sm hover:shadow-2xl dark:hover:shadow-brand-primary/5 transition-all duration-500 min-h-[22rem] dark:hover:border-white/20"
             >
                 {/* Image Section - Wider */}
@@ -602,7 +624,7 @@ export const ProductCard = ({
                                                 color: v.availableColors?.[0]?.name
                                                     ? slugify(v.availableColors?.[0]?.name)
                                                     : undefined,
-                                                district: serviceability?.district || serviceability?.location,
+                                                district: navigableDistrict,
                                                 leadId: leadId,
                                                 basePath,
                                             }).url
@@ -623,6 +645,11 @@ export const ProductCard = ({
     return (
         <div
             key={v.id}
+            data-testid="catalog-product-card"
+            data-product-id={v.id}
+            data-dealer-id={v.dealerId || bestOffer?.dealerId || fallbackDealerId || ''}
+            data-offer-delta={offerDeltaForParity}
+            data-district={districtLabelDisplay || ''}
             onClick={handleCardClick}
             className={`group bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] dark:shadow-none hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[640px]' : 'min-h-[580px] md:min-h-[660px]'}`}
         >
@@ -1097,7 +1124,7 @@ export const ProductCard = ({
                                         color: v.availableColors?.[0]?.name
                                             ? slugify(v.availableColors?.[0]?.name)
                                             : undefined,
-                                        district: serviceability?.district || serviceability?.location,
+                                        district: navigableDistrict,
                                         leadId: leadId,
                                         basePath,
                                     }).url

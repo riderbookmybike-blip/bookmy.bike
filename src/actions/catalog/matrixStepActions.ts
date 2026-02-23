@@ -11,7 +11,7 @@ type MatrixStatePriceInput = {
 type MatrixCompatibilityInput = {
     is_universal?: boolean;
     target_brand_id?: string | null;
-    target_family_id?: string | null;
+    target_model_id?: string | null;
     target_variant_id?: string | null;
 };
 
@@ -101,32 +101,32 @@ export async function saveMatrixSkuEditor(input: SaveMatrixSkuInput): Promise<Sa
         }
 
         const { error: deleteCompatibilityError } = await adminClient
-            .from('cat_item_compatibility')
+            .from('cat_accessory_suitable_for' as any)
             .delete()
-            .eq('item_id', skuId);
+            .eq('variant_id', skuId);
         if (deleteCompatibilityError) {
             return { success: false, error: deleteCompatibilityError.message };
         }
 
         const compatRows = (input?.compatibility || [])
             .map(entry => ({
-                item_id: skuId,
+                variant_id: skuId,
                 is_universal: Boolean(entry?.is_universal),
                 target_brand_id: entry?.is_universal ? null : (entry?.target_brand_id ?? null),
-                target_family_id: entry?.is_universal ? null : (entry?.target_family_id ?? null),
+                target_model_id: entry?.is_universal ? null : (entry?.target_model_id ?? null),
                 target_variant_id: entry?.is_universal ? null : (entry?.target_variant_id ?? null),
             }))
             .filter(
                 row =>
                     row.is_universal ||
                     row.target_brand_id !== null ||
-                    row.target_family_id !== null ||
+                    row.target_model_id !== null ||
                     row.target_variant_id !== null
             );
 
         if (compatRows.length > 0) {
             const { error: insertCompatibilityError } = await adminClient
-                .from('cat_item_compatibility')
+                .from('cat_accessory_suitable_for' as any)
                 .insert(compatRows);
             if (insertCompatibilityError) {
                 return { success: false, error: insertCompatibilityError.message };

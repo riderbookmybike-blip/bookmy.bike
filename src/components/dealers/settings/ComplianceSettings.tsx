@@ -49,7 +49,7 @@ export default function ComplianceSettings({ dealerId }: ComplianceSettingsProps
             const filePath = `${fileName}`;
 
             // Upload to 'documents' bucket (Private)
-            const { error: uploadError } = await supabase.storage.from('id_documents').upload(filePath, file);
+            const { error: uploadError } = await supabase.storage.from('documents').upload(filePath, file);
 
             if (uploadError) throw uploadError;
 

@@ -1,12 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Loader2, Plus, Edit2, Trash2, Layers, GripVertical, ChevronDown, ChevronUp, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+    Loader2,
+    Plus,
+    Edit2,
+    Trash2,
+    Layers,
+    GripVertical,
+    ChevronDown,
+    ChevronUp,
+    Save,
+    Link2,
+    X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import { createVariant, updateVariant, deleteVariant, reorderVariants } from '@/actions/catalog/catalogV2Actions';
 import type { CatalogModel, ProductType } from '@/actions/catalog/catalogV2Actions';
 import CopyableId from '@/components/ui/CopyableId';
+import { createClient } from '@/lib/supabase/client';
 
 function slugify(name: string): string {
     return name
@@ -144,8 +157,206 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
     const [isSaving, setIsSaving] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [newName, setNewName] = useState('');
+    // For ACCESSORY: targets selected during creation
+    const [newCompatTargets, setNewCompatTargets] = useState<any[]>([]);
+
+    // ── Suitable For (ACCESSORY only) ──
+    const isAccessory = productType === 'ACCESSORY';
+    const [compatMap, setCompatMap] = useState<Record<string, any[]>>({}); // variantId -> entries
+    const [compatBrands, setCompatBrands] = useState<any[]>([]);
+    const [compatModels, setCompatModels] = useState<any[]>([]);
+    const [compatVehicleVariants, setCompatVehicleVariants] = useState<any[]>([]);
+    const [selBrand, setSelBrand] = useState('');
+    const [selModel, setSelModel] = useState('');
+    const [selVehicleVariant, setSelVehicleVariant] = useState('');
+    const [isSavingCompat, setIsSavingCompat] = useState<string | null>(null);
+
+    // Fetch brands for compat selector (once)
+    useEffect(() => {
+        if (!isAccessory) return;
+        const supabase = createClient();
+        supabase
+            .from('cat_brands')
+            .select('id, name')
+            .eq('is_active', true)
+            .order('name')
+            .then(({ data }) => {
+                if (data) setCompatBrands(data);
+            });
+    }, [isAccessory]);
+
+    // Fetch models when brand changes
+    useEffect(() => {
+        if (!selBrand || selBrand === 'UNIVERSAL') {
+            setCompatModels([]);
+            return;
+        }
+        const supabase = createClient();
+        (supabase as any)
+            .from('cat_models')
+            .select('id, name')
+            .eq('brand_id', selBrand)
+            .eq('product_type', 'VEHICLE')
+            .order('name')
+            .then(({ data }: any) => {
+                if (data) setCompatModels(data);
+            });
+    }, [selBrand]);
+
+    // Fetch vehicle variants when model changes
+    useEffect(() => {
+        if (!selModel || selModel === 'ALL_MODELS') {
+            setCompatVehicleVariants([]);
+            return;
+        }
+        const supabase = createClient();
+        (supabase as any)
+            .from('cat_variants_vehicle')
+            .select('id, name')
+            .eq('model_id', selModel)
+            .order('name')
+            .then(({ data }: any) => {
+                if (data) setCompatVehicleVariants(data);
+            });
+    }, [selModel]);
+
+    // Load compat entries when variant is expanded
+    const loadCompatForVariant = async (variantId: string) => {
+        const supabase = createClient();
+        const { data } = await supabase
+            .from('cat_accessory_suitable_for')
+            .select('id, variant_id, is_universal, target_brand_id, target_model_id, target_variant_id')
+            .eq('variant_id', variantId);
+        if (data && data.length > 0) {
+            const enriched = await Promise.all(
+                data.map(async (c: any) => {
+                    let label = '';
+                    if (c.is_universal) {
+                        label = 'UNIVERSAL / ALL VEHICLES';
+                    } else {
+                        const parts: string[] = [];
+                        if (c.target_brand_id) {
+                            const { data: brand } = await supabase
+                                .from('cat_brands')
+                                .select('name')
+                                .eq('id', c.target_brand_id)
+                                .single();
+                            parts.push(brand?.name || 'Unknown');
+                        }
+                        if (c.target_family_id) {
+                            const { data: fam } = await (supabase as any)
+                                .from('cat_models')
+                                .select('name')
+                                .eq('id', c.target_family_id)
+                                .single();
+                            parts.push(fam?.name || 'All Models');
+                        } else if (c.target_brand_id) {
+                            parts.push('(All Models)');
+                        }
+                        if (c.target_variant_id) {
+                            const { data: v } = await (supabase as any)
+                                .from('cat_variants_vehicle')
+                                .select('name')
+                                .eq('id', c.target_variant_id)
+                                .single();
+                            parts.push(v?.name || '');
+                        }
+                        label = parts.filter(Boolean).join(' › ');
+                    }
+                    return { ...c, label };
+                })
+            );
+            setCompatMap(prev => ({ ...prev, [variantId]: enriched }));
+        } else {
+            setCompatMap(prev => ({ ...prev, [variantId]: [] }));
+        }
+    };
+
+    const addCompatEntry = (variantId: string) => {
+        const entries = compatMap[variantId] || [];
+        if (selBrand === 'UNIVERSAL') {
+            if (entries.some(c => c.is_universal)) return;
+            setCompatMap(prev => ({
+                ...prev,
+                [variantId]: [
+                    ...entries,
+                    {
+                        id: `new-${Date.now()}`,
+                        is_universal: true,
+                        target_brand_id: null,
+                        target_family_id: null,
+                        target_variant_id: null,
+                        label: 'UNIVERSAL / ALL VEHICLES',
+                    },
+                ],
+            }));
+        } else if (selBrand) {
+            const brandName = compatBrands.find(b => b.id === selBrand)?.name || '';
+            const modelName =
+                selModel && selModel !== 'ALL_MODELS' ? compatModels.find(m => m.id === selModel)?.name || '' : '';
+            const variantName =
+                selVehicleVariant && selVehicleVariant !== 'ALL_VARIANTS'
+                    ? compatVehicleVariants.find(v => v.id === selVehicleVariant)?.name || ''
+                    : '';
+
+            const entry = {
+                id: `new-${Date.now()}`,
+                is_universal: false,
+                target_brand_id: selBrand,
+                target_family_id: selModel && selModel !== 'ALL_MODELS' ? selModel : null,
+                target_variant_id: selVehicleVariant && selVehicleVariant !== 'ALL_VARIANTS' ? selVehicleVariant : null,
+                label: [brandName, modelName || '(All Models)', variantName].filter(Boolean).join(' › '),
+            };
+            if (
+                entries.some(
+                    c =>
+                        c.target_brand_id === entry.target_brand_id &&
+                        c.target_family_id === entry.target_family_id &&
+                        c.target_variant_id === entry.target_variant_id
+                )
+            )
+                return;
+            setCompatMap(prev => ({ ...prev, [variantId]: [...entries, entry] }));
+        }
+        setSelBrand('');
+        setSelModel('');
+        setSelVehicleVariant('');
+    };
+
+    const removeCompatEntry = (variantId: string, entryId: string) => {
+        setCompatMap(prev => ({ ...prev, [variantId]: (prev[variantId] || []).filter(c => c.id !== entryId) }));
+    };
+
+    const saveCompat = async (variantId: string) => {
+        setIsSavingCompat(variantId);
+        try {
+            const supabase = createClient();
+            await supabase.from('cat_accessory_suitable_for').delete().eq('variant_id', variantId);
+            const entries = compatMap[variantId] || [];
+            if (entries.length > 0) {
+                const inserts = entries.map(e => ({
+                    variant_id: variantId,
+                    is_universal: e.is_universal || false,
+                    target_brand_id: e.target_brand_id || null,
+                    target_model_id: e.target_model_id || e.target_family_id || null,
+                    target_variant_id: e.target_variant_id || null,
+                }));
+                const { error } = await supabase.from('cat_accessory_suitable_for').insert(inserts);
+                if (error) throw error;
+            }
+            toast.success('Compatibility saved');
+        } catch (err: any) {
+            toast.error('Failed to save compatibility: ' + (err?.message || 'Unknown'));
+        } finally {
+            setIsSavingCompat(null);
+        }
+    };
 
     const handleCreate = async () => {
+        if (isAccessory) {
+            await handleCreateAccessory();
+            return;
+        }
         if (!newName.trim()) return;
         setIsCreating(true);
         try {
@@ -172,6 +383,113 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
         } finally {
             setIsCreating(false);
         }
+    };
+
+    // ACCESSORY-specific: create variant from vehicle targets
+    const handleCreateAccessory = async () => {
+        if (newCompatTargets.length === 0) {
+            toast.error('Select at least one vehicle target');
+            return;
+        }
+        setIsCreating(true);
+        try {
+            // Auto-generate name from targets
+            const name = newCompatTargets.map(t => t.label).join(', ');
+
+            const payload: Record<string, any> = {
+                model_id: model.id,
+                name,
+                slug: slugify(name),
+                position: variants.length,
+                status: 'DRAFT',
+            };
+
+            const created = await createVariant(
+                productType,
+                payload as { model_id: string; name: string; [key: string]: any }
+            );
+            if (!created) throw new Error('Variant creation failed');
+
+            // Save compat entries
+            const supabase = createClient();
+            const inserts = newCompatTargets.map(t => ({
+                variant_id: created.id,
+                is_universal: t.is_universal || false,
+                target_brand_id: t.target_brand_id || null,
+                target_model_id: t.target_model_id || t.target_family_id || null,
+                target_variant_id: t.target_variant_id || null,
+            }));
+            if (inserts.length > 0) {
+                const { error } = await supabase.from('cat_accessory_suitable_for').insert(inserts);
+                if (error) console.error('Compat insert error:', error);
+            }
+
+            onUpdate([...variants, created]);
+            setNewCompatTargets([]);
+            setSelBrand('');
+            setSelModel('');
+            setSelVehicleVariant('');
+            toast.success(`${labels.variant} created: ${name}`);
+        } catch (err) {
+            console.error('Failed to create accessory variant:', err);
+            toast.error('Failed to create');
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    // Add a target to the creation-time target list
+    const addNewTarget = () => {
+        if (selBrand === 'UNIVERSAL') {
+            if (newCompatTargets.some(t => t.is_universal)) return;
+            setNewCompatTargets(prev => [
+                ...prev,
+                {
+                    id: `new-${Date.now()}`,
+                    is_universal: true,
+                    target_brand_id: null,
+                    target_family_id: null,
+                    target_variant_id: null,
+                    label: 'All Brands (Universal)',
+                },
+            ]);
+            setSelBrand('');
+            return;
+        }
+        if (!selBrand) return;
+        const brandName = compatBrands.find(b => b.id === selBrand)?.name || '';
+        const modelName =
+            selModel && selModel !== 'ALL_MODELS' ? compatModels.find(m => m.id === selModel)?.name || '' : '';
+        const vName =
+            selVehicleVariant && selVehicleVariant !== 'ALL_VARIANTS'
+                ? compatVehicleVariants.find(v => v.id === selVehicleVariant)?.name || ''
+                : '';
+
+        const entry = {
+            id: `new-${Date.now()}`,
+            is_universal: false,
+            target_brand_id: selBrand,
+            target_family_id: selModel && selModel !== 'ALL_MODELS' ? selModel : null,
+            target_variant_id: selVehicleVariant && selVehicleVariant !== 'ALL_VARIANTS' ? selVehicleVariant : null,
+            label: [brandName, !selModel || selModel === 'ALL_MODELS' ? '(All)' : modelName, vName]
+                .filter(Boolean)
+                .join(' › '),
+        };
+        if (
+            newCompatTargets.some(
+                t =>
+                    t.target_brand_id === entry.target_brand_id &&
+                    t.target_family_id === entry.target_family_id &&
+                    t.target_variant_id === entry.target_variant_id
+            )
+        ) {
+            toast.error('Already added');
+            return;
+        }
+        setNewCompatTargets(prev => [...prev, entry]);
+        setSelBrand('');
+        setSelModel('');
+        setSelVehicleVariant('');
     };
 
     const handleSaveSpecs = async (variantId: string) => {
@@ -236,6 +554,10 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
             if (variant && !editData[id]) {
                 setEditData(prev => ({ ...prev, [id]: { ...variant } }));
             }
+            // Load compatibility entries for ACCESSORY variants
+            if (isAccessory && !compatMap[id]) {
+                loadCompatForVariant(id);
+            }
         }
     };
 
@@ -269,27 +591,147 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                 </div>
             </div>
 
-            {/* Quick Add */}
-            <div className="flex gap-3">
-                <input
-                    type="text"
-                    value={newName}
-                    onChange={e => setNewName(e.target.value)}
-                    onKeyDown={e => {
-                        if (e.key === 'Enter') handleCreate();
-                    }}
-                    placeholder={`New ${labels.variant} name (e.g. ${productType === 'VEHICLE' ? 'Disc SmartXonnect' : productType === 'ACCESSORY' ? 'Half Face' : 'Gold Plan'})`}
-                    className="flex-1 px-5 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-                <button
-                    onClick={handleCreate}
-                    disabled={isCreating || !newName.trim()}
-                    className="flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-lg"
-                >
-                    {isCreating ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-                    Add
-                </button>
-            </div>
+            {/* Quick Add — ACCESSORY uses vehicle selector, others use text input */}
+            {isAccessory ? (
+                <div className="bg-white dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 p-5 space-y-4">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                        <Link2 size={12} className="text-indigo-500" /> Select Vehicle Compatibility
+                    </label>
+
+                    {/* Selected targets */}
+                    {newCompatTargets.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {newCompatTargets.map((t: any) => (
+                                <div
+                                    key={t.id}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm"
+                                >
+                                    {t.label}
+                                    <button
+                                        onClick={() => setNewCompatTargets(prev => prev.filter(x => x.id !== t.id))}
+                                        className="hover:scale-125 transition-transform"
+                                    >
+                                        <X size={10} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Cascading selectors */}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end">
+                        <select
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500"
+                            value={selBrand}
+                            onChange={e => {
+                                const val = e.target.value;
+                                setSelBrand(val);
+                                setSelModel('');
+                                setSelVehicleVariant('');
+                                if (val === 'UNIVERSAL') {
+                                    // Directly add universal target (can't call addNewTarget — selBrand state is stale)
+                                    if (!newCompatTargets.some(t => t.is_universal)) {
+                                        setNewCompatTargets(prev => [
+                                            ...prev,
+                                            {
+                                                id: `new-${Date.now()}`,
+                                                is_universal: true,
+                                                target_brand_id: null,
+                                                target_family_id: null,
+                                                target_variant_id: null,
+                                                label: 'All Brands (Universal)',
+                                            },
+                                        ]);
+                                    }
+                                    setSelBrand('');
+                                }
+                            }}
+                        >
+                            <option value="">Brand...</option>
+                            <option value="UNIVERSAL">🌍 ALL BRANDS (Universal)</option>
+                            {compatBrands.map((b: any) => (
+                                <option key={b.id} value={b.id}>
+                                    {b.name}
+                                </option>
+                            ))}
+                        </select>
+
+                        {selBrand && selBrand !== 'UNIVERSAL' && (
+                            <select
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500"
+                                value={selModel}
+                                onChange={e => {
+                                    setSelModel(e.target.value);
+                                    setSelVehicleVariant('');
+                                }}
+                            >
+                                <option value="">Model...</option>
+                                <option value="ALL_MODELS">All Models</option>
+                                {compatModels.map((m: any) => (
+                                    <option key={m.id} value={m.id}>
+                                        {m.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+
+                        {selModel && selModel !== 'ALL_MODELS' && (
+                            <select
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500"
+                                value={selVehicleVariant}
+                                onChange={e => setSelVehicleVariant(e.target.value)}
+                            >
+                                <option value="">Variant...</option>
+                                <option value="ALL_VARIANTS">All Variants</option>
+                                {compatVehicleVariants.map((v: any) => (
+                                    <option key={v.id} value={v.id}>
+                                        {v.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+
+                        {selBrand && selBrand !== 'UNIVERSAL' && (
+                            <button
+                                onClick={addNewTarget}
+                                className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors"
+                            >
+                                + Target
+                            </button>
+                        )}
+
+                        <button
+                            onClick={handleCreate}
+                            disabled={isCreating || newCompatTargets.length === 0}
+                            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-lg"
+                        >
+                            {isCreating ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                            Add {labels.variant}
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex gap-3">
+                    <input
+                        type="text"
+                        value={newName}
+                        onChange={e => setNewName(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') handleCreate();
+                        }}
+                        placeholder={`New ${labels.variant} name (e.g. ${productType === 'VEHICLE' ? 'Disc SmartXonnect' : 'Gold Plan'})`}
+                        className="flex-1 px-5 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                    <button
+                        onClick={handleCreate}
+                        disabled={isCreating || !newName.trim()}
+                        className="flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-lg"
+                    >
+                        {isCreating ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                        Add
+                    </button>
+                </div>
+            )}
 
             {/* Variant List (Accordion) */}
             <div className="space-y-3">
@@ -453,6 +895,118 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                                             </div>
                                         </div>
                                     ))}
+
+                                    {/* Suitable For — ACCESSORY only */}
+                                    {isAccessory && (
+                                        <div className="pt-4 border-t border-slate-100 dark:border-white/5 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                                    <Link2 size={12} className="text-indigo-500" /> Suitable For
+                                                </label>
+                                                <button
+                                                    onClick={() => saveCompat(variant.id)}
+                                                    disabled={isSavingCompat === variant.id}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                                                >
+                                                    {isSavingCompat === variant.id ? (
+                                                        <Loader2 size={12} className="animate-spin" />
+                                                    ) : null}
+                                                    Save Compat
+                                                </button>
+                                            </div>
+
+                                            {/* Current entries */}
+                                            <div className="flex flex-wrap gap-2 min-h-[36px] p-2.5 bg-slate-50 dark:bg-white/[0.03] rounded-xl border border-slate-100 dark:border-white/10">
+                                                {(compatMap[variant.id] || []).length === 0 && (
+                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest px-2 py-0.5">
+                                                        No vehicles set — add below
+                                                    </span>
+                                                )}
+                                                {(compatMap[variant.id] || []).map((entry: any) => (
+                                                    <div
+                                                        key={entry.id}
+                                                        className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm"
+                                                    >
+                                                        {entry.label}
+                                                        <button
+                                                            onClick={() => removeCompatEntry(variant.id, entry.id)}
+                                                            className="hover:scale-125 transition-transform"
+                                                        >
+                                                            <X size={10} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Cascading selectors */}
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
+                                                <select
+                                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-indigo-500"
+                                                    value={selBrand}
+                                                    onChange={e => {
+                                                        setSelBrand(e.target.value);
+                                                        setSelModel('');
+                                                        setSelVehicleVariant('');
+                                                        if (e.target.value === 'UNIVERSAL') {
+                                                            setTimeout(() => addCompatEntry(variant.id), 0);
+                                                        }
+                                                    }}
+                                                >
+                                                    <option value="">Brand...</option>
+                                                    <option value="UNIVERSAL">🌍 UNIVERSAL</option>
+                                                    {compatBrands.map(b => (
+                                                        <option key={b.id} value={b.id}>
+                                                            {b.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+
+                                                {selBrand && selBrand !== 'UNIVERSAL' && (
+                                                    <select
+                                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-indigo-500"
+                                                        value={selModel}
+                                                        onChange={e => {
+                                                            setSelModel(e.target.value);
+                                                            setSelVehicleVariant('');
+                                                        }}
+                                                    >
+                                                        <option value="">Model...</option>
+                                                        <option value="ALL_MODELS">All Models</option>
+                                                        {compatModels.map(m => (
+                                                            <option key={m.id} value={m.id}>
+                                                                {m.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
+
+                                                {selModel && selModel !== 'ALL_MODELS' && (
+                                                    <select
+                                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-indigo-500"
+                                                        value={selVehicleVariant}
+                                                        onChange={e => setSelVehicleVariant(e.target.value)}
+                                                    >
+                                                        <option value="">Variant...</option>
+                                                        <option value="ALL_VARIANTS">All Variants</option>
+                                                        {compatVehicleVariants.map(v => (
+                                                            <option key={v.id} value={v.id}>
+                                                                {v.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
+
+                                                {selBrand && selBrand !== 'UNIVERSAL' && selModel && (
+                                                    <button
+                                                        onClick={() => addCompatEntry(variant.id)}
+                                                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors"
+                                                    >
+                                                        + Add
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Save button */}
                                     <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-white/5">

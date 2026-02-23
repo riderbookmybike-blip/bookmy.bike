@@ -44,5 +44,4 @@
 ---
 ### 🛠 In the Pipeline (Next 2 Weeks)
 1. **Yamaha 360 Full Rollout**: Localization for all R15 and MT-15 variants.
-2. **Unified Booking Checkout**: Secure payment gateway integration.
-3. **Compare Engine**: Side-by-side spec comparison for up to 3 bikes.
+3. **Compare Engine**: Side-by-side spec comparison for up to 3 bikes. (Completed UI layout, pending data wiring)

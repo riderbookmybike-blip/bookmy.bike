@@ -57,6 +57,7 @@ interface DesktopCatalogProps {
     basePath?: string;
     mode?: 'default' | 'smart';
     needsLocation?: boolean;
+    resolvedDealerId?: string | null;
     resolvedStudioId?: string | null;
     resolvedDealerName?: string | null;
 }
@@ -86,6 +87,7 @@ export const DesktopCatalog = ({
     basePath = '/store',
     mode = 'default',
     needsLocation = false,
+    resolvedDealerId = null,
     resolvedStudioId = null,
     resolvedDealerName = null,
 }: DesktopCatalogProps) => {
@@ -1459,6 +1461,7 @@ export const DesktopCatalog = ({
                                         onLocationClick={() => setIsLocationPickerOpen(true)}
                                         isTv={isTv}
                                         leadId={leadId}
+                                        fallbackDealerId={resolvedDealerId}
                                         walletCoins={isLoggedIn ? availableCoins : null}
                                         showOClubPrompt={!isLoggedIn}
                                         showBcoinBadge={isLoggedIn}
@@ -1696,6 +1699,8 @@ export const DesktopCatalog = ({
                             onDownpaymentChange={setDownpayment}
                             tenure={tenure}
                             onTenureChange={setTenure}
+                            sortBy={sortBy}
+                            onSortChange={() => {}} // Placeholder as sortBy is currently read-only in this component
                         />
                     </>
                 )}

@@ -55,6 +55,12 @@ export interface ProductVariant {
     dealerId?: string; // Dealer tenant ID
     studioCode?: string; // e.g. 'ST-001'
     dealerLocation?: string; // e.g. 'MUMBAI, MAHARASHTRA'
+    trendSignals?: {
+        bookingCount?: number;
+        visitorViews?: number;
+        visitorDwellMs?: number;
+        rankingSource?: 'BOOKINGS_FIRST' | 'VISITOR_FALLBACK' | 'STATIC_FALLBACK';
+    };
 }
 
 export interface VehicleSpecifications {

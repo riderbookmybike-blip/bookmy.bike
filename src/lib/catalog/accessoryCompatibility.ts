@@ -2,6 +2,7 @@ export interface AccessoryCompatibilityRow {
     target_brand_id?: string | null;
     target_model_id?: string | null;
     target_variant_id?: string | null;
+    is_universal?: boolean;
 }
 
 export interface AccessoryCompatibilityInput {
@@ -89,7 +90,15 @@ export function matchesScopedAccessoryCompatibility(
         );
     });
 
-    // Fully unscoped rows are ignored to prevent accidental global accessory leakage.
+    // If ANY row has explicit is_universal flag OR all target fields NULL → compatible with everything.
+    const hasUniversalRow = allRows.some(
+        r =>
+            r.is_universal === true ||
+            (!normalizeId(r?.target_brand_id) && !normalizeId(r?.target_model_id) && !normalizeId(r?.target_variant_id))
+    );
+    if (hasUniversalRow) return true;
+
+    // No universal and no scoped rows → no compatibility data → reject.
     if (scopedRows.length === 0) return false;
 
     const brandId = normalizeId(context.brandId);

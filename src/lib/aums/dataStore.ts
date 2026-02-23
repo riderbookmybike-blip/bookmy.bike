@@ -1,5 +1,18 @@
 import { Booking, OperationalStage } from '@/types/booking';
-import { InventoryItem } from '@/types/inventory';
+// Legacy mock type — kept locally for demo data compatibility
+interface InventoryItem {
+    id: string;
+    sku: string;
+    brand: string;
+    model: string;
+    variant: string;
+    color: string;
+    totalStock: number;
+    reserved: number;
+    allotted: number;
+    available: number;
+    lastUpdated: string;
+}
 import { VehicleUnit } from '@/types/vehicleUnit';
 import { LedgerEntry, TransactionType, PartyType } from '@/types/ledger';
 import { ACCOUNT_MASTER } from './accounting/accountMaster';

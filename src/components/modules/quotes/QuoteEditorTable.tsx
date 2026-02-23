@@ -75,7 +75,10 @@ import {
     reassignQuoteDealership,
     updateReceipt,
     reconcileReceipt,
+    getBookingFeedbackAction,
+    upsertBookingFeedbackAction,
 } from '@/actions/crm';
+import { getBookingStageHistory } from '@/actions/bookingStage';
 import { updateFinanceStatus } from '@/actions/finance';
 import { PremiumQuoteTemplate } from './PremiumQuoteTemplate';
 import MemberMediaManager from './MemberMediaManager';
@@ -354,6 +357,7 @@ interface QuoteEditorTableProps {
         registration_number?: string | null;
         booking_amount_received?: number | null;
         current_stage?: string | null;
+        operational_stage?: string | null;
         created_at?: string | null;
         updated_at?: string | null;
         allotment_status?: string | null;
@@ -393,6 +397,15 @@ type QuoteChange = {
     oldValue: string;
     newValue: string;
     isManagerOnly?: boolean;
+};
+
+type BookingFeedbackFormState = {
+    id?: string | null;
+    npsScore: string;
+    deliveryRating: string;
+    staffRating: string;
+    reviewText: string;
+    updatedAt?: string | null;
 };
 
 // ============================================================================
@@ -821,6 +834,19 @@ export default function QuoteEditorTable({
 
     const [receiptDraft, setReceiptDraft] = useState<any | null>(null);
     const [receiptSaving, setReceiptSaving] = useState(false);
+    const [feedbackLoading, setFeedbackLoading] = useState(false);
+    const [feedbackSaving, setFeedbackSaving] = useState(false);
+    const [feedbackStageMessage, setFeedbackStageMessage] = useState<string | null>(null);
+    const [stageEventsLoading, setStageEventsLoading] = useState(false);
+    const [bookingStageEvents, setBookingStageEvents] = useState<any[]>([]);
+    const [feedbackDraft, setFeedbackDraft] = useState<BookingFeedbackFormState>({
+        id: null,
+        npsScore: '',
+        deliveryRating: '',
+        staffRating: '',
+        reviewText: '',
+        updatedAt: null,
+    });
 
     useEffect(() => {
         if (receipt) {
@@ -833,6 +859,100 @@ export default function QuoteEditorTable({
             });
         }
     }, [receipt?.id]);
+
+    useEffect(() => {
+        if (mode !== 'booking' || !booking?.id) return;
+
+        let active = true;
+        setFeedbackLoading(true);
+        setFeedbackStageMessage(null);
+
+        getBookingFeedbackAction(booking.id)
+            .then(res => {
+                if (!active) return;
+                const data = res.success ? (res.data as any) : null;
+                setFeedbackDraft({
+                    id: data?.id || null,
+                    npsScore: data?.nps_score ? String(data.nps_score) : '',
+                    deliveryRating: data?.delivery_rating ? String(data.delivery_rating) : '',
+                    staffRating: data?.staff_rating ? String(data.staff_rating) : '',
+                    reviewText: data?.review_text || '',
+                    updatedAt: data?.updated_at || null,
+                });
+            })
+            .catch(err => {
+                console.error('Failed to load booking feedback:', err);
+            })
+            .finally(() => {
+                if (active) setFeedbackLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [mode, booking?.id]);
+
+    useEffect(() => {
+        const loadStageEvents = async () => {
+            if (mode !== 'booking' || !booking?.id) {
+                setBookingStageEvents([]);
+                return;
+            }
+
+            setStageEventsLoading(true);
+            const events = await getBookingStageHistory(booking.id);
+            setBookingStageEvents(Array.isArray(events) ? events : []);
+            setStageEventsLoading(false);
+        };
+
+        loadStageEvents();
+    }, [mode, booking?.id]);
+
+    const handleSaveBookingFeedback = async () => {
+        if (!booking?.id) return;
+
+        const parseOptionalNumber = (value: string) => {
+            const raw = value.trim();
+            if (!raw) return null;
+            const parsed = Number(raw);
+            return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        setFeedbackSaving(true);
+        const result: any = await upsertBookingFeedbackAction({
+            bookingId: booking.id,
+            npsScore: parseOptionalNumber(feedbackDraft.npsScore),
+            deliveryRating: parseOptionalNumber(feedbackDraft.deliveryRating),
+            staffRating: parseOptionalNumber(feedbackDraft.staffRating),
+            reviewText: feedbackDraft.reviewText,
+            autoAdvanceStage: true,
+        });
+        setFeedbackSaving(false);
+
+        if (!result?.success) {
+            toast.error(result?.message || 'Failed to save feedback');
+            return;
+        }
+
+        const data = result.data || null;
+        setFeedbackDraft({
+            id: data?.id || null,
+            npsScore: data?.nps_score ? String(data.nps_score) : '',
+            deliveryRating: data?.delivery_rating ? String(data.delivery_rating) : '',
+            staffRating: data?.staff_rating ? String(data.staff_rating) : '',
+            reviewText: data?.review_text || '',
+            updatedAt: data?.updated_at || null,
+        });
+
+        const stageMessage = result?.stageTransition?.message || result?.stageTransition?.warning || null;
+        setFeedbackStageMessage(stageMessage);
+        if (booking?.id) {
+            const refreshedStageEvents = await getBookingStageHistory(booking.id);
+            setBookingStageEvents(Array.isArray(refreshedStageEvents) ? refreshedStageEvents : []);
+        }
+        toast.success('Feedback saved');
+        onRefresh?.();
+    };
 
     const activeBookingFinance = useMemo(() => {
         if (!bookingFinanceApps || bookingFinanceApps.length === 0) return null;
@@ -3439,26 +3559,18 @@ export default function QuoteEditorTable({
                                             </div>
                                             <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
                                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Payment
+                                                    Operational Stage
                                                 </div>
                                                 <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                                                    {booking.payment_status || '—'}
+                                                    {booking.operational_stage || booking.current_stage || '—'}
                                                 </div>
                                             </div>
                                             <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
                                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Finance
+                                                    Allotment
                                                 </div>
                                                 <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                                                    {booking.finance_status || '—'}
-                                                </div>
-                                            </div>
-                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
-                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Delivery
-                                                </div>
-                                                <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                                                    {booking.delivery_status || '—'}
+                                                    {booking.allotment_status || '—'}
                                                 </div>
                                             </div>
                                             <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
@@ -3471,6 +3583,17 @@ export default function QuoteEditorTable({
                                             </div>
                                             <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
                                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Insurance
+                                                </div>
+                                                <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                                                    {(booking as any).insurance_provider ||
+                                                        (booking as any).insurance_policy_number ||
+                                                        booking.insurance_status ||
+                                                        '—'}
+                                                </div>
+                                            </div>
+                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                     Booking Amount
                                                 </div>
                                                 <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
@@ -3479,6 +3602,128 @@ export default function QuoteEditorTable({
                                                         'en-IN'
                                                     )}
                                                 </div>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            className={cn(
+                                                'border-t border-slate-100 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01]',
+                                                isPhone ? 'p-4' : 'p-6'
+                                            )}
+                                        >
+                                            <div className="flex items-center justify-between gap-3 mb-4">
+                                                <div>
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                        Customer Feedback
+                                                    </div>
+                                                    <div className="text-sm font-black text-slate-900 dark:text-white">
+                                                        NPS + Delivery Experience
+                                                    </div>
+                                                </div>
+                                                <div className="text-[9px] font-bold text-slate-400">
+                                                    {feedbackDraft.updatedAt
+                                                        ? `Updated ${formatDate(feedbackDraft.updatedAt)}`
+                                                        : 'Not submitted'}
+                                                </div>
+                                            </div>
+
+                                            {feedbackLoading ? (
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    Loading feedback...
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                    <div className="bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/10 rounded-xl p-3">
+                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                                                            NPS (1-10)
+                                                        </div>
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            max={10}
+                                                            value={feedbackDraft.npsScore}
+                                                            onChange={e =>
+                                                                setFeedbackDraft(prev => ({
+                                                                    ...prev,
+                                                                    npsScore: e.target.value,
+                                                                }))
+                                                            }
+                                                            className="w-full bg-transparent border-b border-slate-200 dark:border-white/10 text-sm font-black text-slate-900 dark:text-white outline-none"
+                                                            placeholder="8"
+                                                        />
+                                                    </div>
+                                                    <div className="bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/10 rounded-xl p-3">
+                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                                                            Delivery Rating (1-5)
+                                                        </div>
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            max={5}
+                                                            value={feedbackDraft.deliveryRating}
+                                                            onChange={e =>
+                                                                setFeedbackDraft(prev => ({
+                                                                    ...prev,
+                                                                    deliveryRating: e.target.value,
+                                                                }))
+                                                            }
+                                                            className="w-full bg-transparent border-b border-slate-200 dark:border-white/10 text-sm font-black text-slate-900 dark:text-white outline-none"
+                                                            placeholder="5"
+                                                        />
+                                                    </div>
+                                                    <div className="bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/10 rounded-xl p-3">
+                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                                                            Staff Rating (1-5)
+                                                        </div>
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            max={5}
+                                                            value={feedbackDraft.staffRating}
+                                                            onChange={e =>
+                                                                setFeedbackDraft(prev => ({
+                                                                    ...prev,
+                                                                    staffRating: e.target.value,
+                                                                }))
+                                                            }
+                                                            className="w-full bg-transparent border-b border-slate-200 dark:border-white/10 text-sm font-black text-slate-900 dark:text-white outline-none"
+                                                            placeholder="5"
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-3 bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/10 rounded-xl p-3">
+                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                                                            Review
+                                                        </div>
+                                                        <textarea
+                                                            rows={3}
+                                                            value={feedbackDraft.reviewText}
+                                                            onChange={e =>
+                                                                setFeedbackDraft(prev => ({
+                                                                    ...prev,
+                                                                    reviewText: e.target.value,
+                                                                }))
+                                                            }
+                                                            className="w-full bg-transparent border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs font-bold text-slate-900 dark:text-white outline-none"
+                                                            placeholder="Customer feedback summary..."
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {feedbackStageMessage && (
+                                                <div className="mt-3 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                                    {feedbackStageMessage}
+                                                </div>
+                                            )}
+
+                                            <div className="mt-4 flex justify-end">
+                                                <Button
+                                                    onClick={handleSaveBookingFeedback}
+                                                    disabled={feedbackLoading || feedbackSaving}
+                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 h-9 text-[10px] font-black uppercase tracking-widest"
+                                                >
+                                                    {feedbackSaving ? 'Saving...' : 'Save Feedback'}
+                                                </Button>
                                             </div>
                                         </div>
                                     </div>
@@ -6466,6 +6711,55 @@ export default function QuoteEditorTable({
 
                             return (
                                 <div className={cn(isPhone ? 'p-0' : 'p-6')}>
+                                    {mode === 'booking' && (
+                                        <div
+                                            className={cn(
+                                                'mb-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10',
+                                                isPhone ? 'rounded-none p-4' : 'rounded-[2rem] p-6'
+                                            )}
+                                        >
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                                    Stage History
+                                                </div>
+                                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    {bookingStageEvents.length} transitions
+                                                </div>
+                                            </div>
+                                            {stageEventsLoading ? (
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    Loading stage events...
+                                                </div>
+                                            ) : bookingStageEvents.length === 0 ? (
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    No stage transitions logged
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {bookingStageEvents.map((event: any) => (
+                                                        <div
+                                                            key={event.id}
+                                                            className="rounded-xl border border-slate-100 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.02] px-3 py-2"
+                                                        >
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                    {(event.from_stage || '—') +
+                                                                        ' -> ' +
+                                                                        (event.to_stage || '—')}
+                                                                </div>
+                                                                <div className="text-[9px] font-bold text-slate-400">
+                                                                    {formatDate(event.changed_at)}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-[9px] text-slate-500 mt-1">
+                                                                {event.reason || 'No reason provided'}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                     <div
                                         className={cn(
                                             'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10',

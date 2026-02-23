@@ -46,6 +46,7 @@ interface MobileCatalogProps {
     basePath?: string;
     mode?: 'default' | 'smart';
     needsLocation?: boolean;
+    resolvedDealerId?: string | null;
     resolvedStudioId?: string | null;
     resolvedDealerName?: string | null;
 }
@@ -57,6 +58,7 @@ export const MobileCatalog = ({
     leadId,
     basePath = '/store',
     mode = 'default',
+    resolvedDealerId = null,
 }: MobileCatalogProps) => {
     const isLoading = externalLoading;
     const router = useRouter();
@@ -161,7 +163,7 @@ export const MobileCatalog = ({
                             status: 'serviceable',
                             location: cachedData.district || cachedData.pincode || '',
                             district: cachedData.district,
-                            stateCode: cachedData.stateCode || 'MH',
+                            stateCode: cachedData.stateCode,
                         });
                         return;
                     }
@@ -178,12 +180,8 @@ export const MobileCatalog = ({
         return () => window.removeEventListener('toggleCatalogSearch', handleSearchToggle);
     }, []);
 
-    // Enforce SCOOTER as the strict default body type for Mobile if nothing is selected
-    useEffect(() => {
-        if (selectedBodyTypes.length === 0) {
-            setSelectedBodyTypes(['SCOOTER']);
-        }
-    }, [selectedBodyTypes, setSelectedBodyTypes]);
+    // No forced default — show all body types when nothing is selected
+    // This allows users to browse the full catalog on mobile
 
     const activeFilterCount = useMemo(() => {
         let count = 0;
@@ -263,6 +261,19 @@ export const MobileCatalog = ({
         return vehicles;
     }, [filteredVehicles, sortBy]);
 
+    // Apply search filter on top of sorted results
+    const finalResults = useMemo(() => {
+        if (!searchQuery.trim()) return results;
+        const q = searchQuery.toLowerCase().trim();
+        // When searching, search across ALL items regardless of body type filter
+        return (items || []).filter((v: any) => {
+            const name = (v.displayName || v.model || '').toLowerCase();
+            const make = (v.make || '').toLowerCase();
+            const combined = `${make} ${name}`;
+            return combined.includes(q) || name.includes(q) || make.includes(q);
+        });
+    }, [results, searchQuery, items]);
+
     // Quick Filter Chips Logic: Strictly Bikes, Scooters, Mopeds
     const quickFilters = bodyOptions.map(bt => ({
         label: bt === 'MOTORCYCLE' ? 'Bikes' : bt === 'SCOOTER' ? 'Scooters' : 'Mopeds',
@@ -277,118 +288,29 @@ export const MobileCatalog = ({
 
     return (
         <div className="min-h-screen bg-[#0b0d10] text-white pb-32">
-            {/* 1. Mobile Header (Sticky) */}
-            <div className="sticky top-0 z-40 bg-[#0b0d10]/95 backdrop-blur-xl border-b border-[#F4B000]/40 pt-4 pb-3 px-4 shadow-sm">
-                {/* Horizontal Quick Chips */}
-                <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar -mx-4 px-4 pb-1 w-[100vw]">
-                    {quickFilters.map((qf, i) => (
+            {/* 1. Search Bar (Sticky) */}
+            <div className="sticky top-0 z-40 bg-[#0b0d10]/95 backdrop-blur-xl border-b border-white/10 pt-3 pb-3 px-4">
+                <div className="relative">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Search bikes, scooters, brands..."
+                        className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 text-sm text-white placeholder:text-white/30 font-medium focus:outline-none focus:border-[#F4B000]/40 focus:bg-white/[0.08] transition-all"
+                    />
+                    {searchQuery && (
                         <button
-                            key={i}
-                            onClick={qf.onClick}
-                            className={`flex-1 px-2 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all border ${
-                                qf.active
-                                    ? 'bg-[#F4B000] text-black border-[#F4B000] shadow-[0_0_10px_rgba(244,176,0,0.3)]'
-                                    : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-                            }`}
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
                         >
-                            {qf.label}
+                            <X size={14} />
                         </button>
-                    ))}
-
-                    {/* Trigger for the robust filter drawer aligned as a chip */}
-                    <button
-                        onClick={() => setIsMobileFilterOpen(true)}
-                        className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/10 border border-white/20 text-white flex items-center justify-center gap-1.5 ml-1"
-                    >
-                        <SlidersHorizontal size={11} />
-                        Filters
-                    </button>
+                    )}
                 </div>
             </div>
-
             {/* 2. Main Content Area */}
             <div className="px-4 py-6">
-                {/* Results Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-xl font-black italic uppercase tracking-wider text-white leading-none">
-                            {isSmart ? 'Recommended' : 'All Vehicles'}
-                        </h1>
-                        <p className="text-[10px] font-semibold text-slate-400 tracking-widest mt-1">
-                            {results.length} OPTIONS FOUND
-                        </p>
-                    </div>
-
-                    {/* Sort Dropdown */}
-                    <div className="relative">
-                        <button
-                            onClick={() => setIsSortMenuOpen(prev => !prev)}
-                            className="flex items-center gap-1.5 bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-3 pr-2.5 py-2 hover:bg-white/10 active:border-[#F4B000]/50 transition-colors"
-                        >
-                            <span>
-                                {sortBy === 'popular' && 'Popularity'}
-                                {sortBy === 'price' && 'Price'}
-                                {sortBy === 'mileage' && 'Mileage'}
-                                {sortBy === 'seatHeight' && 'Seat Height'}
-                                {sortBy === 'kerbWeight' && 'Weight'}
-                            </span>
-                            <ChevronDown
-                                size={14}
-                                className={`text-slate-400 transition-transform ${isSortMenuOpen ? 'rotate-180' : ''}`}
-                            />
-                        </button>
-
-                        {/* Sort Menu */}
-                        <AnimatePresence>
-                            {isSortMenuOpen && (
-                                <>
-                                    <motion.div
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.15 }}
-                                        className="fixed inset-0 z-[60]"
-                                        onClick={() => setIsSortMenuOpen(false)}
-                                    />
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -5, scale: 0.95 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: -5, scale: 0.95 }}
-                                        transition={{ duration: 0.15 }}
-                                        className="absolute right-0 top-full mt-2 w-44 bg-[#1E293B] border border-white/10 rounded-2xl shadow-xl overflow-hidden z-[61] flex flex-col py-1"
-                                    >
-                                        {[
-                                            { value: 'popular', label: 'Popularity' },
-                                            { value: 'price', label: 'Price' },
-                                            { value: 'mileage', label: 'Mileage' },
-                                            { value: 'seatHeight', label: 'Seat Height' },
-                                            { value: 'kerbWeight', label: 'Weight' },
-                                        ].map(opt => (
-                                            <button
-                                                key={opt.value}
-                                                onClick={() => {
-                                                    setSortBy(opt.value as any);
-                                                    setIsSortMenuOpen(false);
-                                                }}
-                                                className={`flex items-center justify-between px-4 py-2.5 text-[11px] font-black uppercase tracking-wider text-left transition-colors ${
-                                                    sortBy === opt.value
-                                                        ? 'bg-[#F4B000]/10 text-[#F4B000]'
-                                                        : 'text-white hover:bg-white/5'
-                                                }`}
-                                            >
-                                                {opt.label}
-                                                {sortBy === opt.value && (
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#F4B000]" />
-                                                )}
-                                            </button>
-                                        ))}
-                                    </motion.div>
-                                </>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </div>
-
                 {/* Grid */}
                 {isLoading ? (
                     <div className="flex flex-col gap-6">
@@ -404,7 +326,7 @@ export const MobileCatalog = ({
                     </div>
                 ) : results.length > 0 ? (
                     <div className="flex flex-col gap-8">
-                        {groupProductsByModel(results).map(group => (
+                        {groupProductsByModel(finalResults).map(group => (
                             <div
                                 key={group.modelSlug}
                                 className="flex flex-col border-b border-white/5 pb-8 last:border-0 last:pb-0"
@@ -437,6 +359,7 @@ export const MobileCatalog = ({
                                                 tenure={tenure}
                                                 basePath={basePath}
                                                 leadId={leadId}
+                                                fallbackDealerId={resolvedDealerId}
                                                 onEditDownpayment={() => setIsMobileFilterOpen(true)}
                                             />
                                         </div>
@@ -475,6 +398,8 @@ export const MobileCatalog = ({
                 onDownpaymentChange={setDownpayment}
                 tenure={tenure}
                 onTenureChange={setTenure}
+                sortBy={sortBy}
+                onSortChange={val => setSortBy(val as any)}
             />
 
             <LocationPicker
@@ -482,23 +407,32 @@ export const MobileCatalog = ({
                 onClose={() => setIsLocationPickerOpen(false)}
                 onLocationSet={(pincode, taluka, lat, lng) => {
                     setServiceability({
-                        status: 'serviceable', // Simplified for demo, ordinarily we'd check validity
+                        status: 'serviceable',
                         location: taluka || pincode,
                         district: taluka || pincode,
-                        stateCode: 'MH',
                     });
                     setIsLocationPickerOpen(false);
                 }}
             />
 
-            {/* Bottom Compare Tray */}
+            {/* Bottom Compare Tray — positioned above bottom nav */}
             {compareItems.length > 0 && (
-                <CompareTray
-                    items={compareItems}
-                    onRemove={removeCompare}
-                    onClear={clearCompare}
-                    onCompareNow={handleCompareNow}
-                />
+                <div
+                    style={{
+                        position: 'fixed',
+                        bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))',
+                        left: 0,
+                        right: 0,
+                        zIndex: 52,
+                    }}
+                >
+                    <CompareTray
+                        items={compareItems}
+                        onRemove={removeCompare}
+                        onClear={clearCompare}
+                        onCompareNow={handleCompareNow}
+                    />
+                </div>
             )}
         </div>
     );

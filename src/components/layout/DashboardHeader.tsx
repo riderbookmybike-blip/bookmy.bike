@@ -97,7 +97,7 @@ export const DashboardHeader = ({ onMenuClick, showSearch = false }: DashboardHe
                             title={tenantName}
                             className={`min-h-10 px-2.5 pr-3 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/5 flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white shadow-sm ${isPhone ? 'max-w-[180px]' : ''}`}
                         >
-                            <div className="w-7 h-7 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                            <div className="w-7 h-7 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden shrink-0">
                                 {resolvedLogo ? (
                                     <img
                                         src={resolvedLogo}

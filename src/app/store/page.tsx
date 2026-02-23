@@ -1,10 +1,10 @@
 import React from 'react';
 import { isMobileDevice } from '@/lib/utils/device';
-import { DesktopHome } from '@/components/store/DesktopHome';
-import { M2Home } from '@/components/store/mobile/M2Home';
+import StoreHomeClient from './StoreHomeClient';
 
 export default async function StorePage() {
     const isPhone = await isMobileDevice();
+    const initialDevice = isPhone ? 'phone' : 'desktop';
 
-    return isPhone ? <M2Home /> : <DesktopHome />;
+    return <StoreHomeClient initialDevice={initialDevice} />;
 }

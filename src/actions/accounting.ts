@@ -22,21 +22,13 @@ export async function getBankAccounts(tenantId: string) {
 }
 
 /**
- * Consolidated fetch for Inflows (crm_receipts) and Outflows (crm_payments).
- * Returns a unified, sorted list for the ledger view.
+ * Consolidated fetch from unified crm_payments ledger.
+ * Inflow/Outflow is inferred from provider_data.flow when present.
  */
 export async function getUnifiedLedger(tenantId: string, bankAccountId?: string) {
     const supabase = await createClient();
 
-    // Fetch Receipts (Inflow)
-    let receiptsQuery = supabase
-        .from('crm_receipts')
-        .select('*, member:id_members(full_name)')
-        .eq('tenant_id', tenantId)
-        .eq('is_deleted', false);
-
-    // Fetch Payments (Outflow)
-    let paymentsQuery = supabase
+    let ledgerQuery = supabase
         .from('crm_payments')
         .select('*, member:id_members(full_name)')
         .eq('tenant_id', tenantId)
@@ -44,54 +36,43 @@ export async function getUnifiedLedger(tenantId: string, bankAccountId?: string)
 
     // Filter by bank account if provided
     if (bankAccountId) {
-        receiptsQuery = receiptsQuery.filter('provider_data->>bank_account_id', 'eq', bankAccountId);
-        paymentsQuery = paymentsQuery.filter('provider_data->>bank_account_id', 'eq', bankAccountId);
+        ledgerQuery = ledgerQuery.filter('provider_data->>bank_account_id', 'eq', bankAccountId);
     }
 
-    const [receiptsRes, paymentsRes] = await Promise.all([
-        receiptsQuery.order('created_at', { ascending: false }),
-        paymentsQuery.order('created_at', { ascending: false }),
-    ]);
+    const { data: rows, error } = await ledgerQuery.order('created_at', { ascending: false });
+    if (error) {
+        console.error('Ledger Payments Error:', error);
+        return [];
+    }
 
-    if (receiptsRes.error) console.error('Ledger Receipts Error:', receiptsRes.error);
-    if (paymentsRes.error) console.error('Ledger Payments Error:', paymentsRes.error);
-
-    const transactions = [
-        ...(receiptsRes.data || []).map((r: any) => ({
-            id: r.id,
-            type: 'INFLOW',
-            amount: Number(r.amount),
-            method: r.method,
-            status: r.status,
-            date: r.created_at,
-            displayId: r.display_id,
-            description: `Payment from ${r.member?.full_name || 'Customer'}`,
-            reference: r.transaction_id,
-            isReconciled: r.is_reconciled,
-            entityId: r.member_id || r.lead_id,
-            source: 'receipts',
-        })),
-        ...(paymentsRes.data || []).map((p: any) => ({
-            id: p.id,
-            type: 'OUTFLOW',
-            amount: Number(p.amount),
-            method: p.method,
-            status: p.status,
-            date: p.created_at,
-            displayId: p.display_id,
-            description: p.provider_data?.description || `Payment to ${p.member?.full_name || 'Vendor'}`,
-            reference: p.transaction_id,
-            isReconciled: p.is_reconciled,
-            entityId: p.member_id || p.lead_id,
-            source: 'payments',
-        })),
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const transactions = (rows || [])
+        .map((p: any) => {
+            const flowRaw = String(p.provider_data?.flow || p.provider_data?.type || 'INFLOW').toUpperCase();
+            const isOutflow = flowRaw === 'OUTFLOW' || flowRaw === 'DEBIT';
+            return {
+                id: p.id,
+                type: isOutflow ? 'OUTFLOW' : 'INFLOW',
+                amount: Number(p.amount),
+                method: p.method,
+                status: p.status,
+                date: p.created_at,
+                displayId: p.display_id,
+                description: isOutflow
+                    ? p.provider_data?.description || `Payment to ${p.member?.full_name || 'Vendor'}`
+                    : `Payment from ${p.member?.full_name || 'Customer'}`,
+                reference: p.transaction_id,
+                isReconciled: p.is_reconciled,
+                entityId: p.member_id || p.lead_id,
+                source: 'payments',
+            };
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return transactions;
 }
 
 /**
- * Reconcile a transaction (Receipt or Payment).
+ * Reconcile a transaction in unified crm_payments table.
  */
 export async function reconcileTransaction(id: string, source: 'receipts' | 'payments') {
     const supabase = await createClient();
@@ -99,10 +80,8 @@ export async function reconcileTransaction(id: string, source: 'receipts' | 'pay
         data: { user },
     } = await supabase.auth.getUser();
 
-    const table = source === 'receipts' ? 'crm_receipts' : 'crm_payments';
-
     const { error } = await adminClient
-        .from(table)
+        .from('crm_payments')
         .update({
             is_reconciled: true,
             reconciled_at: new Date().toISOString(),
@@ -130,17 +109,20 @@ export async function addManualTransaction(data: {
     date: string;
     bank_account_id?: string;
 }) {
-    const table = data.type === 'INFLOW' ? 'crm_receipts' : 'crm_payments';
-
     const { data: inserted, error } = await adminClient
-        .from(table)
+        .from('crm_payments')
         .insert({
             tenant_id: data.tenant_id,
             amount: data.amount,
             method: data.method,
             status: 'COMPLETED',
             created_at: data.date,
-            provider_data: { description: data.description, manual_entry: true, bank_account_id: data.bank_account_id },
+            provider_data: JSON.stringify({
+                description: data.description,
+                manual_entry: true,
+                bank_account_id: data.bank_account_id,
+                flow: data.type,
+            }),
         })
         .select()
         .single();

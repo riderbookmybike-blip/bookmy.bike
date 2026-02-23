@@ -23,6 +23,9 @@ interface MobileFilterDrawerProps {
     onDownpaymentChange: (val: number) => void;
     tenure: number;
     onTenureChange: (val: number) => void;
+    /** Sort */
+    sortBy: string;
+    onSortChange: (val: string) => void;
 }
 
 const TENURE_OPTIONS = [12, 24, 36, 48, 60] as const;
@@ -37,6 +40,8 @@ export function MobileFilterDrawer({
     onDownpaymentChange,
     tenure,
     onTenureChange,
+    sortBy,
+    onSortChange,
 }: MobileFilterDrawerProps) {
     // Lock body scroll when open
     useEffect(() => {
@@ -111,6 +116,37 @@ export function MobileFilterDrawer({
 
                         {/* Content — scrollable */}
                         <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-6">
+                            {/* Sort By */}
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white flex items-center gap-2">
+                                    <div
+                                        className={`w-1.5 h-1.5 rounded-full ${sortBy !== 'popular' ? 'bg-[#F4B000] shadow-[0_0_8px_#F4B000]' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                    />
+                                    Sort By
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        { value: 'popular', label: 'Popularity' },
+                                        { value: 'price', label: 'Price' },
+                                        { value: 'mileage', label: 'Mileage' },
+                                        { value: 'seatHeight', label: 'Seat Height' },
+                                        { value: 'kerbWeight', label: 'Weight' },
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => onSortChange(opt.value)}
+                                            className={`px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all min-h-[40px] ${
+                                                sortBy === opt.value
+                                                    ? 'bg-[#F4B000]/15 border-[#F4B000]/50 text-slate-900 dark:text-[#FFD700] border shadow-sm'
+                                                    : 'bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/8 text-slate-600 dark:text-slate-300'
+                                            }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             {/* EMI Calculator */}
                             <div className="space-y-4 p-4 bg-slate-50 dark:bg-white/[0.03] rounded-2xl border border-slate-100 dark:border-white/5">
                                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white flex items-center gap-2">

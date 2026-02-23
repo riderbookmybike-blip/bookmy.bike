@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 
 import Image from 'next/image';
 import { ArrowRight, Search, Zap, MapPin } from 'lucide-react';
@@ -16,6 +17,7 @@ import { Footer } from './Footer';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 import { Logo } from '@/components/brand/Logo';
+import { formatPriceToLakhs, selectTrendingByBrand } from '@/lib/store/trending';
 
 interface StoreDesktopProps {
     variant?: 'default' | 'tv';
@@ -25,9 +27,26 @@ const ROTATION_SPEED = 0.0045;
 const ROTATION_REFRESH_INTERVAL = 80;
 
 export function DesktopHome() {
-    const { items, skuCount } = useSystemCatalogLogic();
+    const searchParams = useSearchParams();
+    const leadId = searchParams.get('leadId');
+    const { items, skuCount } = useSystemCatalogLogic(leadId || undefined);
     const { brands } = useSystemBrandsLogic();
     const { t } = useI18n();
+    const trendingByBrand = React.useMemo(() => selectTrendingByBrand(items || []), [items]);
+    const withLead = React.useCallback(
+        (href: string) => {
+            if (!leadId) return href;
+            if (!href.startsWith('/')) return href;
+
+            const [pathAndQuery, hashPart] = href.split('#');
+            const [path, query = ''] = pathAndQuery.split('?');
+            const params = new URLSearchParams(query);
+            if (!params.has('leadId')) params.set('leadId', leadId);
+            const nextHref = `${path}${params.toString() ? `?${params.toString()}` : ''}`;
+            return hashPart ? `${nextHref}#${hashPart}` : nextHref;
+        },
+        [leadId]
+    );
 
     // Hero Template: Night City (Chosen by User)
     const heroImage = '/images/templates/t3_night.png';
@@ -588,7 +607,7 @@ export function DesktopHome() {
                         className="mt-12 md:mt-20 flex flex-col items-center gap-6"
                     >
                         <Link
-                            href="/store/catalog"
+                            href={withLead('/store/catalog')}
                             className="group relative h-20 w-full max-w-sm flex items-center justify-center bg-transparent overflow-visible"
                         >
                             {/* animated liquid border */}
@@ -785,6 +804,15 @@ export function DesktopHome() {
                                         const dbBrand = brands?.find(
                                             b => b.name.toUpperCase() === brand.name.toUpperCase()
                                         );
+                                        const brandTrend = trendingByBrand.get(brand.name.toUpperCase());
+                                        const trendModelLabel = brandTrend
+                                            ? `${brandTrend.model} ${brandTrend.variant}`.trim()
+                                            : brand.mainModel;
+                                        const trendPriceLabel = brandTrend
+                                            ? formatPriceToLakhs(
+                                                  brandTrend.price?.onRoad || brandTrend.price?.exShowroom || 0
+                                              )
+                                            : brand.startPrice;
 
                                         return (
                                             <div
@@ -815,7 +843,9 @@ export function DesktopHome() {
                                                             setTimeout(() => setIsSnapping(false), 1000);
                                                         } else {
                                                             // If already focused card clicked, navigate
-                                                            window.location.href = `/store/catalog?brand=${brand.name}`;
+                                                            window.location.href = withLead(
+                                                                `/store/catalog?brand=${brand.name}`
+                                                            );
                                                         }
                                                     }}
                                                     className="absolute inset-0 z-40 cursor-pointer"
@@ -917,7 +947,7 @@ export function DesktopHome() {
                                                                         Trending
                                                                     </span>
                                                                     <span className="text-xs font-black text-slate-900">
-                                                                        {brand.mainModel} • From ₹{brand.startPrice}*
+                                                                        {trendModelLabel} • From ₹{trendPriceLabel}*
                                                                     </span>
                                                                 </div>
                                                             </motion.div>
@@ -982,7 +1012,7 @@ export function DesktopHome() {
                                         return (
                                             <Link
                                                 key={brand.name}
-                                                href={`/store/catalog?brand=${brand.name}`}
+                                                href={withLead(`/store/catalog?brand=${brand.name}`)}
                                                 className="snap-center flex-none w-[100px] flex flex-col items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all active:scale-95"
                                             >
                                                 <div

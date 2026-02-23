@@ -7,10 +7,11 @@ export type AllotmentInput = {
     bookingId: string;
     tenantId: string;
     vinNumber?: string;
+    chassisNumber?: string;
     engineNumber?: string;
+    invStockId?: string;
     status: 'NONE' | 'SOFT_LOCK' | 'HARD_LOCK';
     allottedAt?: string;
-    metadata?: Record<string, any>;
 };
 
 export async function getAllotmentByBooking(bookingId: string) {
@@ -29,10 +30,11 @@ export async function upsertAllotment(input: AllotmentInput) {
                 booking_id: input.bookingId,
                 tenant_id: input.tenantId,
                 vin_number: input.vinNumber,
+                chassis_number: input.chassisNumber || input.vinNumber || null,
                 engine_number: input.engineNumber,
+                inv_stock_id: input.invStockId || null,
                 status: input.status,
                 allotted_at: input.allottedAt,
-                metadata: input.metadata || {},
             },
             { onConflict: 'booking_id' }
         )
@@ -47,6 +49,7 @@ export async function upsertAllotment(input: AllotmentInput) {
         .update({
             allotment_status: input.status,
             vin_number: input.vinNumber,
+            inv_stock_id: input.invStockId || null,
         })
         .eq('id', input.bookingId);
 

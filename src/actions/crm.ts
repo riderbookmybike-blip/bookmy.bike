@@ -1675,7 +1675,7 @@ export async function createLeadAction(data: {
         const { data: existingLeadCandidates, error: existingLeadError } = await adminClient
             .from('crm_leads')
             .select(
-                'id, status, customer_id, customer_phone, selected_dealer_tenant_id, referred_by_id, referred_by_name, utm_source'
+                'id, status, customer_id, customer_phone, selected_dealer_tenant_id, referred_by_id, referred_by_name, utm_source, utm_data'
             )
             .eq('is_deleted', false)
             .eq('owner_tenant_id', effectiveOwnerId)
@@ -1697,6 +1697,7 @@ export async function createLeadAction(data: {
             utm_source: string | null;
             referred_by_id: string | null;
             referred_by_name: string | null;
+            utm_data: any;
         }>;
 
         const existingLead = data.selected_dealer_id
@@ -1733,6 +1734,17 @@ export async function createLeadAction(data: {
                 ...(resolvedTaluka ? { customer_taluka: resolvedTaluka } : {}),
                 ...(normalizedSource ? { source: normalizedSource } : {}),
                 utm_source: normalizedSource || existingLead.utm_source || 'MANUAL',
+                // Backfill location_profile into utm_data for existing leads
+                ...(locationProfile
+                    ? {
+                          utm_data: {
+                              ...(existingLead.utm_data && typeof existingLead.utm_data === 'object'
+                                  ? existingLead.utm_data
+                                  : {}),
+                              location_profile: locationProfile,
+                          },
+                      }
+                    : {}),
             };
             // Backfill dealer lock on legacy leads when reusing under an explicit dealer context.
             if (data.selected_dealer_id && !existingLead.selected_dealer_tenant_id) {
@@ -1827,6 +1839,7 @@ export async function createLeadAction(data: {
                 status: status,
                 is_serviceable: isServiceable,
                 source: normalizedSource || 'WALKIN',
+                utm_data: locationProfile ? { location_profile: locationProfile } : null,
                 utm_source: normalizedSource || 'MANUAL',
                 utm_medium: status === 'JUNK' ? 'AUTO_SEGREGATED' : null,
                 utm_campaign: status === 'JUNK' ? 'UNSERVICEABLE_PINCODE' : null,
@@ -1913,6 +1926,110 @@ export async function createLeadAction(data: {
                     : (error as any)?.message || (typeof error === 'string' ? error : 'Unknown error'),
         };
     }
+}
+
+// --- BACKFILL: Location Profile for Existing Leads ---
+
+export async function backfillLeadLocationsAction() {
+    const BATCH_SIZE = 100;
+    let totalUpdated = 0;
+    let totalSkipped = 0;
+    let totalFailed = 0;
+    let hasMore = true;
+    let offset = 0;
+
+    while (hasMore) {
+        // Fetch leads with pincode but missing location_profile in utm_data
+        const { data: leads, error } = await adminClient
+            .from('crm_leads')
+            .select('id, customer_pincode, utm_data')
+            .not('customer_pincode', 'is', null)
+            .neq('customer_pincode', '')
+            .order('created_at', { ascending: false })
+            .range(offset, offset + BATCH_SIZE - 1);
+
+        if (error) {
+            console.error('[BACKFILL] Query error:', error);
+            break;
+        }
+
+        if (!leads || leads.length === 0) {
+            hasMore = false;
+            break;
+        }
+
+        // Filter to only leads missing location_profile
+        const needsBackfill = leads.filter((lead: any) => {
+            const utmData = lead.utm_data && typeof lead.utm_data === 'object' ? lead.utm_data : null;
+            return !utmData?.location_profile?.district;
+        });
+
+        for (const lead of needsBackfill) {
+            const pincode = String((lead as any).customer_pincode || '').replace(/\D/g, '');
+            if (pincode.length !== 6) {
+                totalSkipped++;
+                continue;
+            }
+
+            try {
+                const serviceabilityResult = await checkServiceability(pincode);
+                if (!serviceabilityResult?.district) {
+                    totalSkipped++;
+                    continue;
+                }
+
+                const locationProfile: LeadLocationProfile = {
+                    pincode,
+                    area: serviceabilityResult.area || null,
+                    taluka: serviceabilityResult.taluka || null,
+                    district: serviceabilityResult.district || null,
+                    state: serviceabilityResult.state || null,
+                    state_code: serviceabilityResult.stateCode || null,
+                    is_serviceable: !!serviceabilityResult.isServiceable,
+                    serviceability_status: serviceabilityResult.status || null,
+                    resolved_at: new Date().toISOString(),
+                };
+
+                const existingUtmData =
+                    (lead as any).utm_data && typeof (lead as any).utm_data === 'object' ? (lead as any).utm_data : {};
+
+                const { error: updateError } = await adminClient
+                    .from('crm_leads')
+                    .update({
+                        utm_data: {
+                            ...existingUtmData,
+                            location_profile: locationProfile,
+                        },
+                    } as any)
+                    .eq('id', (lead as any).id);
+
+                if (updateError) {
+                    console.error(`[BACKFILL] Update failed for lead ${(lead as any).id}:`, updateError);
+                    totalFailed++;
+                } else {
+                    totalUpdated++;
+                }
+            } catch (err) {
+                console.error(`[BACKFILL] Error processing lead ${(lead as any).id}:`, err);
+                totalFailed++;
+            }
+        }
+
+        totalSkipped += leads.length - needsBackfill.length;
+        offset += BATCH_SIZE;
+
+        if (leads.length < BATCH_SIZE) {
+            hasMore = false;
+        }
+    }
+
+    console.log(`[BACKFILL] Complete: ${totalUpdated} updated, ${totalSkipped} skipped, ${totalFailed} failed`);
+    return {
+        success: true,
+        updated: totalUpdated,
+        skipped: totalSkipped,
+        failed: totalFailed,
+    };
 }
 
 // --- QUOTES ---

@@ -19,7 +19,7 @@ import {
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { getStock } from '@/actions/inventory';
+import { getAvailableStock } from '@/actions/inventory';
 
 interface StockItem {
     id: string;
@@ -65,16 +65,18 @@ export default function StockPage() {
         if (!tenantId) return;
         setLoading(true);
         try {
-            const data = await getStock(tenantId, {
-                status: statusFilter !== 'ALL' ? statusFilter : undefined,
+            const result = await getAvailableStock(tenantId, {
+                include_shared: true,
             });
-            setStock(data as StockItem[]);
+            if (result.success && result.data) {
+                setStock(result.data as StockItem[]);
+            }
         } catch (err) {
             console.error('Error fetching stock:', err);
         } finally {
             setLoading(false);
         }
-    }, [tenantId, statusFilter]);
+    }, [tenantId]);
 
     useEffect(() => {
         fetchStockData();

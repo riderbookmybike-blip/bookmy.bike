@@ -24,6 +24,7 @@ import { AriaCard, AriaPulse, AriaNumber, EnterpriseTable } from './AriaPanels';
 import { AUMSAria } from './AUMSAria';
 import { DealerAria } from './DealerAria';
 import { FinancerAria } from './FinancerAria';
+import type { DashboardSkuTrends, DealerCrmInsights } from '@/actions/dashboardKpis';
 
 type Persona = 'AUMS' | 'DEALERSHIP' | 'FINANCER';
 
@@ -33,6 +34,8 @@ interface AriaDashboardProps {
     roleLabel?: string;
     kpis?: any;
     recentEvents?: any[];
+    skuTrends?: DashboardSkuTrends | null;
+    crmInsights?: DealerCrmInsights | null;
 }
 
 export default function AriaDashboard({
@@ -41,6 +44,8 @@ export default function AriaDashboard({
     roleLabel = 'ROOT',
     kpis,
     recentEvents = [],
+    skuTrends = null,
+    crmInsights = null,
 }: AriaDashboardProps) {
     const [greeting, setGreeting] = useState('');
 
@@ -54,9 +59,9 @@ export default function AriaDashboard({
     const renderDeck = () => {
         switch (persona) {
             case 'AUMS':
-                return <AUMSAria kpis={kpis} />;
+                return <AUMSAria kpis={kpis} skuTrends={skuTrends} />;
             case 'DEALERSHIP':
-                return <DealerAria kpis={kpis} />;
+                return <DealerAria kpis={kpis} skuTrends={skuTrends} crmInsights={crmInsights} />;
             case 'FINANCER':
                 return <FinancerAria kpis={kpis} />;
         }

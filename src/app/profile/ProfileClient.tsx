@@ -46,7 +46,7 @@ import { createClient } from '@/lib/supabase/client';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { getDefaultAvatar } from '@/lib/avatars';
-import { ThemeModeSelector } from '@/components/ui/ThemeModeSelector';
+import { ThemeModeSelector } from '@/components/ui/theme-mode-selector';
 
 interface ProfileClientProps {
     user: any;
@@ -348,7 +348,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         Appearance
                                     </h3>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mt-1">
-                                        Choose Light, Dark, or System theme for your profile.
+                                        Light mode is fixed for your profile UI.
                                     </p>
                                 </div>
                                 <ThemeModeSelector className="w-full md:w-auto" />

@@ -605,7 +605,7 @@ export async function getMemberFullProfile(memberId: string) {
             .eq('entity_id', memberId)
             .order('created_at', { ascending: false }),
         adminClient
-            .from('crm_receipts' as any)
+            .from('crm_payments' as any)
             .select('*')
             .eq('member_id', memberId)
             .order('created_at', { ascending: false }),

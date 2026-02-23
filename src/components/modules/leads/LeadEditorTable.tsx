@@ -32,8 +32,10 @@ import DocumentManager from '@/components/modules/leads/DocumentManager';
 import {
     addLeadNoteAction,
     addLeadTaskAction,
+    getLeadEventsAction,
     getMemberDocumentUrl,
     getLeadModuleStateAction,
+    type LeadEventRecord,
     toggleLeadTaskAction,
 } from '@/actions/crm';
 import { getOClubLedger, getOClubWallet } from '@/actions/oclub';
@@ -60,6 +62,16 @@ type LeadModuleNote = {
     created_by: string | null;
     created_by_name?: string | null;
     attachments?: LeadNoteAttachment[];
+};
+
+type LeadTimelineEntry = {
+    id: string;
+    title: string;
+    description: string;
+    timestamp: string | null;
+    source: 'EVENT_LOG' | 'LEGACY_LOG';
+    actorName?: string | null;
+    changedValue?: string | null;
 };
 
 const formatDate = (value?: string | null) => {
@@ -91,6 +103,13 @@ const formatMoney = (value?: number | null) => {
     if (value === null || value === undefined) return '—';
     return `₹${value.toLocaleString()}`;
 };
+
+const formatEventTypeLabel = (eventType?: string | null) =>
+    (eventType || 'SYSTEM_EVENT')
+        .split('_')
+        .filter(Boolean)
+        .map(token => token.charAt(0) + token.slice(1).toLowerCase())
+        .join(' ');
 
 function cn(...inputs: any[]) {
     return inputs.filter(Boolean).join(' ');
@@ -135,6 +154,8 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const [walletLoading, setWalletLoading] = useState(false);
     const [wallet, setWallet] = useState<any | null>(null);
     const [ledger, setLedger] = useState<any[]>([]);
+    const [leadEventsLoading, setLeadEventsLoading] = useState(false);
+    const [leadEvents, setLeadEvents] = useState<LeadEventRecord[]>([]);
     const noteAttachmentInputRef = useRef<HTMLInputElement>(null);
     const supabase = useMemo(() => createClient(), []);
 
@@ -147,6 +168,34 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const leadArea = lead.area || leadLocationProfile?.area || '—';
     const leadDistrict = lead.district || leadLocationProfile?.district || '—';
     const leadState = lead.state || leadLocationProfile?.state || '—';
+    const legacyTimelineEvents = Array.isArray(lead?.events_log) ? (lead.events_log as any[]) : [];
+    const timelineEntries = useMemo<LeadTimelineEntry[]>(() => {
+        const fromLeadEvents = leadEvents.map(event => ({
+            id: `event-${event.id}`,
+            title: formatEventTypeLabel(event.event_type),
+            description: event.notes || event.changed_value || 'System event',
+            timestamp: event.created_at || null,
+            source: 'EVENT_LOG' as const,
+            actorName: event.actor_name || null,
+            changedValue: event.changed_value || null,
+        }));
+
+        const fromLegacy = legacyTimelineEvents.map((event: any, index: number) => ({
+            id: `legacy-${event?.id || index}`,
+            title: event?.title || formatEventTypeLabel(event?.type),
+            description: event?.description || event?.meta || 'System-generated activity log',
+            timestamp: event?.timestamp || event?.at || null,
+            source: 'LEGACY_LOG' as const,
+            actorName: event?.actor || null,
+            changedValue: null,
+        }));
+
+        return [...fromLeadEvents, ...fromLegacy].sort((a, b) => {
+            const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+            const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+            return bTime - aTime;
+        });
+    }, [leadEvents, legacyTimelineEvents]);
 
     const tabs = useMemo(
         () => [
@@ -160,11 +209,11 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             {
                 key: 'TIMELINE',
                 label: 'TIMELINE',
-                count: Array.isArray((profile.lead as any)?.events_log) ? (profile.lead as any).events_log.length : 0,
+                count: timelineEntries.length,
             },
             { key: 'OCLUB', label: 'O CLUB', count: 0 },
         ],
-        [quoteCount, bookingCount, receiptCount, lead.customerId, tasks, notes, profile.lead]
+        [quoteCount, bookingCount, receiptCount, lead.customerId, tasks, notes, timelineEntries.length]
     );
 
     useEffect(() => {
@@ -188,6 +237,26 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         };
 
         loadLeadModules();
+    }, [lead?.id]);
+
+    useEffect(() => {
+        const loadLeadEvents = async () => {
+            if (!lead?.id) {
+                setLeadEvents([]);
+                return;
+            }
+
+            setLeadEventsLoading(true);
+            const result = await getLeadEventsAction(lead.id, 150);
+            if (result.success) {
+                setLeadEvents(result.events || []);
+            } else {
+                setLeadEvents([]);
+            }
+            setLeadEventsLoading(false);
+        };
+
+        loadLeadEvents();
     }, [lead?.id]);
 
     useEffect(() => {
@@ -318,7 +387,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
 
     const memberId = lead.customerId || null;
     const leadTenantId = tenantId || lead?.raw?.owner_tenant_id || null;
-    const timelineEvents = Array.isArray(lead?.events_log) ? lead.events_log : [];
 
     const handleAddNote = async () => {
         if (!lead?.id) return;
@@ -336,7 +404,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                 const safeBaseName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'attachment';
                 const storagePath = `lead-notes/${lead.id}/${Date.now()}_${index}_${safeBaseName}.${extension}`;
                 const { data: storageData, error: storageError } = await supabase.storage
-                    .from('id_documents')
+                    .from('documents')
                     .upload(storagePath, file, { upsert: false });
                 if (storageError || !storageData?.path) {
                     throw new Error(storageError?.message || 'Attachment upload failed');
@@ -357,9 +425,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         const result = await addLeadNoteAction({ leadId: lead.id, body, attachments: uploadedAttachments });
         if (!result.success) {
             if (uploadedAttachments.length > 0) {
-                await supabase.storage
-                    .from('id_documents')
-                    .remove(uploadedAttachments.map(attachment => attachment.path));
+                await supabase.storage.from('documents').remove(uploadedAttachments.map(attachment => attachment.path));
             }
             toast.error(result.message || 'Failed to save note');
             setSavingNote(false);
@@ -882,8 +948,15 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     </PhoneSection>
 
                     {/* Timeline */}
-                    <PhoneSection title="Timeline" count={timelineEvents.length || undefined}>
-                        {timelineEvents.length === 0 ? (
+                    <PhoneSection title="Timeline" count={timelineEntries.length || undefined}>
+                        {leadEventsLoading && timelineEntries.length === 0 ? (
+                            <div className="py-4 text-center">
+                                <Clock size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                    Loading timeline...
+                                </p>
+                            </div>
+                        ) : timelineEntries.length === 0 ? (
                             <div className="py-4 text-center">
                                 <Clock size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
                                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
@@ -892,17 +965,32 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             </div>
                         ) : (
                             <div className="space-y-1.5">
-                                {timelineEvents.map((ev: any, i: number) => (
+                                {timelineEntries.map((entry, i) => (
                                     <div
                                         key={i}
                                         className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg p-2.5"
                                     >
-                                        <div className="text-[10px] font-black text-slate-700 dark:text-slate-200">
-                                            {ev.title || ev.type?.replace('_', ' ')}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="text-[10px] font-black text-slate-700 dark:text-slate-200 truncate">
+                                                {entry.title}
+                                            </div>
+                                            <span
+                                                className={cn(
+                                                    'px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest',
+                                                    entry.source === 'EVENT_LOG'
+                                                        ? 'bg-indigo-500/10 text-indigo-600'
+                                                        : 'bg-slate-100 text-slate-500'
+                                                )}
+                                            >
+                                                {entry.source === 'EVENT_LOG' ? 'EVENT' : 'LEGACY'}
+                                            </span>
                                         </div>
                                         <div className="text-[9px] text-slate-400 font-bold mt-0.5">
-                                            {ev.description || 'System event'}
-                                            {ev.timestamp && <> • {new Date(ev.timestamp).toLocaleDateString()}</>}
+                                            {entry.description || 'System event'}
+                                            {entry.actorName ? <> • {entry.actorName}</> : null}
+                                            {entry.timestamp ? (
+                                                <> • {new Date(entry.timestamp).toLocaleDateString()}</>
+                                            ) : null}
                                         </div>
                                     </div>
                                 ))}
@@ -1290,9 +1378,20 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                     <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
                                         Member ID
                                     </div>
-                                    <div className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">
-                                        {lead.customerId || 'Not linked'}
-                                    </div>
+                                    {lead.customerId ? (
+                                        <a
+                                            href={`/app/${slug}/members/${lead.customerId}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400 hover:underline underline-offset-4 transition-colors"
+                                        >
+                                            {lead.customerId}
+                                        </a>
+                                    ) : (
+                                        <div className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">
+                                            Not linked
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1741,21 +1840,38 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             </div>
                         </div>
                         <div className="divide-y divide-slate-100 dark:divide-white/5">
-                            {timelineEvents.length === 0 ? (
+                            {leadEventsLoading && timelineEntries.length === 0 ? (
+                                <div className="px-6 py-6 text-xs text-slate-400">Loading timeline events...</div>
+                            ) : timelineEntries.length === 0 ? (
                                 <div className="px-6 py-6 text-xs text-slate-400">No timeline events.</div>
                             ) : (
-                                timelineEvents.map((event: any, idx: number) => (
-                                    <div key={`${event.timestamp || 'event'}-${idx}`} className="px-6 py-4">
+                                timelineEntries.map((event, idx) => (
+                                    <div key={`${event.id || event.timestamp || 'event'}-${idx}`} className="px-6 py-4">
                                         <div className="flex items-center justify-between gap-3">
                                             <p className="text-sm font-black text-slate-900 dark:text-white">
-                                                {event.title || event.type || 'System Event'}
+                                                {event.title || 'System Event'}
                                             </p>
-                                            <span className="text-[10px] text-slate-400">
-                                                {event.timestamp ? formatDate(event.timestamp) : '—'}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={cn(
+                                                        'px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest',
+                                                        event.source === 'EVENT_LOG'
+                                                            ? 'bg-indigo-500/10 text-indigo-600'
+                                                            : 'bg-slate-100 text-slate-500'
+                                                    )}
+                                                >
+                                                    {event.source === 'EVENT_LOG' ? 'EVENT' : 'LEGACY'}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400">
+                                                    {event.timestamp ? formatDate(event.timestamp) : '—'}
+                                                </span>
+                                            </div>
                                         </div>
                                         <p className="text-xs text-slate-500 mt-1">
                                             {event.description || 'No details available'}
+                                            {event.actorName ? (
+                                                <span className="text-slate-400"> • by {event.actorName}</span>
+                                            ) : null}
                                         </p>
                                     </div>
                                 ))

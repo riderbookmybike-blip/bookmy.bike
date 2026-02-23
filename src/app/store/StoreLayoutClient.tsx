@@ -121,15 +121,15 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
     }, []);
 
     const pathname = usePathname();
-    const isLandingPage = pathname === '/store' || pathname === '/' || pathname === '/d2';
+    const isLandingPage = pathname === '/store' || pathname === '/' || pathname?.match(/^\/d[2-8]$/);
 
     return (
         <FavoritesProvider>
             <ColorProvider>
                 <div
                     className={`marketplace min-h-screen ${
-                        isPhone && isLandingPage
-                            ? 'bg-[#0b0d10] text-white'
+                        isLandingPage
+                            ? 'bg-white text-black'
                             : 'bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white'
                     } font-sans selection:bg-red-500/30 transition-colors duration-300`}
                 >
@@ -142,7 +142,7 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
                     <main
                         className="flex-1"
                         style={{
-                            paddingTop: isPhone && isLandingPage ? undefined : 'var(--header-h)',
+                            paddingTop: isLandingPage ? '0px' : 'var(--header-h)',
                             ...(isPhone
                                 ? { paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 16px)' }
                                 : undefined),

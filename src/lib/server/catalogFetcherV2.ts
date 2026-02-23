@@ -130,46 +130,158 @@ interface RawProductRow {
     ins_total: number | null;
     publish_stage: string | null;
     is_popular: boolean | null;
-    visit_count: number;
+    booking_count: number;
+    visitor_view_count: number;
+    visitor_dwell_ms: number;
 }
 
-async function fetchVariantVisitCounts(days: number = 30): Promise<Map<string, number>> {
+type VisitorSignalMaps = {
+    skuViews: Map<string, number>;
+    skuDwellMs: Map<string, number>;
+    variantViews: Map<string, number>;
+    variantDwellMs: Map<string, number>;
+};
+
+function normalizeVariantKey(modelSlug?: string | null, variantSlug?: string | null): string | null {
+    const model = String(modelSlug || '')
+        .trim()
+        .toLowerCase();
+    const variant = String(variantSlug || '')
+        .trim()
+        .toLowerCase();
+    if (!model || !variant) return null;
+    return `${model}::${variant}`;
+}
+
+function extractVariantKeyFromPath(pathname?: string | null): string | null {
+    const path = (pathname || '').split('?')[0].trim().toLowerCase();
+    const parts = path.split('/').filter(Boolean);
+    if (parts.length < 4 || parts[0] !== 'store') return null;
+    return normalizeVariantKey(parts[2], parts[3]);
+}
+
+function appendMetric(map: Map<string, number>, key: string | null, increment: number) {
+    if (!key || !Number.isFinite(increment) || increment <= 0) return;
+    map.set(key, (map.get(key) || 0) + increment);
+}
+
+async function fetchSkuBookingCounts(days: number = 180): Promise<Map<string, number>> {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await adminClient
-        .from('analytics_events')
-        .select('page_path')
-        .eq('event_type', 'PAGE_VIEW')
+        .from('crm_bookings')
+        .select('sku_id, color_id, qty, status, is_deleted, created_at')
         .gte('created_at', since)
-        .like('page_path', '/store/%/%/%')
-        .limit(20000);
+        .limit(50000);
 
     if (error || !data) {
         if (error) {
-            console.warn('[CatalogV2Fetch] Visit count fetch failed:', error.message);
+            console.warn('[CatalogV2Fetch] Booking count fetch failed:', error.message);
         }
         return new Map();
     }
 
     const counts = new Map<string, number>();
-    for (const row of data as Array<{ page_path: string | null }>) {
-        const path = (row.page_path || '').split('?')[0].trim().toLowerCase();
-        const parts = path.split('/').filter(Boolean);
-        if (parts.length < 4 || parts[0] !== 'store') continue;
-        const modelSlug = parts[2];
-        const variantSlug = parts[3];
-        if (!modelSlug || !variantSlug) continue;
-        const key = `${modelSlug}::${variantSlug}`;
-        counts.set(key, (counts.get(key) || 0) + 1);
+    for (const row of data as Array<any>) {
+        if (row?.is_deleted === true) continue;
+        const status = String(row?.status || '').toUpperCase();
+        if (status.includes('CANCEL')) continue;
+        if (status.includes('REFUND')) continue;
+
+        const skuId = String(row?.sku_id || row?.color_id || '')
+            .trim()
+            .toLowerCase();
+        if (!skuId) continue;
+
+        const qty = Math.max(1, Number(row?.qty) || 1);
+        counts.set(skuId, (counts.get(skuId) || 0) + qty);
     }
 
     return counts;
 }
 
+async function fetchSkuVisitorSignals(days: number = 30): Promise<VisitorSignalMaps> {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const [pageViewResult, skuSignalResult] = await Promise.all([
+        adminClient
+            .from('analytics_events')
+            .select('event_type, event_name, page_path, metadata')
+            .eq('event_type', 'PAGE_VIEW')
+            .gte('created_at', since)
+            .like('page_path', '/store/%/%/%')
+            .limit(30000),
+        adminClient
+            .from('analytics_events')
+            .select('event_type, event_name, page_path, metadata')
+            .eq('event_type', 'INTENT_SIGNAL')
+            .in('event_name', ['sku_view', 'sku_dwell'])
+            .gte('created_at', since)
+            .limit(30000),
+    ]);
+
+    if (pageViewResult.error || skuSignalResult.error) {
+        if (pageViewResult.error) {
+            console.warn('[CatalogV2Fetch] Page-view signal fetch failed:', pageViewResult.error.message);
+        }
+        if (skuSignalResult.error) {
+            console.warn('[CatalogV2Fetch] SKU signal fetch failed:', skuSignalResult.error.message);
+        }
+        return {
+            skuViews: new Map(),
+            skuDwellMs: new Map(),
+            variantViews: new Map(),
+            variantDwellMs: new Map(),
+        };
+    }
+
+    const data = [...(pageViewResult.data || []), ...(skuSignalResult.data || [])];
+
+    const skuViews = new Map<string, number>();
+    const skuDwellMs = new Map<string, number>();
+    const variantViews = new Map<string, number>();
+    const variantDwellMs = new Map<string, number>();
+
+    for (const row of data as Array<any>) {
+        const metadata = row?.metadata && typeof row.metadata === 'object' ? (row.metadata as Record<string, any>) : {};
+        const eventType = String(row?.event_type || '').toUpperCase();
+        const eventName = String(row?.event_name || '').toLowerCase();
+        const skuId = String(metadata.sku_id || '')
+            .trim()
+            .toLowerCase();
+
+        const metadataVariantKey = normalizeVariantKey(
+            typeof metadata.model_slug === 'string' ? metadata.model_slug : null,
+            typeof metadata.variant_slug === 'string' ? metadata.variant_slug : null
+        );
+        const pathVariantKey = extractVariantKeyFromPath(row?.page_path);
+        const variantKey = metadataVariantKey || pathVariantKey;
+
+        const rawDwell = Number(metadata.dwell_ms || metadata.dwellMs || 0);
+        const dwellMs = Number.isFinite(rawDwell) ? Math.max(0, rawDwell) : 0;
+
+        const isSkuView = eventName === 'sku_view';
+        const isSkuDwell = eventName === 'sku_dwell';
+        const isVariantPageView = eventType === 'PAGE_VIEW' && !!pathVariantKey;
+
+        if (isSkuView && skuId) appendMetric(skuViews, skuId, 1);
+        if (isSkuDwell && skuId) appendMetric(skuDwellMs, skuId, dwellMs);
+
+        if (isVariantPageView) appendMetric(variantViews, pathVariantKey, 1);
+        if (isSkuView && variantKey) appendMetric(variantViews, variantKey, 1);
+        if (isSkuDwell && variantKey) appendMetric(variantDwellMs, variantKey, dwellMs);
+    }
+
+    return { skuViews, skuDwellMs, variantViews, variantDwellMs };
+}
+
 /**
- * Fetch full catalog from shared Store SOT snapshot and enrich with visit counts.
+ * Fetch full catalog from shared Store SOT snapshot and enrich with booking + visitor signals.
  */
 async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRow[]> {
-    const [snapshotRows, visitCounts] = await Promise.all([getCatalogSnapshot(stateCode), fetchVariantVisitCounts(30)]);
+    const [snapshotRows, bookingCounts, visitorSignals] = await Promise.all([
+        getCatalogSnapshot(stateCode),
+        fetchSkuBookingCounts(180),
+        fetchSkuVisitorSignals(30),
+    ]);
 
     if (!snapshotRows || snapshotRows.length === 0) {
         console.debug('[CatalogV2Fetch] No active SKUs found');
@@ -178,12 +290,24 @@ async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRo
 
     // Flatten into RawProductRow array
     return snapshotRows.map((row: any) => {
-        const visitKey = `${(row.model_slug || '').toLowerCase()}::${(row.variant_slug || '').toLowerCase()}`;
-        const visitCount = visitCounts.get(visitKey) || 0;
+        const skuId = String(row.sku_id || '')
+            .trim()
+            .toLowerCase();
+        const variantKey = normalizeVariantKey(row.model_slug, row.variant_slug);
+        const bookingCount = skuId ? bookingCounts.get(skuId) || 0 : 0;
+
+        const skuVisitorViews = skuId ? visitorSignals.skuViews.get(skuId) || 0 : 0;
+        const variantVisitorViews = variantKey ? visitorSignals.variantViews.get(variantKey) || 0 : 0;
+        const skuVisitorDwellMs = skuId ? visitorSignals.skuDwellMs.get(skuId) || 0 : 0;
+        const variantVisitorDwellMs = variantKey ? visitorSignals.variantDwellMs.get(variantKey) || 0 : 0;
+        const visitorViews = skuVisitorViews > 0 ? skuVisitorViews : variantVisitorViews;
+        const visitorDwellMs = skuVisitorDwellMs > 0 ? skuVisitorDwellMs : variantVisitorDwellMs;
 
         return {
             ...row,
-            visit_count: visitCount,
+            booking_count: bookingCount,
+            visitor_view_count: visitorViews,
+            visitor_dwell_ms: visitorDwellMs,
         } as RawProductRow;
     });
 }
@@ -317,6 +441,14 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
         // Determine displacement + powerUnit
         const displacement = m.engine_cc ?? undefined;
         const isEV = m.fuel_type === 'EV';
+        const bookingCount = skus.reduce((sum, s) => sum + (Number(s.booking_count) || 0), 0);
+        const visitorViews = skus.reduce((sum, s) => sum + (Number(s.visitor_view_count) || 0), 0);
+        const visitorDwellMs = skus.reduce((sum, s) => sum + (Number(s.visitor_dwell_ms) || 0), 0);
+        const dwellMinutes = visitorDwellMs / 60000;
+        const bookingPriorityBoost = bookingCount > 0 ? 1_000_000_000 : 0;
+        const popularBoost = skus.some(s => s.is_popular) ? 25 : 0;
+        const popularityScore =
+            bookingPriorityBoost + bookingCount * 1_000_000 + visitorViews * 100 + dwellMinutes + popularBoost;
 
         const variant: ProductVariant = {
             id: primarySku.sku_id,
@@ -336,7 +468,7 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
             powerUnit: isEV ? 'KW' : 'CC',
             segment: m.segment || m.body_type || '',
             rating: 0,
-            popularityScore: Math.max(...skus.map(s => s.visit_count || 0)) + (skus.some(s => s.is_popular) ? 1 : 0),
+            popularityScore,
             price: {
                 exShowroom,
                 onRoad,
@@ -361,6 +493,13 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
             offsetX: primarySku.offset_x ?? undefined,
             offsetY: primarySku.offset_y ?? undefined,
             color: primarySku.color_name || undefined,
+            trendSignals: {
+                bookingCount,
+                visitorViews,
+                visitorDwellMs,
+                rankingSource:
+                    bookingCount > 0 ? 'BOOKINGS_FIRST' : visitorViews > 0 ? 'VISITOR_FALLBACK' : 'STATIC_FALLBACK',
+            },
         };
 
         result.push(variant);
@@ -375,7 +514,7 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
 
 export async function fetchCatalogV2(stateCode: string = 'MH'): Promise<ProductVariant[]> {
     const rawRows = await withCache(() => fetchCatalogV2Raw(stateCode), ['catalog-v2', stateCode], {
-        revalidate: 3600,
+        revalidate: 300,
         tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global],
     });
 

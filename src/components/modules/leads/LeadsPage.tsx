@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
-import { getLeads } from '@/actions/crm';
 import { createClient } from '@/lib/supabase/client';
 import MasterListDetailLayout from '@/components/templates/MasterListDetailLayout';
 import StatsHeader from '@/components/modules/shared/StatsHeader';
@@ -17,24 +16,81 @@ import {
     Flame,
     Target,
     TrendingUp,
-    Clock,
+    AlertTriangle,
     LayoutGrid,
     Search as SearchIcon,
     Phone as PhoneIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
-import { createLeadAction, uploadMemberDocumentAction } from '@/actions/crm';
+import {
+    createLeadAction,
+    getLeadIndexAction,
+    uploadMemberDocumentAction,
+    type LeadIndexKpis,
+    type LeadIndexRow,
+    type LeadSlaBucket,
+} from '@/actions/crm';
 
-export interface LeadRow {
-    id: string;
-    displayId: string;
-    customerName: string;
-    phone: string;
-    status: string;
-    intentScore?: string;
-    created_at?: string;
-}
+const STATUS_FILTERS = ['ALL', 'NEW', 'CONTACTED', 'QUALIFIED', 'HOT', 'QUOTE', 'BOOKING', 'JUNK'];
+const INTENT_FILTERS = ['ALL', 'HOT', 'WARM', 'COLD'];
+const SLA_FILTERS: Array<'ALL' | LeadSlaBucket> = ['ALL', 'OVERDUE', 'DUE_TODAY', 'UPCOMING', 'UNSCHEDULED', 'CLEAR'];
+const PAGE_SIZE_OPTIONS = [12, 20, 40, 80];
+
+const DEFAULT_KPIS: LeadIndexKpis = {
+    totalLeads: 0,
+    hotLeads: 0,
+    qualifiedLeads: 0,
+    inPipeline: 0,
+    overdueFollowUps: 0,
+    dueTodayFollowUps: 0,
+};
+
+const formatDateLabel = (value?: string | null) => {
+    if (!value) return '—';
+    try {
+        return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+        return value;
+    }
+};
+
+const getLocationLabel = (lead: LeadIndexRow) => {
+    const labels = [lead.area, lead.district, lead.state].filter(Boolean) as string[];
+    return labels.length ? labels.join(', ') : 'Location pending';
+};
+
+const getSlaLabel = (slaBucket: LeadSlaBucket) => {
+    switch (slaBucket) {
+        case 'OVERDUE':
+            return 'Overdue';
+        case 'DUE_TODAY':
+            return 'Due Today';
+        case 'UPCOMING':
+            return 'Upcoming';
+        case 'UNSCHEDULED':
+            return 'Unscheduled';
+        case 'CLEAR':
+        default:
+            return 'Clear';
+    }
+};
+
+const getSlaBadgeClass = (slaBucket: LeadSlaBucket) => {
+    switch (slaBucket) {
+        case 'OVERDUE':
+            return 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+        case 'DUE_TODAY':
+            return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+        case 'UPCOMING':
+            return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+        case 'UNSCHEDULED':
+            return 'bg-slate-500/10 text-slate-600 border-slate-500/20';
+        case 'CLEAR':
+        default:
+            return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+    }
+};
 
 export default function LeadsPage({ initialLeadId }: { initialLeadId?: string }) {
     const { tenantId, memberships, tenantType } = useTenant();
@@ -47,12 +103,20 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
     const isPhone = device === 'phone';
     const isCompact = isPhone || device === 'tablet';
 
-    const [leads, setLeads] = useState<LeadRow[]>([]);
+    const [leads, setLeads] = useState<LeadIndexRow[]>([]);
     const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeadId || null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [view, setView] = useState<'grid' | 'list'>('list');
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    const [intentFilter, setIntentFilter] = useState<string>('ALL');
+    const [slaFilter, setSlaFilter] = useState<'ALL' | LeadSlaBucket>('ALL');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
+    const [totalRows, setTotalRows] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [kpis, setKpis] = useState<LeadIndexKpis>(DEFAULT_KPIS);
     const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
     const [dealerOptions, setDealerOptions] = useState<Array<{ id: string; name: string }>>([]);
     const [initialSelectedDealerId, setInitialSelectedDealerId] = useState('');
@@ -92,83 +156,107 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         }
     }, [memberships, requiresDealerSelection]);
 
-    const fetchLeads = useCallback(async () => {
+    useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 250);
+        return () => window.clearTimeout(timeout);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, statusFilter, intentFilter, slaFilter, pageSize, tenantId]);
+
+    const fetchLeadIndex = useCallback(async () => {
         if (!tenantId) return;
         setIsLoading(true);
         try {
-            const data = await getLeads(tenantId);
-            const mapped = (data || []).map((l: any) => ({
-                id: l.id,
-                displayId: l.displayId || formatDisplayId(l.id),
-                customerName: l.customerName || 'Lead',
-                phone: l.phone || '—',
-                status: l.status || 'NEW',
-                intentScore: l.intentScore || 'COLD',
-                created_at: l.created_at,
-            }));
-            setLeads(mapped);
+            const result = await getLeadIndexAction({
+                tenantId,
+                page,
+                pageSize,
+                filters: {
+                    search: debouncedSearch,
+                    status: statusFilter,
+                    intent: intentFilter,
+                    sla: slaFilter,
+                },
+            });
+
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to load lead index');
+            }
+
+            if (result.pagination.totalPages > 0 && page > result.pagination.totalPages) {
+                setPage(result.pagination.totalPages);
+                return;
+            }
+
+            setLeads(result.rows || []);
+            setKpis(result.kpis || DEFAULT_KPIS);
+            setTotalRows(result.pagination.totalRows || 0);
+            setTotalPages(result.pagination.totalPages || 0);
         } catch (error) {
-            console.error('Failed to fetch leads:', error);
+            console.error('Failed to fetch lead index:', error);
             toast.error('Failed to load leads');
         } finally {
             setIsLoading(false);
         }
-    }, [tenantId]);
+    }, [tenantId, page, pageSize, debouncedSearch, statusFilter, intentFilter, slaFilter]);
 
     useEffect(() => {
-        fetchLeads();
-    }, [fetchLeads]);
+        fetchLeadIndex();
+    }, [fetchLeadIndex]);
 
     useEffect(() => {
         const supabase = createClient();
         const channel = supabase
             .channel('leads-live')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crm_leads' }, () => fetchLeads())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crm_leads' }, () => fetchLeadIndex())
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [fetchLeads]);
+    }, [fetchLeadIndex]);
 
     useEffect(() => {
         if (initialLeadId) setSelectedLeadId(initialLeadId);
     }, [initialLeadId]);
 
-    const filteredLeads = useMemo(
-        () =>
-            leads.filter(
-                l =>
-                    (statusFilter === 'ALL' || l.status === statusFilter) &&
-                    (l.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        formatDisplayId(l.displayId).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (l.phone || '').includes(searchQuery))
-            ),
-        [leads, searchQuery, statusFilter]
-    );
+    const pageStart = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+    const pageEnd = totalRows === 0 ? 0 : Math.min(page * pageSize, totalRows);
+    const hasPrev = page > 1;
+    const hasNext = totalPages > 0 && page < totalPages;
 
     const stats = [
-        { label: 'Total Leads', value: leads.length, icon: Users, color: 'indigo' as const, trend: '+12.5%' },
+        { label: 'Total Leads', value: kpis.totalLeads, icon: Users, color: 'indigo' as const },
         {
             label: 'Hot Leads',
-            value: leads.filter(l => l.intentScore === 'HOT').length,
+            value: kpis.hotLeads,
             icon: Flame,
             color: 'rose' as const,
             trend: 'Priority',
         },
         {
             label: 'Qualified',
-            value: leads.filter(l => l.status !== 'NEW' && l.status !== 'JUNK').length,
+            value: kpis.qualifiedLeads,
             icon: Target,
             color: 'emerald' as const,
         },
         {
             label: 'In Pipeline',
-            value: leads.filter(l => ['QUOTE', 'BOOKING'].includes(l.status)).length,
+            value: kpis.inPipeline,
             icon: TrendingUp,
             color: 'amber' as const,
         },
-        { label: 'Avg Speed', value: '4.2h', icon: Clock, color: 'blue' as const, trend: '-15m' },
+        {
+            label: 'SLA Overdue',
+            value: kpis.overdueFollowUps,
+            icon: AlertTriangle,
+            color: 'blue' as const,
+            trend: `${kpis.dueTodayFollowUps} today`,
+        },
     ];
 
     const handleOpenLead = (leadId: string) => {
@@ -238,7 +326,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                         const filePath = `${createdMemberId}/LEAD_${sanitizedPurpose}_${Date.now()}_${index}.${fileExt}`;
 
                         const { data: storageData, error: storageError } = await supabase.storage
-                            .from('id_documents')
+                            .from('documents')
                             .upload(filePath, file, { upsert: false });
 
                         if (storageError || !storageData?.path) {
@@ -274,9 +362,117 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
 
         toast.success('duplicate' in result && result.duplicate ? 'Existing lead opened' : 'Lead created successfully');
         setIsLeadFormOpen(false);
-        await fetchLeads();
+        setPage(1);
+        await fetchLeadIndex();
         handleOpenLead(result.leadId);
     };
+
+    const filterControls = useMemo(
+        () => (
+            <div className="space-y-3">
+                <div className="overflow-x-auto no-scrollbar -mx-4 px-4">
+                    <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
+                        {STATUS_FILTERS.map(chip => (
+                            <button
+                                key={chip}
+                                onClick={() => setStatusFilter(chip)}
+                                data-crm-allow
+                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                                    statusFilter === chip
+                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                                        : 'bg-white dark:bg-white/5 text-slate-500 border border-slate-200 dark:border-white/10'
+                                }`}
+                            >
+                                {chip}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:flex gap-2">
+                    <select
+                        value={intentFilter}
+                        onChange={e => setIntentFilter(e.target.value)}
+                        className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-200"
+                    >
+                        {INTENT_FILTERS.map(option => (
+                            <option key={option} value={option}>
+                                Intent: {option}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        value={slaFilter}
+                        onChange={e => setSlaFilter(e.target.value as 'ALL' | LeadSlaBucket)}
+                        className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-200"
+                    >
+                        {SLA_FILTERS.map(option => (
+                            <option key={option} value={option}>
+                                SLA: {option.replace('_', ' ')}
+                            </option>
+                        ))}
+                    </select>
+                    {!isPhone && (
+                        <select
+                            value={String(pageSize)}
+                            onChange={e => setPageSize(Number(e.target.value))}
+                            className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-200"
+                        >
+                            {PAGE_SIZE_OPTIONS.map(option => (
+                                <option key={option} value={option}>
+                                    Page: {option}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+            </div>
+        ),
+        [intentFilter, isPhone, pageSize, slaFilter, statusFilter]
+    );
+
+    const paginationControls = useMemo(
+        () => (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border border-slate-200 dark:border-white/10 rounded-2xl px-3 py-2 bg-white dark:bg-white/5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Showing {pageStart}-{pageEnd} of {totalRows}
+                </div>
+                <div className="flex items-center gap-2">
+                    {isPhone && (
+                        <select
+                            value={String(pageSize)}
+                            onChange={e => setPageSize(Number(e.target.value))}
+                            className="bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-[10px] font-black text-slate-500"
+                        >
+                            {PAGE_SIZE_OPTIONS.map(option => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                    <button
+                        onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                        disabled={!hasPrev || isLoading}
+                        className="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-white/10 disabled:opacity-40"
+                    >
+                        Prev
+                    </button>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                        {totalPages === 0 ? 'Page 0/0' : `Page ${page}/${totalPages}`}
+                    </div>
+                    <button
+                        onClick={() => setPage(prev => prev + 1)}
+                        disabled={!hasNext || isLoading}
+                        className="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-white/10 disabled:opacity-40"
+                    >
+                        Next
+                    </button>
+                </div>
+            </div>
+        ),
+        [hasNext, hasPrev, isLoading, isPhone, page, pageEnd, pageSize, pageStart, totalPages, totalRows]
+    );
 
     // Responsive negative margin: phone=-m-3 (matches ShellLayout p-3), tablet=-m-5, desktop=-m-6 md:-m-8
     const negativeMargin = isPhone ? '' : device === 'tablet' ? '-m-5' : '-m-6 md:-m-8';
@@ -299,9 +495,24 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                     device={device}
                     hideActions={isReadOnly}
                 >
+                    {filterControls}
+                    {isLoading ? (
+                        <div className="py-16 text-center text-sm font-bold uppercase tracking-widest text-slate-400">
+                            Loading lead index...
+                        </div>
+                    ) : leads.length === 0 ? (
+                        <div className="py-16 text-center space-y-2">
+                            <p className="text-sm font-black uppercase tracking-widest text-slate-500">
+                                No leads found
+                            </p>
+                            <p className="text-xs font-bold text-slate-400">
+                                Try changing filters or create a new lead.
+                            </p>
+                        </div>
+                    ) : null}
                     {effectiveView === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-                            {filteredLeads.map(lead => (
+                            {leads.map(lead => (
                                 <div
                                     key={lead.id}
                                     onClick={() => handleOpenLead(lead.id)}
@@ -323,12 +534,17 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                         <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter truncate mb-6">
                                             {lead.phone}
                                         </div>
+                                        <div className="text-[10px] font-bold text-slate-400 mb-4 truncate">
+                                            {getLocationLabel(lead)}
+                                        </div>
                                         <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-white/5">
                                             <div className="px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-white/5 text-slate-400">
                                                 {lead.status}
                                             </div>
-                                            <div className="text-[9px] font-bold text-slate-400">
-                                                {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '—'}
+                                            <div
+                                                className={`px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${getSlaBadgeClass(lead.slaBucket)}`}
+                                            >
+                                                {getSlaLabel(lead.slaBucket)}
                                             </div>
                                         </div>
                                     </div>
@@ -338,28 +554,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                     ) : /* ── LIST VIEW: Phone-optimized cards vs Desktop table ── */
                     isPhone ? (
                         <div className="space-y-2 pb-4">
-                            {/* Status filter chips */}
-                            <div className="overflow-x-auto no-scrollbar -mx-4 px-4 mb-3">
-                                <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
-                                    {['ALL', 'NEW', 'CONTACTED', 'QUALIFIED', 'HOT', 'QUOTE', 'BOOKING', 'JUNK'].map(
-                                        chip => (
-                                            <button
-                                                key={chip}
-                                                onClick={() => setStatusFilter(chip)}
-                                                data-crm-allow
-                                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
-                                                    statusFilter === chip
-                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                                                        : 'bg-white dark:bg-white/5 text-slate-500 border border-slate-200 dark:border-white/10'
-                                                }`}
-                                            >
-                                                {chip}
-                                            </button>
-                                        )
-                                    )}
-                                </div>
-                            </div>
-                            {filteredLeads.map(lead => (
+                            {leads.map(lead => (
                                 <button
                                     key={lead.id}
                                     onClick={() => handleOpenLead(lead.id)}
@@ -373,12 +568,22 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
                                                     {formatDisplayId(lead.displayId)}
                                                 </span>
-                                                <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600">
-                                                    {lead.status || 'NEW'}
-                                                </span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600">
+                                                        {lead.status || 'NEW'}
+                                                    </span>
+                                                    <span
+                                                        className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${getSlaBadgeClass(lead.slaBucket)}`}
+                                                    >
+                                                        {getSlaLabel(lead.slaBucket)}
+                                                    </span>
+                                                </div>
                                             </div>
                                             <div className="text-[13px] font-black tracking-tight uppercase truncate text-slate-900 dark:text-white mb-0.5">
                                                 {lead.customerName}
+                                            </div>
+                                            <div className="text-[10px] font-bold text-slate-400 truncate mb-1">
+                                                {getLocationLabel(lead)}
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <span className="text-[10px] font-bold text-slate-400 truncate">
@@ -420,10 +625,13 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                         <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
                                             Status
                                         </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Follow-up
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredLeads.map(lead => (
+                                    {leads.map(lead => (
                                         <tr
                                             key={lead.id}
                                             onClick={() => handleOpenLead(lead.id)}
@@ -438,6 +646,9 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                                 <div className="text-sm font-black italic uppercase tracking-tighter text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
                                                     {lead.customerName}
                                                 </div>
+                                                <div className="text-[10px] font-bold text-slate-400 mt-1">
+                                                    {getLocationLabel(lead)}
+                                                </div>
                                             </td>
                                             <td className="p-6">
                                                 <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase">
@@ -449,12 +660,27 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                                     {lead.status}
                                                 </div>
                                             </td>
+                                            <td className="p-6">
+                                                <div
+                                                    className={`inline-flex items-center px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${getSlaBadgeClass(lead.slaBucket)}`}
+                                                >
+                                                    {getSlaLabel(lead.slaBucket)}
+                                                </div>
+                                                <div className="text-[10px] font-bold text-slate-400 mt-1">
+                                                    {lead.nextFollowUpAt
+                                                        ? formatDateLabel(lead.nextFollowUpAt)
+                                                        : lead.openTaskCount > 0
+                                                          ? 'No due date'
+                                                          : 'No task'}
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
                     )}
+                    {paginationControls}
                 </ModuleLanding>
                 <LeadForm
                     isOpen={isLeadFormOpen}
@@ -500,69 +726,137 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                 placeholder="Search leads..."
                             />
                         </div>
+                        <div className="grid grid-cols-1 gap-2">
+                            <select
+                                value={statusFilter}
+                                onChange={e => setStatusFilter(e.target.value)}
+                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-[10px] font-black uppercase tracking-widest"
+                            >
+                                {STATUS_FILTERS.map(option => (
+                                    <option key={option} value={option}>
+                                        Status: {option}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="grid grid-cols-2 gap-2">
+                                <select
+                                    value={intentFilter}
+                                    onChange={e => setIntentFilter(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-[10px] font-black uppercase tracking-widest"
+                                >
+                                    {INTENT_FILTERS.map(option => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={slaFilter}
+                                    onChange={e => setSlaFilter(e.target.value as 'ALL' | LeadSlaBucket)}
+                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl py-2 px-3 text-[10px] font-black uppercase tracking-widest"
+                                >
+                                    {SLA_FILTERS.map(option => (
+                                        <option key={option} value={option}>
+                                            {option.replace('_', ' ')}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
-                        {filteredLeads.map(lead => {
-                            const isActive = selectedLeadId === lead.id;
-                            return (
-                                <button
-                                    key={lead.id}
-                                    onClick={() => handleOpenLead(lead.id)}
-                                    className={`w-full text-left rounded-xl border transition-all duration-300 group overflow-hidden ${
-                                        isActive
-                                            ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
-                                            : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/[0.06] hover:border-indigo-500/30 text-slate-900 dark:text-white hover:shadow-md'
-                                    }`}
-                                >
-                                    <div className="flex">
-                                        <div className={`w-1 shrink-0 ${isActive ? 'bg-white/30' : 'bg-indigo-500'}`} />
-                                        <div className="flex-1 px-3.5 py-3 min-w-0">
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <span
-                                                    className={`text-[9px] font-black uppercase tracking-wider ${
-                                                        isActive ? 'text-white/70' : 'text-slate-400'
-                                                    }`}
-                                                >
-                                                    {formatDisplayId(lead.displayId)}
-                                                </span>
-                                                <span
-                                                    className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
-                                                        isActive
-                                                            ? 'bg-white/20 text-white'
-                                                            : 'bg-indigo-500/10 text-indigo-600'
-                                                    }`}
-                                                >
-                                                    {lead.status || 'NEW'}
-                                                </span>
-                                            </div>
+                        {isLoading ? (
+                            <div className="text-center py-8 text-xs font-bold uppercase tracking-widest text-slate-400">
+                                Loading...
+                            </div>
+                        ) : leads.length === 0 ? (
+                            <div className="text-center py-8 text-xs font-bold uppercase tracking-widest text-slate-400">
+                                No leads found
+                            </div>
+                        ) : (
+                            leads.map(lead => {
+                                const isActive = selectedLeadId === lead.id;
+                                return (
+                                    <button
+                                        key={lead.id}
+                                        onClick={() => handleOpenLead(lead.id)}
+                                        className={`w-full text-left rounded-xl border transition-all duration-300 group overflow-hidden ${
+                                            isActive
+                                                ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
+                                                : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/[0.06] hover:border-indigo-500/30 text-slate-900 dark:text-white hover:shadow-md'
+                                        }`}
+                                    >
+                                        <div className="flex">
                                             <div
-                                                className={`text-[12px] font-black tracking-tight uppercase truncate mb-0.5 ${
-                                                    isActive ? 'text-white' : 'text-slate-800 dark:text-white'
-                                                }`}
-                                            >
-                                                {lead.customerName}
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span
-                                                    className={`text-[10px] font-bold truncate ${
+                                                className={`w-1 shrink-0 ${isActive ? 'bg-white/30' : 'bg-indigo-500'}`}
+                                            />
+                                            <div className="flex-1 px-3.5 py-3 min-w-0">
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <span
+                                                        className={`text-[9px] font-black uppercase tracking-wider ${
+                                                            isActive ? 'text-white/70' : 'text-slate-400'
+                                                        }`}
+                                                    >
+                                                        {formatDisplayId(lead.displayId)}
+                                                    </span>
+                                                    <span
+                                                        className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                                            isActive
+                                                                ? 'bg-white/20 text-white'
+                                                                : 'bg-indigo-500/10 text-indigo-600'
+                                                        }`}
+                                                    >
+                                                        {lead.status || 'NEW'}
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    className={`text-[12px] font-black tracking-tight uppercase truncate mb-0.5 ${
+                                                        isActive ? 'text-white' : 'text-slate-800 dark:text-white'
+                                                    }`}
+                                                >
+                                                    {lead.customerName}
+                                                </div>
+                                                <div
+                                                    className={`text-[10px] font-bold truncate mb-0.5 ${
                                                         isActive ? 'text-white/70' : 'text-slate-400'
                                                     }`}
                                                 >
-                                                    {lead.phone}
-                                                </span>
-                                                <span
-                                                    className={`text-[9px] font-black ${isActive ? 'text-white' : 'text-slate-500'}`}
-                                                >
-                                                    {lead.intentScore || 'COLD'}
-                                                </span>
+                                                    {getLocationLabel(lead)}
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span
+                                                        className={`text-[10px] font-bold truncate ${
+                                                            isActive ? 'text-white/70' : 'text-slate-400'
+                                                        }`}
+                                                    >
+                                                        {lead.phone}
+                                                    </span>
+                                                    <span
+                                                        className={`text-[9px] font-black ${isActive ? 'text-white' : 'text-slate-500'}`}
+                                                    >
+                                                        {lead.intentScore || 'COLD'}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-1">
+                                                    <span
+                                                        className={`inline-flex px-1.5 py-0.5 rounded border text-[7px] font-black uppercase tracking-widest ${
+                                                            isActive
+                                                                ? 'text-white border-white/30 bg-white/10'
+                                                                : getSlaBadgeClass(lead.slaBucket)
+                                                        }`}
+                                                    >
+                                                        {getSlaLabel(lead.slaBucket)}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </button>
-                            );
-                        })}
+                                    </button>
+                                );
+                            })
+                        )}
                     </div>
+                    <div className="p-3 border-t border-slate-100 dark:border-white/5">{paginationControls}</div>
                 </div>
 
                 <div className="h-full flex flex-col overflow-y-auto no-scrollbar bg-slate-50 dark:bg-[#08090b]">

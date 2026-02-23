@@ -455,6 +455,9 @@ export async function createSku(payload: {
         .single();
 
     if (error) throw new Error(`createSku failed: ${error.message}`);
+
+    // Compatibility is now managed at variant level via cat_accessory_suitable_for (handled by Studio V2)
+
     return data as CatalogSku;
 }
 
@@ -470,9 +473,10 @@ export async function updateSku(id: string, updates: Partial<CatalogSku>) {
         .update({ ...safeUpdates, updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
 
     if (error) throw new Error(`updateSku failed: ${error.message}`);
+    if (!data) throw new Error(`updateSku failed: SKU ${id} not found`);
     return data as CatalogSku;
 }
 
@@ -651,33 +655,40 @@ export async function reorderColours(modelId: string, orderedIds: string[]) {
 }
 
 // ============================================================
-// SUITABLE FOR — Junction table
+// SUITABLE FOR — Junction table (cat_accessory_suitable_for)
 // ============================================================
 
-export async function listSuitableFor(skuId: string) {
+export async function listSuitableFor(variantId: string) {
     const { data, error } = await adminClient
-        .from('cat_suitable_for')
+        .from('cat_accessory_suitable_for' as any)
         .select('*, target_brand:cat_brands!target_brand_id(name), target_model:cat_models!target_model_id(name)')
-        .eq('sku_id', skuId);
+        .eq('variant_id', variantId);
 
     if (error) throw new Error(`listSuitableFor failed: ${error.message}`);
     return data;
 }
 
 export async function addSuitableFor(payload: {
-    sku_id: string;
+    variant_id: string;
     target_brand_id: string;
     target_model_id?: string;
     target_variant_id?: string;
 }) {
-    const { data, error } = await adminClient.from('cat_suitable_for').insert(payload).select().single();
+    const { data, error } = await adminClient
+        .from('cat_accessory_suitable_for' as any)
+        .insert(payload)
+        .select()
+        .single();
 
     if (error) throw new Error(`addSuitableFor failed: ${error.message}`);
     return data;
 }
 
 export async function removeSuitableFor(id: string) {
-    const { error } = await adminClient.from('cat_suitable_for').delete().eq('id', id);
+    const { error } = await adminClient
+        .from('cat_accessory_suitable_for' as any)
+        .delete()
+        .eq('id', id);
     if (error) throw new Error(`removeSuitableFor failed: ${error.message}`);
     return true;
 }

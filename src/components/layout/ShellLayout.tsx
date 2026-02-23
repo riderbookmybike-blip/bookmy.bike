@@ -144,7 +144,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     // --- REGULAR USER LAYOUT ---
     if (isRegularUser) {
         content = (
-            <div className="min-h-screen bg-white">
+            <div className="min-h-screen bg-white dark:bg-slate-950">
                 <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
                 <main className={`${isHome ? 'pt-0' : 'pt-20'} p-0 md:p-0 max-w-none mx-auto overflow-x-hidden`}>
                     {children}

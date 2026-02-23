@@ -246,7 +246,7 @@ export default function R15MV2Page() {
                             Check EMI
                             <ArrowRight size={18} />
                         </button>
-                        <button className="px-10 py-5 bg-white dark:bg-white text-black hover:bg-gray-200 font-bold uppercase tracking-widest rounded-full transition-all hover:scale-105">
+                        <button className="px-10 py-5 bg-white dark:bg-slate-100 text-black hover:bg-gray-200 font-bold uppercase tracking-widest rounded-full transition-all hover:scale-105">
                             Book Test Ride
                         </button>
                     </div>

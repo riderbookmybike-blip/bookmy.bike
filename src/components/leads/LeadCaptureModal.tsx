@@ -19,6 +19,7 @@ interface LeadCaptureModalProps {
     variantId?: string;
     colorId?: string;
     commercials?: any;
+    quoteTenantId?: string;
     source?: 'STORE_PDP' | 'LEADS';
 }
 
@@ -31,6 +32,7 @@ export function LeadCaptureModal({
     variantId,
     colorId,
     commercials,
+    quoteTenantId,
     source = 'LEADS',
 }: LeadCaptureModalProps) {
     const { tenantId, userRole, memberships } = useTenant();
@@ -47,6 +49,7 @@ export function LeadCaptureModal({
 
     // Detect if current user is a staff member of any dealership
     const isStaff = userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER';
+    const effectiveTenantId = sessionDealerId || quoteTenantId || tenantId || undefined;
     const primaryMembership = memberships?.find(m => m.tenant_id === tenantId);
     const [autoPhoneLoaded, setAutoPhoneLoaded] = useState(false);
 
@@ -132,8 +135,8 @@ export function LeadCaptureModal({
                     customer_pincode: existingUser.pincode || undefined,
                     customer_dob: existingUser.dob || undefined,
                     model: model,
-                    owner_tenant_id: tenantId || undefined,
-                    selected_dealer_id: sessionDealerId || undefined,
+                    owner_tenant_id: effectiveTenantId,
+                    selected_dealer_id: effectiveTenantId,
                     source: isStaff ? 'DEALER_REFERRAL' : 'PDP_QUICK_QUOTE',
                 });
 
@@ -180,9 +183,9 @@ export function LeadCaptureModal({
                 customer_phone: phone,
                 customer_pincode: pincode,
                 model: model,
-                owner_tenant_id: tenantId || undefined,
-                selected_dealer_id: sessionDealerId || undefined,
-                source: isStaff ? 'DEALER_REFERRAL' : 'WEBSITE_PDP',
+                owner_tenant_id: effectiveTenantId,
+                selected_dealer_id: effectiveTenantId,
+                source: isStaff ? 'DEALER_REFERRAL' : 'PDP_QUICK_QUOTE',
             });
 
             if (leadResult.success && (leadResult as any).leadId) {
@@ -200,14 +203,14 @@ export function LeadCaptureModal({
     }
 
     async function handleCreateQuote(lId: string) {
-        if (!variantId || !tenantId || !commercials) {
+        if (!variantId || !commercials) {
             setError('Quote creation blocked: missing required product or pricing data.');
             return;
         }
 
         try {
             const result = await createQuoteAction({
-                tenant_id: sessionDealerId || tenantId || '',
+                tenant_id: effectiveTenantId,
                 lead_id: lId,
                 variant_id: variantId,
                 color_id: colorId,

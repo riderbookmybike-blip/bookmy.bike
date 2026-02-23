@@ -2,7 +2,12 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth/resolver';
 import AriaDashboard from '@/components/dashboard/aria/AriaDashboard';
-import { getDealerDashboardKpis, getPlatformDashboardKpis } from '@/actions/dashboardKpis';
+import {
+    getDashboardSkuTrends,
+    getDealerCrmInsights,
+    getDealerDashboardKpis,
+    getPlatformDashboardKpis,
+} from '@/actions/dashboardKpis';
 import { getRecentEvents } from '@/actions/analytics';
 
 export default async function TenantDashboard(props: { params: Promise<{ slug: string }> }) {
@@ -89,15 +94,21 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
     // Resolve Persona and Fetch Live Data
     let initialPersona: 'AUMS' | 'DEALERSHIP' | 'FINANCER' = 'DEALERSHIP';
     let kpis = null;
+    let skuTrends = null;
+    let crmInsights = null;
 
     if (slug === 'aums' || tenant.type === 'MARKETPLACE') {
         initialPersona = 'AUMS';
-        kpis = await getPlatformDashboardKpis();
+        [kpis, skuTrends] = await Promise.all([getPlatformDashboardKpis(), getDashboardSkuTrends(null, 5)]);
     } else if (tenant.type === 'BANK') {
         initialPersona = 'FINANCER';
-        kpis = await getDealerDashboardKpis(tenant.id);
+        [kpis, skuTrends] = await Promise.all([getDealerDashboardKpis(tenant.id), getDashboardSkuTrends(tenant.id, 5)]);
     } else {
-        kpis = await getDealerDashboardKpis(tenant.id);
+        [kpis, skuTrends, crmInsights] = await Promise.all([
+            getDealerDashboardKpis(tenant.id),
+            getDashboardSkuTrends(tenant.id, 5),
+            getDealerCrmInsights(tenant.id),
+        ]);
     }
 
     const recentEvents = await getRecentEvents(10);
@@ -109,6 +120,8 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
             roleLabel={roleLabel}
             kpis={kpis}
             recentEvents={recentEvents}
+            skuTrends={skuTrends}
+            crmInsights={crmInsights}
         />
     );
 }

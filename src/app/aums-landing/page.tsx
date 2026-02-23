@@ -46,7 +46,7 @@ export default function AumsLandingPage() {
                         <div className="flex flex-col sm:flex-row items-center gap-4 pt-8">
                             <button
                                 onClick={() => setIsLoginOpen(true)}
-                                className="w-full sm:w-auto px-10 py-5 bg-white dark:bg-white text-black hover:bg-slate-200 rounded-xl text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3"
+                                className="w-full sm:w-auto px-10 py-5 bg-white dark:bg-slate-100 text-black hover:bg-slate-200 rounded-xl text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3"
                             >
                                 Request Access <ArrowRight size={18} />
                             </button>

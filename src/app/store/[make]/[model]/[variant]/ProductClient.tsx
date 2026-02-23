@@ -13,10 +13,12 @@ import { useSystemDealerContext } from '@/hooks/useSystemDealerContext';
 import { useDealerSession } from '@/hooks/useDealerSession';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 
 import { InsuranceRule } from '@/types/insurance';
 
 const SKU_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MIN_DWELL_TRACKING_MS = 1500;
 
 // Dynamic imports for heavy PDP components (bundle optimization)
 const PDPSkeleton = () => (
@@ -91,6 +93,10 @@ export default function ProductClient({
     const { dealerId: sessionDealerId } = useDealerSession();
     const { device } = useBreakpoint(initialDevice);
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
+    const { trackEvent } = useAnalytics();
+    const activeSkuRef = useRef<string | null>(null);
+    const activeSkuStartedAtRef = useRef<number | null>(null);
+    const lastImmediateDwellFlushRef = useRef<number>(0);
 
     // Authority: Determine if team member is gated (Marketplace without lead context)
     const isGated = isTeamMember && !leadIdFromUrl;
@@ -176,6 +182,134 @@ export default function ProductClient({
         setConfigTab,
         setUserDownPayment,
     } = actions;
+
+    const buildSkuEventMetadata = React.useCallback(
+        (skuId: string, extra: Record<string, unknown> = {}) => ({
+            sku_id: skuId,
+            lead_id: leadIdFromUrl || undefined,
+            make_slug: makeParam || undefined,
+            model_slug: modelParam || undefined,
+            variant_slug: variantParam || undefined,
+            source: 'STORE_PDP',
+            ...extra,
+        }),
+        [leadIdFromUrl, makeParam, modelParam, variantParam]
+    );
+
+    const sendImmediateIntentSignal = React.useCallback((eventName: string, metadata: Record<string, unknown>) => {
+        if (typeof window === 'undefined') return;
+
+        let sessionId = sessionStorage.getItem('bkmb_session_id');
+        if (!sessionId && typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            sessionId = crypto.randomUUID();
+            sessionStorage.setItem('bkmb_session_id', sessionId);
+        }
+        if (!sessionId) return;
+
+        const payload = JSON.stringify({
+            sessionId,
+            events: [
+                {
+                    type: 'INTENT_SIGNAL',
+                    name: eventName,
+                    path: window.location.pathname,
+                    metadata,
+                    timestamp: new Date().toISOString(),
+                },
+            ],
+        });
+
+        if (navigator.sendBeacon) {
+            const blob = new Blob([payload], { type: 'application/json' });
+            navigator.sendBeacon('/api/analytics/track', blob);
+            return;
+        }
+
+        void fetch('/api/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+        });
+    }, []);
+
+    const emitDwellForActiveSku = React.useCallback(
+        (reason: 'SKU_SWITCH' | 'TAB_HIDDEN' | 'BEFORE_UNLOAD' | 'UNMOUNT', immediate = false) => {
+            const activeSku = activeSkuRef.current;
+            const startedAt = activeSkuStartedAtRef.current;
+            if (!activeSku || !startedAt) return;
+
+            const dwellMs = Date.now() - startedAt;
+            if (dwellMs < MIN_DWELL_TRACKING_MS) return;
+
+            const metadata = buildSkuEventMetadata(activeSku, {
+                dwell_ms: Math.round(dwellMs),
+                reason,
+            });
+
+            if (immediate) {
+                const now = Date.now();
+                if (now - lastImmediateDwellFlushRef.current < 500) return;
+                lastImmediateDwellFlushRef.current = now;
+                sendImmediateIntentSignal('sku_dwell', metadata);
+                return;
+            }
+
+            trackEvent('INTENT_SIGNAL', 'sku_dwell', metadata);
+        },
+        [buildSkuEventMetadata, sendImmediateIntentSignal, trackEvent]
+    );
+
+    const trackedSkuId = React.useMemo(() => {
+        const nextSku = String(selectedSkuId || selectedColor || '')
+            .trim()
+            .toLowerCase();
+        return nextSku || null;
+    }, [selectedSkuId, selectedColor]);
+
+    useEffect(() => {
+        if (!trackedSkuId) return;
+        if (activeSkuRef.current === trackedSkuId) return;
+
+        if (activeSkuRef.current) {
+            emitDwellForActiveSku('SKU_SWITCH');
+        }
+
+        activeSkuRef.current = trackedSkuId;
+        activeSkuStartedAtRef.current = Date.now();
+        trackEvent('INTENT_SIGNAL', 'sku_view', buildSkuEventMetadata(trackedSkuId));
+    }, [trackedSkuId, emitDwellForActiveSku, trackEvent, buildSkuEventMetadata]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                emitDwellForActiveSku('TAB_HIDDEN', true);
+                if (activeSkuRef.current) {
+                    activeSkuStartedAtRef.current = Date.now();
+                }
+                return;
+            }
+
+            if (document.visibilityState === 'visible' && activeSkuRef.current) {
+                activeSkuStartedAtRef.current = Date.now();
+            }
+        };
+
+        const handleBeforeUnload = () => {
+            emitDwellForActiveSku('BEFORE_UNLOAD', true);
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            emitDwellForActiveSku('UNMOUNT', true);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [emitDwellForActiveSku]);
 
     const [showQuoteSuccess, setShowQuoteSuccess] = useState(false);
     const [showEmailModal, setShowEmailModal] = useState(false);
@@ -666,6 +800,37 @@ export default function ProductClient({
         isGated,
         forceMobileLayout,
     };
+    const legacyBestOffer = bestOffer as
+        | ({
+              dealer_id?: string;
+              id?: string;
+          } & typeof bestOffer)
+        | undefined;
+    const quoteTenantId =
+        sessionDealerId ||
+        product?.tenant_id ||
+        initialDealerId ||
+        ssppServerPricing?.dealer?.id ||
+        bestOffer?.dealerId ||
+        legacyBestOffer?.dealer_id ||
+        legacyBestOffer?.id ||
+        undefined;
+    const pdpDealerIdForParity =
+        ssppServerPricing?.dealer?.id ||
+        bestOffer?.dealerId ||
+        legacyBestOffer?.dealer_id ||
+        legacyBestOffer?.id ||
+        initialDealerId ||
+        '';
+    const pdpOfferDeltaForParity = Number(
+        ssppServerPricing?.dealer?.offer ??
+            bestOffer?.price ??
+            Number(data.colorSurge || 0) - Number(data.colorDiscount || 0) ??
+            0
+    );
+    const pdpDistrictForParity = String(
+        ssppServerPricing?.location?.district || resolvedLocation?.district || initialLocation?.district || ''
+    );
 
     if (!hasValidColorSku) {
         return (
@@ -691,6 +856,14 @@ export default function ProductClient({
 
     return (
         <>
+            <div
+                data-testid="pdp-offer-meta"
+                data-dealer-id={pdpDealerIdForParity}
+                data-offer-delta={pdpOfferDeltaForParity}
+                data-district={pdpDistrictForParity}
+                data-sku-id={colorSkuId || ''}
+                style={{ display: 'none' }}
+            />
             {/* Condition on forceMobileLayout to trigger MobilePDP */}
             {forceMobileLayout ? <MobilePDP {...commonProps} /> : <DesktopPDP {...commonProps} />}
 
@@ -703,6 +876,7 @@ export default function ProductClient({
                 variantId={product.id}
                 colorId={colorSkuId || undefined}
                 commercials={buildCommercials()}
+                quoteTenantId={quoteTenantId}
                 source={leadIdFromUrl ? 'LEADS' : 'STORE_PDP'}
             />
 

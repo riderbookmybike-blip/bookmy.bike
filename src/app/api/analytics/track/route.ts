@@ -9,6 +9,15 @@ const MAX_REQUESTS_PER_WINDOW = 5; // Max 5 flushes (batches) per minute per IP
 const IS_BOT_REGEX =
     /bot|spider|crawl|slurp|adsbot|mediapartners-google|apis-google|adsbot-google|google-polaris|bingpreview|bingbot|baiduspider|yandexbot|duckduckbot|rogerbot|exabot|facebot|facebookexternalhit|ia_archiver/i;
 
+function asObject(value: unknown): Record<string, any> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return value as Record<string, any>;
+}
+
+function asString(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
 export async function POST(req: NextRequest) {
     try {
         const userAgent = req.headers.get('user-agent') || '';
@@ -93,6 +102,45 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ success: false, ignored: true });
             }
             return NextResponse.json({ success: false }, { status: 500 });
+        }
+
+        // 3. Mirror SKU engagement into lead activity stream when lead context exists.
+        const leadEventRows = events
+            .map((event: any) => {
+                const metadata = asObject(event?.metadata);
+                const leadId = asString(metadata.lead_id);
+                const skuId = asString(metadata.sku_id);
+                if (!leadId || !skuId) return null;
+
+                const normalizedName = asString(event?.name).toLowerCase();
+                const eventType = normalizedName === 'sku_dwell' ? 'SKU_DWELL' : 'SKU_VISIT';
+                const dwellMs = Number(metadata.dwell_ms || metadata.dwellMs || 0);
+
+                return {
+                    lead_id: leadId,
+                    actor_user_id: userId || null,
+                    event_type: eventType,
+                    payload: {
+                        sku_id: skuId,
+                        model_slug: asString(metadata.model_slug) || null,
+                        variant_slug: asString(metadata.variant_slug) || null,
+                        make_slug: asString(metadata.make_slug) || null,
+                        source: asString(metadata.source) || 'STORE_PDP',
+                        reason: asString(metadata.reason) || null,
+                        dwell_ms: Number.isFinite(dwellMs) ? Math.max(0, Math.round(dwellMs)) : 0,
+                        page_path: asString(event?.path) || null,
+                        session_id: sessionId,
+                    },
+                    created_at: event.timestamp || new Date().toISOString(),
+                };
+            })
+            .filter(Boolean);
+
+        if (leadEventRows.length > 0) {
+            const { error: leadEventError } = await adminClient.from('crm_lead_events').insert(leadEventRows as any[]);
+            if (leadEventError) {
+                console.error('Lead SKU tracking insert failed:', leadEventError);
+            }
         }
 
         return NextResponse.json({ success: true });

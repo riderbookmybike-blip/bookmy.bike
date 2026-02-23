@@ -48,8 +48,6 @@
 
 ## Next Priority Tasks
 
-### CAT-001 — Expand Pricing to Other States
-
 ### INV-001 — Inventory Management
 - [ ] Enable stock tracking per dealer/location
 - [ ] Wire stock counts to catalog display

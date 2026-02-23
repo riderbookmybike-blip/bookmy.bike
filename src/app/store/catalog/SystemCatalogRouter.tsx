@@ -20,7 +20,13 @@ interface SystemCatalogRouterProps {
 function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
-    const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic(leadId || undefined);
+    const {
+        items: clientItems,
+        isLoading: isClientLoading,
+        resolvedDealerId,
+        resolvedStudioId,
+        resolvedDealerName,
+    } = useSystemCatalogLogic(leadId || undefined);
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
@@ -36,6 +42,9 @@ function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }
                 items={currentItems}
                 isLoading={loading}
                 mode="smart"
+                resolvedDealerId={resolvedDealerId}
+                resolvedStudioId={resolvedStudioId}
+                resolvedDealerName={resolvedDealerName}
             />
         );
     }
@@ -48,6 +57,9 @@ function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }
             items={currentItems}
             isLoading={loading}
             mode="smart"
+            resolvedDealerId={resolvedDealerId}
+            resolvedStudioId={resolvedStudioId}
+            resolvedDealerName={resolvedDealerName}
         />
     );
 }
@@ -59,6 +71,7 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store', initialDevice
         items: clientItems,
         isLoading: isClientLoading,
         needsLocation,
+        resolvedDealerId,
         resolvedStudioId,
         resolvedDealerName,
     } = useSystemCatalogLogic(leadId || undefined);
@@ -78,6 +91,7 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store', initialDevice
                 isLoading={loading}
                 mode="default"
                 needsLocation={needsLocation}
+                resolvedDealerId={resolvedDealerId}
                 resolvedStudioId={resolvedStudioId}
                 resolvedDealerName={resolvedDealerName}
             />
@@ -93,6 +107,7 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store', initialDevice
             isLoading={loading}
             mode="default"
             needsLocation={needsLocation}
+            resolvedDealerId={resolvedDealerId}
             resolvedStudioId={resolvedStudioId}
             resolvedDealerName={resolvedDealerName}
         />

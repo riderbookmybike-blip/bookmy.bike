@@ -7,18 +7,18 @@
  *
  * UI/DISPLAY level — type-specific labels (user-facing):
  *   VEHICLE:   Brand → Model → Variant → Colour Pool → SKU (Variant × Colour)
- *   ACCESSORY: Brand → Product → Variant → Sub-Variant
+ *   ACCESSORY: Brand → Product → Suitable For → Sub-Variant
  *   SERVICE:   Brand → Service → Plan → Tier
  *
  * Colour Pool is defined at the Model level (cat_colours).
  * SKU Matrix is universal: Variant × SKU
  * - Vehicle:   Disc SmartXonnect × Starlight Blue Gloss = SKU
- * - Accessory: Half Face × Blue = SKU  (or Standard × Activa = SKU)
+ * - Accessory: Honda Activa 110 (Suitable For) × Black = SKU
  * - Service:   Gold Plan × 2 Years = SKU
  */
 export const HIERARCHY_LABELS = {
     VEHICLE: { model: 'Model', variant: 'Variant', pool: 'Colour', sku: 'SKU' },
-    ACCESSORY: { model: 'Product', variant: 'Variant', pool: 'Sub-Variant', sku: 'Sub-Variant' },
+    ACCESSORY: { model: 'Product', variant: 'Suitable For', pool: 'Sub-Variant', sku: 'Sub-Variant' },
     SERVICE: { model: 'Service', variant: 'Plan', pool: 'Tier', sku: 'Tier' },
 } as const;
 

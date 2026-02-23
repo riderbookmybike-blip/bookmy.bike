@@ -8,6 +8,7 @@ import type { ProductVariant } from '@/types/productMaster';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
+import Image from 'next/image';
 
 const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
 
@@ -18,6 +19,7 @@ interface CompactProductCardProps {
     basePath?: string;
     leadId?: string;
     onEditDownpayment?: () => void;
+    fallbackDealerId?: string | null;
 }
 
 export function CompactProductCard({
@@ -27,6 +29,7 @@ export function CompactProductCard({
     basePath = '/store',
     leadId,
     onEditDownpayment,
+    fallbackDealerId,
 }: CompactProductCardProps) {
     const { isFavorite, toggleFavorite } = useFavorites();
     const isSaved = isFavorite(v.id);
@@ -63,16 +66,37 @@ export function CompactProductCard({
         if (color.imageUrl) setSelectedImage(color.imageUrl);
     };
 
+    const normalizeDistrictForUrl = (value?: string | null) => {
+        if (!value) return undefined;
+        const cleaned = String(value)
+            .replace(/^(Best:|Base:)\s*/i, '')
+            .split(',')[0]
+            .trim();
+        if (!cleaned || cleaned.toUpperCase() === 'ALL') return undefined;
+        return cleaned;
+    };
+
+    const navigableDistrict = normalizeDistrictForUrl(v.dealerLocation || v.price?.pricingSource);
+    const offerDeltaForParity = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
+
     const href = buildProductUrl({
         make: v.make,
         model: v.model,
         variant: v.variant,
+        district: navigableDistrict,
         leadId,
         basePath,
     }).url;
 
     return (
-        <div className="group relative flex flex-col bg-[#0f1115] border border-white/10 rounded-2xl overflow-hidden transition-all duration-300 active:scale-[0.98]">
+        <div
+            data-testid="catalog-compact-card"
+            data-product-id={v.id}
+            data-dealer-id={v.dealerId || fallbackDealerId || ''}
+            data-offer-delta={offerDeltaForParity}
+            data-district={navigableDistrict || ''}
+            className="group relative flex flex-col bg-white border border-slate-100 rounded-2xl overflow-hidden transition-all duration-300 active:scale-[0.98] shadow-sm hover:shadow-md hover:border-slate-200"
+        >
             {/* Favorite Button */}
             <button
                 onClick={e => {
@@ -88,26 +112,27 @@ export function CompactProductCard({
                         price: displayPrice || undefined,
                     });
                 }}
-                className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center transition-all"
+                className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center transition-all border border-slate-100"
             >
                 <Heart
                     size={14}
-                    className={isSaved ? 'fill-rose-500 text-rose-500' : 'text-white/80'}
+                    className={isSaved ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}
                     strokeWidth={isSaved ? 2.5 : 1.5}
                 />
             </button>
 
             {/* Vehicle Image */}
-            <Link href={href} className="block relative aspect-[4/3] bg-white/[0.02] overflow-hidden">
+            <Link href={href} className="block relative aspect-[4/3] bg-slate-50 overflow-hidden">
                 {selectedImage ? (
-                    <img
+                    <Image
                         src={selectedImage}
                         alt={`${v.make} ${v.model}`}
-                        className="w-full h-full object-contain p-2"
-                        loading="lazy"
+                        fill
+                        className="object-contain p-2"
+                        sizes="320px"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white/20 text-[10px] font-black uppercase tracking-widest">
+                    <div className="w-full h-full flex items-center justify-center text-slate-200 text-[10px] font-black uppercase tracking-widest">
                         No Image
                     </div>
                 )}
@@ -120,7 +145,9 @@ export function CompactProductCard({
                     <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 leading-none">
                         {v.make}
                     </p>
-                    <h3 className="text-[13px] font-black text-white leading-tight mt-0.5 line-clamp-1">{v.model}</h3>
+                    <h3 className="text-[13px] font-black text-slate-900 leading-tight mt-0.5 line-clamp-1">
+                        {v.model}
+                    </h3>
                     <p className="text-[10px] font-semibold text-slate-400 leading-tight line-clamp-1">{v.variant}</p>
                 </div>
 
@@ -135,7 +162,7 @@ export function CompactProductCard({
                             <CircleHelp size={10} className="text-slate-500" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <p className="text-[18px] font-black text-white leading-none">
+                            <p className="text-[18px] font-black text-slate-900 leading-none">
                                 ₹{displayPrice.toLocaleString('en-IN')}
                             </p>
                             <div className="flex items-center gap-1 bg-[#F4B000]/10 px-1.5 py-0.5 rounded border border-[#F4B000]/20">
@@ -149,7 +176,7 @@ export function CompactProductCard({
 
                     {/* Lowest EMI Block */}
                     {emiValue > 0 && (
-                        <div className="flex flex-col items-start border-t border-white/5 pt-2">
+                        <div className="flex flex-col items-start border-t border-slate-100 pt-2">
                             <div className="flex items-center gap-1.5 mb-0.5">
                                 <CircleHelp
                                     size={10}
@@ -163,9 +190,9 @@ export function CompactProductCard({
                                 <span className="text-[18px] font-black text-emerald-500 italic leading-none">
                                     ₹{emiValue.toLocaleString('en-IN')}
                                 </span>
-                                <span className="text-white/15 text-sm font-light select-none mx-1">/</span>
+                                <span className="text-slate-200 text-sm font-light select-none mx-1">/</span>
                                 <span className="text-[12px] font-bold text-emerald-500/80 italic leading-none">
-                                    {activeTenure}
+                                    {activeTenure} mo
                                 </span>
                             </div>
                             <div className="flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
@@ -196,7 +223,7 @@ export function CompactProductCard({
 
             {/* Color Swatches (Desktop High-Fidelity) */}
             {swatches.length > 1 && (
-                <div className="flex items-center gap-2 px-3 pb-4 overflow-x-auto hide-scrollbar w-full">
+                <div className="flex items-center gap-3 px-3 pb-4 overflow-x-auto hide-scrollbar w-full">
                     {swatches.map((color, i) => (
                         <button
                             key={`${color.hexCode || i}`}
@@ -205,7 +232,7 @@ export function CompactProductCard({
                                 e.stopPropagation();
                                 handleColorTap(color);
                             }}
-                            className="w-[18px] h-[18px] shrink-0 rounded-full shadow-[0_0_0_1px_rgba(255,255,255,0.15)] relative hover:scale-110 transition-all duration-300 overflow-hidden"
+                            className="w-8 h-8 shrink-0 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.05)] relative hover:scale-110 transition-all duration-300 overflow-hidden"
                             style={{ background: color.hexCode }}
                             title={`${color.name}${color.finish ? ` (${color.finish})` : ''}`}
                         >
@@ -219,7 +246,7 @@ export function CompactProductCard({
                             )}
                             {/* Selection Ring */}
                             {selectedHex === color.hexCode && (
-                                <div className="absolute inset-[-2px] rounded-full border border-white/40 pointer-events-none" />
+                                <div className="absolute inset-[-3px] rounded-full border-2 border-[#F4B000] pointer-events-none" />
                             )}
                         </button>
                     ))}

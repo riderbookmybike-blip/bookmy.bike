@@ -82,81 +82,27 @@ export async function advanceBookingStage(
     const supabase = await createClient();
 
     try {
-        // 1. Fetch current booking
-        const { data: booking, error: fetchErr } = await supabase
-            .from('crm_bookings')
-            .select('id, operational_stage, tenant_id')
-            .eq('id', bookingId)
-            .single();
-
-        if (fetchErr || !booking) {
-            return { success: false, message: 'Booking not found' };
-        }
-
-        // 2. Tenant ownership check — verify user belongs to same tenant
-        const { data: membership } = await (supabase as any)
-            .from('id_memberships')
-            .select('tenant_id')
-            .eq('user_id', user.id)
-            .eq('tenant_id', booking.tenant_id)
-            .maybeSingle();
-
-        if (!membership) {
-            return { success: false, message: 'You do not have access to this booking' };
-        }
-
-        const currentStage = booking.operational_stage as Stage;
-
-        // 3. Validate transition
-        if (!isValidTransition(currentStage, newStage as Stage)) {
-            const allowed = getAllowedTransitions(currentStage);
-            return {
-                success: false,
-                message: `Cannot transition from ${currentStage} to ${newStage}. Allowed: ${allowed.join(', ') || 'none'}`,
-            };
-        }
-
-        // 4. Optimistic lock: only update if stage hasn't changed since we read it
-        const { data: updated, error: updateErr } = await (supabase as any)
-            .from('crm_bookings')
-            .update({
-                operational_stage: newStage,
-                stage_updated_at: new Date().toISOString(),
-                stage_updated_by: user.id,
-            })
-            .eq('id', bookingId)
-            .eq('operational_stage', currentStage) // Optimistic lock
-            .select('id')
-            .maybeSingle();
-
-        if (updateErr) throw updateErr;
-
-        if (!updated) {
-            return {
-                success: false,
-                message: 'Stage was modified by another user. Please refresh and try again.',
-            };
-        }
-
-        // 5. Write stage event history
-        let warning: string | undefined;
-        const { error: eventErr } = await (supabase as any).from('crm_booking_stage_events').insert({
-            booking_id: bookingId,
-            from_stage: currentStage,
-            to_stage: newStage,
-            reason: reason || null,
-            changed_by: user.id,
+        // DB function enforces transition matrix + proof checks + event logging atomically.
+        const { data, error } = await (supabase as any).rpc('transition_booking_stage', {
+            p_booking_id: bookingId,
+            p_to_stage: newStage,
+            p_reason: reason || null,
         });
 
-        if (eventErr) {
-            console.error('[advanceBookingStage] Event write failed:', eventErr);
-            warning = 'Stage updated but audit event could not be recorded. Contact support.';
+        if (error) {
+            console.error('[advanceBookingStage] RPC error:', error);
+            return { success: false, message: error.message || 'Failed to update booking stage' };
+        }
+
+        const payload = (data || {}) as { success?: boolean; message?: string; warning?: string };
+        if (!payload.success) {
+            return { success: false, message: payload.message || 'Failed to update booking stage' };
         }
 
         revalidatePath('/sales-orders');
         revalidatePath('/dashboard');
 
-        return { success: true, warning };
+        return { success: true, message: payload.message, warning: payload.warning };
     } catch (err: any) {
         console.error('[advanceBookingStage] Error:', err);
         return { success: false, message: err.message };
@@ -183,7 +129,7 @@ export async function getBookingStageHistory(bookingId: string) {
 }
 
 // Get allowed next stages from current stage (forward + backward)
-export function getAllowedTransitions(currentStage: string): string[] {
+export async function getAllowedTransitions(currentStage: string): Promise<string[]> {
     if (!STAGE_ORDER.includes(currentStage as Stage)) return [];
 
     const forward = TRANSITION_MATRIX[currentStage as Stage] || [];

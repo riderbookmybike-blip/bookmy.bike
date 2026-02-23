@@ -45,7 +45,10 @@ export const AumsHeader = ({ onLoginClick, onMenuClick, showSearch = true }: Aum
             left={
                 <div className="flex items-center gap-6 md:gap-12 h-full">
                     {onMenuClick && (
-                        <button onClick={onMenuClick} className="p-2 text-slate-400 hover:text-white md:hidden">
+                        <button
+                            onClick={onMenuClick}
+                            className="p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white md:hidden"
+                        >
                             <Menu size={24} />
                         </button>
                     )}

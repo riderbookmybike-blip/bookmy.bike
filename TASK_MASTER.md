@@ -411,21 +411,29 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
 - next action: Begin Phase 3: Add Private Mode Masking, Explicit Reveal logic, and Audit Events to the Books module.
 
 ### T-CODEX-020: Lead Module Improvisation Program (Backlog)
-- status: queued
+- status: in_progress
 - owner: Codex
 - goal: Improve overall Lead module and current Lead Index view with phased UX + ops hardening (speed, quality, conversion readiness).
-- progress: Roadmap defined with dependency order and sprint checkpoints (P0/P1/P2).
-- outcome: Execution-ready backlog captured; implementation intentionally deferred for later.
+- progress: P0 shipped with live KPI engine, server pagination, filter v1, row enrichment, and SLA tracking foundation. P1 execution started with lead/quote event audit wiring (`crm_lead_events`, `crm_quote_events`) and booking feedback capture flow.
+- outcome: Lead Index runs on server-backed pagination/filters with KPI/SLA context; quote creation and marketplace lead capture now emit auditable lifecycle events; booking editor now supports direct feedback save with stage-aware FEEDBACK transition attempt.
 - blockers: none
 - sprint checkpoints:
-  - P0: Real KPI engine, list pagination/performance, filter v1, row enrichment, follow-up SLA foundation.
+  - P0: Real KPI engine, list pagination/performance, filter v1, row enrichment, follow-up SLA foundation. (done)
   - P1: Stage transition guardrails, assignment/workload balancing, unified activity timeline, duplicate merge workflow.
   - P2: Automation rules, source/referral ROI analytics, smart prioritization scoring.
 - files:
+  - src/actions/crm.ts
+  - src/actions/lead.ts
+  - src/components/modules/quotes/QuoteEditorTable.tsx
+  - src/components/modules/leads/LeadsPage.tsx
   - TASK_MASTER.md
 - file tree impact:
+  - src/actions/crm.ts
+  - src/actions/lead.ts
+  - src/components/modules/quotes/QuoteEditorTable.tsx
+  - src/components/modules/leads/LeadsPage.tsx
   - TASK_MASTER.md
-- next action: Start P0 when approved.
+- next action: Complete remaining P1 items (assignment balancing, unified timeline API for leads, duplicate merge workflow).
 
 ## Antigravity Tasks
 
@@ -490,3 +498,4 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
 - 2026-02-21: Added mandatory CRM referral flow with referrer lookup and repeat-delivery no-benefit rule.
 - 2026-02-21: Reviewed and upgraded Books module implementation plan with DB hardening, ledger scoping, access control, and phased verification.
 - 2026-02-21: Added T-CODEX-020 backlog for Lead Module Improvisation Program (P0/P1/P2 checkpoints) for deferred execution.
+- 2026-02-21: Executed T-CODEX-020 P0 — added live lead KPI engine, server pagination/filter v1, enriched lead index rows, and SLA-aware follow-up foundation.

@@ -10,7 +10,6 @@ export type RegistrationInput = {
     rtoReceiptNumber?: string;
     status: string;
     registeredAt?: string;
-    metadata?: Record<string, any>;
 };
 
 export async function getRegistrationByBooking(bookingId: string) {
@@ -28,15 +27,17 @@ export async function getRegistrationByBooking(bookingId: string) {
 export async function upsertRegistration(input: RegistrationInput) {
     const { data, error } = await adminClient
         .from('crm_registration')
-        .upsert({
-            booking_id: input.bookingId,
-            tenant_id: input.tenantId,
-            registration_number: input.registrationNumber,
-            rto_receipt_number: input.rtoReceiptNumber,
-            status: input.status,
-            registered_at: input.registeredAt,
-            metadata: input.metadata || {}
-        }, { onConflict: 'booking_id' })
+        .upsert(
+            {
+                booking_id: input.bookingId,
+                tenant_id: input.tenantId,
+                registration_number: input.registrationNumber,
+                rto_receipt_number: input.rtoReceiptNumber,
+                status: input.status,
+                registered_at: input.registeredAt,
+            },
+            { onConflict: 'booking_id' }
+        )
         .select()
         .single();
 
@@ -46,9 +47,8 @@ export async function upsertRegistration(input: RegistrationInput) {
     await adminClient
         .from('crm_bookings')
         .update({
-            registration_status: input.status,
             registration_number: input.registrationNumber,
-            rto_receipt_number: input.rtoReceiptNumber
+            rto_receipt_number: input.rtoReceiptNumber,
         })
         .eq('id', input.bookingId);
 

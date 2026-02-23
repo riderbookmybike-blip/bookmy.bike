@@ -78,7 +78,7 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
             .channel('receipts-live')
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'crm_receipts', filter: `tenant_id=eq.${tenantId}` },
+                { event: '*', schema: 'public', table: 'crm_payments', filter: `tenant_id=eq.${tenantId}` },
                 () => fetchReceipts()
             )
             .subscribe();

@@ -121,32 +121,19 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
         setError(null);
 
         try {
-            // 1. Create Requisition
-            const { data: req, error: reqErr } = await supabase
-                .from('inv_requisitions')
-                .insert({
+            const { createRequest } = await import('@/actions/inventory');
+
+            // For vehicles, we create multiple per-unit requests for strict tracking
+            for (let i = 0; i < quantity; i++) {
+                const res = await createRequest({
                     tenant_id: tenantId,
-                    customer_name: customerName,
+                    sku_id: selectedColor,
                     source_type: 'DIRECT',
-                    status: 'SUBMITTED',
-                    priority: 'MEDIUM',
-                })
-                .select()
-                .single();
+                    items: [], // Baseline costs can be added in a refinement phase
+                });
 
-            if (reqErr) throw reqErr;
-
-            // 2. Create Requisition Item
-            const { error: itemErr } = await supabase.from('inv_requisition_items').insert({
-                requisition_id: req.id,
-                sku_id: selectedColor,
-                quantity: quantity,
-                notes: notes,
-                tenant_id: tenantId,
-                status: 'OPEN',
-            });
-
-            if (itemErr) throw itemErr;
+                if (!res.success) throw new Error(res.message);
+            }
 
             onSuccess();
             onClose();

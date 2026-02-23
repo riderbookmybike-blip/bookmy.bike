@@ -21,10 +21,15 @@ interface AnalyticsContextType {
 
 const AnalyticsContext = createContext<AnalyticsContextType | null>(null);
 
+// SSR-safe: returns no-op fallback when context is unavailable (e.g. during server rendering)
+const noopAnalytics: AnalyticsContextType = {
+    trackEvent: () => {},
+    sessionId: '',
+};
+
 export const useAnalytics = () => {
     const context = useContext(AnalyticsContext);
-    if (!context) throw new Error('useAnalytics must be used within AnalyticsProvider');
-    return context;
+    return context ?? noopAnalytics;
 };
 
 const INTERNAL_QUERY_PARAM = 'internal_test';

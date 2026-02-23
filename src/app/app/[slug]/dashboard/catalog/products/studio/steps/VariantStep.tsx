@@ -81,9 +81,9 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         const supabase = createClient();
         const variantIds = existingVariants.map((v: any) => v.id);
         const { data: allCompat } = await supabase
-            .from('cat_item_compatibility')
-            .select('item_id, is_universal, target_brand_id, target_family_id, target_variant_id')
-            .in('item_id', variantIds);
+            .from('cat_accessory_suitable_for' as any)
+            .select('variant_id, is_universal, target_brand_id, target_model_id, target_variant_id')
+            .in('variant_id', variantIds);
         if (!allCompat || allCompat.length === 0) {
             setCardCompatMap({});
             return;
@@ -95,7 +95,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
         const varIds = new Set<string>();
         allCompat.forEach((c: any) => {
             if (c.target_brand_id) brandIds.add(c.target_brand_id);
-            if (c.target_family_id) familyIds.add(c.target_family_id);
+            if (c.target_model_id) familyIds.add(c.target_model_id);
             if (c.target_variant_id) varIds.add(c.target_variant_id);
         });
 
@@ -128,13 +128,13 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
             } else {
                 const parts: string[] = [];
                 if (c.target_brand_id) parts.push(brandMap.get(String(c.target_brand_id)) || '?');
-                if (c.target_family_id) parts.push(familyMap.get(String(c.target_family_id)) || '');
+                if (c.target_model_id) parts.push(familyMap.get(String(c.target_model_id)) || '');
                 else if (c.target_brand_id) parts.push('All');
                 if (c.target_variant_id) parts.push(varMap.get(String(c.target_variant_id)) || '');
                 label = parts.filter(Boolean).join(' ');
             }
-            if (!result[c.item_id]) result[c.item_id] = [];
-            result[c.item_id].push(label);
+            if (!result[c.variant_id]) result[c.variant_id] = [];
+            result[c.variant_id].push(label);
         });
         setCardCompatMap(result);
     };
@@ -182,9 +182,9 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
     const fetchCompatibility = async (variantId: string) => {
         const supabase = createClient();
         const { data: compat } = await supabase
-            .from('cat_item_compatibility')
-            .select('id, is_universal, target_brand_id, target_family_id, target_variant_id')
-            .eq('item_id', variantId);
+            .from('cat_accessory_suitable_for' as any)
+            .select('id, is_universal, target_brand_id, target_model_id, target_variant_id')
+            .eq('variant_id', variantId);
         if (compat && compat.length > 0) {
             const enriched = await Promise.all(
                 compat.map(async (c: any) => {
@@ -201,15 +201,15 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                 .single();
                             parts.push(brand?.name || 'Unknown Brand');
                         }
-                        if (c.target_family_id) {
+                        if (c.target_model_id) {
                             const { data: fam } = await (supabase as any)
                                 .from('cat_models')
                                 .select('name')
-                                .eq('id', c.target_family_id)
+                                .eq('id', c.target_model_id)
                                 .single();
                             if (!c.target_variant_id) parts.push(`${fam?.name || 'All Models'}`);
                             else parts.push(fam?.name || '');
-                        } else if (c.target_brand_id && !c.target_family_id) {
+                        } else if (c.target_brand_id && !c.target_model_id) {
                             parts.push('(All Models)');
                         }
                         if (c.target_variant_id) {
@@ -260,14 +260,14 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                 id: `new-${Date.now()}`,
                 is_universal: false,
                 target_brand_id: selCompatBrand,
-                target_family_id: selCompatModel && selCompatModel !== 'ALL_MODELS' ? selCompatModel : null,
+                target_model_id: selCompatModel && selCompatModel !== 'ALL_MODELS' ? selCompatModel : null,
                 target_variant_id: selCompatVariant && selCompatVariant !== 'ALL_VARIANTS' ? selCompatVariant : null,
                 label: [brandName, modelName || '(All Models)', variantName].filter(Boolean).join(' '),
             };
             const isDup = compatEntries.some(
                 c =>
                     c.target_brand_id === entry.target_brand_id &&
-                    c.target_family_id === entry.target_family_id &&
+                    c.target_model_id === entry.target_model_id &&
                     c.target_variant_id === entry.target_variant_id
             );
             if (!isDup) setCompatEntries([...compatEntries, entry]);
@@ -1294,19 +1294,19 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                         // 3. Sync compatibility entries (ACCESSORY only)
                                         if (family?.category === 'ACCESSORY') {
                                             await supabase
-                                                .from('cat_item_compatibility')
+                                                .from('cat_accessory_suitable_for' as any)
                                                 .delete()
-                                                .eq('item_id', editingVariant.id);
+                                                .eq('variant_id', editingVariant.id);
                                             if (compatEntries.length > 0) {
                                                 const compatRows = compatEntries.map((c: any) => ({
-                                                    item_id: editingVariant.id,
+                                                    variant_id: editingVariant.id,
                                                     is_universal: c.is_universal || false,
                                                     target_brand_id: c.target_brand_id || null,
-                                                    target_family_id: c.target_family_id || null,
+                                                    target_model_id: c.target_model_id || c.target_family_id || null,
                                                     target_variant_id: c.target_variant_id || null,
                                                 }));
                                                 const { error: compatErr } = await supabase
-                                                    .from('cat_item_compatibility')
+                                                    .from('cat_accessory_suitable_for' as any)
                                                     .insert(compatRows);
                                                 if (compatErr)
                                                     console.error('Compatibility insert warning:', compatErr);

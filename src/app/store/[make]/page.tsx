@@ -229,7 +229,7 @@ export default function BrandPage() {
                         </div>
                         <Link
                             href={`/store/catalog?brand=${brandName.toUpperCase()}`}
-                            className="inline-flex h-20 px-12 bg-white dark:bg-white text-black hover:bg-blue-500 hover:text-white rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] transition-all items-center justify-center gap-4 group"
+                            className="inline-flex h-20 px-12 bg-white dark:bg-slate-100 text-black hover:bg-blue-500 hover:text-white rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] transition-all items-center justify-center gap-4 group"
                         >
                             Explore The Collection{' '}
                             <ChevronRight className="group-hover:translate-x-2 transition-transform" />

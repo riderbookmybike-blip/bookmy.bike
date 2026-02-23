@@ -3,9 +3,18 @@
 import { adminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/types/supabase';
 
-type AuditRow = Database['public']['Tables']['crm_audit_log']['Row'];
+type AuditRow = Database['public']['Tables']['catalog_audit_log']['Row'];
 
-export interface AuditLogEntry extends AuditRow {
+export interface AuditLogEntry {
+    id: string;
+    entity_type: string;
+    entity_id: string;
+    action: string;
+    old_data: any;
+    new_data: any;
+    changed_fields: string[] | null;
+    performed_at: string;
+    performed_by: string | null;
     record_name?: string;
     actor_name?: string | null;
 }
@@ -21,25 +30,19 @@ export interface AuditLogFilters {
 }
 
 export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
-    const { tableName, action, search, dateFrom, dateTo, page = 1, limit = 50 } = filters;
+    const { tableName, action, search, page = 1, limit = 50 } = filters;
 
     let query = adminClient
-        .from('crm_audit_log')
+        .from('catalog_audit_log')
         .select('*', { count: 'exact' })
-        .order('performed_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .range((page - 1) * limit, page * limit - 1);
 
     if (tableName && tableName !== 'ALL') {
-        query = query.eq('entity_type', tableName);
+        query = query.eq('table_name', tableName);
     }
     if (action && action !== 'ALL') {
         query = query.eq('action', action);
-    }
-    if (dateFrom) {
-        query = query.gte('performed_at', dateFrom);
-    }
-    if (dateTo) {
-        query = query.lte('performed_at', dateTo);
     }
 
     const { data, error, count } = await query;
@@ -50,18 +53,13 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
     }
 
     // Resolve record names from V2 catalog tables for better readability
-    const logs = (data as AuditRow[]) || [];
+    const rawLogs = (data as AuditRow[]) || [];
     const itemIds = new Set<string>();
-    logs.forEach(log => {
-        itemIds.add(log.entity_id);
-        // For cat_price_state, try to get the SKU name from new_data or old_data
-        if (log.entity_type === 'cat_price_state') {
-            const vcId = (log.new_data as any)?.vehicle_color_id || (log.old_data as any)?.vehicle_color_id;
-            if (vcId) itemIds.add(vcId);
-        }
+    rawLogs.forEach(log => {
+        if (log.record_id) itemIds.add(log.record_id);
     });
 
-    // Batch resolve names from V2 catalog tables
+    // Batch resolve names
     const nameMap = new Map<string, string>();
     if (itemIds.size > 0) {
         const idsArr = Array.from(itemIds);
@@ -75,7 +73,7 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
         });
     }
 
-    const actorIds = Array.from(new Set(logs.map(l => l.performed_by).filter(Boolean))) as string[];
+    const actorIds = Array.from(new Set(rawLogs.map(l => l.actor_id).filter(Boolean))) as string[];
     const actorNameMap = new Map<string, string>();
     if (actorIds.length > 0) {
         const { data: members } = await adminClient.from('id_members').select('id, full_name').in('id', actorIds);
@@ -84,19 +82,25 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
         });
     }
 
-    // Enrich logs with resolved names
-    const enriched: AuditLogEntry[] = logs.map(log => {
-        let recordName = nameMap.get(log.entity_id) || log.entity_id;
-        if (log.entity_type === 'cat_price_state') {
-            const vcId = (log.new_data as any)?.vehicle_color_id || (log.old_data as any)?.vehicle_color_id;
-            if (vcId && nameMap.has(vcId)) {
-                recordName = nameMap.get(vcId)!;
-            }
-        }
+    // Map and Enrich logs
+    const enriched: AuditLogEntry[] = rawLogs.map(log => {
+        const entityId = log.record_id || '';
+        const recordName = nameMap.get(entityId) || entityId;
+
         return {
-            ...log,
+            id: log.id,
+            entity_type: log.table_name || 'unknown',
+            entity_id: entityId,
+            action: log.action || 'UPDATE',
+            old_data: log.old_data,
+            new_data: log.new_data,
+            changed_fields: log.changed_fields as string[] | null,
+            performed_at: log.created_at || new Date().toISOString(),
+            performed_by: log.actor_id,
             record_name: recordName,
-            actor_name: log.performed_by ? actorNameMap.get(log.performed_by) || null : null,
+            actor_name: log.actor_id
+                ? actorNameMap.get(log.actor_id) || log.actor_label || null
+                : log.actor_label || null,
         };
     });
 

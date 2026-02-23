@@ -35,7 +35,7 @@ import {
     Twitter,
     Instagram,
 } from 'lucide-react';
-import { ThemeModeSelector } from '@/components/ui/ThemeModeSelector';
+import { ThemeModeSelector } from '@/components/ui/theme-mode-selector';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';

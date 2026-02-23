@@ -21,46 +21,33 @@ import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import CreatePOModal from './components/CreatePOModal';
 
-interface POItem {
-    id: string;
-    sku_id: string;
-    ordered_qty: number;
-    received_qty: number;
-    status: string;
-}
-
 interface PurchaseOrder {
     id: string;
-    order_number: string;
     display_id: string | null;
-    vendor_name: string;
     status: string;
+    po_status: string;
+    total_po_value: number;
+    payment_status: string;
     transporter_name: string | null;
     docket_number: string | null;
-    expected_date: string | null;
-    requisition_id: string | null;
+    expected_delivery_date: string | null;
     created_at: string;
-    items: POItem[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
     DRAFT: 'bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10',
-    ORDERED:
-        'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
-    PARTIALLY_RECEIVED:
+    SENT: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
+    SHIPPED:
         'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
-    COMPLETED:
+    RECEIVED:
         'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
-    CANCELLED:
-        'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20',
 };
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
     DRAFT: <Clock size={14} />,
-    ORDERED: <Truck size={14} />,
-    PARTIALLY_RECEIVED: <Package size={14} />,
-    COMPLETED: <CheckCircle2 size={14} />,
-    CANCELLED: <XCircle size={14} />,
+    SENT: <Truck size={14} />,
+    SHIPPED: <Package size={14} />,
+    RECEIVED: <CheckCircle2 size={14} />,
 };
 
 export default function OrdersPage() {
@@ -70,33 +57,26 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [statusFilter, setStatusFilter] = useState<'ALL' | 'DRAFT' | 'SENT' | 'SHIPPED' | 'RECEIVED'>('ALL');
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const fetchOrders = useCallback(async () => {
         if (!tenantId) return;
         setLoading(true);
         try {
-            let query = (supabase as any)
+            let query = supabase
                 .from('inv_purchase_orders')
-                .select(
-                    `
-                    *,
-                    items:inv_purchase_order_items (
-                        id, sku_id, ordered_qty, received_qty, status
-                    )
-                `
-                )
+                .select('*')
                 .eq('tenant_id', tenantId)
                 .order('created_at', { ascending: false });
 
             if (statusFilter !== 'ALL') {
-                query = query.eq('status', statusFilter);
+                query = query.eq('po_status', statusFilter);
             }
 
             const { data, error } = await query;
             if (error) throw error;
-            setOrders((data as PurchaseOrder[]) || []);
+            setOrders((data as any[]) || []);
         } catch (err) {
             console.error('Error fetching orders:', err);
         } finally {
@@ -111,17 +91,13 @@ export default function OrdersPage() {
     const filtered = orders.filter(o => {
         const q = searchQuery.toLowerCase().trim();
         if (!q) return true;
-        return (
-            o.order_number?.toLowerCase().includes(q) ||
-            (o.display_id || '').toLowerCase().includes(q) ||
-            (o.vendor_name || '').toLowerCase().includes(q)
-        );
+        return (o.display_id || '').toLowerCase().includes(q) || (o.transporter_name || '').toLowerCase().includes(q);
     });
 
     const stats = {
-        ordered: orders.filter(o => o.status === 'ORDERED').length,
-        partial: orders.filter(o => o.status === 'PARTIALLY_RECEIVED').length,
-        completed: orders.filter(o => o.status === 'COMPLETED').length,
+        sent: orders.filter(o => o.po_status === 'SENT').length,
+        shipped: orders.filter(o => o.po_status === 'SHIPPED').length,
+        received: orders.filter(o => o.po_status === 'RECEIVED').length,
         total: orders.length,
     };
 
@@ -150,9 +126,9 @@ export default function OrdersPage() {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'Ordered', value: stats.ordered, icon: <Truck size={24} />, color: 'indigo' },
-                    { label: 'Partial', value: stats.partial, icon: <Package size={24} />, color: 'amber' },
-                    { label: 'Completed', value: stats.completed, icon: <CheckCircle2 size={24} />, color: 'emerald' },
+                    { label: 'Sent', value: stats.sent, icon: <Truck size={24} />, color: 'indigo' },
+                    { label: 'Shipped', value: stats.shipped, icon: <Package size={24} />, color: 'amber' },
+                    { label: 'Received', value: stats.received, icon: <CheckCircle2 size={24} />, color: 'emerald' },
                     { label: 'Total', value: stats.total, icon: <Hash size={24} />, color: 'slate' },
                 ].map(s => (
                     <div
@@ -177,17 +153,17 @@ export default function OrdersPage() {
                     />
                     <input
                         type="text"
-                        placeholder="SEARCH BY PO NUMBER OR VENDOR..."
+                        placeholder="SEARCH BY PO ID..."
                         className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-12 pr-4 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all uppercase tracking-widest placeholder:text-slate-400/50"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
                 </div>
                 <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-none">
-                    {['ALL', 'ORDERED', 'PARTIALLY_RECEIVED', 'COMPLETED', 'CANCELLED'].map(status => (
+                    {['ALL', 'DRAFT', 'SENT', 'SHIPPED', 'RECEIVED'].map(status => (
                         <button
                             key={status}
-                            onClick={() => setStatusFilter(status)}
+                            onClick={() => setStatusFilter(status as any)}
                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${
                                 statusFilter === status
                                     ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent shadow-lg'
@@ -232,13 +208,7 @@ export default function OrdersPage() {
                                         PO #
                                     </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Vendor
-                                    </th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Items
-                                    </th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Received
+                                        Value
                                     </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Status
@@ -256,8 +226,6 @@ export default function OrdersPage() {
                             </thead>
                             <tbody>
                                 {filtered.map(po => {
-                                    const totalOrdered = po.items?.reduce((s, i) => s + i.ordered_qty, 0) || 0;
-                                    const totalReceived = po.items?.reduce((s, i) => s + (i.received_qty || 0), 0) || 0;
                                     return (
                                         <tr
                                             key={po.id}
@@ -266,40 +234,28 @@ export default function OrdersPage() {
                                         >
                                             <td className="px-6 py-4">
                                                 <span className="text-[11px] font-black text-slate-900 dark:text-white tracking-tighter">
-                                                    {po.order_number}
+                                                    {po.display_id || `PO-${po.id.slice(0, 8).toUpperCase()}`}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase truncate max-w-[150px] block">
-                                                    {po.vendor_name || '—'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className="text-sm font-black text-slate-900 dark:text-white">
-                                                    {totalOrdered}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span
-                                                    className={`text-sm font-black ${totalReceived >= totalOrdered ? 'text-emerald-600' : 'text-slate-400'}`}
-                                                >
-                                                    {totalReceived}/{totalOrdered}
+                                                <span className="text-[11px] font-black text-slate-900 dark:text-white">
+                                                    ₹{po.total_po_value?.toLocaleString()}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span
-                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${STATUS_COLORS[po.status] || STATUS_COLORS.DRAFT}`}
+                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${STATUS_COLORS[po.po_status] || STATUS_COLORS.DRAFT}`}
                                                 >
-                                                    {STATUS_ICONS[po.status] || <Clock size={14} />}
-                                                    {po.status.replace(/_/g, ' ')}
+                                                    {STATUS_ICONS[po.po_status] || <Clock size={14} />}
+                                                    {po.po_status.replace(/_/g, ' ')}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                {po.expected_date ? (
+                                                {po.expected_delivery_date ? (
                                                     <div className="flex items-center gap-1.5 text-slate-400">
                                                         <Calendar size={12} />
                                                         <span className="text-[10px] font-bold">
-                                                            {format(new Date(po.expected_date), 'dd MMM')}
+                                                            {format(new Date(po.expected_delivery_date), 'dd MMM')}
                                                         </span>
                                                     </div>
                                                 ) : (

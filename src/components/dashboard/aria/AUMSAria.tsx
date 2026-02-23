@@ -2,8 +2,10 @@ import React from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Globe, Users, ShoppingCart, DollarSign, ArrowUpRight, Server, Activity } from 'lucide-react';
 import { AriaCard, AriaNumber, EnterpriseTable } from './AriaPanels';
+import SkuTrendWidget from './SkuTrendWidget';
+import type { DashboardSkuTrends } from '@/actions/dashboardKpis';
 
-export const AUMSAria = ({ kpis }: { kpis: any }) => {
+export const AUMSAria = ({ kpis, skuTrends }: { kpis: any; skuTrends?: DashboardSkuTrends | null }) => {
     const data = [
         { name: 'Mon', usage: 400 },
         { name: 'Tue', usage: 300 },
@@ -94,6 +96,8 @@ export const AUMSAria = ({ kpis }: { kpis: any }) => {
                     rows={tenantRows}
                 />
             </div>
+
+            <SkuTrendWidget data={skuTrends || null} title="Network-Wide Trending Signals" className="lg:col-span-4" />
         </div>
     );
 };

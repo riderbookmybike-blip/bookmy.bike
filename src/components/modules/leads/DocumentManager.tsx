@@ -138,7 +138,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
             // 2. Upload to Storage
             const fileName = `${memberId}/ASSET_${Date.now()}.${fileType === 'application/pdf' ? 'pdf' : 'webp'}`;
             const { data: storageData, error: storageError } = await supabase.storage
-                .from('id_documents')
+                .from('documents')
                 .upload(fileName, fileToUpload);
 
             if (storageError) throw storageError;
@@ -242,7 +242,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
             // 5. Upload & Update
             const fileName = `${memberId}/STITCH_${Date.now()}.webp`;
             const { data: storageData, error: storageError } = await supabase.storage
-                .from('id_documents')
+                .from('documents')
                 .upload(fileName, stitchedBlob);
 
             if (storageError) throw storageError;
@@ -280,7 +280,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
             // 1. Upload updated image
             const fileName = `${memberId}/ETD_${Date.now()}.webp`;
             const { data: storageData, error: storageError } = await supabase.storage
-                .from('id_documents')
+                .from('documents')
                 .upload(fileName, blob);
 
             if (storageError) throw storageError;
@@ -328,7 +328,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
     const handleDelete = async (id: string, path: string) => {
         try {
             await deleteMemberDocumentAction(id);
-            await supabase.storage.from('id_documents').remove([path]);
+            await supabase.storage.from('documents').remove([path]);
             setDocuments(prev => prev.filter(d => d.id !== id));
             toast.success('Document purged');
         } catch (error) {

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
 import { getAllProducts } from '@/actions/product';
+import { getDealerOfferDeltasAction, getResolvedPricingContextAction } from '@/actions/pricingActions';
 
 export function useSystemCatalogLogic(leadId?: string) {
     const [items, setItems] = useState<ProductVariant[]>([]);
@@ -115,20 +116,26 @@ export function useSystemCatalogLogic(leadId?: string) {
                 const supabase = createClient();
                 const cachedLocation = resolveLocationFromCache();
 
-                let resolvedStateCode = cachedLocation.stateCode || stateCode;
+                let resolvedStateCode = cachedLocation.stateCode || stateCode || 'MH';
                 let resolvedUserDistrict = cachedLocation.district || userDistrict;
-                if (!resolvedStateCode) {
+                if (!resolvedUserDistrict && !leadId) {
                     setNeedsLocation(true);
                     setIsLoading(false);
                     return;
                 }
                 setNeedsLocation(false);
 
-                if (cachedLocation.stateCode && cachedLocation.stateCode !== stateCode) {
-                    setStateCode(cachedLocation.stateCode);
-                }
-                if (cachedLocation.district && cachedLocation.district !== userDistrict) {
-                    setUserDistrict(cachedLocation.district);
+                const resolvedContext = await getResolvedPricingContextAction({
+                    leadId: leadId || undefined,
+                    district: resolvedUserDistrict || undefined,
+                    state: resolvedStateCode || undefined,
+                });
+                resolvedStateCode = resolvedContext.stateCode || resolvedStateCode || 'MH';
+                resolvedUserDistrict = resolvedContext.district || resolvedUserDistrict;
+
+                if (resolvedStateCode !== stateCode) setStateCode(resolvedStateCode);
+                if (resolvedUserDistrict && resolvedUserDistrict !== userDistrict) {
+                    setUserDistrict(resolvedUserDistrict);
                 }
 
                 // ---------------------------------------------------------
@@ -138,213 +145,50 @@ export function useSystemCatalogLogic(leadId?: string) {
                     throw new Error(catalogError);
                 }
 
-                // Fetch Offers (Primary Dealer Only)
-                let offerData: any = null;
-                let resolvedDealerId: string | null = null;
+                // Resolve dealer metadata for catalog cards (same context path as PDP)
+                let offerData: any[] = [];
+                let resolvedDealerId: string | null = resolvedContext.dealerId || null;
                 let resolvedDealerDistrict: string | null = null;
+                let resolvedDealerNameLocal: string | null = null;
+                let resolvedStudioIdLocal: string | null = null;
 
                 // Removed TEAM session lock from marketplace to unify experience
 
-                if (leadId) {
-                    const { data: lead } = await supabase
-                        .from('crm_leads')
-                        .select('tenant_id, selected_dealer_tenant_id, customer_pincode')
-                        .eq('id', leadId)
-                        .maybeSingle();
-
-                    if (lead) {
-                        // Precedence: selected_dealer_tenant_id > tenant_id
-                        const leadTenantId = lead.selected_dealer_tenant_id || lead.tenant_id;
-
-                        if (leadTenantId) {
-                            // Verify tenant exists/active (optional but good for consistency)
-                            const { data: tenant } = await supabase
-                                .from('id_tenants')
-                                .select('id')
-                                .eq('id', leadTenantId)
-                                .maybeSingle();
-
-                            if (tenant) {
-                                resolvedDealerId = leadTenantId;
-                            }
-                        }
-
-                        // Also resolve location from lead if district not resolved yet
-                        if (lead.customer_pincode && lead.customer_pincode.length === 6) {
-                            const { data: pincodeData } = await supabase
-                                .from('loc_pincodes')
-                                .select('district, state_code')
-                                .eq('pincode', lead.customer_pincode)
-                                .maybeSingle();
-
-                            if (pincodeData) {
-                                resolvedUserDistrict = pincodeData.district || resolvedUserDistrict;
-                                resolvedStateCode = pincodeData.state_code || resolvedStateCode;
-                                setUserDistrict(resolvedUserDistrict || '');
-                                setStateCode(resolvedStateCode || '');
-
-                                updateDebug({
-                                    pricingSource: resolvedDealerId
-                                        ? 'PRIMARY (Lead Tenant)'
-                                        : 'PRIMARY (Lead District)',
-                                    district: resolvedUserDistrict || '',
-                                    stateCode: resolvedStateCode || '',
-                                    locSource: 'LEAD_PINCODE',
-                                    pincode: lead.customer_pincode || '',
-                                });
-                            }
-                        }
-                    }
-                }
-
-                if (!resolvedDealerId && resolvedUserDistrict) {
-                    const { data: primary } = await supabase
-                        .from('id_primary_dealer_districts')
-                        .select('tenant_id')
-                        .eq('state_code', resolvedStateCode)
-                        .ilike('district', resolvedUserDistrict)
-                        .eq('is_active', true)
-                        .maybeSingle();
-
-                    if (primary?.tenant_id) {
-                        resolvedDealerId = primary.tenant_id;
-                    }
-                }
-
-                // Fallback 1: Primary dealer for the state (district = ALL)
-                if (!resolvedDealerId) {
-                    const { data: primaryState } = await supabase
-                        .from('id_primary_dealer_districts')
-                        .select('tenant_id')
-                        .eq('state_code', resolvedStateCode)
-                        .eq('district', 'ALL')
-                        .eq('is_active', true)
-                        .maybeSingle();
-                    if (primaryState?.tenant_id) {
-                        resolvedDealerId = primaryState.tenant_id;
-                    }
-                }
-
-                // Fallback 2: Primary dealer for the country (state = ALL, district = ALL)
-                if (!resolvedDealerId) {
-                    const { data: primaryCountry } = await supabase
-                        .from('id_primary_dealer_districts')
-                        .select('tenant_id')
-                        .eq('state_code', 'ALL')
-                        .eq('district', 'ALL')
-                        .eq('is_active', true)
-                        .maybeSingle();
-                    if (primaryCountry?.tenant_id) {
-                        resolvedDealerId = primaryCountry.tenant_id;
-                    }
-                }
-
-                // Fetch dealer info (studio_id, name) + align state code
+                // Fetch dealer info (studio_id, name, district)
                 if (resolvedDealerId) {
                     const { data: dealerInfo } = await supabase
                         .from('id_tenants')
                         .select('studio_id, name')
                         .eq('id', resolvedDealerId)
                         .single();
+                    resolvedStudioIdLocal = dealerInfo?.studio_id || null;
+                    resolvedDealerNameLocal = dealerInfo?.name || null;
                     setResolvedDealerIdState(resolvedDealerId);
-                    setResolvedStudioId(dealerInfo?.studio_id || null);
-                    setResolvedDealerName(dealerInfo?.name || null);
+                    setResolvedStudioId(resolvedStudioIdLocal);
+                    setResolvedDealerName(resolvedDealerNameLocal);
 
-                    // Align state code from dealer location
                     const { data: dealerLoc } = await supabase
                         .from('id_locations')
-                        .select('state, district')
+                        .select('district')
                         .eq('tenant_id', resolvedDealerId)
                         .eq('is_active', true)
                         .order('type', { ascending: false })
                         .limit(1)
                         .maybeSingle();
 
-                    if (dealerLoc?.state) {
-                        const stateName = dealerLoc.state.toUpperCase();
-                        const stateMap: Record<string, string> = { MAHARASHTRA: 'MH', KARNATAKA: 'KA', DELHI: 'DL' };
-                        const matchedCode = stateMap[stateName] || stateName.substring(0, 2);
-                        if (matchedCode !== resolvedStateCode) {
-                            resolvedStateCode = matchedCode;
-                        }
-                    }
                     if (dealerLoc?.district) {
                         resolvedDealerDistrict = dealerLoc.district;
                         if (!resolvedUserDistrict) {
                             resolvedUserDistrict = dealerLoc.district;
                         }
                     }
+                } else {
+                    setResolvedDealerIdState(null);
+                    setResolvedStudioId(null);
+                    setResolvedDealerName(null);
                 }
 
                 const hasValidDealer = Boolean(resolvedDealerId && isValidUuid(resolvedDealerId));
-
-                if (resolvedStateCode && hasValidDealer && !disableOffersRef.current) {
-                    try {
-                        const { data: dealerOffers, error: rpcError } = await (supabase.rpc as any)(
-                            'get_dealer_offers',
-                            {
-                                p_tenant_id: resolvedDealerId,
-                                p_state_code: resolvedStateCode,
-                            }
-                        );
-                        if (rpcError) {
-                            console.error('[CATALOG] RPC error:', rpcError.message, rpcError.details || null);
-                            disableOffersRef.current = true;
-                            offerData = [];
-                        } else {
-                            offerData = dealerOffers || [];
-                        }
-                    } catch (err: any) {
-                        console.error('[CATALOG] RPC error:', err?.message || err);
-                        disableOffersRef.current = true;
-                        offerData = [];
-                    }
-                }
-
-                if (offerData && Array.isArray(offerData) && offerData.length > 0) {
-                    const dealerIds = Array.from(
-                        new Set(offerData.map((o: any) => o?.dealer_id).filter((id: any) => isValidUuid(id)))
-                    );
-                    if (dealerIds.length > 0) {
-                        const { data: dealers } = await supabase
-                            .from('id_tenants')
-                            .select('id, location, studio_id, name') // Added name for debug
-                            .in('id', dealerIds);
-
-                        const dealerMap = (dealers || []).reduce(
-                            (acc: Record<string, { loc: string; code: string; name: string }>, dealer: any) => {
-                                if (dealer?.id) {
-                                    acc[dealer.id] = {
-                                        loc: dealer.location,
-                                        code: dealer.studio_id,
-                                        name: dealer.name,
-                                    };
-                                }
-                                return acc;
-                            },
-                            {}
-                        );
-
-                        // Update Debugger with Real Primary Dealer Context
-                        if (resolvedDealerId && dealerMap[resolvedDealerId]) {
-                            const activeDealer = dealerMap[resolvedDealerId];
-                            updateDebug({
-                                dealerId: resolvedDealerId,
-                                studioName: activeDealer.code
-                                    ? `${activeDealer.name} (${activeDealer.code})`
-                                    : activeDealer.name,
-                                marketOffersCount: offerData?.length || 0,
-                                pricingSource: 'PRIMARY_DEALER_RESOLVED',
-                            });
-                        }
-
-                        offerData = offerData.map((offer: any) => ({
-                            ...offer,
-                            dealer_location: dealerMap[offer.dealer_id]?.loc,
-                            studio_code: dealerMap[offer.dealer_id]?.code,
-                        }));
-                    }
-                }
 
                 if (catalogData && catalogData.length > 0) {
                     // Get User Location from LocalStorage for Client Side Distance Calc
@@ -364,9 +208,9 @@ export function useSystemCatalogLogic(leadId?: string) {
                                 `${resolvedUserDistrict || resolvedDealerDistrict || 'ALL'}, ${resolvedStateCode}`,
                             isEstimate: false,
                         },
-                        studioName: item.studioName || resolvedDealerName || undefined,
+                        studioName: item.studioName || resolvedDealerNameLocal || resolvedDealerName || undefined,
                         dealerId: item.dealerId || resolvedDealerId || undefined,
-                        studioCode: item.studioCode || resolvedStudioId || undefined,
+                        studioCode: item.studioCode || resolvedStudioIdLocal || resolvedStudioId || undefined,
                         dealerLocation:
                             item.dealerLocation || resolvedUserDistrict || resolvedDealerDistrict || undefined,
                     }));
@@ -379,6 +223,27 @@ export function useSystemCatalogLogic(leadId?: string) {
                             .filter(Boolean) as string[];
 
                         if (primarySkuIds.length > 0) {
+                            if (hasValidDealer && resolvedDealerId && !disableOffersRef.current) {
+                                try {
+                                    const dealerOffers = await getDealerOfferDeltasAction({
+                                        dealerId: resolvedDealerId,
+                                        stateCode: resolvedStateCode,
+                                        skuIds: primarySkuIds,
+                                    });
+                                    offerData = (dealerOffers || []).map((offer: any) => ({
+                                        ...offer,
+                                        dealer_id: resolvedDealerId,
+                                        dealer_name: resolvedDealerNameLocal || null,
+                                        dealer_location: resolvedDealerDistrict || resolvedUserDistrict || null,
+                                        studio_code: resolvedStudioIdLocal || null,
+                                    }));
+                                } catch (err: any) {
+                                    console.error('[CATALOG] SOT offer fetch error:', err?.message || err);
+                                    disableOffersRef.current = true;
+                                    offerData = [];
+                                }
+                            }
+
                             // Published SOT: Read directly from state pricing table (canonical)
                             const { data: priceRows, error: priceError } = await supabase
                                 .from('cat_price_state_mh')

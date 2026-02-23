@@ -19,8 +19,6 @@ const brunoAce = Bruno_Ace_SC({
     display: 'swap',
 });
 
-import { headers } from 'next/headers';
-
 export const metadata: Metadata = {
     title: 'BookMyBike - Buy Two-Wheelers Online',
     description:
@@ -43,16 +41,12 @@ import { Toaster } from 'sonner';
 const themeBootstrapScript = `
 (() => {
   try {
-    const saved = localStorage.getItem('theme');
-    const theme = saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const resolved = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
     const root = document.documentElement;
-    root.classList.remove('light');
     root.classList.remove('dark');
-    root.classList.add(resolved);
-    root.dataset.theme = theme;
-    root.style.colorScheme = resolved;
+    root.classList.add('light');
+    root.dataset.theme = 'light';
+    root.style.colorScheme = 'light';
+    localStorage.setItem('theme', 'light');
   } catch (_) {}
 })();
 `;

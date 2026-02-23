@@ -34,14 +34,14 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
 
     // Variant-based background and border styles
     const getBgClass = () => {
-        if (className.includes('header-transparent')) {
-            return 'bg-transparent border-transparent shadow-none';
+        if (className.includes('header-transparent') || (transparentAtTop && !scrolled)) {
+            return 'bg-transparent border-transparent shadow-none backdrop-blur-none';
         }
         if (variant === 'dashboard') {
-            return 'bg-white border-b border-slate-200/60 shadow-sm transition-all duration-300';
+            return 'bg-white/95 border-b border-slate-200/60 backdrop-blur-md shadow-sm transition-all duration-300';
         }
         if (className.includes('dark-theme')) {
-            return 'bg-[#0b0d10]/90 border-b border-white/10 backdrop-blur-md shadow-none transition-all duration-500';
+            return 'bg-white/90 border-b border-slate-200/60 backdrop-blur-md shadow-none transition-all duration-500';
         }
         return 'bg-white/70 border-b border-slate-200 backdrop-blur-md shadow-none transition-all duration-500';
     };

@@ -1,1109 +1,623 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { adminClient } from '@/lib/supabase/admin';
 import { getAuthUser } from '@/lib/auth/resolver';
 import { revalidatePath } from 'next/cache';
+import type {
+    CreateRequestInput,
+    AddDealerQuoteInput,
+    ReceiveStockInput,
+    InvRequestStatus,
+    InvStockStatus,
+} from '@/types/inventory';
 
 // =============================================================================
 // Types
 // =============================================================================
 
-export interface StockCheckResult {
-    sku_id: string;
-    available_qty: number;
-    required_qty: number;
-    shortage_qty: number;
-    has_shortage: boolean;
-}
-
-export interface CreateRequisitionInput {
-    tenant_id: string;
-    items: Array<{
-        sku_id: string;
-        qty: number;
-        notes?: string;
-    }>;
-    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-    request_branch_id?: string;
-    request_warehouse_id?: string;
-    delivery_branch_id?: string;
-    delivery_warehouse_id?: string;
-    customer_name?: string;
-}
-
-export interface CreateProcurementQuoteInput {
-    requisition_item_id: string;
-    supplier_id: string;
-    unit_cost: number;
-    tax_amount: number;
-    freight_amount: number;
-    lead_time_days?: number;
-    valid_till?: string;
-}
+type ActionResult<T = unknown> = {
+    success: boolean;
+    data?: T;
+    message?: string;
+};
 
 // =============================================================================
-// 1. Shortage Gate — Check Stock Availability
+// 1. CREATE REQUEST — Auto-fills request items from catalog baseline
 // =============================================================================
 
-/**
- * Counts AVAILABLE stock units for a given SKU owned by the tenant.
- * inv_stock has no branch_id column yet — this is a global (tenant-scoped) check.
- * Each inv_stock row = 1 physical unit (vehicles and accessories alike).
- */
-export async function checkStockAvailability(
-    sku_id: string,
-    required_qty: number,
-    tenant_id: string
-): Promise<StockCheckResult> {
-    const { count, error } = await adminClient
-        .from('inv_stock')
-        .select('id', { count: 'exact', head: true })
-        .eq('sku_id', sku_id)
-        .eq('current_owner_id', tenant_id)
-        .eq('status', 'AVAILABLE');
-
-    if (error) {
-        console.error('[checkStockAvailability] Error:', error);
-        // On error, assume no stock to be safe
-        return {
-            sku_id,
-            available_qty: 0,
-            required_qty,
-            shortage_qty: required_qty,
-            has_shortage: true,
-        };
-    }
-
-    const available_qty = count ?? 0;
-    const shortage_qty = Math.max(0, required_qty - available_qty);
-
-    return {
-        sku_id,
-        available_qty,
-        required_qty,
-        shortage_qty,
-        has_shortage: shortage_qty > 0,
-    };
-}
-
-// =============================================================================
-// 2. Direct Requisition Creation
-// =============================================================================
-
-export async function createDirectRequisition(
-    input: CreateRequisitionInput
-): Promise<{ success: boolean; data?: any; message?: string }> {
-    const user = await getAuthUser();
-    if (!user) return { success: false, message: 'Authentication required' };
-
-    if (!input.items || input.items.length === 0) {
-        return { success: false, message: 'At least one item is required.' };
-    }
-
+export async function createRequest(input: CreateRequestInput): Promise<ActionResult> {
     try {
-        // Create requisition header
-        const { data: requisition, error: reqErr } = await adminClient
-            .from('inv_requisitions')
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        // Create the request header
+        const { data: request, error: reqError } = await adminClient
+            .from('inv_requests')
             .insert({
                 tenant_id: input.tenant_id,
-                source_type: 'DIRECT',
-                status: 'SUBMITTED',
-                priority: input.priority || 'MEDIUM',
-                requested_by_user_id: user.id,
-                request_branch_id: input.request_branch_id || null,
-                request_warehouse_id: input.request_warehouse_id || null,
+                sku_id: input.sku_id,
+                booking_id: input.booking_id || null,
+                source_type: input.source_type || 'DIRECT',
+                status: 'QUOTING',
                 delivery_branch_id: input.delivery_branch_id || null,
-                delivery_warehouse_id: input.delivery_warehouse_id || null,
-                customer_name: input.customer_name || null,
-            })
-            .select()
-            .single();
-
-        if (reqErr) throw reqErr;
-
-        // Create requisition items
-        const itemRows = input.items.map(item => ({
-            requisition_id: requisition.id,
-            sku_id: item.sku_id,
-            quantity: item.qty,
-            notes: item.notes || null,
-            tenant_id: input.tenant_id,
-            status: 'OPEN',
-        }));
-
-        const { error: itemErr } = await adminClient.from('inv_requisition_items').insert(itemRows);
-
-        if (itemErr) throw itemErr;
-
-        revalidatePath('/dashboard/inventory/requisitions');
-        return { success: true, data: requisition };
-    } catch (err: any) {
-        console.error('[createDirectRequisition] Error:', err);
-        return { success: false, message: err.message || 'Failed to create requisition' };
-    }
-}
-
-// =============================================================================
-// 3. Booking Shortage Check — Auto-Create Requisition
-// =============================================================================
-
-/**
- * Called after booking creation. Checks stock for the booking's SKU and
- * auto-creates a BOOKING-sourced requisition if there's a shortage.
- *
- * Guard: will NOT create duplicate requisitions for the same booking.
- */
-export async function bookingShortageCheck(bookingId: string): Promise<{
-    success: boolean;
-    status: 'SUFFICIENT' | 'SHORTAGE_CREATED' | 'SKIPPED';
-    requisition_id?: string;
-    message?: string;
-}> {
-    try {
-        // 1. Fetch booking details
-        const { data: booking, error: bookErr } = await adminClient
-            .from('crm_bookings')
-            .select('id, sku_id, qty, delivery_branch_id, tenant_id')
-            .eq('id', bookingId)
-            .eq('is_deleted', false)
-            .single();
-
-        if (bookErr || !booking) {
-            return { success: false, status: 'SKIPPED', message: 'Booking not found' };
-        }
-
-        if (!booking.sku_id) {
-            return { success: true, status: 'SKIPPED', message: 'Booking has no sku_id — cannot check stock' };
-        }
-
-        if (!booking.tenant_id) {
-            return { success: false, status: 'SKIPPED', message: 'Booking has no tenant_id' };
-        }
-
-        // 2. No-duplicate guard
-        const { data: existingReq } = await adminClient
-            .from('inv_requisitions')
-            .select('id')
-            .eq('booking_id', bookingId)
-            .not('status', 'in', '("CANCELLED","FULFILLED")')
-            .limit(1)
-            .maybeSingle();
-
-        if (existingReq) {
-            return {
-                success: true,
-                status: 'SHORTAGE_CREATED',
-                requisition_id: existingReq.id,
-                message: 'Requisition already exists for this booking',
-            };
-        }
-
-        // 3. Check stock
-        const stockResult = await checkStockAvailability(booking.sku_id, booking.qty || 1, booking.tenant_id);
-
-        if (!stockResult.has_shortage) {
-            return { success: true, status: 'SUFFICIENT' };
-        }
-
-        // 4. Create requisition for shortage
-        const { data: requisition, error: reqErr } = await adminClient
-            .from('inv_requisitions')
-            .insert({
-                tenant_id: booking.tenant_id,
-                source_type: 'BOOKING',
-                booking_id: bookingId,
-                status: 'SUBMITTED',
-                priority: 'HIGH',
-                delivery_branch_id: booking.delivery_branch_id || null,
-            })
-            .select()
-            .single();
-
-        if (reqErr) throw reqErr;
-
-        // 5. Create requisition item for the shortage qty
-        const { error: itemErr } = await adminClient.from('inv_requisition_items').insert({
-            requisition_id: requisition.id,
-            sku_id: booking.sku_id,
-            quantity: stockResult.shortage_qty,
-            tenant_id: booking.tenant_id,
-            status: 'OPEN',
-            notes: `Auto-created from booking ${bookingId}`,
-        });
-
-        if (itemErr) throw itemErr;
-
-        revalidatePath('/dashboard/inventory/requisitions');
-        return {
-            success: true,
-            status: 'SHORTAGE_CREATED',
-            requisition_id: requisition.id,
-        };
-    } catch (err: any) {
-        console.error('[bookingShortageCheck] Error:', err);
-        return { success: false, status: 'SKIPPED', message: err.message };
-    }
-}
-
-// =============================================================================
-// 4. Procurement Quote — Create
-// =============================================================================
-
-export async function createProcurementQuote(
-    input: CreateProcurementQuoteInput,
-    tenant_id: string
-): Promise<{ success: boolean; data?: any; message?: string }> {
-    const user = await getAuthUser();
-    if (!user) return { success: false, message: 'Authentication required' };
-
-    // SKU existence guard: verify the requisition item's SKU is valid
-    try {
-        const { data: reqItem } = await adminClient
-            .from('inv_requisition_items')
-            .select('sku_id')
-            .eq('id', input.requisition_item_id)
-            .single();
-
-        if (!reqItem?.sku_id) {
-            return { success: false, message: 'Requisition item not found or missing SKU' };
-        }
-
-        const { count } = await adminClient
-            .from('cat_skus')
-            .select('id', { count: 'exact', head: true })
-            .eq('id', reqItem.sku_id);
-
-        if (!count || count === 0) {
-            return { success: false, message: `SKU ${reqItem.sku_id} does not exist in catalog — cannot quote` };
-        }
-    } catch (guardErr: any) {
-        console.error('[createProcurementQuote] SKU guard error:', guardErr);
-        return { success: false, message: 'Failed to validate SKU' };
-    }
-
-    const landed_cost = (input.unit_cost || 0) + (input.tax_amount || 0) + (input.freight_amount || 0);
-
-    try {
-        const { data: quote, error } = await adminClient
-            .from('inv_procurement_quotes')
-            .insert({
-                tenant_id,
-                requisition_item_id: input.requisition_item_id,
-                supplier_id: input.supplier_id,
-                unit_cost: input.unit_cost,
-                tax_amount: input.tax_amount,
-                freight_amount: input.freight_amount,
-                landed_cost,
-                lead_time_days: input.lead_time_days || null,
-                valid_till: input.valid_till || null,
-                quoted_by_user_id: user.id,
-                quoted_at: new Date().toISOString(),
-                status: 'SUBMITTED',
                 created_by: user.id,
             })
-            .select()
+            .select('id, display_id')
             .single();
 
-        if (error) throw error;
+        if (reqError || !request) {
+            return { success: false, message: reqError?.message || 'Failed to create request' };
+        }
 
-        return { success: true, data: quote };
-    } catch (err: any) {
-        console.error('[createProcurementQuote] Error:', err);
-        return { success: false, message: err.message };
+        // Insert cost component items
+        if (input.items.length > 0) {
+            const itemRows = input.items.map(item => ({
+                request_id: request.id,
+                cost_type: item.cost_type,
+                expected_amount: item.expected_amount,
+                description: item.description || null,
+            }));
+
+            const { error: itemsError } = await adminClient.from('inv_request_items').insert(itemRows);
+
+            if (itemsError) {
+                return { success: false, message: `Request created but items failed: ${itemsError.message}` };
+            }
+        }
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, data: request };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 
 // =============================================================================
-// 5. Procurement Quote — Select
+// 2. ADD DEALER QUOTE — Staff selects bundled items, enters lumpsum
 // =============================================================================
 
-export async function selectProcurementQuote(
-    quoteId: string,
-    selectionReason?: string
-): Promise<{ success: boolean; message?: string }> {
-    const user = await getAuthUser();
-    if (!user) return { success: false, message: 'Authentication required' };
-
+export async function addDealerQuote(input: AddDealerQuoteInput): Promise<ActionResult> {
     try {
-        // Fetch the quote to get requisition_item_id
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        // Calculate expected_total from the selected bundled_item_ids
+        const { data: items, error: itemsErr } = await adminClient
+            .from('inv_request_items')
+            .select('id, expected_amount')
+            .in('id', input.bundled_item_ids);
+
+        if (itemsErr || !items) {
+            return { success: false, message: 'Failed to fetch request items' };
+        }
+
+        const expectedTotal = items.reduce((sum, item) => sum + Number(item.expected_amount), 0);
+
+        const { data: quote, error: quoteErr } = await adminClient
+            .from('inv_dealer_quotes')
+            .insert({
+                request_id: input.request_id,
+                dealer_tenant_id: input.dealer_tenant_id,
+                quoted_by_user_id: user.id,
+                bundled_item_ids: input.bundled_item_ids,
+                bundled_amount: input.bundled_amount,
+                expected_total: expectedTotal,
+                transport_amount: input.transport_amount || 0,
+                freebie_description: input.freebie_description || null,
+                freebie_sku_id: input.freebie_sku_id || null,
+                status: 'SUBMITTED',
+            })
+            .select('id, variance_amount')
+            .single();
+
+        if (quoteErr || !quote) {
+            return { success: false, message: quoteErr?.message || 'Failed to create quote' };
+        }
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, data: quote };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 3. SELECT QUOTE — Marks one quote as SELECTED, rejects others, creates PO
+// =============================================================================
+
+export async function selectQuote(quoteId: string): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        // Fetch the winning quote
         const { data: quote, error: fetchErr } = await adminClient
-            .from('inv_procurement_quotes')
-            .select('id, requisition_item_id, landed_cost')
+            .from('inv_dealer_quotes')
+            .select('id, request_id, dealer_tenant_id, bundled_amount, transport_amount')
             .eq('id', quoteId)
             .single();
 
-        if (fetchErr || !quote) return { success: false, message: 'Quote not found' };
-
-        // Check if this is the cheapest quote — if not, require selection_reason
-        const { data: cheapest } = await adminClient
-            .from('inv_procurement_quotes')
-            .select('id, landed_cost')
-            .eq('requisition_item_id', quote.requisition_item_id as string)
-            .not('status', 'in', '("REJECTED","EXPIRED")')
-            .order('landed_cost', { ascending: true })
-            .limit(1)
-            .single();
-
-        if (cheapest && cheapest.id !== quoteId && !selectionReason) {
-            return {
-                success: false,
-                message: 'Selection reason required when not selecting the lowest landed cost quote.',
-            };
+        if (fetchErr || !quote) {
+            return { success: false, message: 'Quote not found' };
         }
 
-        // Deselect any previously selected quote for this item
+        const totalPoValue = Number(quote.bundled_amount) + Number(quote.transport_amount);
+
+        // Mark this quote as SELECTED
+        await adminClient.from('inv_dealer_quotes').update({ status: 'SELECTED' }).eq('id', quoteId);
+
+        // Reject all other quotes for the same request
         await adminClient
-            .from('inv_procurement_quotes')
-            .update({ status: 'SUBMITTED', updated_by: user.id, updated_at: new Date().toISOString() })
-            .eq('requisition_item_id', quote.requisition_item_id as string)
-            .eq('status', 'SELECTED');
+            .from('inv_dealer_quotes')
+            .update({ status: 'REJECTED' })
+            .eq('request_id', quote.request_id)
+            .neq('id', quoteId)
+            .eq('status', 'SUBMITTED');
 
-        // Select this quote
-        const { error: updateErr } = await adminClient
-            .from('inv_procurement_quotes')
-            .update({
-                status: 'SELECTED',
-                selection_reason: selectionReason || null,
-                updated_by: user.id,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', quoteId);
+        // Update request status to ORDERED
+        await adminClient
+            .from('inv_requests')
+            .update({ status: 'ORDERED', updated_at: new Date().toISOString() })
+            .eq('id', quote.request_id);
 
-        if (updateErr) throw updateErr;
-
-        return { success: true };
-    } catch (err: any) {
-        console.error('[selectProcurementQuote] Error:', err);
-        return { success: false, message: err.message };
-    }
-}
-
-// =============================================================================
-// 6. Requisition Status Transitions
-// =============================================================================
-
-const VALID_TRANSITIONS: Record<string, string[]> = {
-    DRAFT: ['SUBMITTED'],
-    SUBMITTED: ['IN_PROCUREMENT', 'CANCELLED'],
-    PENDING: ['SUBMITTED', 'IN_PROCUREMENT', 'CANCELLED'], // legacy compat
-    IN_PROCUREMENT: ['FULFILLED', 'CANCELLED'],
-};
-
-export async function updateRequisitionStatus(
-    requisitionId: string,
-    newStatus: string,
-    reason?: string
-): Promise<{ success: boolean; message?: string }> {
-    const user = await getAuthUser();
-    if (!user) return { success: false, message: 'Authentication required' };
-
-    try {
-        const { data: req, error: fetchErr } = await adminClient
-            .from('inv_requisitions')
-            .select('id, status, booking_id')
-            .eq('id', requisitionId)
-            .single();
-
-        if (fetchErr || !req) return { success: false, message: 'Requisition not found' };
-
-        const allowed = VALID_TRANSITIONS[req.status as keyof typeof VALID_TRANSITIONS] || [];
-        if (!allowed.includes(newStatus)) {
-            return {
-                success: false,
-                message: `Cannot transition from ${req.status} to ${newStatus}. Allowed: ${allowed.join(', ')}.`,
-            };
-        }
-
-        const { error: updateErr } = await adminClient
-            .from('inv_requisitions')
-            .update({
-                status: newStatus,
-                updated_by: user.id,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', requisitionId);
-
-        if (updateErr) throw updateErr;
-
-        revalidatePath('/dashboard/inventory/requisitions');
-        return { success: true };
-    } catch (err: any) {
-        console.error('[updateRequisitionStatus] Error:', err);
-        return { success: false, message: err.message };
-    }
-}
-
-// =============================================================================
-// 7. Data Fetching — Requisitions List
-// =============================================================================
-
-export async function getRequisitions(tenantId: string) {
-    const { data, error } = await adminClient
-        .from('inv_requisitions')
-        .select(
-            `
-            *,
-            items:inv_requisition_items (
-                id, sku_id, quantity, notes, status
-            )
-        `
-        )
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        console.error('[getRequisitions] Error:', error);
-        return [];
-    }
-
-    return data || [];
-}
-
-// =============================================================================
-// 8. Data Fetching — Requisition Detail
-// =============================================================================
-
-export async function getRequisitionById(requisitionId: string) {
-    const { data, error } = await adminClient
-        .from('inv_requisitions')
-        .select(
-            `
-            *,
-            items:inv_requisition_items (
-                id, sku_id, quantity, notes, status,
-                quotes:inv_procurement_quotes (
-                    id, supplier_id, unit_cost, tax_amount, freight_amount,
-                    landed_cost, lead_time_days, valid_till, status,
-                    selection_reason, quoted_at
-                )
-            )
-        `
-        )
-        .eq('id', requisitionId)
-        .single();
-
-    if (error) {
-        console.error('[getRequisitionById] Error:', error);
-        return null;
-    }
-
-    return data;
-}
-
-// =============================================================================
-// 9. Data Fetching — Suppliers (Tenants)
-// =============================================================================
-
-export async function getSupplierTenants() {
-    const { data, error } = await adminClient.from('id_tenants').select('id, name').order('name');
-
-    if (error) {
-        console.error('[getSupplierTenants] Error:', error);
-        return [];
-    }
-
-    return data || [];
-}
-
-// =============================================================================
-// PHASE C: PURCHASE ORDERS
-// =============================================================================
-
-export interface CreatePurchaseOrderInput {
-    tenant_id: string;
-    requisition_id?: string;
-    vendor_name: string;
-    transporter_name?: string;
-    transporter_contact?: string;
-    docket_number?: string;
-    expected_date?: string;
-    delivery_branch_id?: string;
-    delivery_warehouse_id?: string;
-    items: Array<{
-        sku_id: string;
-        ordered_qty: number;
-        unit_cost?: number;
-        requisition_item_id?: string;
-    }>;
-}
-
-// 10. Create Purchase Order
-export async function createPurchaseOrder(
-    input: CreatePurchaseOrderInput
-): Promise<{ success: boolean; data?: any; message?: string }> {
-    const user = await getAuthUser();
-    if (!user) return { success: false, message: 'Authentication required' };
-
-    if (!input.items || input.items.length === 0) {
-        return { success: false, message: 'At least one item is required.' };
-    }
-
-    try {
-        const orderNumber = `PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-        // Create PO header — use 'ORDERED' (valid po_status enum value)
+        // Create the Purchase Order
         const { data: po, error: poErr } = await adminClient
             .from('inv_purchase_orders')
             .insert({
-                tenant_id: input.tenant_id,
-                order_number: orderNumber,
-                status: 'ORDERED',
-                requisition_id: input.requisition_id || null,
-                vendor_name: input.vendor_name,
-                transporter_name: input.transporter_name || null,
-                transporter_contact: input.transporter_contact || null,
-                docket_number: input.docket_number || null,
-                expected_date: input.expected_date || null,
-                delivery_branch_id: input.delivery_branch_id || null,
-                delivery_warehouse_id: input.delivery_warehouse_id || null,
+                request_id: quote.request_id,
+                quote_id: quoteId,
+                dealer_tenant_id: quote.dealer_tenant_id,
+                total_po_value: totalPoValue,
+                payment_status: 'UNPAID',
+                po_status: 'DRAFT',
                 created_by: user.id,
             })
-            .select()
+            .select('id, display_id')
             .single();
 
-        if (poErr) throw poErr;
-
-        // Create PO items
-        const poItems = input.items.map(item => ({
-            po_id: po.id,
-            purchase_order_id: po.id,
-            sku_id: item.sku_id,
-            ordered_qty: item.ordered_qty,
-            unit_cost: item.unit_cost || null,
-            requisition_item_id: item.requisition_item_id || null,
-            tenant_id: input.tenant_id,
-            status: 'ORDERED',
-            created_by: user.id,
-        }));
-
-        const { error: itemErr } = await adminClient.from('inv_purchase_order_items').insert(poItems);
-        if (itemErr) throw itemErr;
-
-        // Transition linked requisition to IN_PROCUREMENT
-        if (input.requisition_id) {
-            await adminClient
-                .from('inv_requisitions')
-                .update({ status: 'IN_PROCUREMENT', updated_by: user.id, updated_at: new Date().toISOString() })
-                .eq('id', input.requisition_id);
+        if (poErr || !po) {
+            return { success: false, message: poErr?.message || 'Failed to create PO' };
         }
 
-        revalidatePath('/dashboard/inventory/orders');
-        revalidatePath('/dashboard/inventory/requisitions');
-        return { success: true, data: po };
-    } catch (err: any) {
-        console.error('[createPurchaseOrder] Error:', err);
-        return { success: false, message: err.message };
+        revalidatePath('/dashboard/inventory');
+        return { success: true, data: po, message: `PO ${po.display_id} created` };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
     }
-}
-
-// 11. Get Purchase Orders List
-export async function getPurchaseOrders(tenantId: string) {
-    const { data, error } = await adminClient
-        .from('inv_purchase_orders')
-        .select(
-            `
-            *,
-            items:inv_purchase_order_items (
-                id, sku_id, ordered_qty, received_qty, unit_cost, status
-            )
-        `
-        )
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        console.error('[getPurchaseOrders] Error:', error);
-        return [];
-    }
-    return data || [];
-}
-
-// 12. Get PO Detail
-export async function getPurchaseOrderById(poId: string) {
-    const { data, error } = await adminClient
-        .from('inv_purchase_orders')
-        .select(
-            `
-            *,
-            items:inv_purchase_order_items (
-                id, sku_id, ordered_qty, received_qty, unit_cost, status, requisition_item_id
-            ),
-            grns:inv_grn (
-                id, status, created_at,
-                items:inv_grn_items (
-                    id, sku_id, received, accepted, rejected,
-                    vehicle_details:inv_grn_vehicle_details (
-                        id, chassis_number, engine_number, key_number, manufacturing_date
-                    )
-                )
-            )
-        `
-        )
-        .eq('id', poId)
-        .single();
-
-    if (error) {
-        console.error('[getPurchaseOrderById] Error:', error);
-        return null;
-    }
-    return data;
 }
 
 // =============================================================================
-// PHASE C: GOODS RECEIPT NOTE (GRN)
+// 4. RECORD PAYMENT — Links advance/full payment to a PO
 // =============================================================================
 
-export interface GRNVehicleDetail {
-    chassis_number: string;
-    engine_number: string;
-    key_number?: string;
-    manufacturing_date?: string;
-    battery_brand?: string;
-    battery_number?: string;
-    tyre_make?: string;
-}
-
-export interface CreateGRNInput {
-    tenant_id: string;
-    purchase_order_id: string;
-    delivery_challan_id?: string;
-    delivery_branch_id?: string;
-    delivery_warehouse_id?: string;
-    items: Array<{
-        purchase_order_item_id: string;
-        sku_id: string;
-        received: number;
-        accepted: number;
-        rejected: number;
-        vehicles: GRNVehicleDetail[];
-    }>;
-}
-
-// 13. Create GRN (Draft)
-export async function createGRN(input: CreateGRNInput): Promise<{ success: boolean; data?: any; message?: string }> {
-    const user = await getAuthUser();
-    if (!user) return { success: false, message: 'Authentication required' };
-
+export async function recordPoPayment(poId: string, amountPaid: number, transactionId?: string): Promise<ActionResult> {
     try {
-        // Create GRN header
-        const { data: grn, error: grnErr } = await adminClient
-            .from('inv_grn')
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        // Insert the payment record
+        const { error: payErr } = await adminClient.from('inv_po_payments').insert({
+            po_id: poId,
+            amount_paid: amountPaid,
+            transaction_id: transactionId || null,
+            created_by: user.id,
+        });
+
+        if (payErr) {
+            return { success: false, message: payErr.message };
+        }
+
+        // Calculate total paid so far
+        const { data: payments, error: sumErr } = await adminClient
+            .from('inv_po_payments')
+            .select('amount_paid')
+            .eq('po_id', poId);
+
+        if (sumErr || !payments) {
+            return { success: false, message: 'Payment recorded but status update failed' };
+        }
+
+        const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount_paid), 0);
+
+        // Get PO total to determine payment status
+        const { data: po } = await adminClient
+            .from('inv_purchase_orders')
+            .select('total_po_value')
+            .eq('id', poId)
+            .single();
+
+        if (po) {
+            const newStatus = totalPaid >= Number(po.total_po_value) ? 'FULLY_PAID' : 'PARTIAL_PAID';
+            await adminClient
+                .from('inv_purchase_orders')
+                .update({ payment_status: newStatus, updated_at: new Date().toISOString() })
+                .eq('id', poId);
+        }
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, message: `₹${amountPaid} recorded against PO` };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 5. RECEIVE STOCK — Creates physical stock unit with mandatory QC media
+// =============================================================================
+
+export async function receiveStock(input: ReceiveStockInput): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        // Create the stock unit
+        const { data: stock, error: stockErr } = await adminClient
+            .from('inv_stock')
             .insert({
                 tenant_id: input.tenant_id,
-                purchase_order_id: input.purchase_order_id,
-                delivery_challan_id: input.delivery_challan_id || null,
-                delivery_branch_id: input.delivery_branch_id || null,
-                delivery_warehouse_id: input.delivery_warehouse_id || null,
-                status: 'DRAFT',
-                created_by: user.id,
+                po_id: input.po_id,
+                sku_id: input.sku_id,
+                branch_id: input.branch_id,
+                chassis_number: input.chassis_number,
+                engine_number: input.engine_number,
+                battery_make: input.battery_make || null,
+                media_chassis_url: input.media_chassis_url,
+                media_engine_url: input.media_engine_url,
+                media_sticker_url: input.media_sticker_url || null,
+                media_qc_video_url: input.media_qc_video_url,
+                qc_status: 'PASSED',
+                qc_notes: input.qc_notes || null,
+                status: 'AVAILABLE',
+                is_shared: false,
             })
-            .select()
+            .select('id, chassis_number')
             .single();
 
-        if (grnErr) throw grnErr;
-
-        // Create GRN items
-        for (const item of input.items) {
-            const { data: grnItem, error: itemErr } = await adminClient
-                .from('inv_grn_items')
-                .insert({
-                    grn_id: grn.id,
-                    purchase_order_item_id: item.purchase_order_item_id,
-                    sku_id: item.sku_id,
-                    received: item.received,
-                    accepted: item.accepted,
-                    rejected: item.rejected,
-                    tenant_id: input.tenant_id,
-                    created_by: user.id,
-                })
-                .select()
-                .single();
-
-            if (itemErr) throw itemErr;
-
-            // Insert vehicle details for each accepted unit
-            if (item.vehicles && item.vehicles.length > 0) {
-                const vehicleRows = item.vehicles.map(v => ({
-                    grn_item_id: grnItem.id,
-                    chassis_number: v.chassis_number,
-                    engine_number: v.engine_number,
-                    key_number: v.key_number || null,
-                    manufacturing_date: v.manufacturing_date || null,
-                    battery_brand: v.battery_brand || null,
-                    battery_number: v.battery_number || null,
-                    tyre_make: v.tyre_make || null,
-                }));
-
-                const { error: vehErr } = await adminClient.from('inv_grn_vehicle_details').insert(vehicleRows);
-
-                if (vehErr) throw vehErr;
-            }
+        if (stockErr || !stock) {
+            return { success: false, message: stockErr?.message || 'Failed to create stock' };
         }
 
-        return { success: true, data: grn };
-    } catch (err: any) {
-        console.error('[createGRN] Error:', err);
-        return { success: false, message: err.message };
-    }
-}
+        // Write ledger entry
+        await adminClient.from('inv_stock_ledger').insert({
+            stock_id: stock.id,
+            action: 'RECEIVED',
+            actor_tenant_id: input.tenant_id,
+            actor_user_id: user.id,
+            notes: `Received chassis ${input.chassis_number}`,
+        });
 
-// 14. Confirm GRN — posts stock
-export async function confirmGRN(
-    grnId: string
-): Promise<{ success: boolean; message?: string; stock_posted?: number }> {
-    const user = await getAuthUser();
-    if (!user) return { success: false, message: 'Authentication required' };
+        // QC passed ledger entry
+        await adminClient.from('inv_stock_ledger').insert({
+            stock_id: stock.id,
+            action: 'QC_PASSED',
+            actor_tenant_id: input.tenant_id,
+            actor_user_id: user.id,
+        });
 
-    try {
-        // Fetch GRN with items and vehicle details
-        const { data: grn, error: fetchErr } = await adminClient
-            .from('inv_grn')
-            .select(
-                `
-                *,
-                items:inv_grn_items (
-                    id, purchase_order_item_id, sku_id, received, accepted, rejected,
-                    vehicle_details:inv_grn_vehicle_details (
-                        id, chassis_number, engine_number, key_number, manufacturing_date,
-                        battery_brand, battery_number, tyre_make
-                    )
-                )
-            `
-            )
-            .eq('id', grnId)
-            .single();
-
-        if (fetchErr || !grn) return { success: false, message: 'GRN not found' };
-
-        if (grn.status === 'CONFIRMED') {
-            return { success: false, message: 'GRN already confirmed' };
-        }
-
-        let totalStockPosted = 0;
-
-        for (const item of grn.items) {
-            // 1. Update PO item received_qty
-            if (item.purchase_order_item_id) {
-                const { data: poItem } = await adminClient
-                    .from('inv_purchase_order_items')
-                    .select('received_qty')
-                    .eq('id', item.purchase_order_item_id)
-                    .single();
-
-                const newReceivedQty = (poItem?.received_qty || 0) + item.accepted;
-
-                await adminClient
-                    .from('inv_purchase_order_items')
-                    .update({
-                        received_qty: newReceivedQty,
-                        status: 'RECEIVED',
-                        updated_by: user.id,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq('id', item.purchase_order_item_id);
-            }
-
-            // 2. Post stock — 1 inv_stock row per vehicle
-            for (const vehicle of item.vehicle_details || []) {
-                const { error: stockErr } = await (adminClient as any).from('inv_stock').insert({
-                    sku_id: item.sku_id,
-                    chassis_number: vehicle.chassis_number,
-                    engine_number: vehicle.engine_number,
-                    status: 'AVAILABLE',
-                    current_owner_id: grn.tenant_id,
-                });
-
-                if (stockErr) {
-                    console.error('[confirmGRN] Stock insert error:', stockErr);
-                    continue; // Don't fail entire GRN for one stock error
-                }
-                totalStockPosted++;
-            }
-
-            // 3. Ledger entry
-            if (item.accepted > 0) {
-                const branchId =
-                    grn.delivery_branch_id || grn.request_branch_id || '00000000-0000-0000-0000-000000000000';
-                await (adminClient as any).from('inv_stock_ledger').insert({
-                    tenant_id: grn.tenant_id,
-                    sku_id: item.sku_id,
-                    branch_id: branchId,
-                    qty_delta: item.accepted,
-                    balance_after: item.accepted, // Simplified — real balance needs aggregate
-                    reason_code: 'GRN_INWARD',
-                    ref_type: 'GRN',
-                    ref_id: grn.id,
-                    created_by: user.id,
-                });
-            }
-        }
-
-        // 4. Mark GRN confirmed
+        // Update PO status to RECEIVED
         await adminClient
-            .from('inv_grn')
-            .update({ status: 'CONFIRMED', updated_by: user.id, updated_at: new Date().toISOString() })
-            .eq('id', grnId);
+            .from('inv_purchase_orders')
+            .update({ po_status: 'RECEIVED', updated_at: new Date().toISOString() })
+            .eq('id', input.po_id);
 
-        // 5. Check if PO is fully received → auto-complete
-        if (grn.purchase_order_id) {
-            const { data: poItems } = await adminClient
-                .from('inv_purchase_order_items')
-                .select('ordered_qty, received_qty')
-                .eq('po_id', grn.purchase_order_id);
+        // Update request status to RECEIVED
+        const { data: po } = await adminClient
+            .from('inv_purchase_orders')
+            .select('request_id')
+            .eq('id', input.po_id)
+            .single();
 
-            if (poItems) {
-                const allReceived = poItems.every((i: any) => (i.received_qty || 0) >= i.ordered_qty);
-                const someReceived = poItems.some((i: any) => (i.received_qty || 0) > 0);
-
-                const newPoStatus = allReceived ? 'COMPLETED' : someReceived ? 'PARTIALLY_RECEIVED' : 'ORDERED';
-
-                await adminClient
-                    .from('inv_purchase_orders')
-                    .update({ status: newPoStatus, updated_by: user.id, updated_at: new Date().toISOString() })
-                    .eq('id', grn.purchase_order_id);
-
-                // 6. If PO completed and linked to requisition → auto-fulfill
-                if (allReceived) {
-                    const { data: po } = await adminClient
-                        .from('inv_purchase_orders')
-                        .select('requisition_id')
-                        .eq('id', grn.purchase_order_id)
-                        .single();
-
-                    if (po?.requisition_id) {
-                        await adminClient
-                            .from('inv_requisitions')
-                            .update({
-                                status: 'FULFILLED',
-                                updated_by: user.id,
-                                updated_at: new Date().toISOString(),
-                            })
-                            .eq('id', po.requisition_id);
-                    }
-                }
-            }
+        if (po) {
+            await adminClient
+                .from('inv_requests')
+                .update({ status: 'RECEIVED', updated_at: new Date().toISOString() })
+                .eq('id', po.request_id);
         }
 
-        revalidatePath('/dashboard/inventory/orders');
-        revalidatePath('/dashboard/inventory/requisitions');
-        revalidatePath('/dashboard/inventory/stock');
-
-        return { success: true, stock_posted: totalStockPosted };
-    } catch (err: any) {
-        console.error('[confirmGRN] Error:', err);
-        return { success: false, message: err.message };
+        revalidatePath('/dashboard/inventory');
+        return { success: true, data: stock, message: `Stock ${stock.chassis_number} received` };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 
 // =============================================================================
-// PHASE D: STOCK VISIBILITY
+// 6. STOCK VISIBILITY — Cross-tenant stock query
 // =============================================================================
 
-// 15. Get Stock List
-export async function getStock(tenantId: string, filters?: { status?: string }) {
-    let query = adminClient
-        .from('inv_stock')
-        .select('*')
-        .eq('current_owner_id', tenantId)
-        .order('created_at', { ascending: false });
-
-    if (filters?.status && filters.status !== 'ALL') {
-        query = query.eq('status', filters.status as any);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-        console.error('[getStock] Error:', error);
-        return [];
-    }
-
-    // Resolve SKU names from cat_skus
-    const skuIds = (data || []).map(s => s.sku_id).filter(Boolean);
-    let skuMap: Record<string, string> = {};
-    if (skuIds.length > 0) {
-        const uniqueSkuIds = [...new Set(skuIds)];
-        const { data: skus } = await adminClient.from('cat_skus').select('id, sku_code').in('id', uniqueSkuIds);
-        if (skus) {
-            skus.forEach(s => {
-                skuMap[s.id] = s.sku_code || s.id.slice(0, 8);
-            });
-        }
-    }
-
-    return (data || []).map(item => ({
-        ...item,
-        sku_name: skuMap[item.sku_id] || item.sku_id?.slice(0, 12) || 'Unknown',
-    }));
-}
-
-// 16. Get Stock Detail
-export async function getStockById(stockId: string) {
-    const { data: stock, error } = await adminClient.from('inv_stock').select('*').eq('id', stockId).single();
-
-    if (error) {
-        console.error('[getStockById] Error:', error);
-        return null;
-    }
-
-    // Resolve SKU name
-    let skuName = stock.sku_id?.slice(0, 12) || 'Unknown';
-    if (stock.sku_id) {
-        const { data: sku } = await adminClient.from('cat_skus').select('sku_code').eq('id', stock.sku_id).single();
-        if (sku) skuName = sku.sku_code || skuName;
-    }
-
-    // Fetch ledger entries for this SKU + owner
-    const { data: ledger } = await (adminClient as any)
-        .from('inv_stock_ledger')
-        .select('*')
-        .eq('sku_id', stock.sku_id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-    return {
-        ...stock,
-        sku_name: skuName,
-        ledger: ledger || [],
-    };
-}
-
-// 17. Update Stock Status
-const STOCK_TRANSITIONS: Record<string, string[]> = {
-    IN_TRANSIT: ['AVAILABLE', 'DAMAGED'],
-    AVAILABLE: ['RESERVED', 'SOLD', 'DAMAGED', 'IN_TRANSIT'],
-    RESERVED: ['AVAILABLE', 'SOLD', 'DAMAGED'],
-    SOLD: [], // terminal
-    DAMAGED: ['AVAILABLE'], // can be repaired
-};
-
-export async function updateStockStatus(
-    stockId: string,
-    newStatus: string
-): Promise<{ success: boolean; message?: string }> {
-    const user = await getAuthUser();
-    if (!user) return { success: false, message: 'Authentication required' };
-
+export async function getAvailableStock(
+    tenantId: string,
+    filters?: { sku_id?: string; include_shared?: boolean }
+): Promise<ActionResult> {
     try {
+        let query = adminClient.from('inv_stock').select('*').in('status', ['AVAILABLE', 'SOFT_LOCKED']);
+
+        if (filters?.include_shared) {
+            // Cross-tenant: own stock + shared stock from other tenants
+            query = query.or(`tenant_id.eq.${tenantId},is_shared.eq.true`);
+        } else {
+            query = query.eq('tenant_id', tenantId);
+        }
+
+        if (filters?.sku_id) {
+            query = query.eq('sku_id', filters.sku_id);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+
+        if (error) return { success: false, message: error.message };
+        return { success: true, data };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 7. TOGGLE STOCK SHARING — Make stock visible to other tenants
+// =============================================================================
+
+export async function toggleStockSharing(stockId: string, isShared: boolean): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        const { error } = await adminClient
+            .from('inv_stock')
+            .update({ is_shared: isShared, updated_at: new Date().toISOString() })
+            .eq('id', stockId);
+
+        if (error) return { success: false, message: error.message };
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, message: isShared ? 'Stock shared across tenants' : 'Stock unshared' };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 8. SOFT LOCK — Another tenant locks a shared stock unit
+// =============================================================================
+
+export async function softLockStock(stockId: string, lockingTenantId: string): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        // Verify the stock is AVAILABLE and shared (or owned by locking tenant)
         const { data: stock, error: fetchErr } = await adminClient
             .from('inv_stock')
-            .select('id, status, sku_id, current_owner_id')
+            .select('id, status, tenant_id, is_shared')
             .eq('id', stockId)
             .single();
 
-        if (fetchErr || !stock) return { success: false, message: 'Stock item not found' };
-
-        const allowed = STOCK_TRANSITIONS[stock.status as keyof typeof STOCK_TRANSITIONS] || [];
-        if (!allowed.includes(newStatus)) {
-            return {
-                success: false,
-                message: `Cannot transition from ${stock.status} to ${newStatus}`,
-            };
+        if (fetchErr || !stock) return { success: false, message: 'Stock not found' };
+        if (stock.status !== 'AVAILABLE') return { success: false, message: `Cannot lock: status is ${stock.status}` };
+        if (stock.tenant_id !== lockingTenantId && !stock.is_shared) {
+            return { success: false, message: 'Stock is not shared — cannot lock from another tenant' };
         }
 
         const { error: updateErr } = await adminClient
             .from('inv_stock')
             .update({
-                status: newStatus as any,
+                status: 'SOFT_LOCKED',
+                locked_by_tenant_id: lockingTenantId,
+                locked_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             })
             .eq('id', stockId);
 
-        if (updateErr) throw updateErr;
+        if (updateErr) return { success: false, message: updateErr.message };
 
-        // Ledger entry for status change
-        await (adminClient as any).from('inv_stock_ledger').insert({
-            sku_id: stock.sku_id,
-            branch_id: '00000000-0000-0000-0000-000000000000',
-            qty_delta: newStatus === 'SOLD' ? -1 : 0,
-            balance_after: 0, // simplified
-            reason_code: `STATUS_${newStatus}`,
-            ref_type: 'STOCK_STATUS',
-            ref_id: stockId,
-            created_by: user.id,
+        // Ledger
+        await adminClient.from('inv_stock_ledger').insert({
+            stock_id: stockId,
+            action: 'SOFT_LOCKED',
+            actor_tenant_id: lockingTenantId,
+            actor_user_id: user.id,
         });
 
-        revalidatePath('/dashboard/inventory/stock');
-        return { success: true };
-    } catch (err: any) {
-        console.error('[updateStockStatus] Error:', err);
-        return { success: false, message: err.message };
+        revalidatePath('/dashboard/inventory');
+        return { success: true, message: 'Stock soft-locked' };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 
 // =============================================================================
-// PHASE E: LEDGER RECONCILIATION
+// 9. UNLOCK STOCK — Release a soft/hard lock
 // =============================================================================
 
-// 18. Reconcile Stock vs Ledger
-// NOTE: Currently tenant+SKU scoped only. inv_stock lacks branch_id,
-// so branch-level reconciliation requires future schema expansion.
-export async function reconcileStockLedger(tenantId: string) {
+export async function unlockStock(stockId: string): Promise<ActionResult> {
     try {
-        // 1. Count AVAILABLE stock per SKU from inv_stock
-        const { data: stockRows, error: stockErr } = await adminClient
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        const { error } = await adminClient
             .from('inv_stock')
-            .select('sku_id')
-            .eq('current_owner_id', tenantId)
-            .eq('status', 'AVAILABLE');
+            .update({
+                status: 'AVAILABLE',
+                locked_by_tenant_id: null,
+                locked_at: null,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', stockId);
 
-        if (stockErr) throw stockErr;
+        if (error) return { success: false, message: error.message };
 
-        const stockCounts: Record<string, number> = {};
-        (stockRows || []).forEach(row => {
-            stockCounts[row.sku_id] = (stockCounts[row.sku_id] || 0) + 1;
+        await adminClient.from('inv_stock_ledger').insert({
+            stock_id: stockId,
+            action: 'UNLOCKED',
+            actor_user_id: user.id,
         });
 
-        // 2. Get latest ledger balance_after per SKU
-        const skuIds = Object.keys(stockCounts);
-        const ledgerBalances: Record<string, number> = {};
+        revalidatePath('/dashboard/inventory');
+        return { success: true, message: 'Stock unlocked' };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
 
-        for (const skuId of skuIds) {
-            const { data: latest } = await (adminClient as any)
-                .from('inv_stock_ledger')
-                .select('balance_after')
-                .eq('sku_id', skuId)
-                .eq('tenant_id', tenantId)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+// =============================================================================
+// 10. DATA FETCHING — Requests Pipeline
+// =============================================================================
 
-            if (latest) {
-                ledgerBalances[skuId] = latest.balance_after;
-            }
-        }
+export async function getRequests(tenantId: string): Promise<ActionResult> {
+    try {
+        const { data, error } = await adminClient
+            .from('inv_requests')
+            .select('*, inv_request_items(*), inv_dealer_quotes(*)')
+            .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: false });
 
-        // 3. Compare and find mismatches
-        const mismatches: Array<{
-            sku_id: string;
-            stock_count: number;
-            ledger_balance: number | null;
-            drift: number;
-        }> = [];
+        if (error) return { success: false, message: error.message };
+        return { success: true, data };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
 
-        for (const skuId of skuIds) {
-            const stockCount = stockCounts[skuId] || 0;
-            const ledgerBalance = ledgerBalances[skuId] ?? null;
+// =============================================================================
+// 11. DATA FETCHING — Request Detail
+// =============================================================================
 
-            if (ledgerBalance !== null && stockCount !== ledgerBalance) {
-                mismatches.push({
-                    sku_id: skuId,
-                    stock_count: stockCount,
-                    ledger_balance: ledgerBalance,
-                    drift: stockCount - ledgerBalance,
-                });
-            }
-        }
+export async function getRequestById(requestId: string): Promise<ActionResult> {
+    try {
+        const { data, error } = await adminClient
+            .from('inv_requests')
+            .select(
+                `
+                *,
+                inv_request_items(*),
+                inv_dealer_quotes(*, id_tenants:dealer_tenant_id(name, slug)),
+                inv_purchase_orders(*, inv_po_payments(*))
+            `
+            )
+            .eq('id', requestId)
+            .single();
+
+        if (error) return { success: false, message: error.message };
+        return { success: true, data };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 12. DATA FETCHING — Stock with Ledger
+// =============================================================================
+
+export async function getStockById(stockId: string): Promise<ActionResult> {
+    try {
+        const { data, error } = await adminClient
+            .from('inv_stock')
+            .select('*, inv_stock_ledger(*)')
+            .eq('id', stockId)
+            .single();
+
+        if (error) return { success: false, message: error.message };
+        return { success: true, data };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 13. DATA FETCHING — Supplier Tenants
+// =============================================================================
+
+export async function getSupplierTenants(): Promise<ActionResult> {
+    try {
+        const { data, error } = await adminClient
+            .from('id_tenants')
+            .select('id, name, slug, type')
+            .eq('status', 'ACTIVE')
+            .order('name');
+
+        if (error) return { success: false, message: error.message };
+        return { success: true, data };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 14. STOCK CHECK — For booking shortage gate
+// =============================================================================
+
+export async function checkStockAvailability(
+    skuId: string,
+    tenantId: string,
+    requiredQty: number = 1
+): Promise<ActionResult<{ available: number; shortage: number; has_shortage: boolean }>> {
+    try {
+        const { data, error } = await adminClient
+            .from('inv_stock')
+            .select('id')
+            .eq('sku_id', skuId)
+            .eq('status', 'AVAILABLE')
+            .or(`tenant_id.eq.${tenantId},and(is_shared.eq.true,locked_by_tenant_id.is.null)`);
+
+        if (error) return { success: false, message: error.message };
+
+        const available = data?.length || 0;
+        const shortage = Math.max(0, requiredQty - available);
 
         return {
             success: true,
-            total_skus_checked: skuIds.length,
-            mismatches,
-            is_clean: mismatches.length === 0,
+            data: { available, shortage, has_shortage: shortage > 0 },
         };
-    } catch (err: any) {
-        console.error('[reconcileStockLedger] Error:', err);
-        return { success: false, message: err.message, mismatches: [], is_clean: false };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+/**
+ * INV-004: Non-blocking shortage check — auto-creates request if needed.
+ * This is called during booking creation.
+ */
+export async function bookingShortageCheck(bookingId: string) {
+    try {
+        // 1. Fetch booking details to get SKU and Tenant
+        const { data: booking, error: fetchErr } = await adminClient
+            .from('crm_bookings')
+            .select('sku_id, tenant_id, delivery_branch_id')
+            .eq('id', bookingId)
+            .single();
+
+        if (fetchErr || !booking || !booking.sku_id) {
+            return { status: 'ERROR', message: fetchErr?.message || 'Booking or SKU not found' };
+        }
+
+        // 2. Check availability
+        const { data: stockAvail } = await checkStockAvailability(booking.sku_id, booking.tenant_id as string, 1);
+
+        if (stockAvail && !stockAvail.has_shortage) {
+            return { status: 'OK', available: stockAvail.available };
+        }
+
+        // 3. Create Procurement Request if shortage exists
+        const requestInput: CreateRequestInput = {
+            tenant_id: booking.tenant_id as string,
+            sku_id: booking.sku_id as string,
+            booking_id: bookingId,
+            source_type: 'BOOKING',
+            delivery_branch_id: booking.delivery_branch_id || undefined,
+            items: [], // Will be filled by createRequest logic from catalog baseline if implemented there, or empty for now
+        };
+
+        const result = await createRequest(requestInput);
+        if (result.success && result.data) {
+            return {
+                status: 'SHORTAGE_CREATED',
+                request_id: (result.data as any).id,
+                display_id: (result.data as any).display_id,
+            };
+        }
+
+        return { status: 'ERROR', message: result.message };
+    } catch (err: unknown) {
+        console.error('[bookingShortageCheck] Exception:', err);
+        return { status: 'ERROR', message: err instanceof Error ? err.message : 'Unknown error' };
     }
 }

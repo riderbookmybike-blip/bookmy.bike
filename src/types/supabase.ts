@@ -1774,10 +1774,11 @@ export type Database = {
                 Row: {
                     allotted_at: string | null;
                     booking_id: string | null;
+                    chassis_number: string | null;
                     created_at: string | null;
                     engine_number: string | null;
                     id: string;
-                    metadata: Json | null;
+                    inv_stock_id: string | null;
                     status: string | null;
                     tenant_id: string | null;
                     updated_at: string | null;
@@ -1786,10 +1787,11 @@ export type Database = {
                 Insert: {
                     allotted_at?: string | null;
                     booking_id?: string | null;
+                    chassis_number?: string | null;
                     created_at?: string | null;
                     engine_number?: string | null;
                     id?: string;
-                    metadata?: Json | null;
+                    inv_stock_id?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
                     updated_at?: string | null;
@@ -1798,10 +1800,11 @@ export type Database = {
                 Update: {
                     allotted_at?: string | null;
                     booking_id?: string | null;
+                    chassis_number?: string | null;
                     created_at?: string | null;
                     engine_number?: string | null;
                     id?: string;
-                    metadata?: Json | null;
+                    inv_stock_id?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
                     updated_at?: string | null;
@@ -1816,6 +1819,13 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                     {
+                        foreignKeyName: 'crm_allotments_inv_stock_id_fkey';
+                        columns: ['inv_stock_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_stock';
+                        referencedColumns: ['id'];
+                    },
+                    {
                         foreignKeyName: 'crm_allotments_tenant_id_fkey';
                         columns: ['tenant_id'];
                         isOneToOne: false;
@@ -1831,184 +1841,40 @@ export type Database = {
                     },
                 ];
             };
-            crm_assets: {
+            crm_booking_stage_events: {
                 Row: {
-                    created_at: string | null;
-                    entity_id: string;
-                    entity_type: string;
-                    file_type: string | null;
+                    booking_id: string;
+                    changed_at: string;
+                    changed_by: string | null;
+                    from_stage: string;
                     id: string;
-                    metadata: Json | null;
-                    path: string;
-                    purpose: string | null;
-                    tenant_id: string | null;
-                    updated_at: string | null;
-                    uploaded_by: string | null;
+                    reason: string | null;
+                    to_stage: string;
                 };
                 Insert: {
-                    created_at?: string | null;
-                    entity_id: string;
-                    entity_type: string;
-                    file_type?: string | null;
+                    booking_id: string;
+                    changed_at?: string;
+                    changed_by?: string | null;
+                    from_stage: string;
                     id?: string;
-                    metadata?: Json | null;
-                    path: string;
-                    purpose?: string | null;
-                    tenant_id?: string | null;
-                    updated_at?: string | null;
-                    uploaded_by?: string | null;
+                    reason?: string | null;
+                    to_stage: string;
                 };
                 Update: {
-                    created_at?: string | null;
-                    entity_id?: string;
-                    entity_type?: string;
-                    file_type?: string | null;
+                    booking_id?: string;
+                    changed_at?: string;
+                    changed_by?: string | null;
+                    from_stage?: string;
                     id?: string;
-                    metadata?: Json | null;
-                    path?: string;
-                    purpose?: string | null;
-                    tenant_id?: string | null;
-                    updated_at?: string | null;
-                    uploaded_by?: string | null;
-                };
-                Relationships: [];
-            };
-            crm_audit_log: {
-                Row: {
-                    action: string;
-                    changed_fields: string[] | null;
-                    entity_id: string;
-                    entity_type: string;
-                    id: string;
-                    ip_address: string | null;
-                    new_data: Json | null;
-                    old_data: Json | null;
-                    performed_at: string;
-                    performed_by: string | null;
-                    source: string | null;
-                };
-                Insert: {
-                    action: string;
-                    changed_fields?: string[] | null;
-                    entity_id: string;
-                    entity_type: string;
-                    id?: string;
-                    ip_address?: string | null;
-                    new_data?: Json | null;
-                    old_data?: Json | null;
-                    performed_at?: string;
-                    performed_by?: string | null;
-                    source?: string | null;
-                };
-                Update: {
-                    action?: string;
-                    changed_fields?: string[] | null;
-                    entity_id?: string;
-                    entity_type?: string;
-                    id?: string;
-                    ip_address?: string | null;
-                    new_data?: Json | null;
-                    old_data?: Json | null;
-                    performed_at?: string;
-                    performed_by?: string | null;
-                    source?: string | null;
-                };
-                Relationships: [];
-            };
-            crm_bank_apps: {
-                Row: {
-                    bank_tenant_id: string | null;
-                    created_at: string | null;
-                    funding_amount: number | null;
-                    id: string;
-                    lead_id: string | null;
-                    notes: string | null;
-                    roi: number | null;
-                    status: Database['public']['Enums']['bank_app_status'] | null;
-                    updated_at: string | null;
-                };
-                Insert: {
-                    bank_tenant_id?: string | null;
-                    created_at?: string | null;
-                    funding_amount?: number | null;
-                    id?: string;
-                    lead_id?: string | null;
-                    notes?: string | null;
-                    roi?: number | null;
-                    status?: Database['public']['Enums']['bank_app_status'] | null;
-                    updated_at?: string | null;
-                };
-                Update: {
-                    bank_tenant_id?: string | null;
-                    created_at?: string | null;
-                    funding_amount?: number | null;
-                    id?: string;
-                    lead_id?: string | null;
-                    notes?: string | null;
-                    roi?: number | null;
-                    status?: Database['public']['Enums']['bank_app_status'] | null;
-                    updated_at?: string | null;
+                    reason?: string | null;
+                    to_stage?: string;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'bank_applications_lead_id_fkey';
-                        columns: ['lead_id'];
+                        foreignKeyName: 'crm_booking_stage_events_booking_id_fkey';
+                        columns: ['booking_id'];
                         isOneToOne: false;
-                        referencedRelation: 'crm_leads';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            crm_booking_assets: {
-                Row: {
-                    created_at: string | null;
-                    entity_id: string | null;
-                    file_type: string | null;
-                    id: string;
-                    metadata: Json | null;
-                    path: string;
-                    purpose: string | null;
-                    tenant_id: string | null;
-                    updated_at: string | null;
-                    uploaded_by: string | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    entity_id?: string | null;
-                    file_type?: string | null;
-                    id?: string;
-                    metadata?: Json | null;
-                    path: string;
-                    purpose?: string | null;
-                    tenant_id?: string | null;
-                    updated_at?: string | null;
-                    uploaded_by?: string | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    entity_id?: string | null;
-                    file_type?: string | null;
-                    id?: string;
-                    metadata?: Json | null;
-                    path?: string;
-                    purpose?: string | null;
-                    tenant_id?: string | null;
-                    updated_at?: string | null;
-                    uploaded_by?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'crm_booking_assets_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_booking_assets_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'tenants';
+                        referencedRelation: 'crm_bookings';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -2021,34 +1887,33 @@ export type Database = {
                     cancellation_reason: string | null;
                     color_id: string | null;
                     created_at: string | null;
-                    current_stage: string | null;
                     customer_details: Json | null;
                     deleted_at: string | null;
                     deleted_by: string | null;
                     delivery_branch_id: string | null;
                     delivery_date: string | null;
-                    delivery_status: string | null;
                     display_id: string | null;
-                    finance_status: string | null;
                     firebase_id: string | null;
                     grand_total: number | null;
                     id: string;
                     insurance_policy_number: string | null;
                     insurance_provider: string | null;
-                    insurance_status: string | null;
-                    inventory_status: string | null;
+                    inv_stock_id: string | null;
                     is_deleted: boolean | null;
+                    lead_id: string | null;
                     operational_stage: Database['public']['Enums']['crm_operational_stage'] | null;
-                    payment_status: string | null;
-                    pdi_status: string | null;
                     qty: number;
                     quote_id: string | null;
                     refund_status: string | null;
                     registration_number: string | null;
-                    registration_status: string | null;
                     rto_receipt_number: string | null;
                     sales_order_snapshot: Json | null;
                     sku_id: string | null;
+                    snap_brand: string | null;
+                    snap_color: string | null;
+                    snap_image_url: string | null;
+                    snap_model: string | null;
+                    snap_variant: string | null;
                     stage_updated_at: string | null;
                     stage_updated_by: string | null;
                     status: string | null;
@@ -2067,34 +1932,33 @@ export type Database = {
                     cancellation_reason?: string | null;
                     color_id?: string | null;
                     created_at?: string | null;
-                    current_stage?: string | null;
                     customer_details?: Json | null;
                     deleted_at?: string | null;
                     deleted_by?: string | null;
                     delivery_branch_id?: string | null;
                     delivery_date?: string | null;
-                    delivery_status?: string | null;
                     display_id?: string | null;
-                    finance_status?: string | null;
                     firebase_id?: string | null;
                     grand_total?: number | null;
                     id?: string;
                     insurance_policy_number?: string | null;
                     insurance_provider?: string | null;
-                    insurance_status?: string | null;
-                    inventory_status?: string | null;
+                    inv_stock_id?: string | null;
                     is_deleted?: boolean | null;
+                    lead_id?: string | null;
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
-                    payment_status?: string | null;
-                    pdi_status?: string | null;
                     qty?: number;
                     quote_id?: string | null;
                     refund_status?: string | null;
                     registration_number?: string | null;
-                    registration_status?: string | null;
                     rto_receipt_number?: string | null;
                     sales_order_snapshot?: Json | null;
                     sku_id?: string | null;
+                    snap_brand?: string | null;
+                    snap_color?: string | null;
+                    snap_image_url?: string | null;
+                    snap_model?: string | null;
+                    snap_variant?: string | null;
                     stage_updated_at?: string | null;
                     stage_updated_by?: string | null;
                     status?: string | null;
@@ -2113,34 +1977,33 @@ export type Database = {
                     cancellation_reason?: string | null;
                     color_id?: string | null;
                     created_at?: string | null;
-                    current_stage?: string | null;
                     customer_details?: Json | null;
                     deleted_at?: string | null;
                     deleted_by?: string | null;
                     delivery_branch_id?: string | null;
                     delivery_date?: string | null;
-                    delivery_status?: string | null;
                     display_id?: string | null;
-                    finance_status?: string | null;
                     firebase_id?: string | null;
                     grand_total?: number | null;
                     id?: string;
                     insurance_policy_number?: string | null;
                     insurance_provider?: string | null;
-                    insurance_status?: string | null;
-                    inventory_status?: string | null;
+                    inv_stock_id?: string | null;
                     is_deleted?: boolean | null;
+                    lead_id?: string | null;
                     operational_stage?: Database['public']['Enums']['crm_operational_stage'] | null;
-                    payment_status?: string | null;
-                    pdi_status?: string | null;
                     qty?: number;
                     quote_id?: string | null;
                     refund_status?: string | null;
                     registration_number?: string | null;
-                    registration_status?: string | null;
                     rto_receipt_number?: string | null;
                     sales_order_snapshot?: Json | null;
                     sku_id?: string | null;
+                    snap_brand?: string | null;
+                    snap_color?: string | null;
+                    snap_image_url?: string | null;
+                    snap_model?: string | null;
+                    snap_variant?: string | null;
                     stage_updated_at?: string | null;
                     stage_updated_by?: string | null;
                     status?: string | null;
@@ -2158,6 +2021,20 @@ export type Database = {
                         columns: ['quote_id'];
                         isOneToOne: true;
                         referencedRelation: 'crm_quotes';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_bookings_inv_stock_id_fkey';
+                        columns: ['inv_stock_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_stock';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_bookings_lead_id_fkey';
+                        columns: ['lead_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_leads';
                         referencedColumns: ['id'];
                     },
                     {
@@ -2211,25 +2088,102 @@ export type Database = {
                     },
                 ];
             };
+            crm_feedback: {
+                Row: {
+                    booking_id: string;
+                    created_at: string;
+                    delivery_rating: number | null;
+                    id: string;
+                    member_id: string | null;
+                    nps_score: number | null;
+                    review_text: string | null;
+                    staff_rating: number | null;
+                    tenant_id: string | null;
+                    updated_at: string;
+                };
+                Insert: {
+                    booking_id: string;
+                    created_at?: string;
+                    delivery_rating?: number | null;
+                    id?: string;
+                    member_id?: string | null;
+                    nps_score?: number | null;
+                    review_text?: string | null;
+                    staff_rating?: number | null;
+                    tenant_id?: string | null;
+                    updated_at?: string;
+                };
+                Update: {
+                    booking_id?: string;
+                    created_at?: string;
+                    delivery_rating?: number | null;
+                    id?: string;
+                    member_id?: string | null;
+                    nps_score?: number | null;
+                    review_text?: string | null;
+                    staff_rating?: number | null;
+                    tenant_id?: string | null;
+                    updated_at?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_feedback_booking_id_fkey';
+                        columns: ['booking_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_feedback_member_id_fkey';
+                        columns: ['member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_feedback_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_feedback_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             crm_finance: {
                 Row: {
                     agreement_signed_at: string | null;
                     application_number: string | null;
+                    applied_at: string | null;
                     approved_amount: number | null;
+                    approved_at: string | null;
+                    bank_partner_id: string | null;
                     booking_id: string | null;
                     created_at: string | null;
                     disbursement_completed_at: string | null;
                     disbursement_initiated_at: string | null;
                     display_id: string | null;
+                    document_verified_at: string | null;
                     enach_done_at: string | null;
+                    external_app_ref: string | null;
                     id: string;
                     insurance_requested_at: string | null;
                     interest_rate: number | null;
                     is_active_closing: boolean | null;
+                    lead_id: string | null;
                     lender_name: string | null;
+                    loan_account_number: string | null;
                     notes: string | null;
                     onboarding_initiated_at: string | null;
+                    rejected_at: string | null;
                     requested_amount: number | null;
+                    sanctioned_at: string | null;
                     status: string | null;
                     tenure_months: number | null;
                     updated_at: string | null;
@@ -2237,21 +2191,30 @@ export type Database = {
                 Insert: {
                     agreement_signed_at?: string | null;
                     application_number?: string | null;
+                    applied_at?: string | null;
                     approved_amount?: number | null;
+                    approved_at?: string | null;
+                    bank_partner_id?: string | null;
                     booking_id?: string | null;
                     created_at?: string | null;
                     disbursement_completed_at?: string | null;
                     disbursement_initiated_at?: string | null;
                     display_id?: string | null;
+                    document_verified_at?: string | null;
                     enach_done_at?: string | null;
+                    external_app_ref?: string | null;
                     id?: string;
                     insurance_requested_at?: string | null;
                     interest_rate?: number | null;
                     is_active_closing?: boolean | null;
+                    lead_id?: string | null;
                     lender_name?: string | null;
+                    loan_account_number?: string | null;
                     notes?: string | null;
                     onboarding_initiated_at?: string | null;
+                    rejected_at?: string | null;
                     requested_amount?: number | null;
+                    sanctioned_at?: string | null;
                     status?: string | null;
                     tenure_months?: number | null;
                     updated_at?: string | null;
@@ -2259,26 +2222,56 @@ export type Database = {
                 Update: {
                     agreement_signed_at?: string | null;
                     application_number?: string | null;
+                    applied_at?: string | null;
                     approved_amount?: number | null;
+                    approved_at?: string | null;
+                    bank_partner_id?: string | null;
                     booking_id?: string | null;
                     created_at?: string | null;
                     disbursement_completed_at?: string | null;
                     disbursement_initiated_at?: string | null;
                     display_id?: string | null;
+                    document_verified_at?: string | null;
                     enach_done_at?: string | null;
+                    external_app_ref?: string | null;
                     id?: string;
                     insurance_requested_at?: string | null;
                     interest_rate?: number | null;
                     is_active_closing?: boolean | null;
+                    lead_id?: string | null;
                     lender_name?: string | null;
+                    loan_account_number?: string | null;
                     notes?: string | null;
                     onboarding_initiated_at?: string | null;
+                    rejected_at?: string | null;
                     requested_amount?: number | null;
+                    sanctioned_at?: string | null;
                     status?: string | null;
                     tenure_months?: number | null;
                     updated_at?: string | null;
                 };
                 Relationships: [
+                    {
+                        foreignKeyName: 'crm_finance_bank_partner_id_fkey';
+                        columns: ['bank_partner_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_finance_bank_partner_id_fkey';
+                        columns: ['bank_partner_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_finance_lead_id_fkey';
+                        columns: ['lead_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_leads';
+                        referencedColumns: ['id'];
+                    },
                     {
                         foreignKeyName: 'finance_applications_booking_id_fkey';
                         columns: ['booking_id'];
@@ -2330,13 +2323,74 @@ export type Database = {
                     },
                 ];
             };
+            crm_finance_events: {
+                Row: {
+                    actor_tenant_id: string | null;
+                    actor_user_id: string | null;
+                    created_at: string;
+                    event_type: string;
+                    finance_id: string;
+                    id: string;
+                    milestone: string | null;
+                    notes: string | null;
+                };
+                Insert: {
+                    actor_tenant_id?: string | null;
+                    actor_user_id?: string | null;
+                    created_at?: string;
+                    event_type: string;
+                    finance_id: string;
+                    id?: string;
+                    milestone?: string | null;
+                    notes?: string | null;
+                };
+                Update: {
+                    actor_tenant_id?: string | null;
+                    actor_user_id?: string | null;
+                    created_at?: string;
+                    event_type?: string;
+                    finance_id?: string;
+                    id?: string;
+                    milestone?: string | null;
+                    notes?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_finance_events_actor_tenant_id_fkey';
+                        columns: ['actor_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_finance_events_actor_tenant_id_fkey';
+                        columns: ['actor_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_finance_events_actor_user_id_fkey';
+                        columns: ['actor_user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_finance_events_finance_id_fkey';
+                        columns: ['finance_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_finance';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             crm_insurance: {
                 Row: {
                     booking_id: string | null;
                     created_at: string | null;
                     expiry_date: string | null;
                     id: string;
-                    metadata: Json | null;
                     policy_number: string | null;
                     premium_amount: number | null;
                     provider_name: string | null;
@@ -2349,7 +2403,6 @@ export type Database = {
                     created_at?: string | null;
                     expiry_date?: string | null;
                     id?: string;
-                    metadata?: Json | null;
                     policy_number?: string | null;
                     premium_amount?: number | null;
                     provider_name?: string | null;
@@ -2362,7 +2415,6 @@ export type Database = {
                     created_at?: string | null;
                     expiry_date?: string | null;
                     id?: string;
-                    metadata?: Json | null;
                     policy_number?: string | null;
                     premium_amount?: number | null;
                     provider_name?: string | null;
@@ -2394,94 +2446,36 @@ export type Database = {
                     },
                 ];
             };
-            crm_lead_assets: {
-                Row: {
-                    created_at: string | null;
-                    entity_id: string | null;
-                    file_type: string | null;
-                    id: string;
-                    metadata: Json | null;
-                    path: string;
-                    purpose: string | null;
-                    tenant_id: string | null;
-                    updated_at: string | null;
-                    uploaded_by: string | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    entity_id?: string | null;
-                    file_type?: string | null;
-                    id?: string;
-                    metadata?: Json | null;
-                    path: string;
-                    purpose?: string | null;
-                    tenant_id?: string | null;
-                    updated_at?: string | null;
-                    uploaded_by?: string | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    entity_id?: string | null;
-                    file_type?: string | null;
-                    id?: string;
-                    metadata?: Json | null;
-                    path?: string;
-                    purpose?: string | null;
-                    tenant_id?: string | null;
-                    updated_at?: string | null;
-                    uploaded_by?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'crm_lead_assets_entity_id_fkey';
-                        columns: ['entity_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'crm_leads';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_lead_assets_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_lead_assets_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
             crm_lead_events: {
                 Row: {
                     actor_tenant_id: string | null;
                     actor_user_id: string | null;
+                    changed_value: string | null;
                     created_at: string | null;
                     event_type: string;
                     id: string;
                     lead_id: string | null;
-                    payload: Json | null;
+                    notes: string | null;
                 };
                 Insert: {
                     actor_tenant_id?: string | null;
                     actor_user_id?: string | null;
+                    changed_value?: string | null;
                     created_at?: string | null;
                     event_type: string;
                     id?: string;
                     lead_id?: string | null;
-                    payload?: Json | null;
+                    notes?: string | null;
                 };
                 Update: {
                     actor_tenant_id?: string | null;
                     actor_user_id?: string | null;
+                    changed_value?: string | null;
                     created_at?: string | null;
                     event_type?: string;
                     id?: string;
                     lead_id?: string | null;
-                    payload?: Json | null;
+                    notes?: string | null;
                 };
                 Relationships: [
                     {
@@ -2529,7 +2523,12 @@ export type Database = {
                     source: string | null;
                     status: string | null;
                     tenant_id: string | null;
+                    utm_campaign: string | null;
+                    utm_content: string | null;
                     utm_data: Json | null;
+                    utm_medium: string | null;
+                    utm_source: string | null;
+                    utm_term: string | null;
                 };
                 Insert: {
                     created_at?: string | null;
@@ -2566,7 +2565,12 @@ export type Database = {
                     source?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
+                    utm_campaign?: string | null;
+                    utm_content?: string | null;
                     utm_data?: Json | null;
+                    utm_medium?: string | null;
+                    utm_source?: string | null;
+                    utm_term?: string | null;
                 };
                 Update: {
                     created_at?: string | null;
@@ -2603,7 +2607,12 @@ export type Database = {
                     source?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
+                    utm_campaign?: string | null;
+                    utm_content?: string | null;
                     utm_data?: Json | null;
+                    utm_medium?: string | null;
+                    utm_source?: string | null;
+                    utm_term?: string | null;
                 };
                 Relationships: [
                     {
@@ -2637,6 +2646,47 @@ export type Database = {
                     {
                         foreignKeyName: 'leads_referred_by_id_fkey';
                         columns: ['referred_by_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            crm_media: {
+                Row: {
+                    created_at: string;
+                    entity_id: string;
+                    entity_type: string;
+                    file_type: string | null;
+                    id: string;
+                    metadata: string | null;
+                    uploaded_by: string | null;
+                    url: string;
+                };
+                Insert: {
+                    created_at?: string;
+                    entity_id: string;
+                    entity_type: string;
+                    file_type?: string | null;
+                    id?: string;
+                    metadata?: string | null;
+                    uploaded_by?: string | null;
+                    url: string;
+                };
+                Update: {
+                    created_at?: string;
+                    entity_id?: string;
+                    entity_type?: string;
+                    file_type?: string | null;
+                    id?: string;
+                    metadata?: string | null;
+                    uploaded_by?: string | null;
+                    url?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_media_uploaded_by_fkey';
+                        columns: ['uploaded_by'];
                         isOneToOne: false;
                         referencedRelation: 'id_members';
                         referencedColumns: ['id'];
@@ -2705,7 +2755,7 @@ export type Database = {
                     lead_id: string | null;
                     member_id: string | null;
                     method: string | null;
-                    provider_data: Json | null;
+                    provider_data: string | null;
                     reconciled_at: string | null;
                     reconciled_by: string | null;
                     status: string | null;
@@ -2727,7 +2777,7 @@ export type Database = {
                     lead_id?: string | null;
                     member_id?: string | null;
                     method?: string | null;
-                    provider_data?: Json | null;
+                    provider_data?: string | null;
                     reconciled_at?: string | null;
                     reconciled_by?: string | null;
                     status?: string | null;
@@ -2749,7 +2799,7 @@ export type Database = {
                     lead_id?: string | null;
                     member_id?: string | null;
                     method?: string | null;
-                    provider_data?: Json | null;
+                    provider_data?: string | null;
                     reconciled_at?: string | null;
                     reconciled_by?: string | null;
                     status?: string | null;
@@ -2797,42 +2847,51 @@ export type Database = {
             };
             crm_pdi: {
                 Row: {
+                    body_ok: boolean | null;
                     booking_id: string | null;
-                    checklist: Json | null;
+                    brakes_ok: boolean | null;
                     created_at: string | null;
+                    electrical_ok: boolean | null;
+                    fuel_ok: boolean | null;
                     id: string;
                     inspection_date: string | null;
                     inspector_name: string | null;
-                    metadata: Json | null;
                     notes: string | null;
                     status: string | null;
                     tenant_id: string | null;
+                    tyre_ok: boolean | null;
                     updated_at: string | null;
                 };
                 Insert: {
+                    body_ok?: boolean | null;
                     booking_id?: string | null;
-                    checklist?: Json | null;
+                    brakes_ok?: boolean | null;
                     created_at?: string | null;
+                    electrical_ok?: boolean | null;
+                    fuel_ok?: boolean | null;
                     id?: string;
                     inspection_date?: string | null;
                     inspector_name?: string | null;
-                    metadata?: Json | null;
                     notes?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
+                    tyre_ok?: boolean | null;
                     updated_at?: string | null;
                 };
                 Update: {
+                    body_ok?: boolean | null;
                     booking_id?: string | null;
-                    checklist?: Json | null;
+                    brakes_ok?: boolean | null;
                     created_at?: string | null;
+                    electrical_ok?: boolean | null;
+                    fuel_ok?: boolean | null;
                     id?: string;
                     inspection_date?: string | null;
                     inspector_name?: string | null;
-                    metadata?: Json | null;
                     notes?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
+                    tyre_ok?: boolean | null;
                     updated_at?: string | null;
                 };
                 Relationships: [
@@ -2859,11 +2918,70 @@ export type Database = {
                     },
                 ];
             };
+            crm_quote_events: {
+                Row: {
+                    actor_tenant_id: string | null;
+                    actor_user_id: string | null;
+                    created_at: string;
+                    event_type: string;
+                    id: string;
+                    notes: string | null;
+                    quote_id: string;
+                };
+                Insert: {
+                    actor_tenant_id?: string | null;
+                    actor_user_id?: string | null;
+                    created_at?: string;
+                    event_type: string;
+                    id?: string;
+                    notes?: string | null;
+                    quote_id: string;
+                };
+                Update: {
+                    actor_tenant_id?: string | null;
+                    actor_user_id?: string | null;
+                    created_at?: string;
+                    event_type?: string;
+                    id?: string;
+                    notes?: string | null;
+                    quote_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_quote_events_actor_tenant_id_fkey';
+                        columns: ['actor_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_quote_events_actor_tenant_id_fkey';
+                        columns: ['actor_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_quote_events_actor_user_id_fkey';
+                        columns: ['actor_user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_quote_events_quote_id_fkey';
+                        columns: ['quote_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_quotes';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             crm_quote_finance_attempts: {
                 Row: {
                     bank_id: string | null;
                     bank_name: string | null;
-                    charges_breakup: Json | null;
+                    charges_breakup: string | null;
                     created_at: string | null;
                     created_by: string | null;
                     deleted_at: string | null;
@@ -2888,7 +3006,7 @@ export type Database = {
                 Insert: {
                     bank_id?: string | null;
                     bank_name?: string | null;
-                    charges_breakup?: Json | null;
+                    charges_breakup?: string | null;
                     created_at?: string | null;
                     created_by?: string | null;
                     deleted_at?: string | null;
@@ -2913,7 +3031,7 @@ export type Database = {
                 Update: {
                     bank_id?: string | null;
                     bank_name?: string | null;
-                    charges_breakup?: Json | null;
+                    charges_breakup?: string | null;
                     created_at?: string | null;
                     created_by?: string | null;
                     deleted_at?: string | null;
@@ -3154,117 +3272,11 @@ export type Database = {
                     },
                 ];
             };
-            crm_receipts: {
-                Row: {
-                    amount: number | null;
-                    booking_id: string | null;
-                    created_at: string | null;
-                    currency: string | null;
-                    deleted_at: string | null;
-                    deleted_by: string | null;
-                    display_id: string | null;
-                    id: string;
-                    is_deleted: boolean;
-                    is_reconciled: boolean;
-                    lead_id: string | null;
-                    member_id: string | null;
-                    method: string | null;
-                    provider_data: Json | null;
-                    reconciled_at: string | null;
-                    reconciled_by: string | null;
-                    status: string | null;
-                    tenant_id: string | null;
-                    transaction_id: string | null;
-                    updated_at: string | null;
-                };
-                Insert: {
-                    amount?: number | null;
-                    booking_id?: string | null;
-                    created_at?: string | null;
-                    currency?: string | null;
-                    deleted_at?: string | null;
-                    deleted_by?: string | null;
-                    display_id?: string | null;
-                    id?: string;
-                    is_deleted?: boolean;
-                    is_reconciled?: boolean;
-                    lead_id?: string | null;
-                    member_id?: string | null;
-                    method?: string | null;
-                    provider_data?: Json | null;
-                    reconciled_at?: string | null;
-                    reconciled_by?: string | null;
-                    status?: string | null;
-                    tenant_id?: string | null;
-                    transaction_id?: string | null;
-                    updated_at?: string | null;
-                };
-                Update: {
-                    amount?: number | null;
-                    booking_id?: string | null;
-                    created_at?: string | null;
-                    currency?: string | null;
-                    deleted_at?: string | null;
-                    deleted_by?: string | null;
-                    display_id?: string | null;
-                    id?: string;
-                    is_deleted?: boolean;
-                    is_reconciled?: boolean;
-                    lead_id?: string | null;
-                    member_id?: string | null;
-                    method?: string | null;
-                    provider_data?: Json | null;
-                    reconciled_at?: string | null;
-                    reconciled_by?: string | null;
-                    status?: string | null;
-                    tenant_id?: string | null;
-                    transaction_id?: string | null;
-                    updated_at?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'crm_receipts_booking_id_fkey';
-                        columns: ['booking_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'crm_bookings';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_receipts_lead_id_fkey';
-                        columns: ['lead_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'crm_leads';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_receipts_member_id_fkey';
-                        columns: ['member_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_members';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_receipts_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'crm_receipts_tenant_id_fkey';
-                        columns: ['tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
             crm_registration: {
                 Row: {
                     booking_id: string | null;
                     created_at: string | null;
                     id: string;
-                    metadata: Json | null;
                     registered_at: string | null;
                     registration_number: string | null;
                     rto_receipt_number: string | null;
@@ -3276,7 +3288,6 @@ export type Database = {
                     booking_id?: string | null;
                     created_at?: string | null;
                     id?: string;
-                    metadata?: Json | null;
                     registered_at?: string | null;
                     registration_number?: string | null;
                     rto_receipt_number?: string | null;
@@ -3288,7 +3299,6 @@ export type Database = {
                     booking_id?: string | null;
                     created_at?: string | null;
                     id?: string;
-                    metadata?: Json | null;
                     registered_at?: string | null;
                     registration_number?: string | null;
                     rto_receipt_number?: string | null;
@@ -4744,564 +4754,104 @@ export type Database = {
                 };
                 Relationships: [];
             };
-            inv_delivery_challan_items: {
+            inv_dealer_quotes: {
                 Row: {
-                    created_at: string | null;
-                    created_by: string | null;
-                    dc_qty: number;
-                    delivery_challan_id: string | null;
+                    bundled_amount: number;
+                    bundled_item_ids: string[];
+                    created_at: string;
+                    dealer_tenant_id: string;
+                    expected_total: number;
+                    freebie_description: string | null;
+                    freebie_sku_id: string | null;
                     id: string;
-                    remarks: string | null;
-                    sku_id: string;
-                    tenant_id: string;
-                    updated_at: string | null;
-                    updated_by: string | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    dc_qty: number;
-                    delivery_challan_id?: string | null;
-                    id?: string;
-                    remarks?: string | null;
-                    sku_id: string;
-                    tenant_id: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    dc_qty?: number;
-                    delivery_challan_id?: string | null;
-                    id?: string;
-                    remarks?: string | null;
-                    sku_id?: string;
-                    tenant_id?: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'inv_delivery_challan_items_delivery_challan_id_fkey';
-                        columns: ['delivery_challan_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_delivery_challans';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            inv_delivery_challans: {
-                Row: {
-                    created_at: string | null;
-                    created_by: string | null;
-                    dc_date: string;
-                    dc_number: string;
-                    expected_delivery_date: string | null;
-                    id: string;
-                    lr_number: string | null;
-                    purchase_order_id: string | null;
-                    status: string;
-                    supplier_tenant_id: string | null;
-                    tenant_id: string;
-                    transporter_name: string | null;
-                    updated_at: string | null;
-                    updated_by: string | null;
-                    vehicle_number: string | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    dc_date: string;
-                    dc_number: string;
-                    expected_delivery_date?: string | null;
-                    id?: string;
-                    lr_number?: string | null;
-                    purchase_order_id?: string | null;
-                    status?: string;
-                    supplier_tenant_id?: string | null;
-                    tenant_id: string;
-                    transporter_name?: string | null;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                    vehicle_number?: string | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    dc_date?: string;
-                    dc_number?: string;
-                    expected_delivery_date?: string | null;
-                    id?: string;
-                    lr_number?: string | null;
-                    purchase_order_id?: string | null;
-                    status?: string;
-                    supplier_tenant_id?: string | null;
-                    tenant_id?: string;
-                    transporter_name?: string | null;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                    vehicle_number?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'inv_delivery_challans_purchase_order_id_fkey';
-                        columns: ['purchase_order_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_purchase_orders';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'inv_delivery_challans_supplier_tenant_id_fkey';
-                        columns: ['supplier_tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'id_tenants';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'inv_delivery_challans_supplier_tenant_id_fkey';
-                        columns: ['supplier_tenant_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'tenants';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            inv_grn: {
-                Row: {
-                    created_at: string | null;
-                    created_by: string | null;
-                    delivery_branch_id: string | null;
-                    delivery_challan_id: string | null;
-                    delivery_warehouse_id: string | null;
-                    id: string;
-                    purchase_order_id: string | null;
-                    request_branch_id: string | null;
-                    request_warehouse_id: string | null;
-                    status: string;
-                    tenant_id: string;
-                    updated_at: string | null;
-                    updated_by: string | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    delivery_branch_id?: string | null;
-                    delivery_challan_id?: string | null;
-                    delivery_warehouse_id?: string | null;
-                    id?: string;
-                    purchase_order_id?: string | null;
-                    request_branch_id?: string | null;
-                    request_warehouse_id?: string | null;
-                    status?: string;
-                    tenant_id: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    delivery_branch_id?: string | null;
-                    delivery_challan_id?: string | null;
-                    delivery_warehouse_id?: string | null;
-                    id?: string;
-                    purchase_order_id?: string | null;
-                    request_branch_id?: string | null;
-                    request_warehouse_id?: string | null;
-                    status?: string;
-                    tenant_id?: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'inv_grn_delivery_challan_id_fkey';
-                        columns: ['delivery_challan_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_delivery_challans';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'inv_grn_purchase_order_id_fkey';
-                        columns: ['purchase_order_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_purchase_orders';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            inv_grn_accessory_details: {
-                Row: {
-                    batch_number: string | null;
-                    created_at: string | null;
-                    grn_item_id: string | null;
-                    id: string;
-                    lot_details: Json | null;
-                    photos: Json | null;
-                    serial_number: string | null;
-                };
-                Insert: {
-                    batch_number?: string | null;
-                    created_at?: string | null;
-                    grn_item_id?: string | null;
-                    id?: string;
-                    lot_details?: Json | null;
-                    photos?: Json | null;
-                    serial_number?: string | null;
-                };
-                Update: {
-                    batch_number?: string | null;
-                    created_at?: string | null;
-                    grn_item_id?: string | null;
-                    id?: string;
-                    lot_details?: Json | null;
-                    photos?: Json | null;
-                    serial_number?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'inv_grn_accessory_details_grn_item_id_fkey';
-                        columns: ['grn_item_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_grn_items';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            inv_grn_items: {
-                Row: {
-                    accepted: number;
-                    created_at: string | null;
-                    created_by: string | null;
-                    grn_id: string | null;
-                    id: string;
-                    purchase_order_item_id: string | null;
-                    received: number;
-                    rejected: number;
-                    sku_id: string | null;
-                    tenant_id: string;
-                    updated_at: string | null;
-                    updated_by: string | null;
-                };
-                Insert: {
-                    accepted?: number;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    grn_id?: string | null;
-                    id?: string;
-                    purchase_order_item_id?: string | null;
-                    received?: number;
-                    rejected?: number;
-                    sku_id?: string | null;
-                    tenant_id: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                };
-                Update: {
-                    accepted?: number;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    grn_id?: string | null;
-                    id?: string;
-                    purchase_order_item_id?: string | null;
-                    received?: number;
-                    rejected?: number;
-                    sku_id?: string | null;
-                    tenant_id?: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'inv_grn_items_grn_id_fkey';
-                        columns: ['grn_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_grn';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'inv_grn_items_purchase_order_item_id_fkey';
-                        columns: ['purchase_order_item_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_purchase_order_items';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            inv_grn_vehicle_details: {
-                Row: {
-                    battery_brand: string | null;
-                    battery_number: string | null;
-                    chassis_number: string | null;
-                    created_at: string | null;
-                    engine_number: string | null;
-                    grn_item_id: string | null;
-                    id: string;
-                    key_number: string | null;
-                    manufacturing_date: string | null;
-                    photos: Json | null;
-                    tyre_make: string | null;
-                };
-                Insert: {
-                    battery_brand?: string | null;
-                    battery_number?: string | null;
-                    chassis_number?: string | null;
-                    created_at?: string | null;
-                    engine_number?: string | null;
-                    grn_item_id?: string | null;
-                    id?: string;
-                    key_number?: string | null;
-                    manufacturing_date?: string | null;
-                    photos?: Json | null;
-                    tyre_make?: string | null;
-                };
-                Update: {
-                    battery_brand?: string | null;
-                    battery_number?: string | null;
-                    chassis_number?: string | null;
-                    created_at?: string | null;
-                    engine_number?: string | null;
-                    grn_item_id?: string | null;
-                    id?: string;
-                    key_number?: string | null;
-                    manufacturing_date?: string | null;
-                    photos?: Json | null;
-                    tyre_make?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'inv_grn_vehicle_details_grn_item_id_fkey';
-                        columns: ['grn_item_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_grn_items';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            inv_ledger: {
-                Row: {
-                    from_tenant_id: string | null;
-                    id: string;
-                    inventory_id: string;
-                    notes: string | null;
-                    to_tenant_id: string | null;
-                    transaction_type: Database['public']['Enums']['inventory_transaction_type'];
-                    transferred_at: string | null;
-                };
-                Insert: {
-                    from_tenant_id?: string | null;
-                    id?: string;
-                    inventory_id: string;
-                    notes?: string | null;
-                    to_tenant_id?: string | null;
-                    transaction_type: Database['public']['Enums']['inventory_transaction_type'];
-                    transferred_at?: string | null;
-                };
-                Update: {
-                    from_tenant_id?: string | null;
-                    id?: string;
-                    inventory_id?: string;
-                    notes?: string | null;
-                    to_tenant_id?: string | null;
-                    transaction_type?: Database['public']['Enums']['inventory_transaction_type'];
-                    transferred_at?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'inventory_ledger_inventory_id_fkey';
-                        columns: ['inventory_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_stock';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            inv_marketplace: {
-                Row: {
-                    created_at: string | null;
-                    id: string;
-                    item_id: string | null;
-                    local_price: number | null;
-                    stock_status: string | null;
-                    tenant_id: string | null;
-                };
-                Insert: {
-                    created_at?: string | null;
-                    id?: string;
-                    item_id?: string | null;
-                    local_price?: number | null;
-                    stock_status?: string | null;
-                    tenant_id?: string | null;
-                };
-                Update: {
-                    created_at?: string | null;
-                    id?: string;
-                    item_id?: string | null;
-                    local_price?: number | null;
-                    stock_status?: string | null;
-                    tenant_id?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'marketplace_inventory_item_id_fkey';
-                        columns: ['item_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_raw_items';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
-            inv_procurement_quotes: {
-                Row: {
-                    created_at: string | null;
-                    created_by: string | null;
-                    freight_amount: number;
-                    id: string;
-                    landed_cost: number | null;
-                    lead_time_days: number | null;
-                    quoted_at: string | null;
                     quoted_by_user_id: string | null;
-                    requisition_item_id: string | null;
-                    selection_reason: string | null;
-                    status: string;
-                    supplier_id: string | null;
-                    tax_amount: number;
-                    tenant_id: string;
-                    unit_cost: number;
-                    updated_at: string | null;
-                    updated_by: string | null;
-                    valid_till: string | null;
+                    request_id: string;
+                    status: Database['public']['Enums']['inv_quote_status'];
+                    transport_amount: number;
+                    variance_amount: number | null;
                 };
                 Insert: {
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    freight_amount?: number;
+                    bundled_amount: number;
+                    bundled_item_ids?: string[];
+                    created_at?: string;
+                    dealer_tenant_id: string;
+                    expected_total?: number;
+                    freebie_description?: string | null;
+                    freebie_sku_id?: string | null;
                     id?: string;
-                    landed_cost?: number | null;
-                    lead_time_days?: number | null;
-                    quoted_at?: string | null;
                     quoted_by_user_id?: string | null;
-                    requisition_item_id?: string | null;
-                    selection_reason?: string | null;
-                    status?: string;
-                    supplier_id?: string | null;
-                    tax_amount?: number;
-                    tenant_id: string;
-                    unit_cost?: number;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                    valid_till?: string | null;
+                    request_id: string;
+                    status?: Database['public']['Enums']['inv_quote_status'];
+                    transport_amount?: number;
+                    variance_amount?: number | null;
                 };
                 Update: {
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    freight_amount?: number;
+                    bundled_amount?: number;
+                    bundled_item_ids?: string[];
+                    created_at?: string;
+                    dealer_tenant_id?: string;
+                    expected_total?: number;
+                    freebie_description?: string | null;
+                    freebie_sku_id?: string | null;
                     id?: string;
-                    landed_cost?: number | null;
-                    lead_time_days?: number | null;
-                    quoted_at?: string | null;
                     quoted_by_user_id?: string | null;
-                    requisition_item_id?: string | null;
-                    selection_reason?: string | null;
-                    status?: string;
-                    supplier_id?: string | null;
-                    tax_amount?: number;
-                    tenant_id?: string;
-                    unit_cost?: number;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
-                    valid_till?: string | null;
+                    request_id?: string;
+                    status?: Database['public']['Enums']['inv_quote_status'];
+                    transport_amount?: number;
+                    variance_amount?: number | null;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'inv_procurement_quotes_requisition_item_id_fkey';
-                        columns: ['requisition_item_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_requisition_items';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'inv_procurement_quotes_supplier_id_fkey';
-                        columns: ['supplier_id'];
+                        foreignKeyName: 'inv_dealer_quotes_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'id_tenants';
                         referencedColumns: ['id'];
                     },
                     {
-                        foreignKeyName: 'inv_procurement_quotes_supplier_id_fkey';
-                        columns: ['supplier_id'];
+                        foreignKeyName: 'inv_dealer_quotes_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
                         isOneToOne: false;
                         referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
+                    {
+                        foreignKeyName: 'inv_dealer_quotes_request_id_fkey';
+                        columns: ['request_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_requests';
+                        referencedColumns: ['id'];
+                    },
                 ];
             };
-            inv_purchase_order_items: {
+            inv_po_payments: {
                 Row: {
-                    created_at: string | null;
+                    amount_paid: number;
                     created_by: string | null;
                     id: string;
-                    ordered_qty: number;
+                    payment_date: string;
                     po_id: string;
-                    purchase_order_id: string | null;
-                    received_qty: number | null;
-                    requisition_item_id: string | null;
-                    sku_id: string;
-                    status: string | null;
-                    tenant_id: string;
-                    unit_cost: number | null;
-                    updated_at: string | null;
-                    updated_by: string | null;
+                    transaction_id: string | null;
                 };
                 Insert: {
-                    created_at?: string | null;
+                    amount_paid: number;
                     created_by?: string | null;
                     id?: string;
-                    ordered_qty: number;
+                    payment_date?: string;
                     po_id: string;
-                    purchase_order_id?: string | null;
-                    received_qty?: number | null;
-                    requisition_item_id?: string | null;
-                    sku_id: string;
-                    status?: string | null;
-                    tenant_id: string;
-                    unit_cost?: number | null;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
+                    transaction_id?: string | null;
                 };
                 Update: {
-                    created_at?: string | null;
+                    amount_paid?: number;
                     created_by?: string | null;
                     id?: string;
-                    ordered_qty?: number;
+                    payment_date?: string;
                     po_id?: string;
-                    purchase_order_id?: string | null;
-                    received_qty?: number | null;
-                    requisition_item_id?: string | null;
-                    sku_id?: string;
-                    status?: string | null;
-                    tenant_id?: string;
-                    unit_cost?: number | null;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
+                    transaction_id?: string | null;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'inv_purchase_order_items_purchase_order_id_fkey';
-                        columns: ['purchase_order_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_purchase_orders';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'inv_purchase_order_items_requisition_item_id_fkey';
-                        columns: ['requisition_item_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'inv_requisition_items';
-                        referencedColumns: ['id'];
-                    },
-                    {
-                        foreignKeyName: 'purchase_order_items_po_id_fkey';
+                        foreignKeyName: 'inv_po_payments_po_id_fkey';
                         columns: ['po_id'];
                         isOneToOne: false;
                         referencedRelation: 'inv_purchase_orders';
@@ -5311,345 +4861,370 @@ export type Database = {
             };
             inv_purchase_orders: {
                 Row: {
-                    created_at: string | null;
+                    created_at: string;
                     created_by: string | null;
-                    delivery_branch_id: string | null;
-                    delivery_warehouse_id: string | null;
+                    dealer_tenant_id: string;
                     display_id: string | null;
                     docket_number: string | null;
-                    expected_date: string | null;
+                    expected_delivery_date: string | null;
                     id: string;
-                    order_number: string;
-                    requisition_id: string | null;
-                    status: Database['public']['Enums']['po_status'] | null;
-                    tenant_id: string;
-                    transporter_contact: string | null;
+                    payment_status: Database['public']['Enums']['inv_payment_status'];
+                    po_status: Database['public']['Enums']['inv_po_status'];
+                    quote_id: string;
+                    request_id: string;
+                    total_po_value: number;
                     transporter_name: string | null;
-                    updated_at: string | null;
+                    updated_at: string;
                     updated_by: string | null;
-                    vendor_name: string | null;
                 };
                 Insert: {
-                    created_at?: string | null;
+                    created_at?: string;
                     created_by?: string | null;
-                    delivery_branch_id?: string | null;
-                    delivery_warehouse_id?: string | null;
+                    dealer_tenant_id: string;
                     display_id?: string | null;
                     docket_number?: string | null;
-                    expected_date?: string | null;
+                    expected_delivery_date?: string | null;
                     id?: string;
-                    order_number: string;
-                    requisition_id?: string | null;
-                    status?: Database['public']['Enums']['po_status'] | null;
-                    tenant_id: string;
-                    transporter_contact?: string | null;
+                    payment_status?: Database['public']['Enums']['inv_payment_status'];
+                    po_status?: Database['public']['Enums']['inv_po_status'];
+                    quote_id: string;
+                    request_id: string;
+                    total_po_value: number;
                     transporter_name?: string | null;
-                    updated_at?: string | null;
+                    updated_at?: string;
                     updated_by?: string | null;
-                    vendor_name?: string | null;
                 };
                 Update: {
-                    created_at?: string | null;
+                    created_at?: string;
                     created_by?: string | null;
-                    delivery_branch_id?: string | null;
-                    delivery_warehouse_id?: string | null;
+                    dealer_tenant_id?: string;
                     display_id?: string | null;
                     docket_number?: string | null;
-                    expected_date?: string | null;
+                    expected_delivery_date?: string | null;
                     id?: string;
-                    order_number?: string;
-                    requisition_id?: string | null;
-                    status?: Database['public']['Enums']['po_status'] | null;
-                    tenant_id?: string;
-                    transporter_contact?: string | null;
+                    payment_status?: Database['public']['Enums']['inv_payment_status'];
+                    po_status?: Database['public']['Enums']['inv_po_status'];
+                    quote_id?: string;
+                    request_id?: string;
+                    total_po_value?: number;
                     transporter_name?: string | null;
-                    updated_at?: string | null;
+                    updated_at?: string;
                     updated_by?: string | null;
-                    vendor_name?: string | null;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'purchase_orders_requisition_id_fkey';
-                        columns: ['requisition_id'];
+                        foreignKeyName: 'inv_purchase_orders_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
                         isOneToOne: false;
-                        referencedRelation: 'inv_requisitions';
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_purchase_orders_dealer_tenant_id_fkey';
+                        columns: ['dealer_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_purchase_orders_quote_id_fkey';
+                        columns: ['quote_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_dealer_quotes';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_purchase_orders_request_id_fkey';
+                        columns: ['request_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_requests';
                         referencedColumns: ['id'];
                     },
                 ];
             };
-            inv_requisition_items: {
+            inv_request_items: {
                 Row: {
-                    created_at: string | null;
-                    created_by: string | null;
+                    cost_type: Database['public']['Enums']['inv_cost_type'];
+                    description: string | null;
+                    expected_amount: number;
                     id: string;
-                    notes: string | null;
-                    qty: number | null;
-                    quantity: number | null;
-                    requisition_id: string | null;
-                    sku_id: string;
-                    status: string | null;
-                    tenant_id: string;
-                    updated_at: string | null;
-                    updated_by: string | null;
+                    request_id: string;
                 };
                 Insert: {
-                    created_at?: string | null;
-                    created_by?: string | null;
+                    cost_type: Database['public']['Enums']['inv_cost_type'];
+                    description?: string | null;
+                    expected_amount?: number;
                     id?: string;
-                    notes?: string | null;
-                    qty?: number | null;
-                    quantity?: number | null;
-                    requisition_id?: string | null;
-                    sku_id: string;
-                    status?: string | null;
-                    tenant_id: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
+                    request_id: string;
                 };
                 Update: {
-                    created_at?: string | null;
-                    created_by?: string | null;
+                    cost_type?: Database['public']['Enums']['inv_cost_type'];
+                    description?: string | null;
+                    expected_amount?: number;
                     id?: string;
-                    notes?: string | null;
-                    qty?: number | null;
-                    quantity?: number | null;
-                    requisition_id?: string | null;
-                    sku_id?: string;
-                    status?: string | null;
-                    tenant_id?: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
+                    request_id?: string;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'purchase_requisition_items_requisition_id_fkey';
-                        columns: ['requisition_id'];
+                        foreignKeyName: 'inv_request_items_request_id_fkey';
+                        columns: ['request_id'];
                         isOneToOne: false;
-                        referencedRelation: 'inv_requisitions';
+                        referencedRelation: 'inv_requests';
                         referencedColumns: ['id'];
                     },
                 ];
             };
-            inv_requisitions: {
+            inv_requests: {
                 Row: {
-                    assigned_to_user_id: string | null;
                     booking_id: string | null;
-                    created_at: string | null;
-                    customer_name: string | null;
+                    created_at: string;
+                    created_by: string | null;
                     delivery_branch_id: string | null;
-                    delivery_warehouse_id: string | null;
                     display_id: string | null;
                     id: string;
-                    priority: string | null;
-                    request_branch_id: string | null;
-                    request_warehouse_id: string | null;
-                    requested_by: string | null;
-                    requested_by_user_id: string | null;
-                    source_type: string;
-                    status: string | null;
+                    sku_id: string;
+                    source_type: Database['public']['Enums']['inv_source_type'];
+                    status: Database['public']['Enums']['inv_request_status'];
                     tenant_id: string;
-                    updated_at: string | null;
-                    updated_by: string | null;
+                    updated_at: string;
                 };
                 Insert: {
-                    assigned_to_user_id?: string | null;
                     booking_id?: string | null;
-                    created_at?: string | null;
-                    customer_name?: string | null;
+                    created_at?: string;
+                    created_by?: string | null;
                     delivery_branch_id?: string | null;
-                    delivery_warehouse_id?: string | null;
                     display_id?: string | null;
                     id?: string;
-                    priority?: string | null;
-                    request_branch_id?: string | null;
-                    request_warehouse_id?: string | null;
-                    requested_by?: string | null;
-                    requested_by_user_id?: string | null;
-                    source_type?: string;
-                    status?: string | null;
+                    sku_id: string;
+                    source_type?: Database['public']['Enums']['inv_source_type'];
+                    status?: Database['public']['Enums']['inv_request_status'];
                     tenant_id: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
+                    updated_at?: string;
                 };
                 Update: {
-                    assigned_to_user_id?: string | null;
                     booking_id?: string | null;
-                    created_at?: string | null;
-                    customer_name?: string | null;
+                    created_at?: string;
+                    created_by?: string | null;
                     delivery_branch_id?: string | null;
-                    delivery_warehouse_id?: string | null;
                     display_id?: string | null;
                     id?: string;
-                    priority?: string | null;
-                    request_branch_id?: string | null;
-                    request_warehouse_id?: string | null;
-                    requested_by?: string | null;
-                    requested_by_user_id?: string | null;
-                    source_type?: string;
-                    status?: string | null;
+                    sku_id?: string;
+                    source_type?: Database['public']['Enums']['inv_source_type'];
+                    status?: Database['public']['Enums']['inv_request_status'];
                     tenant_id?: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
+                    updated_at?: string;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'inv_requisitions_booking_id_fkey';
+                        foreignKeyName: 'fk_inv_requests_sku';
+                        columns: ['sku_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_skus';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_requests_booking_id_fkey';
                         columns: ['booking_id'];
                         isOneToOne: false;
                         referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_requests_delivery_branch_id_fkey';
+                        columns: ['delivery_branch_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_locations';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_requests_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_requests_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
                         referencedColumns: ['id'];
                     },
                 ];
             };
             inv_stock: {
                 Row: {
+                    battery_make: string | null;
+                    branch_id: string;
                     chassis_number: string;
-                    created_at: string | null;
-                    current_owner_id: string;
-                    dealer_price: number | null;
+                    created_at: string;
                     engine_number: string;
                     id: string;
-                    invoice_date: string | null;
-                    offer_price: number | null;
+                    is_shared: boolean;
+                    locked_at: string | null;
+                    locked_by_tenant_id: string | null;
+                    media_chassis_url: string;
+                    media_damage_urls: string[] | null;
+                    media_engine_url: string;
+                    media_qc_video_url: string;
+                    media_sticker_url: string | null;
+                    po_id: string;
+                    qc_notes: string | null;
+                    qc_status: Database['public']['Enums']['inv_qc_status'];
                     sku_id: string;
-                    status: Database['public']['Enums']['inventory_status'] | null;
-                    updated_at: string | null;
+                    status: Database['public']['Enums']['inv_stock_status'];
+                    tenant_id: string;
+                    updated_at: string;
                 };
                 Insert: {
+                    battery_make?: string | null;
+                    branch_id: string;
                     chassis_number: string;
-                    created_at?: string | null;
-                    current_owner_id: string;
-                    dealer_price?: number | null;
+                    created_at?: string;
                     engine_number: string;
                     id?: string;
-                    invoice_date?: string | null;
-                    offer_price?: number | null;
+                    is_shared?: boolean;
+                    locked_at?: string | null;
+                    locked_by_tenant_id?: string | null;
+                    media_chassis_url: string;
+                    media_damage_urls?: string[] | null;
+                    media_engine_url: string;
+                    media_qc_video_url: string;
+                    media_sticker_url?: string | null;
+                    po_id: string;
+                    qc_notes?: string | null;
+                    qc_status?: Database['public']['Enums']['inv_qc_status'];
                     sku_id: string;
-                    status?: Database['public']['Enums']['inventory_status'] | null;
-                    updated_at?: string | null;
+                    status?: Database['public']['Enums']['inv_stock_status'];
+                    tenant_id: string;
+                    updated_at?: string;
                 };
                 Update: {
+                    battery_make?: string | null;
+                    branch_id?: string;
                     chassis_number?: string;
-                    created_at?: string | null;
-                    current_owner_id?: string;
-                    dealer_price?: number | null;
+                    created_at?: string;
                     engine_number?: string;
                     id?: string;
-                    invoice_date?: string | null;
-                    offer_price?: number | null;
+                    is_shared?: boolean;
+                    locked_at?: string | null;
+                    locked_by_tenant_id?: string | null;
+                    media_chassis_url?: string;
+                    media_damage_urls?: string[] | null;
+                    media_engine_url?: string;
+                    media_qc_video_url?: string;
+                    media_sticker_url?: string | null;
+                    po_id?: string;
+                    qc_notes?: string | null;
+                    qc_status?: Database['public']['Enums']['inv_qc_status'];
                     sku_id?: string;
-                    status?: Database['public']['Enums']['inventory_status'] | null;
-                    updated_at?: string | null;
+                    status?: Database['public']['Enums']['inv_stock_status'];
+                    tenant_id?: string;
+                    updated_at?: string;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: 'fk_inv_stock_sku';
+                        columns: ['sku_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cat_skus';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_stock_branch_id_fkey';
+                        columns: ['branch_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_locations';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_stock_locked_by_tenant_id_fkey';
+                        columns: ['locked_by_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_stock_locked_by_tenant_id_fkey';
+                        columns: ['locked_by_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_stock_po_id_fkey';
+                        columns: ['po_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_purchase_orders';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_stock_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_stock_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             inv_stock_ledger: {
                 Row: {
-                    balance_after: number;
-                    branch_id: string;
-                    created_at: string | null;
-                    created_by: string | null;
-                    id: string;
-                    qty_delta: number;
-                    reason_code: string;
-                    ref_id: string;
-                    ref_type: string;
-                    sku_id: string;
-                    tenant_id: string;
-                    warehouse_id: string | null;
-                };
-                Insert: {
-                    balance_after: number;
-                    branch_id: string;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    id?: string;
-                    qty_delta: number;
-                    reason_code: string;
-                    ref_id: string;
-                    ref_type: string;
-                    sku_id: string;
-                    tenant_id: string;
-                    warehouse_id?: string | null;
-                };
-                Update: {
-                    balance_after?: number;
-                    branch_id?: string;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    id?: string;
-                    qty_delta?: number;
-                    reason_code?: string;
-                    ref_id?: string;
-                    ref_type?: string;
-                    sku_id?: string;
-                    tenant_id?: string;
-                    warehouse_id?: string | null;
-                };
-                Relationships: [];
-            };
-            inv_stock_transfers: {
-                Row: {
-                    approved_at: string | null;
-                    approved_by: string | null;
-                    created_at: string | null;
-                    created_by: string | null;
-                    destination_branch_id: string;
-                    destination_warehouse_id: string | null;
+                    action: Database['public']['Enums']['inv_ledger_action'];
+                    actor_tenant_id: string | null;
+                    actor_user_id: string | null;
+                    created_at: string;
                     id: string;
                     notes: string | null;
-                    posted_at: string | null;
-                    qty: number;
-                    requested_by: string | null;
-                    sku_id: string;
-                    source_branch_id: string;
-                    source_warehouse_id: string | null;
-                    status: string;
-                    tenant_id: string;
-                    updated_at: string | null;
-                    updated_by: string | null;
+                    stock_id: string;
                 };
                 Insert: {
-                    approved_at?: string | null;
-                    approved_by?: string | null;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    destination_branch_id: string;
-                    destination_warehouse_id?: string | null;
+                    action: Database['public']['Enums']['inv_ledger_action'];
+                    actor_tenant_id?: string | null;
+                    actor_user_id?: string | null;
+                    created_at?: string;
                     id?: string;
                     notes?: string | null;
-                    posted_at?: string | null;
-                    qty: number;
-                    requested_by?: string | null;
-                    sku_id: string;
-                    source_branch_id: string;
-                    source_warehouse_id?: string | null;
-                    status?: string;
-                    tenant_id: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
+                    stock_id: string;
                 };
                 Update: {
-                    approved_at?: string | null;
-                    approved_by?: string | null;
-                    created_at?: string | null;
-                    created_by?: string | null;
-                    destination_branch_id?: string;
-                    destination_warehouse_id?: string | null;
+                    action?: Database['public']['Enums']['inv_ledger_action'];
+                    actor_tenant_id?: string | null;
+                    actor_user_id?: string | null;
+                    created_at?: string;
                     id?: string;
                     notes?: string | null;
-                    posted_at?: string | null;
-                    qty?: number;
-                    requested_by?: string | null;
-                    sku_id?: string;
-                    source_branch_id?: string;
-                    source_warehouse_id?: string | null;
-                    status?: string;
-                    tenant_id?: string;
-                    updated_at?: string | null;
-                    updated_by?: string | null;
+                    stock_id?: string;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_stock_ledger_actor_tenant_id_fkey';
+                        columns: ['actor_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_stock_ledger_actor_tenant_id_fkey';
+                        columns: ['actor_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_stock_ledger_stock_id_fkey';
+                        columns: ['stock_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_stock';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             loc_pincodes: {
                 Row: {
@@ -6304,6 +5879,216 @@ export type Database = {
             };
         };
         Views: {
+            crm_receipts: {
+                Row: {
+                    amount: number | null;
+                    booking_id: string | null;
+                    created_at: string | null;
+                    currency: string | null;
+                    deleted_at: string | null;
+                    deleted_by: string | null;
+                    display_id: string | null;
+                    id: string | null;
+                    is_deleted: boolean | null;
+                    is_reconciled: boolean | null;
+                    lead_id: string | null;
+                    member_id: string | null;
+                    method: string | null;
+                    provider_data: string | null;
+                    reconciled_at: string | null;
+                    reconciled_by: string | null;
+                    status: string | null;
+                    tenant_id: string | null;
+                    transaction_id: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    amount?: number | null;
+                    booking_id?: string | null;
+                    created_at?: string | null;
+                    currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
+                    display_id?: string | null;
+                    id?: string | null;
+                    is_deleted?: boolean | null;
+                    is_reconciled?: boolean | null;
+                    lead_id?: string | null;
+                    member_id?: string | null;
+                    method?: string | null;
+                    provider_data?: string | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    transaction_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    amount?: number | null;
+                    booking_id?: string | null;
+                    created_at?: string | null;
+                    currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
+                    display_id?: string | null;
+                    id?: string | null;
+                    is_deleted?: boolean | null;
+                    is_reconciled?: boolean | null;
+                    lead_id?: string | null;
+                    member_id?: string | null;
+                    method?: string | null;
+                    provider_data?: string | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    transaction_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_4_payments_booking_id_fkey';
+                        columns: ['booking_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_4_payments_lead_id_fkey';
+                        columns: ['lead_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_leads';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_4_payments_member_id_fkey';
+                        columns: ['member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_4_payments_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_4_payments_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            crm_receipts_v: {
+                Row: {
+                    amount: number | null;
+                    booking_id: string | null;
+                    created_at: string | null;
+                    currency: string | null;
+                    deleted_at: string | null;
+                    deleted_by: string | null;
+                    display_id: string | null;
+                    id: string | null;
+                    is_deleted: boolean | null;
+                    is_reconciled: boolean | null;
+                    lead_id: string | null;
+                    member_id: string | null;
+                    method: string | null;
+                    provider_data: string | null;
+                    reconciled_at: string | null;
+                    reconciled_by: string | null;
+                    status: string | null;
+                    tenant_id: string | null;
+                    transaction_id: string | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    amount?: number | null;
+                    booking_id?: string | null;
+                    created_at?: string | null;
+                    currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
+                    display_id?: string | null;
+                    id?: string | null;
+                    is_deleted?: boolean | null;
+                    is_reconciled?: boolean | null;
+                    lead_id?: string | null;
+                    member_id?: string | null;
+                    method?: string | null;
+                    provider_data?: string | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    transaction_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    amount?: number | null;
+                    booking_id?: string | null;
+                    created_at?: string | null;
+                    currency?: string | null;
+                    deleted_at?: string | null;
+                    deleted_by?: string | null;
+                    display_id?: string | null;
+                    id?: string | null;
+                    is_deleted?: boolean | null;
+                    is_reconciled?: boolean | null;
+                    lead_id?: string | null;
+                    member_id?: string | null;
+                    method?: string | null;
+                    provider_data?: string | null;
+                    reconciled_at?: string | null;
+                    reconciled_by?: string | null;
+                    status?: string | null;
+                    tenant_id?: string | null;
+                    transaction_id?: string | null;
+                    updated_at?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_4_payments_booking_id_fkey';
+                        columns: ['booking_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_bookings';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_4_payments_lead_id_fkey';
+                        columns: ['lead_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_leads';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_4_payments_member_id_fkey';
+                        columns: ['member_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_members';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_4_payments_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_4_payments_tenant_id_fkey';
+                        columns: ['tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             memberships: {
                 Row: {
                     created_at: string | null;
@@ -6513,6 +6298,14 @@ export type Database = {
                 Args: { p_district: string; p_state_code: string; p_tenant_id: string };
                 Returns: undefined;
             };
+            transition_booking_stage: {
+                Args: {
+                    p_booking_id: string;
+                    p_reason?: string;
+                    p_to_stage: Database['public']['Enums']['crm_operational_stage'];
+                };
+                Returns: Json;
+            };
             upsert_cat_prices_bypass: { Args: { prices: Json }; Returns: undefined };
             upsert_dealer_offers: { Args: { offers: Json }; Returns: undefined };
         };
@@ -6534,13 +6327,40 @@ export type Database = {
                 | 'FINANCE'
                 | 'ALLOTMENT'
                 | 'PDI'
+                | 'INSURANCE'
+                | 'REGISTRATION'
                 | 'COMPLIANCE'
-                | 'DELIVERED';
+                | 'DELIVERY'
+                | 'DELIVERED'
+                | 'FEEDBACK';
             fuel_type: 'PETROL' | 'ELECTRIC' | 'CNG' | 'HYBRID';
-            inventory_status: 'IN_TRANSIT' | 'AVAILABLE' | 'BOOKED' | 'SOLD' | 'ALLOCATED';
-            inventory_transaction_type: 'OEM_ALLOCATION' | 'DEALER_TRANSFER' | 'CUSTOMER_SALE' | 'STOCK_ADJUSTMENT';
+            inv_cost_type:
+                | 'EX_SHOWROOM'
+                | 'INSURANCE_TP'
+                | 'INSURANCE_ZD'
+                | 'RTO_REGISTRATION'
+                | 'HYPOTHECATION'
+                | 'TRANSPORT'
+                | 'ACCESSORY'
+                | 'OTHER';
+            inv_ledger_action:
+                | 'RECEIVED'
+                | 'QC_PASSED'
+                | 'QC_FAILED'
+                | 'SOFT_LOCKED'
+                | 'HARD_LOCKED'
+                | 'UNLOCKED'
+                | 'SOLD'
+                | 'TRANSFERRED'
+                | 'DAMAGED';
+            inv_payment_status: 'UNPAID' | 'PARTIAL_PAID' | 'FULLY_PAID';
+            inv_po_status: 'DRAFT' | 'SENT' | 'SHIPPED' | 'RECEIVED';
+            inv_qc_status: 'PENDING' | 'PASSED' | 'FAILED_DAMAGE' | 'FAILED_MISSING';
+            inv_quote_status: 'SUBMITTED' | 'SELECTED' | 'REJECTED';
+            inv_request_status: 'QUOTING' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
+            inv_source_type: 'BOOKING' | 'DIRECT';
+            inv_stock_status: 'AVAILABLE' | 'SOFT_LOCKED' | 'HARD_LOCKED' | 'SOLD' | 'IN_TRANSIT';
             lead_status: 'NEW' | 'CONTACTED' | 'QUOTED' | 'BOOKED' | 'DELIVERED' | 'CLOSED' | 'LOST';
-            po_status: 'DRAFT' | 'ORDERED' | 'PARTIALLY_RECEIVED' | 'COMPLETED' | 'CANCELLED';
             power_unit: 'CC' | 'KW';
             sku_status: 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED' | 'UPCOMING';
             tenant_type: 'MARKETPLACE' | 'DEALER' | 'BANK' | 'SUPER_ADMIN';
@@ -6674,14 +6494,43 @@ export const Constants = {
                 'FINANCE',
                 'ALLOTMENT',
                 'PDI',
+                'INSURANCE',
+                'REGISTRATION',
                 'COMPLIANCE',
+                'DELIVERY',
                 'DELIVERED',
+                'FEEDBACK',
             ],
             fuel_type: ['PETROL', 'ELECTRIC', 'CNG', 'HYBRID'],
-            inventory_status: ['IN_TRANSIT', 'AVAILABLE', 'BOOKED', 'SOLD', 'ALLOCATED'],
-            inventory_transaction_type: ['OEM_ALLOCATION', 'DEALER_TRANSFER', 'CUSTOMER_SALE', 'STOCK_ADJUSTMENT'],
+            inv_cost_type: [
+                'EX_SHOWROOM',
+                'INSURANCE_TP',
+                'INSURANCE_ZD',
+                'RTO_REGISTRATION',
+                'HYPOTHECATION',
+                'TRANSPORT',
+                'ACCESSORY',
+                'OTHER',
+            ],
+            inv_ledger_action: [
+                'RECEIVED',
+                'QC_PASSED',
+                'QC_FAILED',
+                'SOFT_LOCKED',
+                'HARD_LOCKED',
+                'UNLOCKED',
+                'SOLD',
+                'TRANSFERRED',
+                'DAMAGED',
+            ],
+            inv_payment_status: ['UNPAID', 'PARTIAL_PAID', 'FULLY_PAID'],
+            inv_po_status: ['DRAFT', 'SENT', 'SHIPPED', 'RECEIVED'],
+            inv_qc_status: ['PENDING', 'PASSED', 'FAILED_DAMAGE', 'FAILED_MISSING'],
+            inv_quote_status: ['SUBMITTED', 'SELECTED', 'REJECTED'],
+            inv_request_status: ['QUOTING', 'ORDERED', 'RECEIVED', 'CANCELLED'],
+            inv_source_type: ['BOOKING', 'DIRECT'],
+            inv_stock_status: ['AVAILABLE', 'SOFT_LOCKED', 'HARD_LOCKED', 'SOLD', 'IN_TRANSIT'],
             lead_status: ['NEW', 'CONTACTED', 'QUOTED', 'BOOKED', 'DELIVERED', 'CLOSED', 'LOST'],
-            po_status: ['DRAFT', 'ORDERED', 'PARTIALLY_RECEIVED', 'COMPLETED', 'CANCELLED'],
             power_unit: ['CC', 'KW'],
             sku_status: ['ACTIVE', 'INACTIVE', 'DISCONTINUED', 'UPCOMING'],
             tenant_type: ['MARKETPLACE', 'DEALER', 'BANK', 'SUPER_ADMIN'],

@@ -16,5 +16,5 @@ export default function StoreHomeClient({ initialDevice }: StoreHomeClientProps)
     // During SSR and initial render, use the server-detected device.
     // After hydration, useBreakpoint reads the actual viewport width,
     // so Chrome DevTools emulation and responsive testing work correctly.
-    return isPhone ? <M2Home /> : <DesktopHome />;
+    return <M2Home heroImage="/images/hero_d8.jpg" />;
 }

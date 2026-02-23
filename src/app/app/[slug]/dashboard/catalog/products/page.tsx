@@ -55,23 +55,34 @@ export default function UnifiedCatalogPage() {
 
         const modelIds = models.map((m: any) => m.id);
 
-        // 2. Fetch variants for all models
-        const { data: variants } = await (supabase as any)
-            .from('cat_variants_vehicle')
-            .select('id, name, model_id, status, position, slug')
-            .in('model_id', modelIds);
+        // 2. Fetch variants for all models (all types)
+        const [{ data: vehicleVariants }, { data: accessoryVariants }, { data: serviceVariants }] = await Promise.all([
+            (supabase as any)
+                .from('cat_variants_vehicle')
+                .select('id, name, model_id, status, position, slug')
+                .in('model_id', modelIds),
+            (supabase as any)
+                .from('cat_variants_accessory')
+                .select('id, name, model_id, status, position, slug')
+                .in('model_id', modelIds),
+            (supabase as any)
+                .from('cat_variants_service')
+                .select('id, name, model_id, status, position, slug')
+                .in('model_id', modelIds),
+        ]);
+        const allVariants = [...(vehicleVariants || []), ...(accessoryVariants || []), ...(serviceVariants || [])];
 
-        // 3. Fetch SKUs by model_id (covers all SKU types including those without a variant)
+        // 3. Fetch SKUs by model_id (covers all SKU types)
         const { data: skus } = await (supabase as any)
             .from('cat_skus')
             .select(
-                'id, name, model_id, vehicle_variant_id, status, position, slug, hex_primary, color_name, primary_image'
+                'id, name, model_id, vehicle_variant_id, accessory_variant_id, service_variant_id, sku_type, status, position, slug, hex_primary, color_name, primary_image'
             )
             .in('model_id', modelIds);
 
         // 4. Assemble hierarchy: model → variants → skus
         const assembled = models.map((model: any) => {
-            const modelVariants = (variants || []).filter((v: any) => v.model_id === model.id);
+            const modelVariants = allVariants.filter((v: any) => v.model_id === model.id);
             const modelSkus = (skus || []).filter((s: any) => s.model_id === model.id);
 
             return {
@@ -86,13 +97,18 @@ export default function UnifiedCatalogPage() {
                     position: s.position,
                     status: s.status,
                 })),
-                // Variants with their SKUs
+                // Variants with their SKUs — map using the correct FK per SKU type
                 variants: modelVariants.map((v: any) => ({
                     ...v,
                     type: 'VARIANT',
                     parent_id: model.id,
                     skus: modelSkus
-                        .filter((s: any) => s.vehicle_variant_id === v.id)
+                        .filter(
+                            (s: any) =>
+                                s.vehicle_variant_id === v.id ||
+                                s.accessory_variant_id === v.id ||
+                                s.service_variant_id === v.id
+                        )
                         .map((s: any) => ({
                             ...s,
                             type: 'SKU',

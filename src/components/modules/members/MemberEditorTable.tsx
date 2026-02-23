@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { DisplayId } from '@/components/ui/DisplayId';
+import DocumentManager from '@/components/modules/leads/DocumentManager';
+import { getMemberDocuments, getSignedUrlAction } from '@/actions/crm';
 import {
     Calendar,
     ChevronDown,
     ChevronRight,
     Clock,
+    Eye,
     FileText,
     MoreHorizontal,
     User,
@@ -202,7 +205,42 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
         transactionQuotes: true,
         transactionBookings: true,
         transactionReceipts: true,
+        docMember: true,
+        docLeads: false,
+        docQuotes: false,
+        docBookings: false,
     });
+
+    // --- Document preview state (for inline thumbnails) ---
+    const [memberDocs, setMemberDocs] = useState<any[]>([]);
+    const [docSignedUrls, setDocSignedUrls] = useState<Record<string, string>>({});
+    const [docsLoading, setDocsLoading] = useState(false);
+
+    const fetchMemberDocs = useCallback(async () => {
+        if (!profile.member?.id) return;
+        setDocsLoading(true);
+        try {
+            const docs = await getMemberDocuments(profile.member.id);
+            setMemberDocs(docs);
+            const urls: Record<string, string> = {};
+            await Promise.all(
+                docs.map(async (doc: any) => {
+                    try {
+                        urls[doc.id] = await getSignedUrlAction(doc.path);
+                    } catch {}
+                })
+            );
+            setDocSignedUrls(urls);
+        } catch (e) {
+            console.error('Failed to fetch member docs for preview', e);
+        } finally {
+            setDocsLoading(false);
+        }
+    }, [profile.member?.id]);
+
+    useEffect(() => {
+        if (activeTab === 'DOCUMENTS') fetchMemberDocs();
+    }, [activeTab, fetchMemberDocs]);
 
     const leadCount = profile.leads?.length || 0;
     const quoteCount = profile.quotes?.length || 0;
@@ -1600,8 +1638,332 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                 )}
 
                 {activeTab === 'DOCUMENTS' && (
-                    <div className="mx-4 mt-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
-                        Documents module coming soon.
+                    <div className="p-6">
+                        <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] overflow-hidden">
+                            {/* Member Documents */}
+                            <TransactionSection
+                                title="Member Documents"
+                                count={0}
+                                expanded={groups.docMember}
+                                onToggle={() => setGroups(g => ({ ...g, docMember: !g.docMember }))}
+                            >
+                                <DocumentManager
+                                    memberId={profile.member?.id || ''}
+                                    tenantId={profile.member?.tenant_id || ''}
+                                />
+                            </TransactionSection>
+
+                            {/* Lead Documents */}
+                            <TransactionSection
+                                title="Lead Documents"
+                                count={leadCount}
+                                expanded={groups.docLeads}
+                                onToggle={() => setGroups(g => ({ ...g, docLeads: !g.docLeads }))}
+                            >
+                                <div className="w-full overflow-x-auto">
+                                    <table className="w-full min-w-[600px] text-left border-collapse">
+                                        <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
+                                            <tr className="border-b border-slate-100 dark:border-white/5">
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Lead ID
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Captured
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Status
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(profile.leads || []).map((lead: any) => (
+                                                <tr
+                                                    key={lead.id}
+                                                    className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group"
+                                                >
+                                                    <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                        {formatDisplayId(lead.display_id || lead.id)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                        {formatDate(lead.created_at)}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[8px] font-black uppercase tracking-widest">
+                                                            {lead.status || 'OPEN'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right">
+                                                        <a
+                                                            href={`/app/${slug}/leads/${lead.id}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-opacity"
+                                                        >
+                                                            View Docs →
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {(profile.leads || []).length === 0 && (
+                                                <tr>
+                                                    <td
+                                                        colSpan={4}
+                                                        className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                    >
+                                                        No leads found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {/* Inline Doc Thumbnails */}
+                                {memberDocs.length > 0 && (
+                                    <div className="px-4 pt-3 pb-1 border-t border-slate-100 dark:border-white/5">
+                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                            Member Document Previews
+                                        </div>
+                                        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                                            {memberDocs.map((doc: any) => (
+                                                <div key={doc.id} className="shrink-0 w-24 group">
+                                                    <div className="w-24 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                                                        {(doc.file_type || '').includes('image') &&
+                                                        docSignedUrls[doc.id] ? (
+                                                            <img
+                                                                src={docSignedUrls[doc.id]}
+                                                                alt={doc.purpose || ''}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                <FileText size={20} className="text-slate-300" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1 truncate">
+                                                        {doc.purpose || 'DOC'}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {docsLoading && memberDocs.length === 0 && (
+                                    <div className="px-4 py-3 text-[9px] text-slate-400 animate-pulse">
+                                        Loading previews...
+                                    </div>
+                                )}
+                            </TransactionSection>
+
+                            {/* Quote Documents */}
+                            <TransactionSection
+                                title="Quote Documents"
+                                count={quoteCount}
+                                expanded={groups.docQuotes}
+                                onToggle={() => setGroups(g => ({ ...g, docQuotes: !g.docQuotes }))}
+                            >
+                                <div className="w-full overflow-x-auto">
+                                    <table className="w-full min-w-[600px] text-left border-collapse">
+                                        <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
+                                            <tr className="border-b border-slate-100 dark:border-white/5">
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Quote ID
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Created
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Status
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(profile.quotes || []).map((quote: any) => (
+                                                <tr
+                                                    key={quote.id}
+                                                    className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group"
+                                                >
+                                                    <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                        {formatDisplayId(quote.display_id || quote.id)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                        {formatDate(quote.created_at)}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[8px] font-black uppercase tracking-widest">
+                                                            {quote.status || 'DRAFT'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right">
+                                                        <a
+                                                            href={`/app/${slug}/quotes/${quote.id}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-opacity"
+                                                        >
+                                                            View Docs →
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {(profile.quotes || []).length === 0 && (
+                                                <tr>
+                                                    <td
+                                                        colSpan={4}
+                                                        className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                    >
+                                                        No quotes found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {/* Inline Doc Thumbnails */}
+                                {memberDocs.length > 0 && (
+                                    <div className="px-4 pt-3 pb-1 border-t border-slate-100 dark:border-white/5">
+                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                            Member Document Previews
+                                        </div>
+                                        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                                            {memberDocs.map((doc: any) => (
+                                                <div key={doc.id} className="shrink-0 w-24 group">
+                                                    <div className="w-24 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                                                        {(doc.file_type || '').includes('image') &&
+                                                        docSignedUrls[doc.id] ? (
+                                                            <img
+                                                                src={docSignedUrls[doc.id]}
+                                                                alt={doc.purpose || ''}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                <FileText size={20} className="text-slate-300" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1 truncate">
+                                                        {doc.purpose || 'DOC'}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </TransactionSection>
+
+                            {/* Booking Documents */}
+                            <TransactionSection
+                                title="Sales Order Documents"
+                                count={bookingCount}
+                                expanded={groups.docBookings}
+                                onToggle={() => setGroups(g => ({ ...g, docBookings: !g.docBookings }))}
+                            >
+                                <div className="w-full overflow-x-auto">
+                                    <table className="w-full min-w-[600px] text-left border-collapse">
+                                        <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
+                                            <tr className="border-b border-slate-100 dark:border-white/5">
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Sales Order
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Date
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Status
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    Amount
+                                                </th>
+                                                <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(profile.bookings || []).map((booking: any) => (
+                                                <tr
+                                                    key={booking.id}
+                                                    className="border-b border-slate-50 dark:border-white/[0.02] last:border-b-0 group"
+                                                >
+                                                    <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                        {formatDisplayId(booking.display_id || booking.id)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-[10px] font-bold text-slate-500">
+                                                        {formatDate(booking.created_at)}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 text-[8px] font-black uppercase tracking-widest">
+                                                            {booking.status || 'BOOKED'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-4 text-[10px] font-black text-slate-900 dark:text-white">
+                                                        {formatMoney(booking.booking_amount_received || 0)}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right">
+                                                        <a
+                                                            href={`/app/${slug}/sales-orders/${booking.id}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-opacity"
+                                                        >
+                                                            View Docs →
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {(profile.bookings || []).length === 0 && (
+                                                <tr>
+                                                    <td
+                                                        colSpan={5}
+                                                        className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                    >
+                                                        No sales orders found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {/* Inline Doc Thumbnails */}
+                                {memberDocs.length > 0 && (
+                                    <div className="px-4 pt-3 pb-1 border-t border-slate-100 dark:border-white/5">
+                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                            Member Document Previews
+                                        </div>
+                                        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                                            {memberDocs.map((doc: any) => (
+                                                <div key={doc.id} className="shrink-0 w-24 group">
+                                                    <div className="w-24 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                                                        {(doc.file_type || '').includes('image') &&
+                                                        docSignedUrls[doc.id] ? (
+                                                            <img
+                                                                src={docSignedUrls[doc.id]}
+                                                                alt={doc.purpose || ''}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                <FileText size={20} className="text-slate-300" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1 truncate">
+                                                        {doc.purpose || 'DOC'}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </TransactionSection>
+                        </div>
                     </div>
                 )}
 
