@@ -86,8 +86,6 @@ export default function LeadForm({
         setSelectedDealerId(initialSelectedDealerId || '');
     }, [initialSelectedDealerId, isOpen]);
 
-
-
     const [docCount, setDocCount] = useState(0);
 
     // Phone Discovery Logic
@@ -294,7 +292,7 @@ export default function LeadForm({
         } catch (error) {
             // Error is already toasted by parent, we just stop here
             // This keeps the states (customerName, phone, etc.) intact
-            console.log('[DEBUG] LeadForm submission failed, state preserved.');
+            // console.log('[DEBUG] LeadForm submission failed, state preserved.');
         } finally {
             setIsSubmitting(false);
         }
@@ -474,8 +472,6 @@ export default function LeadForm({
                             </div>
                         </div>
                     </div>
-
-
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">

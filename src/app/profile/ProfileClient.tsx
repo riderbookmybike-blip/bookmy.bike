@@ -103,7 +103,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                     filter: `id=eq.${member.id}`,
                 },
                 payload => {
-                    console.log('[Realtime] Profile updated:', payload.new);
+                    // console.log('[Realtime] Profile updated:', payload.new);
                     setLocalMember(payload.new);
                 }
             )

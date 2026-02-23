@@ -142,7 +142,7 @@ export default async function TenantDashboardLayout({
         });
 
         if (matched) {
-            console.log(`[ACL] AUMS Bypass triggered for user ${user.email} with role ${matched.role}`);
+            // console.log(`[ACL] AUMS Bypass triggered for user ${user.email} with role ${matched.role}`);
         }
     }
     if (!matched) redirect('/403');

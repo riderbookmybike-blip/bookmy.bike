@@ -257,7 +257,7 @@ export const DesktopCatalog = ({
 
             let cachedData: any = null;
             const cached = localStorage.getItem('bkmb_user_pincode');
-            console.log('[Location] Cached data:', cached);
+            // console.log('[Location] Cached data:', cached);
             if (cached) {
                 try {
                     cachedData = JSON.parse(cached);
@@ -276,7 +276,7 @@ export const DesktopCatalog = ({
                     console.error('[Location] Profile fetch failed:', err);
                 }
                 if (member?.pincode) {
-                    console.log('[Location] Using profile pincode:', member.pincode);
+                    // console.log('[Location] Using profile pincode:', member.pincode);
 
                     const resolved = await resolveLocation(member.pincode);
                     const result = await checkServiceability(member.pincode);
@@ -348,7 +348,7 @@ export const DesktopCatalog = ({
 
             // Tier 2: Local Storage
             if (cachedData?.pincode) {
-                console.log('[Location] Using cached pincode:', cachedData.pincode);
+                // console.log('[Location] Using cached pincode:', cachedData.pincode);
 
                 // Optimistic Update: Unblock UI immediately using cached data
                 setServiceability(prev => ({
@@ -396,11 +396,11 @@ export const DesktopCatalog = ({
             }
             // Tier 3: Browser Geolocation
             if (navigator.geolocation) {
-                console.log('[Location] Requesting geolocation...');
+                // console.log('[Location] Requesting geolocation...');
                 navigator.geolocation.getCurrentPosition(
                     async position => {
                         const { latitude, longitude } = position.coords;
-                        console.log('[Location] Geolocation success:', { latitude, longitude });
+                        // console.log('[Location] Geolocation success:', { latitude, longitude });
 
                         try {
                             // Use our own database to find nearest pincode - no external APIs!
@@ -410,7 +410,7 @@ export const DesktopCatalog = ({
                                 { p_lat: latitude, p_lon: longitude }
                             );
 
-                            console.log('[Location] Nearest pincode from DB:', nearestData, nearestError);
+                            // console.log('[Location] Nearest pincode from DB:', nearestData, nearestError);
 
                             if (nearestData && nearestData.length > 0) {
                                 const nearest = nearestData[0];
@@ -419,7 +419,7 @@ export const DesktopCatalog = ({
 
                                 // Use checkServiceability to verify and get full details
                                 const result = await checkServiceability(pincode);
-                                console.log('[Location] Serviceability result:', result);
+                                // console.log('[Location] Serviceability result:', result);
 
                                 const displayLoc = result.district || nearest.district || nearest.taluka || pincode;
                                 const userDist = result.district || nearest.district;
@@ -464,7 +464,7 @@ export const DesktopCatalog = ({
                                     }
                                 } else {
                                     // User in non-serviceable district - find nearest serviceable
-                                    console.log('[Location] District not serviceable, finding nearest...');
+                                    // console.log('[Location] District not serviceable, finding nearest...');
                                     const { data: nearestServiceable } = await supabaseClient.rpc(
                                         'get_nearest_serviceable_district',
                                         { p_lat: latitude, p_lon: longitude }
@@ -472,7 +472,7 @@ export const DesktopCatalog = ({
 
                                     if (nearestServiceable && nearestServiceable.length > 0) {
                                         const fallback = nearestServiceable[0];
-                                        console.log('[Location] Fallback district:', fallback);
+                                        // console.log('[Location] Fallback district:', fallback);
                                         setServiceability({
                                             status: 'unserviceable',
                                             location: fallback.district,
@@ -526,7 +526,7 @@ export const DesktopCatalog = ({
                             }
 
                             // Fallback if RPC fails - use state-level
-                            console.log('[Location] RPC failed, using Maharashtra fallback');
+                            // console.log('[Location] RPC failed, using Maharashtra fallback');
                             setServiceability({
                                 status: 'serviceable',
                                 location: 'MAHARASHTRA',
@@ -557,7 +557,7 @@ export const DesktopCatalog = ({
                     }
                 );
             } else {
-                console.log('[Location] Geolocation not available, trying IP fallback');
+                // console.log('[Location] Geolocation not available, trying IP fallback');
                 const resolvedByIp = await applyIpFallback();
                 if (!resolvedByIp) {
                     setServiceability({ status: 'unset' });

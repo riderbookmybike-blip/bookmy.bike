@@ -287,7 +287,7 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
                 tenant_id: dealerId,
             };
 
-            console.log('[LOCATION_DEBUG] Saving location:', payload);
+            // console.log('[LOCATION_DEBUG] Saving location:', payload);
 
             let error;
             if (initialData) {

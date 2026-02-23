@@ -487,17 +487,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
         offsetX?: number,
         offsetY?: number
     ) => {
-        console.log('DEBUG: MatrixStep handleMediaSave called', {
-            images,
-            videos,
-            pdfs,
-            primary,
-            applyVideosToAll,
-            zoomFactor,
-            isFlipped,
-            offsetX,
-            offsetY,
-        });
+        // console.log('DEBUG: MatrixStep handleMediaSave called', { images, videos, pdfs, primary });
         if (!activeMediaSku) return;
 
         try {

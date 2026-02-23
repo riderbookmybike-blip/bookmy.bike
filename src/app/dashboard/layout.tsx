@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         effectiveRole === 'BMB_USER' ||
         !['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF', 'BANK_STAFF'].includes(effectiveRole);
 
-    console.log('DashboardLayout Role Debug:', { userRole, activeRole, effectiveRole, isRegularUser });
+    // console.log('DashboardLayout Role Debug:', { userRole, activeRole, effectiveRole, isRegularUser });
 
     // SETUP ENFORCEMENT
     useEffect(() => {

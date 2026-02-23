@@ -131,11 +131,12 @@ export default function SKUMediaManager({
                     const contentType = res.headers.get('content-type') || '';
                     const contentLength = parseInt(res.headers.get('content-length') || '0', 10);
                     const ext = contentType.split('/').pop()?.toUpperCase() || '?';
-                    const sizeStr = contentLength > 1048576
-                        ? `${(contentLength / 1048576).toFixed(1)} MB`
-                        : contentLength > 0
-                            ? `${Math.round(contentLength / 1024)} KB`
-                            : '?';
+                    const sizeStr =
+                        contentLength > 1048576
+                            ? `${(contentLength / 1048576).toFixed(1)} MB`
+                            : contentLength > 0
+                              ? `${Math.round(contentLength / 1024)} KB`
+                              : '?';
                     setFileMeta({ type: ext, size: sizeStr });
                 })
                 .catch(() => setFileMeta(null));
@@ -307,7 +308,11 @@ export default function SKUMediaManager({
                     if (!ctx) return blob;
                     ctx.drawImage(img, 0, 0, width, height);
                     const resizedBlob = await new Promise<Blob>((resolve, reject) => {
-                        canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Resize failed'))), blob.type === 'image/webp' ? 'image/webp' : 'image/png', 0.92);
+                        canvas.toBlob(
+                            b => (b ? resolve(b) : reject(new Error('Resize failed'))),
+                            blob.type === 'image/webp' ? 'image/webp' : 'image/png',
+                            0.92
+                        );
                     });
                     return resizedBlob;
                 } catch {
@@ -323,7 +328,7 @@ export default function SKUMediaManager({
             const resultBlob = await withTimeout(
                 removeBackground(optimizedBlob, {
                     progress: (key, current, total) => {
-                        console.log(`[BG Removal] ${key}: ${Math.round((current / total) * 100)}%`);
+                        // console.log(`[BG Removal] ${key}: ${Math.round((current / total) * 100)}%`);
                     },
                 }),
                 BG_TIMEOUT_MS
@@ -733,7 +738,13 @@ export default function SKUMediaManager({
                                     <label className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
                                         <RefreshCw size={16} className="mb-1" />
                                         <span className="text-[8px] font-black uppercase tracking-widest">Replace</span>
-                                        <input type="file" hidden accept="image/*" onChange={initiateReplace} disabled={!primaryImage} />
+                                        <input
+                                            type="file"
+                                            hidden
+                                            accept="image/*"
+                                            onChange={initiateReplace}
+                                            disabled={!primaryImage}
+                                        />
                                     </label>
 
                                     <button
@@ -741,8 +752,14 @@ export default function SKUMediaManager({
                                         disabled={!primaryImage || isRemovingBg}
                                         className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border transition-all ${isRemovingBg ? 'border-violet-500 bg-violet-50 dark:bg-violet-600/10 text-violet-600' : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-violet-400 hover:text-violet-600'} disabled:opacity-50 disabled:cursor-not-allowed`}
                                     >
-                                        {isRemovingBg ? <Loader2 size={16} className="mb-1 animate-spin" /> : <Eraser size={16} className="mb-1" />}
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Remove BG</span>
+                                        {isRemovingBg ? (
+                                            <Loader2 size={16} className="mb-1 animate-spin" />
+                                        ) : (
+                                            <Eraser size={16} className="mb-1" />
+                                        )}
+                                        <span className="text-[8px] font-black uppercase tracking-widest">
+                                            Remove BG
+                                        </span>
                                     </button>
 
                                     <button
@@ -757,7 +774,12 @@ export default function SKUMediaManager({
                                     <label className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
                                         <Plus size={16} className="mb-1" />
                                         <span className="text-[8px] font-black uppercase tracking-widest">Add New</span>
-                                        <input type="file" hidden accept="image/*" onChange={e => handleFileUpload(e, 'image')} />
+                                        <input
+                                            type="file"
+                                            hidden
+                                            accept="image/*"
+                                            onChange={e => handleFileUpload(e, 'image')}
+                                        />
                                     </label>
 
                                     <button
@@ -777,17 +799,25 @@ export default function SKUMediaManager({
                                 {/* Smart Crop */}
                                 <div className="p-4 bg-slate-50 dark:bg-white/[0.03] rounded-2xl border border-slate-100 dark:border-white/5 space-y-2">
                                     <div className="flex items-center gap-2">
-                                        {isCropping ? <Loader2 size={12} className="animate-spin text-amber-600" /> : <Crop size={12} className="text-slate-400" />}
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Smart Crop</span>
+                                        {isCropping ? (
+                                            <Loader2 size={12} className="animate-spin text-amber-600" />
+                                        ) : (
+                                            <Crop size={12} className="text-slate-400" />
+                                        )}
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                            Smart Crop
+                                        </span>
                                     </div>
                                     <div className="flex flex-wrap gap-1.5">
-                                        {([
-                                            { label: 'Auto Trim', ratio: undefined },
-                                            { label: '1:1', ratio: 1 },
-                                            { label: '4:3', ratio: 4 / 3 },
-                                            { label: '16:9', ratio: 16 / 9 },
-                                            { label: 'Card', ratio: 300 / 344 },
-                                        ] as { label: string; ratio: number | undefined }[]).map(opt => (
+                                        {(
+                                            [
+                                                { label: 'Auto Trim', ratio: undefined },
+                                                { label: '1:1', ratio: 1 },
+                                                { label: '4:3', ratio: 4 / 3 },
+                                                { label: '16:9', ratio: 16 / 9 },
+                                                { label: 'Card', ratio: 300 / 344 },
+                                            ] as { label: string; ratio: number | undefined }[]
+                                        ).map(opt => (
                                             <button
                                                 key={opt.label}
                                                 onClick={() => handleSmartCrop(opt.ratio, opt.label)}
@@ -802,7 +832,8 @@ export default function SKUMediaManager({
                                                         : 'border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 text-slate-500 dark:text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-600/10',
                                                 ].join(' ')}
                                             >
-                                                {activeCrop === opt.label && '✓ '}{opt.label}
+                                                {activeCrop === opt.label && '✓ '}
+                                                {opt.label}
                                             </button>
                                         ))}
                                     </div>
@@ -925,9 +956,7 @@ export default function SKUMediaManager({
                 <div className="p-8 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] flex items-center justify-between shrink-0">
                     <div className="hidden md:flex items-center gap-2 text-slate-400">
                         <Check size={14} className="text-emerald-500" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">
-                            All changes auto-saved
-                        </span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest">All changes auto-saved</span>
                     </div>
                     <div className="flex gap-4">
                         <button

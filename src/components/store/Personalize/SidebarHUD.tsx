@@ -87,7 +87,7 @@ export default function SidebarHUD({
     annualInterest,
     interestType,
 }: SidebarHUDProps) {
-    console.log('SidebarHUD Debug:', { schemeId, leadName, pricingSource });
+    // console.log('SidebarHUD Debug:', { schemeId, leadName, pricingSource });
     const discountPercent = Math.round((savings / totalMRP) * 100);
     // Ensure negative zero or small decimals show as 0
     const displayDownPayment = downPayment < 1 ? 0 : downPayment;

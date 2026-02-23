@@ -228,7 +228,7 @@ export default function LoginSidebar({
 
                     if (!enrichResult.success || !enrichResult.data?.district) {
                         // Retry once after 2 seconds
-                        console.log('First enrichment attempt failed or incomplete. Retrying...');
+                        // console.log('First enrichment attempt failed or incomplete. Retrying...');
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         enrichResult = await getPincodeDetails(geocodeResult.pincode);
                     }

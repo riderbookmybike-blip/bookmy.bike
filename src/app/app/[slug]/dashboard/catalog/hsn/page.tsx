@@ -216,7 +216,7 @@ export default function HSNMasterPage() {
     };
 
     const handleQuickAction = (action: string, item: any) => {
-        console.log('Quick Action:', action, item);
+        // console.log('Quick Action:', action, item);
         if (action === 'edit') {
             handleEdit(item);
         } else if (action === 'delete') {

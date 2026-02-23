@@ -28,8 +28,8 @@ export function CelebrationProvider({ children }: { children: React.ReactNode })
         });
 
         channel
-            .on('broadcast', { event: 'celebrate' }, (payload) => {
-                console.log('Celebration received:', payload);
+            .on('broadcast', { event: 'celebrate' }, payload => {
+                // console.log('Celebration received:', payload);
                 if (payload.payload && payload.payload.type) {
                     setActiveCelebration(payload.payload.type);
                 }
@@ -55,10 +55,7 @@ export function CelebrationProvider({ children }: { children: React.ReactNode })
     return (
         <CelebrationContext.Provider value={{ triggerCelebration }}>
             {children}
-            <CelebrateEffect
-                type={activeCelebration}
-                onComplete={() => setActiveCelebration(null)}
-            />
+            <CelebrateEffect type={activeCelebration} onComplete={() => setActiveCelebration(null)} />
         </CelebrationContext.Provider>
     );
 }
