@@ -447,7 +447,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     size: file.size || null,
                 });
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast.error(error?.message || 'Failed to upload note attachments');
             setSavingNote(false);
             return;
@@ -1139,7 +1139,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                                 } else {
                                                     alert(res.message || 'Failed to save');
                                                 }
-                                            } catch (err: any) {
+                                            } catch (err: unknown) {
                                                 alert(err?.message || 'Save failed');
                                             } finally {
                                                 setEditSaving(false);

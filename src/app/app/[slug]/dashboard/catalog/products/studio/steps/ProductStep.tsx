@@ -284,7 +284,7 @@ export default function ProductStep({
                 return true;
             }
             return true;
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Save failed details:', JSON.stringify(error, null, 2));
             toast.error('Failed to save product: ' + (error.message || 'Unknown error'));
             return false;

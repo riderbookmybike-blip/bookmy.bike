@@ -471,7 +471,7 @@ export default function SKUMediaManager({
             } else {
                 setSkuPdfs([...skuPdfs, ...newUrls]);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error('Upload failed. Try again.');
         } finally {
             setIsUploading(false);

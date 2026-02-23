@@ -304,7 +304,7 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
             } else {
                 onSuccess();
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[LOCATION_DEBUG] Exception:', error);
             alert(`Failed to save location: ${error?.message || 'Unknown error'}`);
         } finally {

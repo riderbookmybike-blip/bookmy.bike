@@ -103,7 +103,7 @@ export async function advanceBookingStage(
         revalidatePath('/dashboard');
 
         return { success: true, message: payload.message, warning: payload.warning };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[advanceBookingStage] Error:', err);
         return { success: false, message: err.message };
     }

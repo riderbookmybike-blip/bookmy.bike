@@ -6,7 +6,7 @@ import { getVins, assignVinToBooking } from '@/lib/dataStore';
 import { VehicleUnit } from '@/types/vehicleUnit';
 import { Fingerprint, Check } from 'lucide-react';
 
-export function VinAssignmentSection({ booking, onAssign }: { booking: Booking, onAssign: () => void }) {
+export function VinAssignmentSection({ booking, onAssign }: { booking: Booking; onAssign: () => void }) {
     const [availableVins, setAvailableVins] = useState<VehicleUnit[]>([]);
     const [selectedVin, setSelectedVin] = useState('');
     const [error, setError] = useState('');
@@ -14,11 +14,12 @@ export function VinAssignmentSection({ booking, onAssign }: { booking: Booking, 
     useEffect(() => {
         // Fetch VINs that match vaguely (for demo) and are AVAILABLE
         const allVins = getVins();
-        const relevant = allVins.filter(v =>
-            v.status === 'AVAILABLE' &&
-            // In real app: v.sku === booking.sku
-            // Demo: Match First 3 letters of Brand 'HND' etc.
-            v.vin.startsWith(booking.brandName.substring(0, 3).toUpperCase())
+        const relevant = allVins.filter(
+            v =>
+                v.status === 'AVAILABLE' &&
+                // In real app: v.sku === booking.sku
+                // Demo: Match First 3 letters of Brand 'HND' etc.
+                v.vin.startsWith(booking.brandName.substring(0, 3).toUpperCase())
         );
         setAvailableVins(relevant);
     }, [booking]);
@@ -28,7 +29,7 @@ export function VinAssignmentSection({ booking, onAssign }: { booking: Booking, 
         try {
             assignVinToBooking(booking.id, selectedVin);
             onAssign();
-        } catch (e: any) {
+        } catch (e: unknown) {
             setError(e.message);
         }
     };
@@ -46,7 +47,9 @@ export function VinAssignmentSection({ booking, onAssign }: { booking: Booking, 
                     </div>
                     <div>
                         <span className="text-xs text-green-600 block uppercase font-bold">Engine Number</span>
-                        <span className="font-mono text-lg font-bold text-green-800">{booking.assignedEngineNumber}</span>
+                        <span className="font-mono text-lg font-bold text-green-800">
+                            {booking.assignedEngineNumber}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -65,7 +68,7 @@ export function VinAssignmentSection({ booking, onAssign }: { booking: Booking, 
             <div className="flex gap-2">
                 <select
                     value={selectedVin}
-                    onChange={(e) => setSelectedVin(e.target.value)}
+                    onChange={e => setSelectedVin(e.target.value)}
                     className="flex-1 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-500/30 rounded px-3 py-2 text-sm font-mono text-slate-900 dark:text-white"
                 >
                     <option value="">-- Select Chassis --</option>

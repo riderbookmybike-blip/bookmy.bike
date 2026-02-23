@@ -408,7 +408,7 @@ export default function PricingPage() {
             formattedSkus.sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model));
 
             setSkus(formattedSkus);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error fetching data:', error);
         } finally {
             setLoading(false);

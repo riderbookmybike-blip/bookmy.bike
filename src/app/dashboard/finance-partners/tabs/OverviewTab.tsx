@@ -90,7 +90,7 @@ export default function OverviewTab({ partner: initialPartner }: { partner: Bank
             } else {
                 alert('Database update failed: ' + res.error);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Logo upload error:', error);
             alert('Failed to upload logo: ' + (error.message || 'Unknown error'));
         } finally {

@@ -109,7 +109,7 @@ export async function getPincodeDetails(pincode: string) {
         } else {
             return { success: false, error: 'Pincode not found.' };
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Pincode Lookup Error:', error.message);
         return { success: false, error: 'Service Unavailable' };
     }
@@ -134,7 +134,7 @@ export async function getDistrictDetails(districtName: string, stateCode?: strin
         }
 
         return { success: false, error: 'District not found in database' };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('District Lookup Error:', error.message);
         return { success: false, error: 'Service Unavailable' };
     }

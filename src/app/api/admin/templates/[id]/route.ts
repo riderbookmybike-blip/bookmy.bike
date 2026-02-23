@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export async function DELETE(
-    request: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
         const supabase = await createClient(); // Use server client which respects user session (AUMS only) or Service Role if needed.
@@ -20,7 +17,7 @@ export async function DELETE(
         if (error) throw error;
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

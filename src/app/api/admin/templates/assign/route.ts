@@ -13,7 +13,7 @@ export async function POST(request: Request) {
         await assignTemplateToRole(tenant_type, role, template_id);
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

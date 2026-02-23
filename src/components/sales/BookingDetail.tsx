@@ -94,7 +94,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
 
             updateBookingStatus(booking.id, updates, reason);
             onUpdate();
-        } catch (e: any) {
+        } catch (e: unknown) {
             alert(`Stock Error: ${e.message}`);
         }
     };
@@ -114,7 +114,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                 'Allotment revoked. PDI Reset.'
             );
             onUpdate();
-        } catch (e: any) {
+        } catch (e: unknown) {
             alert(e.message);
         }
     };
@@ -140,7 +140,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                     'PDI Passed. Eligible for Hard Allotment.'
                 );
                 onUpdate();
-            } catch (e: any) {
+            } catch (e: unknown) {
                 alert(e.message);
             }
         } else {
@@ -159,7 +159,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                 );
                 onUpdate();
                 alert('Vehicle released. Please soft-lock another unit from the inventory.');
-            } catch (e: any) {
+            } catch (e: unknown) {
                 alert(e.message);
             }
         }
@@ -176,7 +176,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                 'Payment received. Transitioning to Finance.'
             );
             onUpdate();
-        } catch (e: any) {
+        } catch (e: unknown) {
             alert(e.message);
         }
     };
@@ -185,7 +185,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
         try {
             updateBookingStatus(booking.id, { operationalStage: nextStage }, `Promoted to ${nextStage} stage.`);
             onUpdate();
-        } catch (e: any) {
+        } catch (e: unknown) {
             alert(e.message);
         }
     };
@@ -209,7 +209,7 @@ export default function BookingDetail({ booking, onClose, onUpdate }: BookingDet
                 `Vehicle Delivered to ${deliveryForm.receiver}`
             );
             onUpdate();
-        } catch (e: any) {
+        } catch (e: unknown) {
             alert(e.message);
         }
     };

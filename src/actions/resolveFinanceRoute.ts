@@ -167,7 +167,7 @@ export async function resolveFinanceRoute(dealerTenantId: string): Promise<Resol
             allSchemes: allSchemes.map(s => s.scheme),
             reason: 'Unknown strategy',
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[resolveFinanceRoute] Error:', error.message);
         return {
             strategy: 'MANUAL',

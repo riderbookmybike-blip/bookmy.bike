@@ -145,7 +145,7 @@ export default function AddBrandModal({ isOpen, onClose, onSuccess, initialData 
                 brand_logos: { original: '', dark: '', light: '' },
                 specifications: {},
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error adding brand:', error);
             alert('Failed to add brand: ' + error.message);
         } finally {

@@ -90,7 +90,7 @@ export default function TeamPage() {
                 setTransferTarget(null);
                 window.location.reload(); // Refresh to reflect role change
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             alert(err.message);
         }
     };

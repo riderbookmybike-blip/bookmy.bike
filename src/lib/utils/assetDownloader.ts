@@ -136,7 +136,7 @@ export async function preflightCheck(): Promise<{
         const { unlinkSync } = await import('fs');
         unlinkSync(testFile);
         return { ok: true, mediaRoot: MEDIA_ROOT };
-    } catch (e: any) {
+    } catch (e: unknown) {
         return { ok: false, mediaRoot: MEDIA_ROOT, error: e.message };
     }
 }
@@ -276,7 +276,7 @@ export async function downloadAsset(request: DownloadRequest, existingHashes?: S
             contentType,
             status: 'downloaded',
         };
-    } catch (e: any) {
+    } catch (e: unknown) {
         return {
             url,
             localPath: '',

@@ -236,7 +236,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                                         dealer_location: resolvedDealerDistrict || resolvedUserDistrict || null,
                                         studio_code: resolvedStudioIdLocal || null,
                                     }));
-                                } catch (err: any) {
+                                } catch (err: unknown) {
                                     console.error('[CATALOG] SOT offer fetch error:', err?.message || err);
                                     disableOffersRef.current = true;
                                     offerData = [];
@@ -338,7 +338,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                 } else {
                     setItems([]);
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 // Ignore AbortError - expected in React StrictMode double-render
                 if (err?.name === 'AbortError' || err?.message?.includes('AbortError')) {
                     return;

@@ -374,7 +374,7 @@ export async function executeSyncPlan(params: { plan: SyncPlan; dryRun?: boolean
                     );
                 }
             }
-        } catch (e: any) {
+        } catch (e: unknown) {
             result.errors.push(`Family "${family.name}": ${e.message}`);
             result.success = false;
         }
@@ -649,7 +649,7 @@ export async function linkAssets(params: {
 
             if (error) errors.push(`Asset ${asset.localPath}: ${error.message}`);
             else linked++;
-        } catch (e: any) {
+        } catch (e: unknown) {
             errors.push(`Asset ${asset.localPath}: ${e.message}`);
         }
     }

@@ -97,7 +97,7 @@ export async function onboardBank(formData: { bankName: string; website: string;
         revalidatePath('/dashboard/finance-partners', 'page');
 
         return { success: true, tenant };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[OnboardBank] Fatal Error:', error);
         return { success: false, error: error.message || 'Check server logs' };
     }
@@ -131,7 +131,7 @@ export async function updateBankSchemes(bankId: string, schemes: any[]) {
 
         // console.log('[UpdateBankSchemes] Schemes updated successfully');
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[UpdateBankSchemes] Fatal Error:', error);
         return { success: false, error: error.message || 'Check server logs' };
     }
@@ -189,7 +189,7 @@ export async function updateBankIdentity(
 
         revalidatePath('/dashboard/finance-partners', 'layout');
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[UpdateBankIdentity] Fatal Error:', error);
         return { success: false, error: error.message || 'Check server logs' };
     }
@@ -204,7 +204,7 @@ export async function getBankPartners() {
 
         if (error) throw error;
         return { success: true, partners: data || [] };
-    } catch (error: any) {
+    } catch (error: unknown) {
         return { success: false, error: error.message };
     }
 }
@@ -228,7 +228,7 @@ export async function getFinanceRouting(tenantId?: string) {
             routing: config.financeRouting as FinanceRoutingTable | undefined,
             strategy: (config.routingStrategy as RoutingStrategy) || 'MANUAL',
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         return { success: false, error: error.message };
     }
 }
@@ -275,7 +275,7 @@ export async function saveFinanceRouting(
 
         revalidatePath('/dashboard/finance-partners', 'page');
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         return { success: false, error: error.message };
     }
 }
@@ -329,7 +329,7 @@ export async function getBankActivityLog(bankId: string, limit = 10) {
         });
 
         return { success: true, activities };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[getBankActivityLog] Error:', error);
         return { success: false, error: error.message, activities: [] };
     }
@@ -361,7 +361,7 @@ export async function updateBankChargesMaster(bankId: string, chargesMaster: any
 
         // console.log('[UpdateBankChargesMaster] Charges master updated successfully');
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[UpdateBankChargesMaster] Fatal Error:', error);
         return { success: false, error: error.message || 'Check server logs' };
     }

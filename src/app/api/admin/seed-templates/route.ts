@@ -11,16 +11,12 @@ export async function POST(request: Request) {
     }
 
     // Use Service Role Key to bypass RLS for seeding
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-            auth: {
-                autoRefreshToken: false,
-                persistSession: false
-            }
-        }
-    );
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+        },
+    });
 
     try {
         const results = [];
@@ -49,7 +45,7 @@ export async function POST(request: Request) {
                         tenant_type: tmpl.tenant_type,
                         layout_config: tmpl.layout_config,
                         sidebar_config: tmpl.sidebar_config,
-                        is_system: true
+                        is_system: true,
                     })
                     .select('id')
                     .single();
@@ -64,22 +60,20 @@ export async function POST(request: Request) {
                         description: tmpl.description,
                         layout_config: tmpl.layout_config,
                         sidebar_config: tmpl.sidebar_config,
-                        is_system: true
+                        is_system: true,
                     })
                     .eq('id', templateId);
             }
 
             // 2. Upsert Role Assignment
-            const { error: assignError } = await supabase
-                .from('sys_role_templates')
-                .upsert(
-                    {
-                        tenant_type: tmpl.tenant_type,
-                        role: tmpl.role,
-                        template_id: templateId
-                    },
-                    { onConflict: 'tenant_type,role' }
-                );
+            const { error: assignError } = await supabase.from('sys_role_templates').upsert(
+                {
+                    tenant_type: tmpl.tenant_type,
+                    role: tmpl.role,
+                    template_id: templateId,
+                },
+                { onConflict: 'tenant_type,role' }
+            );
 
             if (assignError) throw assignError;
 
@@ -87,7 +81,7 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ success: true, results });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

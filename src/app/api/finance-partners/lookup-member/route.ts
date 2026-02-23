@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json({ member: contactMember });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[FinancePartnerLookup] Error:', error);
         return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
     }

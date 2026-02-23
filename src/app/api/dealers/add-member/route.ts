@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
             success: true,
             teamMember,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[AddMember] Error:', error);
         return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
     }

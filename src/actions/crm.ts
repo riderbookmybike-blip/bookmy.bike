@@ -3040,7 +3040,7 @@ export async function createBookingFromQuote(quoteId: string) {
         revalidatePath('/profile');
 
         return { success: true, data: booking };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[createBookingFromQuote] CRITICAL CRASH:', err);
         return { success: false, message: `Server Error: ${err.message || String(err)}` };
     }
@@ -6537,7 +6537,7 @@ export async function getBankSchemes(bankId: string) {
 
         const schemes = (data.config as any)?.schemes || [];
         return schemes.filter((s: any) => s.isActive !== false);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[getBankSchemes] Fatal:', error.message);
         return [];
     }
@@ -6727,7 +6727,7 @@ export async function reassignQuoteDealership(
         await logQuoteEvent(quoteId, `Dealership changed to ${dealer.name}`, null, 'team');
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('reassignQuoteDealership Error:', error);
         return { success: false, error: error.message };
     }

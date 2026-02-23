@@ -45,7 +45,7 @@ export async function lookupMemberByPhone(phone: string): Promise<{
                 primary_phone: member.primary_phone || '',
             },
         };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[LookupMember] Fatal:', err);
         return { found: false, error: err.message };
     }
@@ -159,7 +159,7 @@ export async function onboardDealer(formData: {
         revalidatePath('/dashboard/dealers', 'page');
 
         return { success: true, tenant };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[OnboardDealer] Fatal Error:', error);
         return { success: false, error: error.message || 'Check server logs' };
     }

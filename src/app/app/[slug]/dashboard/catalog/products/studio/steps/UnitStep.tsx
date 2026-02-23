@@ -251,7 +251,7 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
             reorderSavedTimeoutRef.current = window.setTimeout(() => {
                 setShowReorderSaved(false);
             }, 1200);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Reorder failed', error);
             onUpdate(previousList);
             toast.error('Failed to save order');

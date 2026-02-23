@@ -134,7 +134,7 @@ export async function saveMatrixSkuEditor(input: SaveMatrixSkuInput): Promise<Sa
         }
 
         return { success: true, sku: updatedSku as Record<string, any> };
-    } catch (err: any) {
+    } catch (err: unknown) {
         return { success: false, error: err?.message || 'Failed to save SKU editor state' };
     }
 }

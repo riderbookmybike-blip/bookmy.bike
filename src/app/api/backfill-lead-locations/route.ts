@@ -5,7 +5,7 @@ export async function POST() {
     try {
         const result = await backfillLeadLocationsAction();
         return NextResponse.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
         return NextResponse.json({ success: false, message: error?.message || 'Backfill failed' }, { status: 500 });
     }
 }

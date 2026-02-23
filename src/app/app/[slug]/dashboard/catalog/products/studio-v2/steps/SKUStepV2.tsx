@@ -132,7 +132,7 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                 onUpdate([...skus, newSku]);
                 toast.success(`Added ${colour.name} to ${variant?.name || 'variant'}`);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('SKU toggle failed:', err);
             const msg = err?.message || 'Unknown error';
             toast.error(existingSku ? `Failed to remove SKU: ${msg}` : `Failed to create SKU: ${msg}`);
@@ -231,7 +231,7 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                 onUpdate(skus.map(s => (s.id === activeMediaSku.id ? updated : s)));
                 toast.success('Media saved');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Media save failed:', err);
             toast.error('Failed to save media: ' + err.message);
         }
@@ -267,7 +267,7 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                 onUpdate(skus.map(s => (s.id === targetSku.id ? updated : s)));
                 toast.success('Image copied from sibling!');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error('Copy failed: ' + err.message);
         }
     };

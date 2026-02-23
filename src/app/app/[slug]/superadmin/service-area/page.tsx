@@ -494,7 +494,7 @@ export default function ServiceAreaPage() {
                 }
             }
             setPincodes(allPincodes);
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error('Failed to load pincodes: ' + err.message);
         } finally {
             setLoading(false);
@@ -512,7 +512,7 @@ export default function ServiceAreaPage() {
             setPincodes(prev => prev.map(p => (p.pincode === pincode ? { ...p, status: newStatus } : p)));
 
             toast.success(`${pincode} marked as ${newStatus}`);
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error('Update failed: ' + err.message);
         } finally {
             setUpdating(null);
@@ -562,7 +562,7 @@ export default function ServiceAreaPage() {
             setPincodes(prev => prev.map(p => (p.district === district ? { ...p, status: statusValue } : p)));
 
             toast.success(`District ${district} is now ${statusValue}`);
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error('Failed to update district: ' + err.message);
         } finally {
             setUpdating(null);
@@ -635,7 +635,7 @@ export default function ServiceAreaPage() {
 
             toast.success(`Pincode ${editingPincode.pincode} updated successfully`);
             setEditingPincode(null);
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error('Failed to update: ' + err.message);
         } finally {
             setUpdating(null);
@@ -735,7 +735,7 @@ export default function ServiceAreaPage() {
 
             // FORCE a full reset of the updating state
             setUpdating(null);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error saving district:', err);
             toast.error('Failed to update district: ' + err.message);
             setUpdating(null);

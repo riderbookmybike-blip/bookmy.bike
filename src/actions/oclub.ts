@@ -144,7 +144,7 @@ export async function createSponsorAllocation(input: {
                 p_metadata: { notes: input.notes || null },
             } as any
         );
-    } catch (err: any) {
+    } catch (err: unknown) {
         return { success: false, error: err?.message || 'Ledger update failed' };
     }
 

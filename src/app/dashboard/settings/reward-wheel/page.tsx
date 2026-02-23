@@ -104,7 +104,7 @@ export default function RewardWheelSettingsPage() {
 
             if (saveError) throw saveError;
             setSuccess('Reward wheel configuration saved.');
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(err?.message || 'Failed to save rewards.');
         } finally {
             setSaving(false);
@@ -136,7 +136,7 @@ export default function RewardWheelSettingsPage() {
                 throw new Error(data?.error || 'Failed to grant spin');
             }
             setGrantMessage('Spin granted successfully.');
-        } catch (err: any) {
+        } catch (err: unknown) {
             setGrantMessage(err?.message || 'Failed to grant spin.');
         } finally {
             setGranting(false);

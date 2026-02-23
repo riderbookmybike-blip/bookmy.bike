@@ -137,7 +137,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
 
             onSuccess();
             onClose();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Submission Error:', err);
             setError(err.message || 'Failed to create requisition');
         } finally {

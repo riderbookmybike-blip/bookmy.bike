@@ -15,7 +15,7 @@ export async function getDealerFinancers(dealerId: string) {
 
         if (error) throw error;
         return { success: true, financerIds: data.map(d => d.finance_tenant_id) };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[getDealerFinancers] Error:', error);
         return { success: false, error: error.message };
     }
@@ -46,7 +46,7 @@ export async function toggleDealerFinancer(dealerId: string, financeId: string, 
 
         revalidatePath('/app/[slug]/dashboard/settings/financer', 'page');
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[toggleDealerFinancer] Error:', error);
         return { success: false, error: error.message };
     }
@@ -100,7 +100,7 @@ export async function getFinancerTeamAccess(dealerId: string, financeId: string)
         });
 
         return { success: true, members };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[getFinancerTeamAccess] Error:', error);
         return { success: false, error: error.message };
     }
@@ -138,7 +138,7 @@ export async function updateFinancerUserAccess(
         }
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[updateFinancerUserAccess] Error:', error);
         return { success: false, error: error.message };
     }

@@ -345,7 +345,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                 if (error) throw error;
             }
             toast.success('Compatibility saved');
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error('Failed to save compatibility: ' + (err?.message || 'Unknown'));
         } finally {
             setIsSavingCompat(null);
@@ -516,7 +516,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
             await deleteVariant(variantId, productType);
             onUpdate(variants.filter(v => v.id !== variantId));
             toast.success(`${labels.variant} deleted`);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Variant delete failed:', err);
             const msg = err?.message || 'Unknown error';
             toast.error(`Failed to delete: ${msg}`);

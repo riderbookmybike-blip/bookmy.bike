@@ -153,7 +153,7 @@ const TvsExtractor: BaseExtractor = {
         let jssData: any;
         try {
             jssData = JSON.parse(jssMatch[1]);
-        } catch (e: any) {
+        } catch (e: unknown) {
             errors.push(`Failed to parse JSS_STATE JSON: ${e.message}`);
             logs.push(log('PARSE_FAIL', 'JSON parse error', { error: e.message }));
             return { success: false, brand_slug: 'tvs', models, errors, logs };
@@ -1171,7 +1171,7 @@ function extractHeroModelsFromDataVehicles(
                     });
                 }
             }
-        } catch (e: any) {
+        } catch (e: unknown) {
             logs.push(log('PARSE_FAIL', `Failed to parse data-vehicles JSON: ${e.message}`));
         }
     }

@@ -11,7 +11,12 @@ interface MediaUploadModalProps {
     title?: string;
 }
 
-export default function MediaUploadModal({ isOpen, onClose, onSuccess, title = "Upload Media" }: MediaUploadModalProps) {
+export default function MediaUploadModal({
+    isOpen,
+    onClose,
+    onSuccess,
+    title = 'Upload Media',
+}: MediaUploadModalProps) {
     const [mode, setMode] = useState<'url' | 'upload'>('url');
     const [url, setUrl] = useState('');
     const [isUploading, setIsUploading] = useState(false);
@@ -47,13 +52,13 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, title = "
 
             if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('vehicles')
-                .getPublicUrl(filePath);
+            const {
+                data: { publicUrl },
+            } = supabase.storage.from('vehicles').getPublicUrl(filePath);
 
             onSuccess(publicUrl);
             onClose();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Upload error:', err);
             setError(err.message || 'Failed to upload image. Please ensure "vehicles" storage bucket exists.');
         } finally {
@@ -72,8 +77,12 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, title = "
                             <ImageIcon className="text-white" size={24} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">{title}</h2>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Asset Initialization Gateway</p>
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                {title}
+                            </h2>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
+                                Asset Initialization Gateway
+                            </p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-3 text-slate-400 hover:text-rose-500 transition-colors">
@@ -102,13 +111,15 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, title = "
                         {mode === 'url' ? (
                             <form onSubmit={handleUrlSubmit} className="space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 italic">Source Address</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 italic">
+                                        Source Address
+                                    </label>
                                     <input
                                         autoFocus
                                         type="url"
                                         placeholder="https://example.com/image.jpg"
                                         value={url}
-                                        onChange={(e) => setUrl(e.target.value)}
+                                        onChange={e => setUrl(e.target.value)}
                                         className="w-full px-8 py-5 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-indigo-600 rounded-[2rem] text-sm text-slate-900 dark:text-white outline-none transition-all placeholder:opacity-30"
                                     />
                                 </div>
@@ -128,16 +139,22 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, title = "
                                     onChange={handleFileUpload}
                                     className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
                                 />
-                                <div className={`w-full h-full border-4 border-dashed rounded-[3rem] flex flex-col items-center justify-center gap-3 transition-all ${error ? 'border-rose-500/20 bg-rose-500/5' : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/20 group-hover/upload:border-indigo-600 group-hover/upload:bg-indigo-600/5'}`}>
+                                <div
+                                    className={`w-full h-full border-4 border-dashed rounded-[3rem] flex flex-col items-center justify-center gap-3 transition-all ${error ? 'border-rose-500/20 bg-rose-500/5' : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/20 group-hover/upload:border-indigo-600 group-hover/upload:bg-indigo-600/5'}`}
+                                >
                                     {isUploading ? (
                                         <div className="flex flex-col items-center gap-3">
                                             <Loader2 className="animate-spin text-indigo-600" size={32} />
-                                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest italic animate-pulse">Syncing with Storage...</span>
+                                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest italic animate-pulse">
+                                                Syncing with Storage...
+                                            </span>
                                         </div>
                                     ) : error ? (
                                         <div className="flex flex-col items-center gap-2 text-rose-500 text-center px-8">
                                             <ImageIcon size={32} className="opacity-50" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{error}</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                                {error}
+                                            </span>
                                         </div>
                                     ) : (
                                         <>
@@ -145,8 +162,12 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, title = "
                                                 <Upload className="text-indigo-600" size={24} />
                                             </div>
                                             <div className="text-center">
-                                                <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest block italic">Drop identity here</span>
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block opacity-60">PNG, JPG, WEBP up to 10MB</span>
+                                                <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest block italic">
+                                                    Drop identity here
+                                                </span>
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block opacity-60">
+                                                    PNG, JPG, WEBP up to 10MB
+                                                </span>
                                             </div>
                                         </>
                                     )}

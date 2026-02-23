@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
             },
             alreadyMember: !!existing,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[FinancePartnerAddMember] Error:', error);
         return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
     }

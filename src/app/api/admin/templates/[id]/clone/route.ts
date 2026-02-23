@@ -20,7 +20,7 @@ export async function POST(
         const newTemplate = await cloneTemplate(id, name);
 
         return NextResponse.json({ success: true, data: newTemplate });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

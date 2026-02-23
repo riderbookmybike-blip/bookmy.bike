@@ -132,7 +132,7 @@ export async function bulkUpdateServiceability(pincodes: string[], isServiceable
 
         if (error) throw error;
         return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
         return { success: false, error: err.message };
     }
 }
@@ -193,7 +193,7 @@ export async function upsertLocation(data: {
 
         if (error) throw error;
         return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Location Upsert Failed:', err);
         return { success: false, error: err.message };
     }

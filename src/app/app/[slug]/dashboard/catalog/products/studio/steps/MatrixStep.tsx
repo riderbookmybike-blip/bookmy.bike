@@ -435,7 +435,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                     toast.success('SKU created');
                 }
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast.error('Failed to toggle SKU: ' + error.message);
         }
     };
@@ -471,7 +471,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                 );
                 toast.success(`${sku.name} is now primary`);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error('Failed to set primary: ' + err.message);
         }
     };
@@ -596,7 +596,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
             }
 
             toast.success('Media saved successfully');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('MatrixStep save failed:', error);
             toast.error('Failed to save media: ' + error.message);
         }
@@ -1286,7 +1286,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                         );
                                         setIsEditModalOpen(false);
                                         toast.success('SKU updated with pricing, compatibility & inclusion type');
-                                    } catch (err: any) {
+                                    } catch (err: unknown) {
                                         toast.error('Failed to update SKU: ' + err.message);
                                     } finally {
                                         setIsSavingSku(false);

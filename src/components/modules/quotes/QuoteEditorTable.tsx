@@ -978,7 +978,7 @@ export default function QuoteEditorTable({
                 [field]: nextValue,
             }));
             toast.success('Finance milestone updated');
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error(err?.message || 'Failed to update');
         }
     };
@@ -1920,7 +1920,7 @@ export default function QuoteEditorTable({
             } else {
                 toast.error(result.error || 'Failed to save');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error(err.message || 'Save failed');
         } finally {
             setIsSaving(false);

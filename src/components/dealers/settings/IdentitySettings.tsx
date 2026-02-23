@@ -187,7 +187,7 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
 
             onUpdate();
             alert('Details updated successfully');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error updating details:', error);
             alert(error?.message || 'Failed to update details');
         } finally {
@@ -384,12 +384,13 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                                                 setSelectedBrandIds(prev => [prev[0]]);
                                             }
                                         }}
-                                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${formData.brand_type === bt
-                                            ? bt === 'MONOBRAND'
-                                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                                                : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
-                                            : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-400 hover:bg-white/5'
-                                            }`}
+                                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
+                                            formData.brand_type === bt
+                                                ? bt === 'MONOBRAND'
+                                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                                    : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                                                : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-400 hover:bg-white/5'
+                                        }`}
                                     >
                                         {bt === 'MONOBRAND' ? '🏍️ Monobrand' : '🏬 Multibrand'}
                                     </button>
@@ -412,7 +413,16 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                             ) : (
                                 <div className="flex flex-wrap gap-2">
                                     {allBrands
-                                        .filter(b => !['GENERIC', 'AUTOCARE', "O'CLUB PRIVILLAGE", 'RAI TECH', 'STUDDS'].includes(b.name))
+                                        .filter(
+                                            b =>
+                                                ![
+                                                    'GENERIC',
+                                                    'AUTOCARE',
+                                                    "O'CLUB PRIVILLAGE",
+                                                    'RAI TECH',
+                                                    'STUDDS',
+                                                ].includes(b.name)
+                                        )
                                         .map(brand => {
                                             const isSelected = selectedBrandIds.includes(brand.id);
                                             return (
@@ -430,19 +440,23 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                                                             );
                                                         }
                                                     }}
-                                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${isSelected
-                                                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 ring-1 ring-amber-500/20'
-                                                        : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-500 hover:bg-white/5 hover:text-slate-300'
-                                                        }`}
+                                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
+                                                        isSelected
+                                                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 ring-1 ring-amber-500/20'
+                                                            : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                                                    }`}
                                                 >
-                                                    {isSelected && '✓ '}{brand.name}
+                                                    {isSelected && '✓ '}
+                                                    {brand.name}
                                                 </button>
                                             );
                                         })}
                                 </div>
                             )}
                             {selectedBrandIds.length === 0 && !brandsLoading && (
-                                <p className="text-[10px] text-amber-500 mt-1">⚠ No brand selected — please select at least one brand</p>
+                                <p className="text-[10px] text-amber-500 mt-1">
+                                    ⚠ No brand selected — please select at least one brand
+                                </p>
                             )}
                         </div>
 

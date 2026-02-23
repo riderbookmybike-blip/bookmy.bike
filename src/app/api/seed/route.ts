@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
                 },
             }
         );
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('SEEDING FATAL ERROR:', e);
         return NextResponse.json(
             {

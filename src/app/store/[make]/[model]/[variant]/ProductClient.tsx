@@ -404,7 +404,7 @@ export default function ProductClient({
                     text: `Check out ${product.model} on BookMyBike! Price: ₹${totalOnRoad.toLocaleString()}`,
                     url: url.toString(),
                 });
-            } catch (err: any) {
+            } catch (err: unknown) {
                 if (err?.name !== 'AbortError' && err?.name !== 'InvalidStateError') {
                     console.error('Share failed:', err);
                 }

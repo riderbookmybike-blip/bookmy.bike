@@ -223,7 +223,7 @@ export default function TeamTab({
             }
             setFoundMemberId(data?.member?.id || null);
             setHasFoundExisting(true);
-        } catch (error: any) {
+        } catch (error: unknown) {
             setLookupError(error?.message || 'Unable to find user');
             setHasFoundExisting(false);
             setFoundMemberId(null);
@@ -292,7 +292,7 @@ export default function TeamTab({
             });
             setSelectedDealerIds([]);
             setFoundMemberId(null);
-        } catch (error: any) {
+        } catch (error: unknown) {
             setSubmitError(error?.message || 'Unable to add member');
         } finally {
             setIsSubmitting(false);

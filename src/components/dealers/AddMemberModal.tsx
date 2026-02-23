@@ -56,13 +56,13 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
                 setVerifiedMember({
                     id: result.member.id,
                     name: result.member.full_name || 'Unknown',
-                    email: (result.member as any).email
+                    email: (result.member as any).email,
                 });
                 setStep('details');
             } else {
                 setError('No member found with this phone number. Member must register first.');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(err.message || 'Verification failed');
         } finally {
             setIsLoading(false);
@@ -82,8 +82,8 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
                 body: JSON.stringify({
                     tenantId,
                     memberId: verifiedMember.id,
-                    role: selectedRole
-                })
+                    role: selectedRole,
+                }),
             });
 
             const data = await response.json();
@@ -97,7 +97,7 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
                 onSuccess();
                 onClose();
             }, 1500);
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(err.message || 'Failed to add member');
         } finally {
             setIsLoading(false);
@@ -128,10 +128,7 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                    >
+                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
                         <X size={20} className="text-slate-400" />
                     </button>
                 </div>
@@ -158,7 +155,7 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
                                     <input
                                         type="tel"
                                         value={phone}
-                                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                        onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                                         placeholder="9876543210"
                                         className="flex-1 bg-transparent text-white font-mono text-lg focus:outline-none placeholder:text-slate-600"
                                         autoFocus
@@ -209,27 +206,36 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
                                     Select Role
                                 </label>
                                 <div className="space-y-2">
-                                    {ROLES.map((role) => (
+                                    {ROLES.map(role => (
                                         <button
                                             key={role.value}
                                             onClick={() => setSelectedRole(role.value)}
-                                            className={`w-full p-4 rounded-xl border text-left transition-all ${selectedRole === role.value
-                                                ? 'bg-indigo-500/10 border-indigo-500/50'
-                                                : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
-                                                }`}
+                                            className={`w-full p-4 rounded-xl border text-left transition-all ${
+                                                selectedRole === role.value
+                                                    ? 'bg-indigo-500/10 border-indigo-500/50'
+                                                    : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                                            }`}
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <p className={`text-sm font-bold ${selectedRole === role.value ? 'text-indigo-400' : 'text-white'
-                                                        }`}>
+                                                    <p
+                                                        className={`text-sm font-bold ${
+                                                            selectedRole === role.value
+                                                                ? 'text-indigo-400'
+                                                                : 'text-white'
+                                                        }`}
+                                                    >
                                                         {role.label}
                                                     </p>
                                                     <p className="text-xs text-slate-500 mt-0.5">{role.description}</p>
                                                 </div>
-                                                <div className={`w-4 h-4 rounded-full border-2 ${selectedRole === role.value
-                                                    ? 'border-indigo-500 bg-indigo-500'
-                                                    : 'border-slate-600'
-                                                    }`}>
+                                                <div
+                                                    className={`w-4 h-4 rounded-full border-2 ${
+                                                        selectedRole === role.value
+                                                            ? 'border-indigo-500 bg-indigo-500'
+                                                            : 'border-slate-600'
+                                                    }`}
+                                                >
                                                     {selectedRole === role.value && (
                                                         <div className="w-full h-full flex items-center justify-center">
                                                             <div className="w-1.5 h-1.5 rounded-full bg-white" />

@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
             success: true,
             message: `Migration Complete. Processed: ${MAHARASHTRA_PINCODES.length}, Success: ${successCount}, Errors: ${errorCount}`,
         });
-    } catch (e: any) {
+    } catch (e: unknown) {
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }
 }

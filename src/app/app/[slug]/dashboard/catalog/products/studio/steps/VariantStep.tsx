@@ -534,7 +534,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
             setNewVariantName('');
             setShowSuggestions(false);
             toast.success(`${l1Label} added successfully`);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
             setError(err.message);
             toast.error(`Failed to add ${l1Label}`);
@@ -594,7 +594,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
             if (error) throw error;
             onUpdate(existingVariants.filter((v: any) => v.id !== id));
             toast.success('Variant deleted');
-        } catch (err: any) {
+        } catch (err: unknown) {
             toast.error('Failed to delete: ' + err.message);
         }
     };
@@ -1332,7 +1332,7 @@ export default function VariantStep({ family, existingVariants, onUpdate, tenant
                                             'Variant updated' +
                                                 (family?.category === 'ACCESSORY' ? ' with compatibility' : '')
                                         );
-                                    } catch (err: any) {
+                                    } catch (err: unknown) {
                                         toast.error('Failed to update variant: ' + err.message);
                                     } finally {
                                         setIsSavingVariant(false);

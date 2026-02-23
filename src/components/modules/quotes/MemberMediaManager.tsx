@@ -176,7 +176,7 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate, onDocC
             setSelectedLabel('');
             fetchDocuments();
             if (onUpdate) onUpdate();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Upload error:', error);
             toast.error(error.message || 'Upload failed');
         } finally {

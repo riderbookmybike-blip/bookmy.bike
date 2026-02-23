@@ -44,7 +44,7 @@ export default function LeadEditorWrapper({ leadId }: { leadId: string }) {
                     bookings: bookings || [],
                     receipts: receipts || [],
                 });
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error('LeadEditorWrapper: failed to load profile', { leadId, err });
                 setError(err?.message || 'Failed to load lead profile');
                 setProfile(null);
