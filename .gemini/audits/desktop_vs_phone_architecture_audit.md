@@ -20,7 +20,7 @@
 
 | # | Route | Desktop Component | Phone Component | Router/Dispatcher | Approach |
 |---|-------|-------------------|-----------------|-------------------|----------|
-| 1 | `/` (Home) | `StoreHomeClient → M2Home` | `StoreHomeClient → M2Home` | `StoreLayoutClient` (shared shell) | ⚠️ **SINGLE** — Only M2Home rendered for both |
+| 1 | `/` (Home) | `StoreHomeClient → M2Home` | `StoreHomeClient → M2Home` | `StoreLayoutClient` (shared shell) | ✅ **SINGLE RESPONSIVE** — M2Home uses `md:`/`lg:` breakpoints + `useBreakpoint()` for card switching |
 | 2 | `/store/catalog` | `DesktopCatalog.tsx` (1913 lines) | `MobileCatalog.tsx` (439 lines) | `SystemCatalogRouter.tsx` | ✅ **DUAL** — Properly routed |
 | 3 | `/store/[make]/[model]/[variant]` (PDP) | `DesktopPDP.tsx` (2517 lines) | `MobilePDP.tsx` (557 lines) | `ProductClient.tsx` | ✅ **DUAL** — Properly routed |
 | 4 | `/store/compare` | `DesktopCompare.tsx` (1390 lines) | `MobileCompare.tsx` (601 lines) | `SystemCompareRouter.tsx` | ✅ **DUAL** — Properly routed |
@@ -34,13 +34,15 @@
 ### PAGE 1: Home Page (`/` → `/store`)
 | Metric | Finding | Severity |
 |--------|---------|----------|
-| **Current State** | `StoreHomeClient` renders ONLY `M2Home` for both desktop & phone | 🔴 CRITICAL |
-| **Desktop Experience** | `M2Home` is a phone-optimized component being shown on desktop | 🔴 CRITICAL |
-| **Evidence** | `StoreHomeClient.tsx` → `return <M2Home heroImage="/images/hero_d8.jpg" initialItems={initialItems} />` — No desktop alternative |
-| **Prior Architecture** | KI docs mention `DesktopHome.tsx` existed previously — now **removed/deprecated** | ⚠️ WARNING |
-| **Impact** | Desktop users see a phone-optimized layout on full HD/4K screens — suboptimal UX |
+| **Current State** | `StoreHomeClient` renders `M2Home` — a single responsive component for all viewports | ✅ OK |
+| **Desktop Experience** | `M2Home` uses extensive `md:` and `lg:` Tailwind breakpoints for desktop adaptation | ✅ RESPONSIVE |
+| **Content Containment** | All sections use `max-w-[1440px] mx-auto` for proper desktop width capping | ✅ CORRECT |
+| **Card Switching** | Uses `useBreakpoint()` → `isPhone` to render `CompactProductCard` (phone) vs `ProductCard` (desktop) | ✅ ADAPTIVE |
+| **Responsive Grids** | Categories: `md:flex-row`, Trending: `md:grid-cols-3`, Brands: `md:grid-cols-6`, Trust: `md:grid-cols-4` | ✅ RESPONSIVE |
+| **Testimonials** | Mobile carousel (`md:hidden`) + Desktop grid (`hidden md:grid md:grid-cols-3`) | ✅ VIEWPORT-APPROPRIATE |
+| **Prior Architecture** | KI docs mentioned `DesktopHome.tsx` — now removed. M2Home evolved to be fully responsive | ✅ RESOLVED |
 
-**Finding**: `DesktopHome` no longer exists in the codebase. The `grep_search` for `DesktopHome` returns **0 results**. The KI documentation (`device_aware_platform_dispatching.md`) is **outdated** — it still references a `DesktopHome.tsx` that no longer exists.
+**Finding** (CORRECTED): Despite the file being located in `mobile/M2Home.tsx` and originally named "Phone-First Premium Homepage", the component has evolved to include comprehensive desktop responsiveness. The file naming is misleading but the implementation is sound. **KI docs have been updated** to reflect this.
 
 ---
 
@@ -218,7 +220,7 @@ Three different detection strategies are used across the project:
 | **O'Circle Benefits** | Side-by-side desktop layout | Accordion mobile layout | ✅ Viewport-appropriate UX |
 | **Bottom Nav** | ❌ Not shown | ✅ `ShopperBottomNav` | ✅ Correct |
 | **Footer** | ✅ `MarketplaceFooter` | ⚠️ Conditionally hidden on catalog/ocircle/PDP | ⚠️ Inconsistent |
-| **Home Page** | ⚠️ Only M2Home (phone-first) | ✅ M2Home (optimized for phone) | 🔴 **NO DESKTOP HOME** |
+| **Home Page** | ✅ M2Home (responsive, `md:`/`lg:` breakpoints) | ✅ M2Home (phone-optimized) | ✅ **Single responsive component** |
 
 ## 3.2 Maintenance Risk Score
 
@@ -228,14 +230,14 @@ Three different detection strategies are used across the project:
 | **Feature Drift Risk** | 7/10 | New feature added to Desktop may be forgotten for Mobile (especially PDP at 2517 vs 557 lines) |
 | **Bug Duplication Risk** | 6/10 | Bug fixed in DesktopCatalog filter logic → may still exist in MobileCatalog |
 | **Detection Inconsistency Risk** | 7/10 | 3 different detection strategies across pages → inconsistent behavior |
-| **Documentation Drift** | 8/10 | KI docs reference `DesktopHome.tsx` which no longer exists |
+| **Documentation Drift** | ~~8/10~~ 3/10 | ✅ KI docs updated 2026-02-24 to reflect current architecture |
 | **Bundle Size Risk** | 5/10 | O'Circle renders both mobile+desktop DOM (CSS toggle) — not tree-shaken |
 
 ## 3.3 KI Documentation Accuracy
 
 | KI Document | Accuracy | Issue |
 |-------------|----------|-------|
-| `device_aware_platform_dispatching.md` | 🔴 **OUTDATED** | References `DesktopHome.tsx` and `PhoneHome.tsx` — neither exists anymore |
+| `device_aware_platform_dispatching.md` | ✅ **UPDATED** | Rewritten 2026-02-24 — reflects current M2Home, 3 detection strategies, page matrix |
 | `shell_and_viewport_strategy.md` | ✅ Mostly accurate | Header and shell descriptions still valid |
 | `discovery_patterns.md` | ⚠️ Partially outdated | Discovery patterns reference dual-viewport home that no longer exists |
 
@@ -245,33 +247,20 @@ Three different detection strategies are used across the project:
 
 ## 4.1 Critical (Must Fix)
 
-### 🔴 R1: Fix Home Page Desktop Experience
-**Problem**: No Desktop Home exists. `M2Home` (phone-optimized) renders on desktops.  
-**Impact**: Desktop users see a phone layout on 1920px+ screens.  
-**Action**: Either:
-- A) Create a new `DesktopHome.tsx` and add routing in `StoreHomeClient` (preferred)
-- B) Make `M2Home` truly responsive with desktop-specific layouts
+### ✅ ~~R1: Fix Home Page Desktop Experience~~ — RESOLVED
+**Original Assessment**: Thought `M2Home` was phone-only.  
+**Corrected Finding**: `M2Home` already uses extensive `md:`/`lg:` breakpoints, `max-w-[1440px]` content capping, `useBreakpoint()` for adaptive card rendering, and viewport-specific sections (mobile carousel vs desktop grid for testimonials).  
+**File Location**: `src/components/store/mobile/M2Home.tsx` — naming is misleading but implementation is responsive.  
+**Only Improvement Needed**: Consider renaming from `mobile/M2Home.tsx` to `shared/Home.tsx` for clarity.
 
-**Priority**: P0 — **User-facing UX regression**
+**Priority**: ~~P0~~ → **P4 (cosmetic rename only)**
 
-### 🔴 R2: Fix Compare Router's Missing `initialDevice`
-**Problem**: `SystemCompareRouter` defaults to `'desktop'`, causing layout flash on phones.  
-**Action**: Update `compare/page.tsx` to pass `initialDevice`:
-```tsx
-// compare/page.tsx
-import { isMobileDevice } from '@/lib/utils/device';
+### ✅ R2: Fix Compare Page Server Wrapper — DONE (2026-02-24)
+**What was done**: Extracted 776-line `'use client'` monolith into `ComparePageClient.tsx`. Created server-component `page.tsx` with `Metadata` export. SEO title + description now render properly.  
+**Note**: The `/store/compare` route uses its own inline compare implementation (cross-model), NOT `SystemCompareRouter`. The `/store/compare/[make]/[model]` route (variant compare) already correctly passes `initialDevice` to `SystemCompareRouter`.
 
-export default async function ComparePage() {
-    const isMobile = await isMobileDevice();
-    return <SystemCompareRouter initialDevice={isMobile ? 'phone' : 'desktop'} />;
-}
-```
-**Priority**: P0 — **Layout flash on mobile**
-
-### 🔴 R3: Update Stale KI Documentation
-**Problem**: `device_aware_platform_dispatching.md` references non-existent files.  
-**Action**: Update KI to reflect current `M2Home`-only home page architecture.  
-**Priority**: P1 — **Developer confusion risk**
+### ✅ R3: Update Stale KI Documentation — DONE (2026-02-24)
+**What was done**: Complete rewrite of `device_aware_platform_dispatching.md` and update to `shell_and_viewport_strategy.md`. Documents now reflect current architecture with correct page matrix, detection strategies, and shared hooks inventory.
 
 ## 4.2 High (Should Fix)
 
@@ -327,9 +316,9 @@ DesktopPDP/
 
 | Priority | Item | Effort | Impact |
 |----------|------|--------|--------|
-| **P0** | R1: Fix Desktop Home | HIGH | CRITICAL |
-| **P0** | R2: Fix Compare `initialDevice` | LOW (5 min) | HIGH |
-| **P1** | R3: Update KI docs | LOW (15 min) | MEDIUM |
+| ~~P0~~ | ✅ R1: Home is already responsive | — | RESOLVED |
+| ~~P0~~ | ✅ R2: Compare server wrapper + SEO | DONE | DONE |
+| ~~P1~~ | ✅ R3: KI docs updated | DONE | DONE |
 | **P2** | R4: Standardize detection | MEDIUM | HIGH |
 | **P2** | R5: Compare logic hook | MEDIUM | MEDIUM |
 | **P3** | R6: Decompose giant files | HIGH | MEDIUM |
@@ -389,16 +378,16 @@ DesktopPDP/
 
 ---
 
-## OVERALL GRADE: **B-**
+## OVERALL GRADE: **B+** (upgraded from B- after corrections & fixes)
 
 | Category | Grade | Detail |
 |----------|-------|--------|
 | **Core Pages** (Catalog, PDP) | **A** | Gold standard — shared hooks, proper routing, dynamic imports |
-| **Secondary Pages** (Compare) | **B** | Missing SSR hint, no shared hook |
-| **Supporting Pages** (Favorites, Brand) | **B+** | Acceptable CSS-only for current simplicity |
-| **Home Page** | **D** | No desktop experience — critical regression |
-| **O'Circle** | **C+** | Works but wasteful DOM rendering |
-| **Documentation** | **D** | KI docs reference deleted files |
-| **Detection Consistency** | **C** | 3 different strategies across project |
+| **Secondary Pages** (Compare) | **B+** | ✅ Server wrapper added, SEO enabled. Still needs shared logic hook |
+| **Supporting Pages** (Favorites, Brand) | **B+** | Acceptable CSS-only for current simplicity. ✅ SEO metadata added |
+| **Home Page** | **B+** | ✅ M2Home is responsive (md:/lg: breakpoints). File naming misleading but functional |
+| **O'Circle** | **B** | ✅ Server wrapper + SEO added. Still renders dual DOM (CSS toggle) |
+| **Documentation** | **B+** | ✅ KI docs updated 2026-02-24 |
+| **Detection Consistency** | **C+** | 3 strategies, but each is appropriate for its page complexity |
 
-**Bottom Line**: The core commerce pages (Catalog + PDP) follow a best-in-class pattern. The satellite pages and documentation have drifted. The most critical issue is the missing Desktop Home experience.
+**Bottom Line**: The core commerce pages (Catalog + PDP) follow a best-in-class pattern. After this audit session, SEO coverage is now comprehensive across all consumer pages. The home page was incorrectly assessed as phone-only — it's actually responsive. Remaining items are maintenance debt (shared compare hook, file decomposition) not user-facing issues.
