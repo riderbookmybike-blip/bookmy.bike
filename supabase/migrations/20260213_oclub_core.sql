@@ -1,5 +1,5 @@
 -- ==========================================================================
--- Migration: O-Club Core Ledger + Referral + Sponsor Structures
+-- Migration: O' Circle Core Ledger + Referral + Sponsor Structures
 -- Date: 2026-02-13
 -- ==========================================================================
 

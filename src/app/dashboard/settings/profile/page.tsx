@@ -7,7 +7,6 @@ import { User, Phone, Mail, ArrowRight, Shield, CheckCircle2, AlertTriangle, Loa
 import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
 import Link from 'next/link';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { ThemeModeSelector } from '@/components/ui/theme-mode-selector';
 
 export default function ProfileSettingsPage() {
     const { tenantName, tenantSlug } = useTenant();
@@ -201,16 +200,6 @@ export default function ProfileSettingsPage() {
                                 )}
                             </div>
                         </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-white/5 shadow-sm space-y-4">
-                        <div>
-                            <h3 className="text-base font-black text-slate-900 dark:text-white">Theme Preference</h3>
-                            <p className="text-xs text-slate-500 mt-1">
-                                Light mode is fixed for a clean and consistent UI across devices.
-                            </p>
-                        </div>
-                        <ThemeModeSelector className="w-full justify-between" />
                     </div>
 
                     {/* Phone Linking Panel */}

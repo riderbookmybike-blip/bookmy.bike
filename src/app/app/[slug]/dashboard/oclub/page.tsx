@@ -88,7 +88,7 @@ export default function OClubDashboardPage() {
     return (
         <div className="p-8 space-y-8">
             <div>
-                <h1 className="text-2xl font-black">O-Club Sponsor Dashboard</h1>
+                <h1 className="text-2xl font-black">O' Circle Sponsor Dashboard</h1>
                 <p className="text-slate-500 text-sm">Corporate reward controls and redemption approvals.</p>
             </div>
 

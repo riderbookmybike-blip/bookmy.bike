@@ -198,7 +198,7 @@ const BLUEPRINTS: Record<string, ComponentBlueprint[]> = {
         },
         {
             id: 'bmb-home-privilege',
-            label: 'The O-Circle (Section 06)',
+            label: "The O' Circle (Section 06)",
             description: 'Verbatim: "Ownership, accelerated. Zero Downpayment. Zero Processing. Zero Documentation."',
             specs: {
                 behavior: 'Privilege tier card expansion with membership card visualizer.',

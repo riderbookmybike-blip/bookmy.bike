@@ -22,14 +22,14 @@ const MIN_DWELL_TRACKING_MS = 1500;
 
 // Dynamic imports for heavy PDP components (bundle optimization)
 const PDPSkeleton = () => (
-    <div className="min-h-screen bg-black animate-pulse">
-        <div className="h-16 bg-zinc-900 border-b border-zinc-800" />
+    <div className="min-h-screen bg-slate-50 animate-pulse">
+        <div className="h-16 bg-white border-b border-slate-200" />
         <div className="max-w-7xl mx-auto p-6 grid md:grid-cols-2 gap-8 mt-8">
-            <div className="aspect-square bg-zinc-800 rounded-3xl" />
+            <div className="aspect-square bg-slate-200 rounded-3xl" />
             <div className="space-y-4">
-                <div className="h-12 bg-zinc-800 rounded-xl w-3/4" />
-                <div className="h-8 bg-zinc-800 rounded-lg w-1/2" />
-                <div className="h-32 bg-zinc-800 rounded-2xl mt-8" />
+                <div className="h-12 bg-slate-200 rounded-xl w-3/4" />
+                <div className="h-8 bg-slate-200 rounded-lg w-1/2" />
+                <div className="h-32 bg-slate-200 rounded-2xl mt-8" />
             </div>
         </div>
     </div>
@@ -834,18 +834,18 @@ export default function ProductClient({
 
     if (!hasValidColorSku) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-black text-white p-8">
-                <div className="max-w-md rounded-3xl border border-amber-400/30 bg-white/5 backdrop-blur-xl p-8 text-center">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 p-8">
+                <div className="max-w-md rounded-3xl border border-amber-300/60 bg-white p-8 text-center shadow-sm">
                     <h1 className="text-2xl font-black tracking-tight mb-3">
                         COLOR SKU <span className="text-amber-400">UNAVAILABLE</span>
                     </h1>
-                    <p className="text-sm text-slate-300">
+                    <p className="text-sm text-slate-600">
                         This variant does not have a valid purchasable color SKU right now. Try another color or open
                         catalog again.
                     </p>
                     <a
                         href="/store/catalog"
-                        className="inline-block mt-6 px-5 py-3 rounded-xl border border-white/20 text-xs font-bold uppercase tracking-[0.16em] hover:bg-white/10"
+                        className="inline-block mt-6 px-5 py-3 rounded-xl border border-slate-300 text-xs font-bold uppercase tracking-[0.16em] hover:bg-slate-100"
                     >
                         Back To Catalog
                     </a>

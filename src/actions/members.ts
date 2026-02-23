@@ -261,7 +261,7 @@ export async function createOrLinkMember(input: MemberCreateInput) {
     try {
         await adminClient.rpc('oclub_credit_signup', { p_member_id: memberId });
     } catch (err) {
-        console.error('[createOrLinkMember] O-Club signup bonus error:', err);
+        console.error("[createOrLinkMember] O' Circle signup bonus error:", err);
     }
 
     const { data: member, error: memberError } = await adminClient

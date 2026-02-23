@@ -29,6 +29,7 @@ const SPEC_LABELS: Record<string, string> = {
     // Engine & Performance
     engine_cc: 'Displacement',
     displacement: 'Displacement',
+    fuel_type: 'Fuel Type',
     max_power: 'Max Power',
     max_torque: 'Max Torque',
     engine_type: 'Engine Type',
@@ -53,6 +54,8 @@ const SPEC_LABELS: Record<string, string> = {
     final_drive: 'Final Drive',
     air_filter: 'Air Filter',
     num_valves: 'Valves',
+    // Aliases for cat_variants_vehicle column names
+    cylinders: 'Cylinders',
 
     // Dimensions & Chassis
     kerb_weight: 'Kerb Weight',
@@ -74,6 +77,12 @@ const SPEC_LABELS: Record<string, string> = {
     ground_reach: 'Ground Reach',
     under_seat_storage: 'Under Seat Storage',
     glove_box: 'Glove Box',
+    // Aliases for cat_variants_vehicle column names
+    front_tyre: 'Front Tyre',
+    rear_tyre: 'Rear Tyre',
+    overall_length: 'Overall Length',
+    overall_width: 'Overall Width',
+    overall_height: 'Overall Height',
 
     // Brakes & Safety
     front_brake_type: 'Front Brake',
@@ -83,6 +92,7 @@ const SPEC_LABELS: Record<string, string> = {
     abs_type: 'ABS',
     braking_system: 'Braking System',
     engine_kill_switch: 'Kill Switch',
+    killswitch: 'Kill Switch',
 
     // Features & Tech
     console_type: 'Console',
@@ -101,6 +111,26 @@ const SPEC_LABELS: Record<string, string> = {
     aho: 'Auto Headlamp On',
     tilt_sensor: 'Tilt Sensor',
     obdi: 'OBD Indicator',
+    // Aliases for cat_variants_vehicle column names
+    bluetooth: 'Bluetooth',
+    navigation: 'Navigation',
+    led_headlamp: 'LED Headlamp',
+    led_tail_lamp: 'LED Tail Lamp',
+    ride_modes: 'Riding Modes',
+    headlamp_type: 'Headlamp Type',
+    speedometer: 'Speedometer',
+    tripmeter: 'Tripmeter',
+    clock: 'Clock',
+    low_fuel_indicator: 'Low Fuel Indicator',
+    low_oil_indicator: 'Low Oil Indicator',
+    low_battery_indicator: 'Low Battery Indicator',
+    pillion_seat: 'Pillion Seat',
+    pillion_footrest: 'Pillion Footrest',
+    stand_alarm: 'Stand Alarm',
+    pass_light: 'Pass Light',
+    warranty_years: 'Warranty (Years)',
+    warranty_km: 'Warranty (KM)',
+    service_interval: 'Service Interval',
 
     // Electricals
     ignition_system: 'Ignition System',
@@ -120,6 +150,7 @@ const SPEC_LABELS: Record<string, string> = {
     fast_charging: 'Fast Charging',
     battery_warranty: 'Battery Warranty',
     motor_warranty: 'Motor Warranty',
+    range_km: 'Range',
 };
 
 // Units for numeric specs
@@ -141,6 +172,11 @@ const SPEC_UNITS: Record<string, string> = {
     ground_reach: 'mm',
     under_seat_storage: 'L',
     glove_box: 'L',
+    range_km: 'km',
+    overall_length: 'mm',
+    overall_width: 'mm',
+    overall_height: 'mm',
+    warranty_km: 'km',
 };
 
 // Category config with icons and order
@@ -181,6 +217,9 @@ const CATEGORY_CONFIG: {
             'final_drive',
             'air_filter',
             'num_valves',
+            'cylinders',
+            'fuel_type',
+            'emission_standard',
         ],
     },
     {
@@ -207,6 +246,13 @@ const CATEGORY_CONFIG: {
             'ground_reach',
             'under_seat_storage',
             'glove_box',
+            'front_tyre',
+            'rear_tyre',
+            'overall_length',
+            'overall_width',
+            'overall_height',
+            'front_wheel_size',
+            'rear_wheel_size',
         ],
     },
     {
@@ -221,6 +267,7 @@ const CATEGORY_CONFIG: {
             'abs_type',
             'braking_system',
             'engine_kill_switch',
+            'killswitch',
         ],
     },
     {
@@ -258,6 +305,25 @@ const CATEGORY_CONFIG: {
             'aho',
             'tilt_sensor',
             'obdi',
+            'bluetooth',
+            'navigation',
+            'led_headlamp',
+            'led_tail_lamp',
+            'ride_modes',
+            'headlamp_type',
+            'speedometer',
+            'tripmeter',
+            'clock',
+            'low_fuel_indicator',
+            'low_oil_indicator',
+            'low_battery_indicator',
+            'pillion_seat',
+            'pillion_footrest',
+            'stand_alarm',
+            'pass_light',
+            'warranty_years',
+            'warranty_km',
+            'service_interval',
         ],
     },
     {
@@ -273,6 +339,7 @@ const CATEGORY_CONFIG: {
             'fast_charging',
             'battery_warranty',
             'motor_warranty',
+            'range_km',
         ],
     },
 ];
@@ -341,26 +408,42 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
     if (Object.keys(displaySpecs).length === 0) return null;
 
     // Build grouped categories with actual spec data
+    // Deduplicate by label — e.g., engine_cc & displacement both map to "Displacement"
     const groupedCategories = CATEGORY_CONFIG.map(cat => {
+        const seenLabels = new Set<string>();
         const items = cat.keys
             .filter(key => key in displaySpecs)
             .map(key => ({
                 key,
                 label: SPEC_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
                 value: formatValue(key, displaySpecs[key]),
-            }));
+            }))
+            .filter(item => {
+                const labelKey = item.label.toLowerCase();
+                if (seenLabels.has(labelKey)) return false;
+                seenLabels.add(labelKey);
+                return true;
+            });
         return { ...cat, items };
     }).filter(cat => cat.items.length > 0);
 
     // Collect uncategorized specs into "General"
+    // Also collect all labels already used in categorized cards for cross-category dedup
     const categorizedKeys = new Set(CATEGORY_CONFIG.flatMap(c => c.keys));
+    const allUsedLabels = new Set(groupedCategories.flatMap(c => c.items.map(i => i.label.toLowerCase())));
     const uncategorized = Object.entries(displaySpecs)
         .filter(([key]) => !categorizedKeys.has(key))
         .map(([key, value]) => ({
             key,
             label: SPEC_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
             value: formatValue(key, value),
-        }));
+        }))
+        .filter(item => {
+            const labelKey = item.label.toLowerCase();
+            if (allUsedLabels.has(labelKey)) return false;
+            allUsedLabels.add(labelKey);
+            return true;
+        });
 
     if (uncategorized.length > 0) {
         groupedCategories.push({
@@ -411,9 +494,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                                         <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
                                             {cat.label}
                                         </p>
-                                        <p className="text-[11px] text-slate-500">
-                                            {cat.items.length} specs
-                                        </p>
+                                        <p className="text-[11px] text-slate-500">{cat.items.length} specs</p>
                                     </div>
                                 </div>
                                 <ChevronDown
@@ -423,9 +504,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                             </button>
                             {isOpen && (
                                 <div className="px-5 pb-5">
-                                    <div className="border-t border-slate-200/60 pt-4">
-                                        {renderSpecList(cat.items)}
-                                    </div>
+                                    <div className="border-t border-slate-200/60 pt-4">{renderSpecList(cat.items)}</div>
                                 </div>
                             )}
                         </div>

@@ -277,11 +277,11 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
   - src/app/app/[slug]/dashboard/catalog/products/studio/steps/ReviewStep.tsx
 - next action: Reload Studio SKU step and confirm variant/color display.
 
-### T-CODEX-013: O-Circle Independent Secure Schema + Referral Attribution Plan
+### T-CODEX-013: O' Circle Independent Secure Schema + Referral Attribution Plan
 - status: done
 - owner: Codex
-- goal: Define a production-grade O-Circle schema with independent account table (FK to member), complete referral attribution, immutable ledger, and secure redemption lifecycle.
-- progress: Audited existing O-Club core/redemption tables and mapped required hardening into a single implementation plan.
+- goal: Define a production-grade O' Circle schema with independent account table (FK to member), complete referral attribution, immutable ledger, and secure redemption lifecycle.
+- progress: Audited existing O' Circle core/redemption tables and mapped required hardening into a single implementation plan.
 - outcome: Added a detailed plan covering independent `oclub_member_accounts`, attribution chain, idempotent transaction model, security controls (RLS + definer RPC), and phased migration.
 - blockers: none
 - files:
@@ -295,7 +295,7 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
 ### T-CODEX-014: Lead Workspace Module Wiring + Interest/Attachment Capture
 - status: done
 - owner: Codex
-- goal: Wire all lead detail modules (Documents, Tasks, Notes, Timeline, O Club) and add interest + attachment capture in lead creation.
+- goal: Wire all lead detail modules (Documents, Tasks, Notes, Timeline, O' Circle) and add interest + attachment capture in lead creation.
 - progress: Replaced placeholder tabs with live data components/actions, added notes/tasks persistence on `crm_leads`, and integrated lead-form interest text + KYC attachment upload into member assets.
 - outcome: Lead workspace modules now open with working content and actions; new lead form captures customer interest and uploads docs to member document vault.
 - blockers: none
@@ -372,7 +372,7 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
 - status: done
 - owner: Codex
 - goal: Enforce mandatory referral capture in CRM lead creation, resolve referrer by code/phone, preserve existing referral on duplicate leads, and skip referral rewards for repeat delivery members.
-- progress: Added referrer lookup actions, wired referral capture/validation UI in LeadForm, and extended `createLeadAction` to store referral context, keep duplicate referral locked, and apply O-Club referral credit only when eligible.
+- progress: Added referrer lookup actions, wired referral capture/validation UI in LeadForm, and extended `createLeadAction` to store referral context, keep duplicate referral locked, and apply O' Circle referral credit only when eligible.
 - outcome: CRM lead flow now supports referral code or contact details with member name resolution; new leads require referral unless customer already has active delivery; duplicate lead updates refresh intent/location but do not overwrite referral attribution.
 - blockers: none
 - files:
@@ -490,7 +490,7 @@ This file is the permanent control log for this repo. It tracks all Codex + Anti
 - 2026-02-07: Added per-model template assignment and duplicate linking in Template step.
 - 2026-02-07: Added card-level Inbound Source CTAs for Brand/Model/Variant.
 - 2026-02-07: Added discovery ignore rules and series expansion for TVS series items.
-- 2026-02-21: Added O-Circle independent secure schema and referral attribution plan in `bclub.md`.
+- 2026-02-21: Added O' Circle independent secure schema and referral attribution plan in `bclub.md`.
 - 2026-02-21: Wired lead modules and added lead interest + attachment capture to member document vault.
 - 2026-02-21: Added `crm_leads.updated_at` compatibility hotfix (code fallback + migration).
 - 2026-02-21: Added note author/attachment support and unified legacy member documents into `id_member_assets` with backfill migration.

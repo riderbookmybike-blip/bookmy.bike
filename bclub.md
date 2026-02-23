@@ -1,9 +1,9 @@
-# BClub / O-Circle Secure Schema Plan
+# BClub / O' Circle Secure Schema Plan
 Date: 2026-02-21
 Status: plan-approved draft
 
 ## Primary goals
-- Keep O-Circle data independent from member profile tables, with strong FK links to members.
+- Keep O' Circle data independent from member profile tables, with strong FK links to members.
 - Make referral code mandatory for both lead creation and member registration.
 - Track complete attribution chain: who referred whom, source channel, who got points, and who redeemed how much.
 - Ensure high security with least privilege, immutable ledger, idempotent posting, and full auditability.
@@ -16,7 +16,7 @@ Status: plan-approved draft
 - Team member referral still records attribution but rewards are skipped.
 - Self-referral is blocked.
 
-## Required independent O-Circle tables
+## Required independent O' Circle tables
 1) `oclub_member_accounts` (1:1 with member)
 - `id` uuid pk
 - `member_id` uuid not null unique references `id_members(id)` on delete cascade
@@ -87,7 +87,7 @@ Status: plan-approved draft
 - `created_at` timestamptz not null default now()
 
 ## Security model (high security)
-- RLS enabled on all O-Circle tables.
+- RLS enabled on all O' Circle tables.
 - Client-facing reads allowed only for own records (`auth.uid()` mapped to own member_id).
 - No direct client writes to wallet/ledger/redemption/referral tables.
 - All mutations only via `SECURITY DEFINER` RPC functions with strict parameter validation.

@@ -31,7 +31,7 @@ import { Logo } from '@/components/brand/Logo';
 const TABS = [
     { key: 'home', label: 'Home', icon: Home, href: '/' },
     { key: 'ride', label: 'Ride', icon: MotorcycleIcon, href: '/store/catalog' },
-    { key: 'ocircle', label: "O'Circle", icon: Globe, href: '/store/ocircle' },
+    { key: 'ocircle', label: "O' Circle", icon: Globe, href: '/store/ocircle' },
     { key: 'love', label: 'Love', icon: Heart, href: '/wishlist' },
     { key: 'menu', label: 'Menu', icon: Menu, href: null },
 ] as const;

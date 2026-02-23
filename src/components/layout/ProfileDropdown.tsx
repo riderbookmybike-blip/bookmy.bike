@@ -35,7 +35,6 @@ import {
     Twitter,
     Instagram,
 } from 'lucide-react';
-import { ThemeModeSelector } from '@/components/ui/theme-mode-selector';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';
@@ -429,9 +428,9 @@ export function ProfileDropdown({
 
     const displayName = user
         ? user.user_metadata?.full_name?.split(' ')[0] ||
-        user.user_metadata?.name?.split(' ')[0] ||
-        user.email?.split('@')[0] ||
-        'User'
+          user.user_metadata?.name?.split(' ')[0] ||
+          user.email?.split('@')[0] ||
+          'User'
         : 'Guest';
 
     /** Animation Variants borrowed from LoginSidebar */
@@ -589,8 +588,8 @@ export function ProfileDropdown({
                                                                     getDefaultAvatar(
                                                                         user.id,
                                                                         user.user_metadata?.full_name ||
-                                                                        user.user_metadata?.name ||
-                                                                        user.email
+                                                                            user.user_metadata?.name ||
+                                                                            user.email
                                                                     )
                                                                 }
                                                                 alt={user.user_metadata?.full_name || 'Profile'}
@@ -631,8 +630,8 @@ export function ProfileDropdown({
                                                                 {location.stateCode
                                                                     ? `(${location.stateCode})`
                                                                     : location.state
-                                                                        ? `(${location.state})`
-                                                                        : ''}
+                                                                      ? `(${location.state})`
+                                                                      : ''}
                                                             </div>
                                                         )}
                                                     </div>
@@ -640,17 +639,17 @@ export function ProfileDropdown({
                                             ) : (
                                                 <motion.div
                                                     variants={itemVariants}
-                                                    className="bg-slate-900 dark:bg-black p-6 rounded-[2rem] border border-white/10 dark:border-white/5 flex flex-col items-center gap-4 text-center relative overflow-hidden group shadow-xl"
+                                                    className="bg-slate-50 p-6 rounded-[2rem] border border-slate-200 flex flex-col items-center gap-4 text-center relative overflow-hidden group shadow-sm"
                                                 >
                                                     <div className="absolute top-[-50px] left-[-50px] w-32 h-32 bg-brand-primary/20 rounded-full blur-[40px] pointer-events-none" />
-                                                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-brand-primary">
+                                                    <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-brand-primary">
                                                         <LucideUser size={32} />
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <h3 className="text-lg font-black text-white uppercase tracking-tight">
+                                                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
                                                             Welcome to BookMyBike
                                                         </h3>
-                                                        <p className="text-xs text-slate-400 font-medium px-4">
+                                                        <p className="text-xs text-slate-500 font-medium px-4">
                                                             Sign in to manage your bookings, wishlist, and exclusive
                                                             offers.
                                                         </p>
@@ -667,11 +666,11 @@ export function ProfileDropdown({
                                                 </motion.div>
                                             )}
 
-                                            {/* O-CLUB WALLET HERO CARD (Moves inside sidebar) */}
+                                            {/* O' CIRCLE WALLET HERO CARD (Moves inside sidebar) */}
                                             {user && bCoins !== null && (
                                                 <motion.div
                                                     variants={itemVariants}
-                                                    className="w-full relative overflow-hidden bg-gradient-to-br from-[#1E293B] to-[#0F172A] rounded-3xl border border-[#F4B000]/20 p-5 mt-2 group shadow-[0_10px_30px_rgba(244,176,0,0.1)]"
+                                                    className="w-full relative overflow-hidden bg-gradient-to-br from-white to-slate-50 rounded-3xl border border-slate-200 p-5 mt-2 group shadow-sm"
                                                 >
                                                     {/* Background Glows and Shapes */}
                                                     <div className="absolute top-0 right-0 w-48 h-48 bg-[#F4B000]/10 rounded-full blur-[40px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
@@ -685,31 +684,28 @@ export function ProfileDropdown({
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
-                                                                    O-Club Wallet
+                                                                    O' Circle Wallet
                                                                 </h4>
-                                                                <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">
+                                                                <p className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">
                                                                     Available Balance
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        <button className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10">
+                                                        <button className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors bg-white hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
                                                             View Ledger
                                                         </button>
                                                     </div>
 
                                                     {/* Balance */}
-                                                    <div className="relative z-10 flex flex-col pt-2 border-t border-white/5">
+                                                    <div className="relative z-10 flex flex-col pt-2 border-t border-slate-200">
                                                         <div className="flex items-baseline gap-2">
-                                                            <span className="text-4xl font-black text-white italic tracking-tighter">
+                                                            <span className="text-4xl font-black text-slate-900 italic tracking-tighter">
                                                                 {bCoins.toLocaleString('en-IN')}
                                                             </span>
                                                             <span className="text-[10px] font-black uppercase text-[#F4B000] tracking-widest opacity-80">
                                                                 B-Coins
                                                             </span>
                                                         </div>
-                                                        <p className="text-[10px] text-slate-500 font-medium mt-1">
-                                                            1 B-Coin = ₹1 when purchasing vehicles or services
-                                                        </p>
                                                     </div>
                                                 </motion.div>
                                             )}
@@ -747,11 +743,12 @@ export function ProfileDropdown({
                                                                             }
                                                                             disabled={uploading}
                                                                             title={preset.label}
-                                                                            className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-all duration-200 hover:scale-110 ${user.user_metadata?.avatar_url ===
+                                                                            className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-all duration-200 hover:scale-110 ${
+                                                                                user.user_metadata?.avatar_url ===
                                                                                 preset.url
-                                                                                ? 'ring-[#F4B000] shadow-lg shadow-[#F4B000]/30'
-                                                                                : 'ring-transparent hover:ring-slate-300 dark:hover:ring-white/20'
-                                                                                } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                                                                                    ? 'ring-[#F4B000] shadow-lg shadow-[#F4B000]/30'
+                                                                                    : 'ring-transparent hover:ring-slate-300 dark:hover:ring-white/20'
+                                                                            } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
                                                                         >
                                                                             <img
                                                                                 src={preset.url}
@@ -818,24 +815,6 @@ export function ProfileDropdown({
                                                 </div>
                                             </div>
 
-                                            <motion.div variants={itemVariants} className="space-y-3 pt-1">
-                                                <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                                                    <Settings size={10} strokeWidth={3} />
-                                                    Appearance
-                                                </p>
-                                                <div className="space-y-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5">
-                                                    <div>
-                                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-                                                            Light / Dark / System
-                                                        </p>
-                                                        <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 mt-1">
-                                                            Theme preference
-                                                        </p>
-                                                    </div>
-                                                    <ThemeModeSelector className="w-full justify-between" />
-                                                </div>
-                                            </motion.div>
-
                                             {/* Simplified Unified Navigation — only for logged-in users */}
                                             {user && (
                                                 <div className="space-y-6 pt-2">
@@ -884,10 +863,11 @@ export function ProfileDropdown({
                                                                     return (
                                                                         <div
                                                                             key={t.id || t.slug || ''}
-                                                                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all group hover:shadow-md relative overflow-hidden ${isActive
-                                                                                ? 'bg-brand-primary/5 border-brand-primary/20 dark:bg-brand-primary/10'
-                                                                                : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/5'
-                                                                                }`}
+                                                                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all group hover:shadow-md relative overflow-hidden ${
+                                                                                isActive
+                                                                                    ? 'bg-brand-primary/5 border-brand-primary/20 dark:bg-brand-primary/10'
+                                                                                    : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/5'
+                                                                            }`}
                                                                         >
                                                                             <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center shrink-0 text-slate-400">
                                                                                 {getTenantIcon(t.type || '')}
@@ -911,9 +891,9 @@ export function ProfileDropdown({
                                                                                 href={`/app/${t.slug}/dashboard`}
                                                                                 {...(!isActive
                                                                                     ? {
-                                                                                        target: '_blank',
-                                                                                        rel: 'noopener noreferrer',
-                                                                                    }
+                                                                                          target: '_blank',
+                                                                                          rel: 'noopener noreferrer',
+                                                                                      }
                                                                                     : {})}
                                                                                 onClick={() => {
                                                                                     if (isActive) setIsOpen(false);
@@ -974,10 +954,9 @@ export function ProfileDropdown({
                                         </div>
                                     </div>
                                 </motion.div>
-                            </div >
-                        )
-                        }
-                    </AnimatePresence >,
+                            </div>
+                        )}
+                    </AnimatePresence>,
                     document.body
                 )}
         </>

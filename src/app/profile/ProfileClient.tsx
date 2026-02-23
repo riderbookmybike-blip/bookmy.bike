@@ -46,7 +46,6 @@ import { createClient } from '@/lib/supabase/client';
 import dynamic from 'next/dynamic';
 const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 import { getDefaultAvatar } from '@/lib/avatars';
-import { ThemeModeSelector } from '@/components/ui/theme-mode-selector';
 
 interface ProfileClientProps {
     user: any;
@@ -182,7 +181,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
         const shareUrl = `${window.location.origin}?ref=${referralCode}`;
         const shareData = {
             title: "Join The O' Circle at BookMyBike",
-            text: `Hey! 🏍️ Join me on BookMyBike and get exclusive O-Club benefits on your next bike booking. Use my referral code: ${referralCode}`,
+            text: `Hey! 🏍️ Join me on BookMyBike and get exclusive O' Circle benefits on your next bike booking. Use my referral code: ${referralCode}`,
             url: shareUrl,
         };
 
@@ -204,7 +203,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
 
     const handleSocialShare = (platform: string) => {
         const shareUrl = `${window.location.origin}?ref=${referralCode}`;
-        const shareText = `Hey! 🏍️ Join me on BookMyBike and get exclusive O-Club benefits on your next bike booking. Use my referral code: ${referralCode}`;
+        const shareText = `Hey! 🏍️ Join me on BookMyBike and get exclusive O' Circle benefits on your next bike booking. Use my referral code: ${referralCode}`;
         const fullMessage = `${shareText}\n${shareUrl}`;
 
         const encodedText = encodeURIComponent(fullMessage);
@@ -335,22 +334,6 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     </button>
                                 </>
                             )}
-                        </div>
-                    </div>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="mb-12">
-                    <div className="rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-6 md:p-8">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                            <div>
-                                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                    Appearance
-                                </h3>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mt-1">
-                                    Light mode is fixed for your profile UI.
-                                </p>
-                            </div>
-                            <ThemeModeSelector className="w-full md:w-auto" />
                         </div>
                     </div>
                 </motion.div>

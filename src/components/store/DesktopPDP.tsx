@@ -128,108 +128,22 @@ interface DesktopPDPProps {
     };
 }
 
-const FullLayoutDebugger = () => {
-    const [data, setData] = useState<any>({});
-
-    useEffect(() => {
-        const measure = () => {
-            // 1. Main Header
-            const header = document.querySelector('header[class*="fixed"], nav[class*="fixed"], [class*="AppHeader"]');
-            const headerRect = header?.getBoundingClientRect();
-
-            // 2. Sticky Nav
-            const sticky = document.querySelector('.sticky-debug-target');
-            const stickyRect = sticky?.getBoundingClientRect();
-            const stickyComputed = sticky ? window.getComputedStyle(sticky) : null;
-
-            // 3. First Content Card (after sticky)
-            const content = document.querySelector('.content-debug-target');
-            const contentRect = content?.getBoundingClientRect();
-
-            // CSS Variable
-            const headerH = getComputedStyle(document.documentElement).getPropertyValue('--header-h');
-
-            setData({
-                scrollY: Math.round(window.scrollY),
-                headerH,
-                header: {
-                    bottom: Math.round(headerRect?.bottom || 0),
-                    height: Math.round(headerRect?.height || 0),
-                },
-                sticky: {
-                    top: Math.round(stickyRect?.top || 0),
-                    bottom: Math.round(stickyRect?.bottom || 0),
-                    height: Math.round(stickyRect?.height || 0),
-                    computedTop: stickyComputed?.top || 'N/A',
-                    zIndex: stickyComputed?.zIndex || 'N/A',
-                },
-                content: {
-                    top: Math.round(contentRect?.top || 0),
-                },
-                gaps: {
-                    headerToSticky: Math.round((stickyRect?.top || 0) - (headerRect?.bottom || 0)),
-                    stickyToContent: Math.round((contentRect?.top || 0) - (stickyRect?.bottom || 0)),
-                },
-            });
-        };
-
-        window.addEventListener('scroll', measure);
-        const interval = setInterval(measure, 500);
-        measure();
-        return () => {
-            window.removeEventListener('scroll', measure);
-            clearInterval(interval);
-        };
-    }, []);
-
-    const gapColor = (gap: number) => (gap < 0 ? 'text-red-400' : gap === 0 ? 'text-yellow-400' : 'text-green-400');
-
-    return (
-        <div className="fixed bottom-4 right-4 z-[9999] bg-black/95 text-white p-4 rounded-xl font-mono text-[10px] border-2 border-cyan-500 shadow-2xl max-w-xs pointer-events-none">
-            <h3 className="font-bold text-cyan-400 mb-2 border-b border-white/10 pb-1">🔬 FULL LAYOUT DEBUGGER</h3>
-
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-3">
-                <p className="text-slate-400">Scroll Y:</p>
-                <p>{data.scrollY}px</p>
-                <p className="text-slate-400">--header-h:</p>
-                <p>{data.headerH}</p>
-            </div>
-
-            <div className="border-t border-white/10 pt-2 mb-2">
-                <p className="text-orange-400 font-bold mb-1">MAIN HEADER</p>
-                <p>
-                    Bottom: {data.header?.bottom}px | Height: {data.header?.height}px
-                </p>
-            </div>
-
-            <div className="border-t border-white/10 pt-2 mb-2">
-                <p className="text-red-400 font-bold mb-1">STICKY NAV</p>
-                <p>
-                    Top: {data.sticky?.top}px | Bottom: {data.sticky?.bottom}px
-                </p>
-                <p>
-                    Height: {data.sticky?.height}px | Z: {data.sticky?.zIndex}
-                </p>
-                <p>CSS Top: {data.sticky?.computedTop}</p>
-            </div>
-
-            <div className="border-t border-white/10 pt-2 mb-2">
-                <p className="text-blue-400 font-bold mb-1">CONTENT</p>
-                <p>Top: {data.content?.top}px</p>
-            </div>
-
-            <div className="border-t border-white/10 pt-2">
-                <p className="font-bold text-white mb-1">GAPS</p>
-                <p className={gapColor(data.gaps?.headerToSticky || 0)}>
-                    Header → Sticky: {data.gaps?.headerToSticky}px
-                </p>
-                <p className={gapColor(data.gaps?.stickyToContent || 0)}>
-                    Sticky → Content: {data.gaps?.stickyToContent}px
-                </p>
-            </div>
-        </div>
-    );
-};
+// FullLayoutDebugger extracted to ./Personalize/FullLayoutDebugger.tsx
+// import FullLayoutDebugger from './Personalize/FullLayoutDebugger';
+import ConfigItemRow from './Personalize/ConfigItemRow';
+import AccordionAccessories from './Personalize/Accordion/AccordionAccessories';
+import AccordionInsurance from './Personalize/Accordion/AccordionInsurance';
+import AccordionRegistration from './Personalize/Accordion/AccordionRegistration';
+import FlatItemList from './Personalize/Accordion/FlatItemList';
+import FloatingCommandBar from './Personalize/FloatingCommandBar';
+import FinanceSummaryPanel from './Personalize/FinanceSummaryPanel';
+import DownPaymentSlider from './Personalize/DownPaymentSlider';
+import {
+    computeFinanceMetrics,
+    resolveProductImage,
+    buildSavingsHelpLines,
+    buildSurgeHelpLines,
+} from './Personalize/pdpComputations';
 
 export function DesktopPDP({
     product,
@@ -313,34 +227,16 @@ export function DesktopPDP({
     const displayOnRoad = coinPricing?.effectivePrice ?? totalOnRoad;
     const showCoinRate = Number.isFinite(walletCoinsValue);
 
-    // Compute EMI at component level for footer display
-    const footerEmi = (() => {
-        const annualInterest = initialFinance?.scheme?.interestRate ? initialFinance.scheme.interestRate / 100 : 0;
-        const interestType = initialFinance?.scheme?.interestType || 'REDUCING';
-        const allCharges = initialFinance?.scheme?.charges || [];
-        const calcAmt = (charge: any) => {
-            if (charge.type === 'PERCENTAGE') {
-                const basis = charge.calculationBasis === 'LOAN_AMOUNT' ? loanAmount : totalOnRoad;
-                return Math.round(basis * (charge.value / 100));
-            }
-            return charge.value || 0;
-        };
-        const totalUpfront = allCharges
-            .filter((c: any) => c.impact === 'UPFRONT')
-            .reduce((s: number, c: any) => s + calcAmt(c), 0);
-        const totalFunded = allCharges
-            .filter((c: any) => c.impact === 'FUNDED')
-            .reduce((s: number, c: any) => s + calcAmt(c), 0);
-        const netLoan = Math.max(0, displayOnRoad - (userDownPayment || 0));
-        const grossLoan = netLoan + totalFunded + totalUpfront;
-        if (interestType === 'FLAT') {
-            const totalInt = grossLoan * annualInterest * (emiTenure / 12);
-            return Math.round((grossLoan + totalInt) / emiTenure);
-        }
-        const r = annualInterest / 12;
-        if (r === 0) return Math.round(grossLoan / emiTenure);
-        return Math.round((grossLoan * r * Math.pow(1 + r, emiTenure)) / (Math.pow(1 + r, emiTenure) - 1));
-    })();
+    // Compute EMI using shared finance computation (Phase 7)
+    const financeMetrics = computeFinanceMetrics({
+        scheme: initialFinance?.scheme,
+        displayOnRoad,
+        userDownPayment: userDownPayment || 0,
+        loanAmount,
+        totalOnRoad,
+        emiTenure,
+    });
+    const footerEmi = financeMetrics.monthlyEmi;
 
     const {
         handleColorChange,
@@ -465,7 +361,7 @@ export function DesktopPDP({
         ...(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)
             ? [
                   {
-                      label: "O'Club Privileged",
+                      label: "O' Circle Privileged",
                       value: totalSavings + (coinPricing?.discount || 0),
                       isDeduction: true,
                       helpText: [
@@ -501,954 +397,48 @@ export function DesktopPDP({
         }
     };
 
-    const ConfigItemRow = ({ item, isSelected, onToggle, isMandatory = false, isRadio = false, breakdown }: any) => {
-        const quantity = isSelected ? quantities[item.id] || 1 : 0;
-        const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
-
-        return (
-            <div className="group/item relative h-full">
-                <button
-                    onClick={() => !isMandatory && onToggle && onToggle()}
-                    disabled={isMandatory}
-                    className={`w-full h-full p-4 rounded-3xl border transition-all duration-500 flex flex-col justify-between gap-4 group/btn
-                        ${
-                            isSelected
-                                ? 'bg-brand-primary/[0.08] border-brand-primary/40 shadow-[0_15px_40px_rgba(255,215,0,0.1)]'
-                                : 'bg-white/40 border-slate-100 hover:border-slate-200 hover:bg-white'
-                        } ${isMandatory ? 'cursor-default' : 'cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5'}`}
-                >
-                    <div className="w-full flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div
-                                className={`w-9 h-9 rounded-2xl flex items-center justify-center border transition-all duration-500 shrink-0
-                                ${
-                                    isSelected
-                                        ? 'bg-brand-primary text-black border-brand-primary shadow-[0_0_20px_rgba(255,215,0,0.5)] scale-105'
-                                        : 'bg-slate-100 text-slate-400 border-slate-200'
-                                }`}
-                            >
-                                {isRadio ? (
-                                    <div
-                                        className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-black' : 'bg-transparent'}`}
-                                    />
-                                ) : isMandatory ? (
-                                    <CheckCircle2 size={18} strokeWidth={3} />
-                                ) : isSelected ? (
-                                    <CheckCircle2 size={18} strokeWidth={3} />
-                                ) : (
-                                    <Plus size={18} />
-                                )}
-                            </div>
-                            <div className="flex flex-col items-start min-w-0">
-                                <span
-                                    className={`text-xs font-black uppercase tracking-tight leading-tight mb-1 truncate w-full ${isSelected ? 'text-slate-900' : 'text-slate-500'}`}
-                                >
-                                    {item.displayName || item.name}
-                                </span>
-                                <div className="flex items-baseline gap-1.5">
-                                    <span
-                                        className={`text-sm font-black font-mono ${isSelected ? 'text-brand-primary' : 'text-slate-900'}`}
-                                    >
-                                        ₹{finalPrice.toLocaleString()}
-                                    </span>
-                                    {item.discountPrice > 0 && (
-                                        <span className="text-[10px] text-slate-400 line-through font-bold">
-                                            ₹{item.price.toLocaleString()}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {(item.description || breakdown) && (
-                            <div
-                                className={`p-1.5 rounded-full transition-colors ${isSelected ? 'bg-brand-primary/20 text-brand-primary' : 'text-slate-400 hover:text-brand-primary'}`}
-                            >
-                                <Info size={14} />
-                            </div>
-                        )}
-                    </div>
-
-                    {item.description && (
-                        <p
-                            className={`text-[10px] leading-relaxed text-left line-clamp-2 ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}
-                        >
-                            {item.description}
-                        </p>
-                    )}
-                </button>
-
-                {/* Dense Tooltip */}
-                {(item.description || breakdown) && (
-                    <div className="absolute right-0 top-full mt-3 z-50 w-64 max-w-[80vw] p-4 rounded-2xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/item:opacity-100 group-hover/item:visible transition-all duration-300 pointer-events-none">
-                        <div className="space-y-3">
-                            <div className="pb-2 border-b border-white/5">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-brand-primary">
-                                    {item.displayName || item.name}
-                                </p>
-                                {item.description && (
-                                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed font-medium">
-                                        {item.description}
-                                    </p>
-                                )}
-                            </div>
-                            {breakdown && breakdown.length > 0 && (
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Price Breakdown
-                                        </span>
-                                        <div className="flex-1 h-px bg-white/5" />
-                                    </div>
-                                    {breakdown.map((b: any, idx: number) => (
-                                        <div
-                                            key={idx}
-                                            className="flex justify-between items-center bg-white/5 p-2 rounded-lg"
-                                        >
-                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
-                                                {b.label || b.name}
-                                            </span>
-                                            <span className="text-[10px] font-black text-white">
-                                                ₹{(b.amount || b.value || 0).toLocaleString()}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        {/* Triangle pointer */}
-                        <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-[#15191e] border-l border-b border-white/10 rotate-45" />
-                    </div>
-                )}
-            </div>
-        );
-    };
+    // ConfigItemRow extracted to ./Personalize/ConfigItemRow.tsx (imported at top)
 
     const renderCategoryContent = (categoryId: string) => {
-        if (categoryId === 'ACCESSORIES') {
-            // Selected items float to top, then sort by price within each group
-            const sortedAccessories = [...activeAccessories].sort((a: any, b: any) => {
-                const aSelected = a.isMandatory || selectedAccessories.includes(a.id) ? 1 : 0;
-                const bSelected = b.isMandatory || selectedAccessories.includes(b.id) ? 1 : 0;
-                if (aSelected !== bSelected) return bSelected - aSelected; // selected first
-                return (a.discountPrice ?? a.price) - (b.discountPrice ?? b.price); // then by price
-            });
-
-            // Helper: title case
-            const toTitle = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-
-            return (
-                <>
-                    {sortedAccessories.map((acc: any, idx: number) => {
-                        const isSelected = acc.isMandatory || selectedAccessories.includes(acc.id);
-                        const finalPrice = acc.discountPrice > 0 ? acc.discountPrice : acc.price;
-                        const hasDiscount = acc.discountPrice > 0 && acc.discountPrice < acc.price;
-                        const savings = hasDiscount ? acc.price - acc.discountPrice : 0;
-                        const savingsPct = hasDiscount ? Math.round((savings / acc.price) * 100) : 0;
-                        const quantity = isSelected ? quantities[acc.id] || 1 : 0;
-                        const maxQty = acc.maxQty || 99;
-                        const skuImg = acc.image || null;
-
-                        // Line 1: Product group (e.g., "Crash Guard")
-                        const line1 = toTitle(acc.productGroup || acc.name);
-                        // Line 2: Sub-variant (e.g., "Premium Mild Steel (Black)")
-                        const rawName = acc.name || '';
-                        const groupName = acc.productGroup || '';
-                        const subVariant = rawName
-                            .replace(new RegExp(`^${groupName}\\s*`, 'i'), '')
-                            .replace(/\s+for\s+.*/i, '')
-                            .trim();
-                        // Line 3: "Generic For Activa"
-                        const vehicleModel = (acc.variantName || '').split('›').pop()?.trim() || '';
-                        const line3 = vehicleModel
-                            ? toTitle([acc.brand, 'for', vehicleModel].filter(Boolean).join(' '))
-                            : toTitle(acc.brand || '');
-
-                        return (
-                            <div
-                                key={acc.id}
-                                onClick={() => !acc.isMandatory && toggleAccessory(acc.id)}
-                                className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] ${
-                                    isSelected
-                                        ? 'border-l-emerald-500 bg-emerald-50/50'
-                                        : 'border-l-transparent hover:bg-slate-50'
-                                } ${idx > 0 ? 'border-t border-t-slate-100/80' : ''}`}
-                            >
-                                {/* Checkbox */}
-                                <div
-                                    className={`w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all shrink-0 ${
-                                        isSelected
-                                            ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
-                                            : 'border-2 border-slate-300 group-hover:border-emerald-400'
-                                    }`}
-                                >
-                                    {isSelected && <CheckCircle2 size={12} strokeWidth={3} />}
-                                </div>
-
-                                {/* Image */}
-                                <div
-                                    className={`w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
-                                        skuImg
-                                            ? 'bg-white border border-slate-100 shadow-sm'
-                                            : 'bg-slate-50 border border-dashed border-slate-200'
-                                    }`}
-                                >
-                                    {skuImg ? (
-                                        <Image
-                                            src={skuImg}
-                                            alt={acc.name}
-                                            width={36}
-                                            height={36}
-                                            className="object-contain"
-                                        />
-                                    ) : (
-                                        <Package size={16} className="text-slate-300" />
-                                    )}
-                                </div>
-
-                                {/* Name — three lines */}
-                                <div className="flex-1 min-w-0">
-                                    <p
-                                        className={`text-[12px] font-black tracking-tight leading-tight truncate ${
-                                            isSelected ? 'text-slate-900' : 'text-slate-700'
-                                        }`}
-                                    >
-                                        {line1 || toTitle(acc.name)}
-                                    </p>
-                                    {subVariant && (
-                                        <p
-                                            className={`text-[11px] font-medium mt-0.5 truncate leading-tight ${isSelected ? 'text-slate-600' : 'text-slate-500'}`}
-                                        >
-                                            {toTitle(subVariant)}
-                                        </p>
-                                    )}
-                                    {line3 && (
-                                        <p className="text-[10px] text-slate-400 mt-0.5 truncate leading-tight">
-                                            {line3}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Qty ± */}
-                                {isSelected && (
-                                    <div className="flex items-center gap-1 shrink-0 bg-slate-100/80 rounded-lg px-1 py-0.5">
-                                        <button
-                                            onClick={e => {
-                                                e.stopPropagation();
-                                                updateQuantity(acc.id, Math.max(1, quantity - 1));
-                                            }}
-                                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 text-sm font-bold hover:bg-white transition-colors"
-                                        >
-                                            −
-                                        </button>
-                                        <span className="w-5 text-center text-[11px] font-black text-slate-700">
-                                            {quantity}
-                                        </span>
-                                        <button
-                                            onClick={e => {
-                                                e.stopPropagation();
-                                                updateQuantity(acc.id, Math.min(maxQty, quantity + 1));
-                                            }}
-                                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 text-sm font-bold hover:bg-white transition-colors"
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* Price block */}
-                                <div className="flex flex-col items-end shrink-0 min-w-[72px]">
-                                    <span
-                                        className={`text-[13px] font-extrabold tabular-nums ${
-                                            isSelected ? 'text-emerald-600' : 'text-slate-800'
-                                        }`}
-                                    >
-                                        {finalPrice === 0 ? 'FREE' : `₹${finalPrice.toLocaleString()}`}
-                                    </span>
-                                    {hasDiscount && (
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[10px] text-slate-400 line-through tabular-nums">
-                                                ₹{acc.price.toLocaleString()}
-                                            </span>
-                                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
-                                                {savingsPct}% off
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </>
-            );
-        }
-
-        // Shared flat-row renderer for Insurance / Registration / Services / Warranty
-        const renderFlatItemList = (
-            items: any[],
-            {
-                getSelected,
-                onToggle,
-                isMandatory = false,
-                isRadio = false,
-            }: {
-                getSelected: (id: string) => boolean;
-                onToggle: (id: string) => void;
-                isMandatory?: boolean;
-                isRadio?: boolean;
-            }
-        ) => {
-            const toTitle = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-            return (
-                <>
-                    {items.map((item: any, idx: number) => {
-                        const selected = getSelected(item.id);
-                        const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
-                        const hasDiscount = item.discountPrice > 0 && item.discountPrice < item.price;
-                        const savings = hasDiscount ? item.price - item.discountPrice : 0;
-                        const savingsPct = hasDiscount ? Math.round((savings / item.price) * 100) : 0;
-
-                        return (
-                            <div
-                                key={item.id}
-                                onClick={() => !isMandatory && onToggle(item.id)}
-                                className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] ${
-                                    selected
-                                        ? 'border-l-emerald-500 bg-emerald-50/50'
-                                        : 'border-l-transparent hover:bg-slate-50'
-                                } ${idx > 0 ? 'border-t border-t-slate-100/80' : ''} ${isMandatory ? 'cursor-default' : ''}`}
-                            >
-                                {/* Checkbox / Radio */}
-                                <div
-                                    className={`w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all shrink-0 ${
-                                        selected
-                                            ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
-                                            : 'border-2 border-slate-300 group-hover:border-emerald-400'
-                                    }`}
-                                >
-                                    {selected &&
-                                        (isRadio ? (
-                                            <div className="w-2 h-2 rounded-full bg-white" />
-                                        ) : (
-                                            <CheckCircle2 size={12} strokeWidth={3} />
-                                        ))}
-                                </div>
-
-                                {/* Name + description */}
-                                <div className="flex-1 min-w-0">
-                                    <p
-                                        className={`text-[12px] font-semibold leading-tight truncate ${
-                                            selected ? 'text-slate-900' : 'text-slate-700'
-                                        }`}
-                                    >
-                                        {toTitle(item.displayName || item.name)}
-                                    </p>
-                                    {item.description && (
-                                        <p className="text-[10px] text-slate-400 mt-0.5 truncate leading-tight">
-                                            {item.description}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Breakdown info icon */}
-                                {item.breakdown && item.breakdown.length > 0 && (
-                                    <div className="relative group/tip shrink-0">
-                                        <div
-                                            className={`p-1 rounded-full transition-colors ${selected ? 'text-emerald-500' : 'text-slate-400 hover:text-emerald-500'}`}
-                                        >
-                                            <Info size={13} />
-                                        </div>
-                                        <div className="absolute right-0 bottom-full mb-2 z-50 w-56 p-3 rounded-xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-300 pointer-events-none">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-2">
-                                                Breakdown
-                                            </p>
-                                            {item.breakdown.map((b: any, i: number) => (
-                                                <div
-                                                    key={i}
-                                                    className="flex justify-between items-center py-1 border-b border-white/5 last:border-0"
-                                                >
-                                                    <span className="text-[9px] text-slate-400">
-                                                        {b.label || b.name}
-                                                    </span>
-                                                    <span className="text-[10px] font-bold text-white">
-                                                        ₹{(b.amount || b.value || 0).toLocaleString()}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Price block */}
-                                <div className="flex flex-col items-end shrink-0 min-w-[72px]">
-                                    <span
-                                        className={`text-[13px] font-extrabold tabular-nums ${
-                                            selected ? 'text-emerald-600' : 'text-slate-800'
-                                        }`}
-                                    >
-                                        {finalPrice === 0 ? 'FREE' : `₹${finalPrice.toLocaleString()}`}
-                                    </span>
-                                    {hasDiscount && (
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[10px] text-slate-400 line-through tabular-nums">
-                                                ₹{item.price.toLocaleString()}
-                                            </span>
-                                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
-                                                {savingsPct}% off
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </>
-            );
-        };
-
-        if (categoryId === 'INSURANCE') {
-            const allInsurance = [...insuranceRequiredItems, ...availableInsuranceAddons];
-            const mandatoryIds = new Set(insuranceRequiredItems.map((i: any) => i.id));
-
-            // Compute totals
-            const activeAddons = availableInsuranceAddons.filter((a: any) => selectedInsuranceAddons.includes(a.id));
-            const addonsTotal = activeAddons.reduce((sum: number, a: any) => sum + Number(a.price || 0), 0);
-            const totalInsurance = baseInsurance + addonsTotal;
-
-            // Net Premium (sum of all base premiums before GST)
-            const tpBase = insuranceRequiredItems.find((i: any) => i.id === 'insurance-tp');
-            const odBase = insuranceRequiredItems.find((i: any) => i.id === 'insurance-od');
-            const tpBasePremium = tpBase?.breakdown?.[0]?.amount || insuranceTP || 0;
-            const odBasePremium = odBase?.breakdown?.[0]?.amount || insuranceOD || 0;
-            const addonsBasePremium = activeAddons.reduce((sum: number, a: any) => {
-                const base = a.breakdown?.find((b: any) => b.label === 'Base Premium');
-                return sum + Number(base?.amount || a.price || 0);
-            }, 0);
-            const netPremium = Number(tpBasePremium) + Number(odBasePremium) + Number(addonsBasePremium);
-            const totalGst = Math.max(0, totalInsurance - netPremium);
-
-            const TreeLine = () => <span className="text-slate-300 mr-2 text-[13px] font-light select-none">└</span>;
-
-            // Tooltip descriptions for insurance components
-            const tipMap: Record<string, string> = {
-                tp: 'Covers damage you cause to other people or their property in an accident. This is mandatory by law for 5 years.',
-                od: 'Covers repair or replacement costs if your vehicle gets damaged in an accident, theft, fire, or natural disaster. Valid for 1 year.',
-                'zero depreciation':
-                    'Without this, insurance deducts value for wear & tear on parts. With Zero Dep, you get full claim amount without any deduction.',
-                'personal accident':
-                    'Provides compensation to you (the owner-driver) for injuries or death in a road accident. Covers up to ₹15 lakh.',
-                'roadside assistance':
-                    'Get help if your vehicle breaks down — towing, flat tyre, battery jumpstart, fuel delivery, anywhere in India.',
-                'engine protect':
-                    'Covers engine damage from water logging or oil leakage, which is not covered under regular insurance.',
-                'return to invoice':
-                    'If your vehicle is stolen or totally damaged, you get the full invoice amount back instead of depreciated value.',
-                consumables:
-                    'Covers cost of consumables like engine oil, nuts, bolts, and washers used during repairs — normally not covered.',
-                'key replacement':
-                    'Covers the cost of replacing your vehicle keys if they are lost, stolen, or damaged.',
-                net_premium:
-                    'The total of all your insurance charges before GST is added. This is the base cost of your coverage.',
-                gst: 'Government Service Tax applied on insurance premiums. Currently 18% on all motor insurance.',
-            };
-
-            const getAddonTip = (name: string): string | undefined => {
-                const key = name.toLowerCase();
-                for (const [k, v] of Object.entries(tipMap)) {
-                    if (key.includes(k)) return v;
-                }
-                return undefined;
-            };
-
-            // InfoTip: hover on desktop, tap (i) on mobile
-            const InfoTip = ({ tip }: { tip?: string }) => {
-                if (!tip) return null;
+        switch (categoryId) {
+            case 'ACCESSORIES':
                 return (
-                    <span className="relative group/tip inline-flex ml-1">
-                        <span className="w-3.5 h-3.5 rounded-full bg-slate-100 inline-flex items-center justify-center cursor-help shrink-0 hover:bg-slate-200 transition-colors">
-                            <span className="text-[8px] font-bold text-slate-400 leading-none select-none">i</span>
-                        </span>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 px-3 py-2 rounded-lg bg-slate-800 text-[10px] leading-relaxed text-white font-medium shadow-lg opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-200 z-50 pointer-events-none">
-                            {tip}
-                            <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
-                        </span>
-                    </span>
+                    <AccordionAccessories
+                        activeAccessories={activeAccessories}
+                        selectedAccessories={selectedAccessories}
+                        quantities={quantities}
+                        toggleAccessory={toggleAccessory}
+                        updateQuantity={updateQuantity}
+                    />
                 );
-            };
-
-            return (
-                <>
-                    <div>
-                        {/* Header: INSURANCE PACKAGE */}
-                        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-                            <Shield size={14} className="text-emerald-500" />
-                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
-                                Insurance Package
-                            </span>
-                        </div>
-
-                        {/* Third Party (Basic) */}
-                        <div className="px-4 py-2.5 border-b border-slate-50">
-                            <div className="flex items-center justify-between">
-                                <span className="flex items-center text-[11px] font-semibold text-slate-700">
-                                    <TreeLine />
-                                    Third Party (Basic)
-                                    <InfoTip tip={tipMap['tp']} />
-                                </span>
-                                <span className="text-[12px] font-bold tabular-nums text-slate-700">
-                                    ₹{Number(insuranceTP || 0).toLocaleString()}
-                                </span>
-                            </div>
-                            <div className="ml-6 mt-1 space-y-0.5">
-                                <div className="flex items-center justify-between">
-                                    <span className="flex items-center text-[10px] text-slate-500 italic">
-                                        <TreeLine />
-                                        Liability Only (5 Years Cover)
-                                    </span>
-                                    <span className="text-[10px] tabular-nums text-slate-500">
-                                        ₹{Number(insuranceTP || 0).toLocaleString()}
-                                    </span>
-                                </div>
-                                {tpBase?.breakdown
-                                    ?.filter((b: any) => !b.label.toLowerCase().includes('gst'))
-                                    .map((b: any, i: number) => (
-                                        <div key={i} className="flex items-center justify-between ml-5">
-                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
-                                                {b.label}: ₹{Number(b.amount || 0).toLocaleString()}
-                                            </span>
-                                        </div>
-                                    ))}
-                            </div>
-                        </div>
-
-                        {/* Own Damage (OD) */}
-                        <div className="px-4 py-2.5 border-b border-slate-50">
-                            <div className="flex items-center justify-between">
-                                <span className="flex items-center text-[11px] font-semibold text-slate-700">
-                                    <TreeLine />
-                                    Own Damage (OD)
-                                    <InfoTip tip={tipMap['od']} />
-                                </span>
-                                <span className="text-[12px] font-bold tabular-nums text-slate-700">
-                                    ₹{Number(insuranceOD || 0).toLocaleString()}
-                                </span>
-                            </div>
-                            <div className="ml-6 mt-1 space-y-0.5">
-                                <div className="flex items-center justify-between">
-                                    <span className="flex items-center text-[10px] text-slate-500 italic">
-                                        <TreeLine />
-                                        Comprehensive (1 Year Cover)
-                                    </span>
-                                    <span className="text-[10px] tabular-nums text-slate-500">
-                                        ₹{Number(insuranceOD || 0).toLocaleString()}
-                                    </span>
-                                </div>
-                                {odBase?.breakdown
-                                    ?.filter((b: any) => !b.label.toLowerCase().includes('gst'))
-                                    .map((b: any, i: number) => (
-                                        <div key={i} className="flex items-center justify-between ml-5">
-                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
-                                                {b.label}: ₹{Number(b.amount || 0).toLocaleString()}
-                                            </span>
-                                        </div>
-                                    ))}
-                            </div>
-                        </div>
-
-                        {/* OPTIONAL ADD-ONS section */}
-                        {availableInsuranceAddons.length > 0 && (
-                            <div className="border-t border-slate-200/80">
-                                <div className="px-4 py-2 bg-slate-50/60">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                                        Optional Add-Ons
-                                    </span>
-                                </div>
-                                {availableInsuranceAddons.map((addon: any) => {
-                                    const isActive = selectedInsuranceAddons.includes(addon.id);
-                                    const isBundled = addon.inclusionType === 'BUNDLE' || addon.isMandatory;
-                                    const addonPrice = Number(addon.discountPrice || addon.price || 0);
-                                    const effectivePrice = isBundled ? 0 : addonPrice;
-                                    const hasOffer = isBundled || addon.discountPrice === 0;
-                                    return (
-                                        <div
-                                            key={addon.id}
-                                            onClick={() => {
-                                                if (!isBundled) toggleInsuranceAddon(addon.id);
-                                            }}
-                                            className={`px-4 py-2.5 border-t border-slate-50 transition-all duration-200 ${!isBundled ? 'cursor-pointer hover:bg-slate-50/50' : ''}`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2.5">
-                                                    {/* Toggle checkbox */}
-                                                    {!isBundled ? (
-                                                        <div
-                                                            className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-all duration-200 ${
-                                                                isActive
-                                                                    ? 'bg-emerald-500 shadow-sm shadow-emerald-200'
-                                                                    : 'border-[1.5px] border-slate-300 hover:border-emerald-400'
-                                                            }`}
-                                                        >
-                                                            {isActive && (
-                                                                <svg
-                                                                    className="w-2.5 h-2.5 text-white"
-                                                                    fill="none"
-                                                                    viewBox="0 0 24 24"
-                                                                    stroke="currentColor"
-                                                                    strokeWidth={3}
-                                                                >
-                                                                    <path
-                                                                        strokeLinecap="round"
-                                                                        strokeLinejoin="round"
-                                                                        d="M5 13l4 4L19 7"
-                                                                    />
-                                                                </svg>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center shrink-0">
-                                                            <svg
-                                                                className="w-2.5 h-2.5 text-slate-400"
-                                                                fill="none"
-                                                                viewBox="0 0 24 24"
-                                                                stroke="currentColor"
-                                                                strokeWidth={2.5}
-                                                            >
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-                                                                />
-                                                            </svg>
-                                                        </div>
-                                                    )}
-                                                    <span
-                                                        className={`text-[11px] font-semibold ${isActive || isBundled ? 'text-slate-700' : 'text-slate-500'}`}
-                                                    >
-                                                        {addon.name}
-                                                        <InfoTip tip={getAddonTip(addon.name)} />
-                                                    </span>
-                                                    {isBundled && (
-                                                        <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
-                                                            Included
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <span
-                                                    className={`text-[12px] font-bold tabular-nums ${hasOffer && (isActive || isBundled) ? 'text-emerald-600' : 'text-slate-700'}`}
-                                                >
-                                                    {effectivePrice === 0 && (isActive || isBundled)
-                                                        ? 'FREE'
-                                                        : `₹${effectivePrice.toLocaleString()}`}
-                                                </span>
-                                            </div>
-                                            {/* Breakdown details */}
-                                            {addon.breakdown &&
-                                                addon.breakdown.length > 0 &&
-                                                (isActive || isBundled) && (
-                                                    <div className="ml-6 mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
-                                                        {addon.breakdown
-                                                            .filter((b: any) => !b.label.toLowerCase().includes('gst'))
-                                                            .map((b: any, i: number) => (
-                                                                <span
-                                                                    key={i}
-                                                                    className="text-[9px] font-semibold uppercase tracking-wider text-slate-400"
-                                                                >
-                                                                    {b.label}: ₹{Number(b.amount || 0).toLocaleString()}
-                                                                </span>
-                                                            ))}
-                                                        {hasOffer && (
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500">
-                                                                Offer: ₹0
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                        {/* Net Premium */}
-                        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200/80">
-                            <span className="flex items-center text-[11px] text-slate-600 font-medium">
-                                <TreeLine />
-                                Net Premium
-                                <InfoTip tip={tipMap['net_premium']} />
-                            </span>
-                            <span className="text-[12px] font-bold tabular-nums text-slate-700">
-                                ₹{netPremium.toLocaleString()}
-                            </span>
-                        </div>
-
-                        {/* GST */}
-                        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-50">
-                            <span className="flex items-center text-[11px] text-slate-600 font-medium">
-                                <TreeLine />
-                                GST ({insuranceGstRate}% GST)
-                                <InfoTip tip={tipMap['gst']} />
-                            </span>
-                            <span className="text-[12px] font-bold tabular-nums text-slate-700">
-                                ₹{totalGst.toLocaleString()}
-                            </span>
-                        </div>
-
-                        {/* Total Insurance footer */}
-                        <div className="flex items-center justify-between px-4 py-2.5 border-t-2 border-slate-200 bg-slate-50/40">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                Total Insurance
-                            </span>
-                            <span className="text-[13px] font-black tabular-nums text-slate-900">
-                                ₹{totalInsurance.toLocaleString()}
-                            </span>
-                        </div>
-                    </div>
-                </>
-            );
+            case 'INSURANCE':
+                return (
+                    <AccordionInsurance
+                        insuranceRequiredItems={insuranceRequiredItems}
+                        availableInsuranceAddons={availableInsuranceAddons}
+                        selectedInsuranceAddons={selectedInsuranceAddons}
+                        toggleInsuranceAddon={toggleInsuranceAddon}
+                        baseInsurance={baseInsurance}
+                        insuranceTP={insuranceTP}
+                        insuranceOD={insuranceOD}
+                        insuranceGstRate={insuranceGstRate}
+                    />
+                );
+            case 'REGISTRATION':
+                return <AccordionRegistration regType={regType} setRegType={setRegType} data={data} />;
+            case 'SERVICES':
+                return (
+                    <FlatItemList
+                        items={activeServices}
+                        getSelected={id => selectedServices.includes(id)}
+                        onToggle={id => toggleService(id)}
+                    />
+                );
+            case 'WARRANTY':
+                return <FlatItemList items={warrantyItems} getSelected={() => true} onToggle={() => {}} isMandatory />;
+            default:
+                return null;
         }
-
-        if (categoryId === 'REGISTRATION') {
-            const fallbackOptions = [
-                { id: 'STATE', name: 'State', price: Math.round((data.baseExShowroom || 0) * 0.12), breakdown: [] },
-                {
-                    id: 'BH',
-                    name: 'Bharat Series',
-                    price: Math.round((data.baseExShowroom || 0) * 0.08),
-                    breakdown: [],
-                },
-                { id: 'COMPANY', name: 'Company', price: Math.round((data.baseExShowroom || 0) * 0.2), breakdown: [] },
-            ];
-            const items = data.rtoOptions && data.rtoOptions.length > 0 ? data.rtoOptions : fallbackOptions;
-            const selectedItem = items.find((i: any) => i.id === regType) || items[0];
-            const breakdown = selectedItem?.breakdown || [];
-
-            // Split breakdown into fixed vs variable (Road Tax, Cess change per type)
-            const variableLabels = new Set(['Road Tax', 'Cess', 'Cess Amount']);
-            const fixedCharges = breakdown.filter((b: any) => !variableLabels.has(b.label));
-            const roadTaxEntry = breakdown.find((b: any) => b.label === 'Road Tax');
-            const cessEntry = breakdown.find((b: any) => b.label === 'Cess' || b.label === 'Cess Amount');
-
-            // Get road tax amount per type for radio display
-            const getRoadTax = (typeId: string) => {
-                const opt = items.find((i: any) => i.id === typeId);
-                const bd = opt?.breakdown || [];
-                const rt = bd.find((b: any) => b.label === 'Road Tax');
-                return Number(rt?.amount || 0);
-            };
-
-            // Tree connector component
-            const TreeLine = () => <span className="text-slate-300 mr-2 text-[13px] font-light select-none">└</span>;
-
-            return (
-                <>
-                    <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
-                        {/* Header: REGISTRATION (RTO) + Total */}
-                        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-                            <ClipboardList size={14} className="text-emerald-500" />
-                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
-                                Registration (RTO)
-                            </span>
-                        </div>
-
-                        {/* Fixed Charges — tree lines */}
-                        {fixedCharges.length > 0 && (
-                            <div>
-                                {fixedCharges.map((b: any, i: number) => (
-                                    <div
-                                        key={i}
-                                        className={`flex items-center justify-between px-4 py-2 ${i > 0 ? 'border-t border-slate-50' : ''}`}
-                                    >
-                                        <span className="flex items-center text-[11px] text-slate-600 font-medium">
-                                            <TreeLine />
-                                            {b.label}
-                                        </span>
-                                        <span className="text-[12px] font-bold tabular-nums text-slate-700">
-                                            ₹{Number(b.amount || 0).toLocaleString()}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Road Tax — section header + 3 vertical radio rows */}
-                        <div className="border-t border-slate-200/80">
-                            <div className="px-4 py-2 bg-slate-50/60">
-                                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                                    Road Tax
-                                </span>
-                            </div>
-                            {(['BH', 'STATE', 'COMPANY'] as const).map(typeId => {
-                                const opt = items.find((i: any) => i.id === typeId);
-                                if (!opt) return null;
-                                const isActive = regType === typeId;
-                                const roadTaxAmt = getRoadTax(typeId);
-                                const stateNameMap: Record<string, string> = {
-                                    MH: 'Maharashtra',
-                                    DL: 'Delhi',
-                                    KA: 'Karnataka',
-                                    TN: 'Tamil Nadu',
-                                    UP: 'Uttar Pradesh',
-                                    GJ: 'Gujarat',
-                                    RJ: 'Rajasthan',
-                                    WB: 'West Bengal',
-                                    MP: 'Madhya Pradesh',
-                                    AP: 'Andhra Pradesh',
-                                    TS: 'Telangana',
-                                    KL: 'Kerala',
-                                    PB: 'Punjab',
-                                    HR: 'Haryana',
-                                    BR: 'Bihar',
-                                    JH: 'Jharkhand',
-                                    AS: 'Assam',
-                                    OR: 'Odisha',
-                                    CG: 'Chhattisgarh',
-                                    UK: 'Uttarakhand',
-                                    HP: 'Himachal Pradesh',
-                                    GA: 'Goa',
-                                    TR: 'Tripura',
-                                    ML: 'Meghalaya',
-                                    MN: 'Manipur',
-                                    NL: 'Nagaland',
-                                    MZ: 'Mizoram',
-                                    AR: 'Arunachal Pradesh',
-                                    SK: 'Sikkim',
-                                    JK: 'Jammu & Kashmir',
-                                    CT: 'Chhattisgarh',
-                                };
-                                const stateName = data.stateCode
-                                    ? stateNameMap[data.stateCode.toUpperCase()] || data.stateCode
-                                    : null;
-                                const displayName =
-                                    typeId === 'STATE'
-                                        ? stateName
-                                            ? `State (${stateName})`
-                                            : 'State'
-                                        : typeId === 'BH'
-                                          ? 'Bharat Series'
-                                          : 'Company';
-                                return (
-                                    <div
-                                        key={typeId}
-                                        onClick={() => setRegType(typeId)}
-                                        className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-200 border-l-[3px] border-t border-t-slate-50 ${
-                                            isActive
-                                                ? 'border-l-emerald-500 bg-emerald-50/40'
-                                                : 'border-l-transparent hover:bg-slate-50/50'
-                                        }`}
-                                    >
-                                        {/* Radio dot */}
-                                        <div
-                                            className={`w-4 h-4 rounded-full flex items-center justify-center transition-all shrink-0 ${
-                                                isActive
-                                                    ? 'bg-emerald-500 shadow-sm shadow-emerald-200'
-                                                    : 'border-[1.5px] border-slate-300'
-                                            }`}
-                                        >
-                                            {isActive && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                                        </div>
-                                        <span
-                                            className={`flex-1 text-[11px] font-semibold ${
-                                                isActive ? 'text-slate-900' : 'text-slate-600'
-                                            }`}
-                                        >
-                                            {displayName}
-                                        </span>
-                                        <span
-                                            className={`text-[12px] font-bold tabular-nums ${
-                                                isActive ? 'text-emerald-600' : 'text-slate-700'
-                                            }`}
-                                        >
-                                            ₹{roadTaxAmt.toLocaleString()}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Cess — tree line, auto-updates per type */}
-                        {cessEntry && (
-                            <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200/80">
-                                <span className="flex items-center text-[11px] text-slate-600 font-medium">
-                                    <TreeLine />
-                                    Cess Amount
-                                </span>
-                                <span className="text-[12px] font-bold tabular-nums text-slate-700">
-                                    ₹{Number(cessEntry.amount || 0).toLocaleString()}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Total footer */}
-                        <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-200/80 bg-slate-50/40">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                Total Registration
-                            </span>
-                            <span className="text-[13px] font-black tabular-nums text-slate-900">
-                                ₹{(selectedItem?.price || 0).toLocaleString()}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Info: Required Documents / Process for selected type */}
-                    <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">
-                        {regType === 'STATE' && (
-                            <div className="space-y-1.5">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                                    State Registration
-                                </p>
-                                <p className="text-[10.5px] text-slate-500 leading-relaxed">
-                                    Valid for the state of registration. You will need to provide Aadhaar Card, Address
-                                    Proof, Passport-size Photos, and PAN Card. Processing takes 7–15 working days at the
-                                    local RTO.
-                                </p>
-                            </div>
-                        )}
-                        {regType === 'BH' && (
-                            <div className="space-y-1.5">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                                    Bharat Series (BH)
-                                </p>
-                                <p className="text-[10.5px] text-slate-500 leading-relaxed">
-                                    Pan-India validity — no re-registration needed when moving states. Ideal for
-                                    Defence, Central Govt, PSU employees &amp; private-sector transferees. You will need
-                                    Aadhaar Card, Address Proof, Passport-size Photos, PAN Card, and Employer Transfer
-                                    Certificate or Posting Order.
-                                </p>
-                            </div>
-                        )}
-                        {regType === 'COMPANY' && (
-                            <div className="space-y-1.5">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                                    Company Registration
-                                </p>
-                                <p className="text-[10.5px] text-slate-500 leading-relaxed">
-                                    Registered under a corporate entity. You will need Company PAN Card, GST
-                                    Certificate, Board Resolution or Authorization Letter, and Certificate of
-                                    Incorporation. Higher road tax applies.
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </>
-            );
-        }
-
-        if (categoryId === 'SERVICES') {
-            return renderFlatItemList(activeServices, {
-                getSelected: id => selectedServices.includes(id),
-                onToggle: id => toggleService(id),
-            });
-        }
-
-        if (categoryId === 'WARRANTY') {
-            return renderFlatItemList(warrantyItems, {
-                getSelected: () => true,
-                onToggle: () => {},
-                isMandatory: true,
-            });
-        }
-
-        return null;
     };
 
     // Video Modal State
@@ -1496,15 +486,6 @@ export function DesktopPDP({
         { id: 'FINANCE', label: 'Finance', subtext: '', icon: Banknote },
         { id: 'FINANCE_SUMMARY', label: 'Summary', subtext: `${emiTenure}mo Plan`, icon: SlidersHorizontal },
     ];
-
-    const ActionIcon = ({ icon: Icon, onClick, colorClass = 'text-slate-400 hover:text-brand-primary' }: any) => (
-        <button
-            onClick={onClick}
-            className={`p-2.5 rounded-full hover:bg-white transition-all duration-300 hover:scale-110 active:scale-95 group/icon ${colorClass}`}
-        >
-            <Icon size={18} strokeWidth={2.5} />
-        </button>
-    );
 
     // Cinematic Animation Variants
     const containerVariants: any = {
@@ -1769,203 +750,20 @@ export function DesktopPDP({
                                                                 scheme={initialFinance?.scheme}
                                                             />
                                                         )}
-                                                        {card.id === 'FINANCE_SUMMARY' &&
-                                                            (() => {
-                                                                const allCharges =
-                                                                    initialFinance?.scheme?.charges || [];
-                                                                const upfrontCharges = allCharges.filter(
-                                                                    (c: any) => c.impact === 'UPFRONT'
-                                                                );
-                                                                const fundedCharges = allCharges.filter(
-                                                                    (c: any) => c.impact === 'FUNDED'
-                                                                );
-                                                                const calcAmt = (charge: any) => {
-                                                                    if (charge.type === 'PERCENTAGE') {
-                                                                        const basis =
-                                                                            charge.calculationBasis === 'LOAN_AMOUNT'
-                                                                                ? loanAmount
-                                                                                : totalOnRoad;
-                                                                        return Math.round(basis * (charge.value / 100));
-                                                                    }
-                                                                    return charge.value || 0;
-                                                                };
-                                                                const totalUpfront = upfrontCharges.reduce(
-                                                                    (s: number, c: any) => s + calcAmt(c),
-                                                                    0
-                                                                );
-                                                                const totalFunded = fundedCharges.reduce(
-                                                                    (s: number, c: any) => s + calcAmt(c),
-                                                                    0
-                                                                );
-                                                                const netLoan = Math.max(
-                                                                    0,
-                                                                    displayOnRoad - (userDownPayment || 0)
-                                                                );
-                                                                const grossLoan = netLoan + totalFunded + totalUpfront;
-                                                                const marginMoney =
-                                                                    (userDownPayment || 0) + totalUpfront;
-                                                                const monthlyEmi = Math.round(
-                                                                    (() => {
-                                                                        if (interestType === 'FLAT') {
-                                                                            const totalInt =
-                                                                                grossLoan *
-                                                                                annualInterest *
-                                                                                (emiTenure / 12);
-                                                                            return (grossLoan + totalInt) / emiTenure;
-                                                                        }
-                                                                        const r = annualInterest / 12;
-                                                                        if (r === 0) return grossLoan / emiTenure;
-                                                                        return (
-                                                                            (grossLoan *
-                                                                                r *
-                                                                                Math.pow(1 + r, emiTenure)) /
-                                                                            (Math.pow(1 + r, emiTenure) - 1)
-                                                                        );
-                                                                    })()
-                                                                );
-                                                                const totalInterest = Math.max(
-                                                                    0,
-                                                                    Math.round(monthlyEmi * emiTenure - grossLoan)
-                                                                );
-                                                                const totalOutflow = Math.round(
-                                                                    (userDownPayment || 0) +
-                                                                        totalUpfront +
-                                                                        monthlyEmi * emiTenure
-                                                                );
-
-                                                                const Row = ({
-                                                                    label,
-                                                                    value,
-                                                                    accent,
-                                                                    sub,
-                                                                    indent,
-                                                                }: {
-                                                                    label: string;
-                                                                    value: string;
-                                                                    accent?: string;
-                                                                    sub?: string;
-                                                                    indent?: boolean;
-                                                                }) => (
-                                                                    <div
-                                                                        className={`flex justify-between items-start ${indent ? 'pl-4' : ''}`}
-                                                                    >
-                                                                        <div className="flex flex-col">
-                                                                            <span
-                                                                                className={`text-[11px] font-bold uppercase tracking-widest ${indent ? 'text-slate-400' : 'text-slate-500'}`}
-                                                                            >
-                                                                                {label}
-                                                                            </span>
-                                                                            {sub && (
-                                                                                <span className="text-[8px] font-bold uppercase tracking-widest text-emerald-500 mt-0.5">
-                                                                                    {sub}
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                        <span
-                                                                            className={`text-[11px] font-mono font-black ${accent || 'text-slate-700'}`}
-                                                                        >
-                                                                            {value}
-                                                                        </span>
-                                                                    </div>
-                                                                );
-
-                                                                return (
-                                                                    <div className="flex flex-col h-full">
-                                                                        {/* HEADER: Finance Partner */}
-                                                                        <div className="space-y-2 pb-3 border-b border-slate-200/60 shrink-0">
-                                                                            <Row
-                                                                                label="Financier"
-                                                                                value={
-                                                                                    initialFinance?.bank?.name ||
-                                                                                    'Standard'
-                                                                                }
-                                                                            />
-                                                                            <Row
-                                                                                label="Scheme"
-                                                                                value={
-                                                                                    initialFinance?.scheme?.name ||
-                                                                                    'Standard'
-                                                                                }
-                                                                            />
-                                                                            <Row
-                                                                                label="Interest Rate"
-                                                                                value={`${formatInterestRate(annualInterest)} (${interestType})`}
-                                                                            />
-                                                                        </div>
-
-                                                                        {/* CONTENT: Calculation Flow */}
-                                                                        <div className="flex-1 flex flex-col justify-evenly py-2">
-                                                                            <Row
-                                                                                label="Asset Cost (Net SOT)"
-                                                                                value={`₹${(totalOnRoad + totalSavings).toLocaleString()}`}
-                                                                            />
-                                                                            {(totalSavings > 0 ||
-                                                                                (coinPricing &&
-                                                                                    coinPricing.discount > 0)) && (
-                                                                                <Row
-                                                                                    label="O'Club Privileged"
-                                                                                    value={`-₹${(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}`}
-                                                                                    accent="text-emerald-500"
-                                                                                />
-                                                                            )}
-                                                                            <Row
-                                                                                label="Total Payable"
-                                                                                value={`₹${displayOnRoad.toLocaleString()}`}
-                                                                                accent="text-brand-primary font-black"
-                                                                            />
-
-                                                                            <div className="border-t border-slate-200/60" />
-
-                                                                            <Row
-                                                                                label="Down Payment"
-                                                                                value={`-₹${(userDownPayment || 0).toLocaleString()}`}
-                                                                                accent="text-emerald-500"
-                                                                            />
-                                                                            <Row
-                                                                                label="Net Loan Amount"
-                                                                                value={`₹${netLoan.toLocaleString()}`}
-                                                                            />
-                                                                            {totalFunded > 0 &&
-                                                                                fundedCharges.map(
-                                                                                    (c: any, i: number) => (
-                                                                                        <Row
-                                                                                            key={i}
-                                                                                            label={c.name}
-                                                                                            value={`+₹${calcAmt(c).toLocaleString()}`}
-                                                                                            accent="text-red-400"
-                                                                                        />
-                                                                                    )
-                                                                                )}
-                                                                            {upfrontCharges.map((c: any, i: number) => (
-                                                                                <Row
-                                                                                    key={i}
-                                                                                    label={c.name}
-                                                                                    value={`+₹${calcAmt(c).toLocaleString()}`}
-                                                                                    accent="text-red-400"
-                                                                                />
-                                                                            ))}
-                                                                            <Row
-                                                                                label="Gross Loan Amount"
-                                                                                value={`₹${grossLoan.toLocaleString()}`}
-                                                                                accent="text-brand-primary"
-                                                                            />
-
-                                                                            <div className="border-t border-slate-200/60" />
-
-                                                                            <Row
-                                                                                label="Total Extra Pay"
-                                                                                value={`+₹${totalInterest.toLocaleString()}`}
-                                                                                accent="text-red-400"
-                                                                            />
-                                                                            <Row
-                                                                                label="Total Outflow"
-                                                                                value={`₹${totalOutflow.toLocaleString()}`}
-                                                                                accent="text-brand-primary font-black"
-                                                                            />
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })()}
+                                                        {card.id === 'FINANCE_SUMMARY' && (
+                                                            <FinanceSummaryPanel
+                                                                initialFinance={initialFinance}
+                                                                displayOnRoad={displayOnRoad}
+                                                                userDownPayment={userDownPayment || 0}
+                                                                loanAmount={loanAmount}
+                                                                totalOnRoad={totalOnRoad}
+                                                                totalSavings={totalSavings}
+                                                                coinPricing={coinPricing}
+                                                                emiTenure={emiTenure}
+                                                                annualInterest={financeMetrics.annualInterest}
+                                                                interestType={financeMetrics.interestType}
+                                                            />
+                                                        )}
                                                     </div>
                                                 )}
                                             </motion.div>
@@ -1977,7 +775,7 @@ export function DesktopPDP({
                                                 exit={{ opacity: 0 }}
                                                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
                                             >
-                                                <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 -rotate-90 whitespace-nowrap">
+                                                <span className="text-[28px] font-extrabold uppercase tracking-[0.16em] text-slate-400/75 -rotate-90 whitespace-nowrap">
                                                     {card.label}
                                                 </span>
                                             </motion.div>
@@ -2024,7 +822,7 @@ export function DesktopPDP({
                                                 )}
                                                 {!coinPricing && showOClubPrompt && (
                                                     <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                                                        Signup & get 13 O-Club coins
+                                                        Signup & get 13 O' Circle coins
                                                     </span>
                                                 )}
                                             </div>
@@ -2054,147 +852,14 @@ export function DesktopPDP({
 
                                 {/* Section 3: Footer — Down Payment (FINANCE only, shrink-0) */}
                                 {isActive && card.id === 'FINANCE' && maxDownPayment > minDownPayment && (
-                                    <div
-                                        className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03]"
-                                        onClick={e => e.stopPropagation()}
-                                    >
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                                Down Payment
-                                            </span>
-                                            <div className="flex items-center gap-0">
-                                                <span className="text-xs font-black font-mono tracking-tight text-brand-primary leading-none">
-                                                    ₹
-                                                </span>
-                                                <input
-                                                    type="number"
-                                                    value={userDownPayment || 0}
-                                                    onChange={e => {
-                                                        const val = parseInt(e.target.value);
-                                                        if (!isNaN(val)) {
-                                                            const from = userDownPayment || 0;
-                                                            animateDP(from, val);
-                                                        }
-                                                    }}
-                                                    className="bg-transparent text-xs font-black font-mono tracking-tight text-slate-900 outline-none border-b border-transparent focus:border-brand-primary transition-all p-0"
-                                                    style={{
-                                                        width: `${Math.max(String(userDownPayment || 0).length, 1) * 8 + 4}px`,
-                                                    }}
-                                                />
-                                                <Edit2
-                                                    size={10}
-                                                    className="text-slate-400 hover:text-brand-primary transition-colors cursor-pointer ml-0.5"
-                                                    strokeWidth={3}
-                                                />
-                                            </div>
-                                        </div>
-                                        {(() => {
-                                            const currentDP = userDownPayment || 0;
-                                            const range = maxDownPayment - minDownPayment;
-                                            const fillPct =
-                                                range > 0 ? ((currentDP - minDownPayment) / range) * 100 : 0;
-                                            const dpOfOnRoad =
-                                                displayOnRoad > 0 ? (currentDP / displayOnRoad) * 100 : 0;
-                                            let hue: number;
-                                            if (dpOfOnRoad <= 20) hue = (dpOfOnRoad / 20) * 30;
-                                            else if (dpOfOnRoad <= 40) hue = 30 + ((dpOfOnRoad - 20) / 20) * 50;
-                                            else hue = 80 + Math.min((dpOfOnRoad - 40) / 30, 1) * 60;
-                                            const fillColor = `hsl(${hue}, 80%, 50%)`;
-                                            const trackBg =
-                                                typeof window !== 'undefined' &&
-                                                document.documentElement.classList.contains('dark')
-                                                    ? 'rgba(255,255,255,0.1)'
-                                                    : '#e2e8f0';
-                                            const milestones: React.ReactNode[] = [];
-                                            if (range > 0) {
-                                                // Add all 5K milestone labels below the track
-                                                for (let v = 0; v <= maxDownPayment; v += 5000) {
-                                                    if (v < minDownPayment) v = minDownPayment;
-                                                    const pct = ((v - minDownPayment) / range) * 100;
-                                                    if (pct < 0 || pct > 100) continue;
-                                                    const kVal = v / 1000;
-                                                    const label = v === 0 ? '₹0' : `₹${kVal}K`;
-                                                    milestones.push(
-                                                        <div
-                                                            key={`label-${v}`}
-                                                            className="absolute flex flex-col items-center"
-                                                            style={{
-                                                                left: `${pct}%`,
-                                                                top: '50%',
-                                                                transform: 'translateX(-50%)',
-                                                            }}
-                                                        >
-                                                            <div className="w-[1px] h-[6px] bg-slate-400 rounded-full" />
-                                                            <span className="text-[6px] font-black text-slate-400 mt-[1px] tabular-nums whitespace-nowrap">
-                                                                {label}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                }
-                                                // Add subtle 1K tick dots
-                                                for (let v = minDownPayment; v <= maxDownPayment; v += 1000) {
-                                                    if (v % 5000 === 0) continue;
-                                                    const pct = ((v - minDownPayment) / range) * 100;
-                                                    if (pct <= fillPct) continue;
-                                                    milestones.push(
-                                                        <div
-                                                            key={v}
-                                                            className="absolute top-1/2 -translate-y-1/2 w-[1px] h-[2px] bg-slate-400 opacity-10 rounded-full"
-                                                            style={{ left: `${pct}%` }}
-                                                        />
-                                                    );
-                                                }
-                                            }
-                                            return (
-                                                <div className="relative h-[32px]">
-                                                    <div className="absolute top-[4px] left-0 right-0">
-                                                        <input
-                                                            type="range"
-                                                            min={minDownPayment}
-                                                            max={maxDownPayment}
-                                                            step={500}
-                                                            value={currentDP}
-                                                            onPointerDown={e => {
-                                                                dpClickRef.current = {
-                                                                    preVal: currentDP,
-                                                                    time: Date.now(),
-                                                                    x: e.clientX,
-                                                                    targetVal: currentDP,
-                                                                };
-                                                            }}
-                                                            onChange={e => {
-                                                                const val = parseInt(e.target.value);
-                                                                if (!isNaN(val)) {
-                                                                    dpClickRef.current.targetVal = val;
-                                                                    if (setUserDownPayment) setUserDownPayment(val);
-                                                                }
-                                                            }}
-                                                            onPointerUp={e => {
-                                                                // Platform Discount / Surge Charges
-                                                                const { preVal, time, x, targetVal } =
-                                                                    dpClickRef.current;
-                                                                const isClick =
-                                                                    Date.now() - time < 300 &&
-                                                                    Math.abs(e.clientX - x) < 5;
-                                                                if (isClick && targetVal !== preVal) {
-                                                                    if (setUserDownPayment) setUserDownPayment(preVal);
-                                                                    animateDP(preVal, targetVal);
-                                                                }
-                                                            }}
-                                                            className="w-full h-1.5 rounded-full appearance-none cursor-pointer relative z-10"
-                                                            style={{
-                                                                background: `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${fillPct}%, ${trackBg} ${fillPct}%, ${trackBg} 100%)`,
-                                                                accentColor: fillColor,
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div className="absolute top-[4px] left-0 right-0 h-[28px] pointer-events-none">
-                                                        {milestones}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
-                                    </div>
+                                    <DownPaymentSlider
+                                        userDownPayment={userDownPayment || 0}
+                                        minDownPayment={minDownPayment}
+                                        maxDownPayment={maxDownPayment}
+                                        displayOnRoad={displayOnRoad}
+                                        setUserDownPayment={setUserDownPayment}
+                                        animateDP={animateDP}
+                                    />
                                 )}
 
                                 {/* Bottom Fade — skip for Gallery and Finance */}
@@ -2242,10 +907,10 @@ export function DesktopPDP({
                                             <Icon size={18} />
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
+                                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-primary">
                                                 {category.label}
                                             </p>
-                                            <p className="text-[11px] text-slate-500">{category.subtext}</p>
+                                            <p className="text-[11px] font-medium text-slate-500">{category.subtext}</p>
                                         </div>
                                     </div>
                                     <ChevronRight
@@ -2303,10 +968,10 @@ export function DesktopPDP({
                                     <div
                                         className={`flex flex-col transition-all duration-500 ${isActive ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 absolute'}`}
                                     >
-                                        <span className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
+                                        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-primary">
                                             {category.label}
                                         </span>
-                                        <span className="text-[10px] text-slate-500 font-bold whitespace-nowrap">
+                                        <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
                                             {category.subtext}
                                         </span>
                                     </div>
@@ -2336,7 +1001,7 @@ export function DesktopPDP({
                                                 exit={{ opacity: 0 }}
                                                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
                                             >
-                                                <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 -rotate-90 whitespace-nowrap">
+                                                <span className="text-[28px] font-extrabold uppercase tracking-[0.16em] text-slate-400/75 -rotate-90 whitespace-nowrap">
                                                     {category.label}
                                                 </span>
                                             </motion.div>
@@ -2372,146 +1037,26 @@ export function DesktopPDP({
             </div>
 
             {/* Floating Bottom Command Bar (All Viewports) */}
-            <div
-                className="fixed inset-x-0 bottom-0 z-[95]"
-                style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-            >
-                <div className="page-container mb-2 md:mb-4">
-                    <div className="rounded-2xl md:rounded-full border border-white/10 bg-[#0b0d10]/95 backdrop-blur-xl shadow-2xl p-3 md:px-8 md:py-3 flex items-center justify-between gap-3 md:gap-6">
-                        {/* Left: Product Identity (Desktop) + Price */}
-                        <div className="flex items-center gap-4 md:gap-6 min-w-0">
-                            {/* Product Thumbnail — Desktop only */}
-                            <div
-                                className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} items-center gap-3 min-w-0`}
-                            >
-                                <div className="w-12 h-12 relative flex items-center justify-center bg-white/10 rounded-xl overflow-hidden shrink-0">
-                                    <Image
-                                        src={getProductImage()}
-                                        alt={displayModel}
-                                        fill
-                                        sizes="48px"
-                                        className="object-contain"
-                                    />
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-black text-white uppercase italic tracking-tight leading-none mt-0.5 truncate">
-                                        {displayModel}{' '}
-                                        <span className="text-[9px] font-bold text-slate-400 tracking-widest not-italic">
-                                            {displayVariant}
-                                        </span>
-                                    </span>
-                                    <div className="flex items-center gap-1.5 mt-1">
-                                        <div
-                                            className="w-2.5 h-2.5 rounded-full border border-white/20"
-                                            style={{ backgroundColor: activeColorConfig.hex }}
-                                        />
-                                        <span className="text-[8px] font-black tracking-widest text-slate-500 uppercase leading-none">
-                                            {displayColor}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="w-px h-8 bg-white/10 ml-2" />
-                            </div>
-
-                            {/* Price Summary */}
-                            <div className="flex items-center gap-3 md:gap-4">
-                                <div className="flex flex-col md:flex-row md:items-center md:gap-3">
-                                    <span
-                                        className={`text-[10px] font-black uppercase tracking-widest text-slate-400 ${forceMobileLayout ? '' : 'md:hidden'}`}
-                                    >
-                                        On-Road
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                        <span
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline'} text-[10px] font-black uppercase tracking-widest text-slate-400`}
-                                        >
-                                            On-Road
-                                        </span>
-                                        {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
-                                            <span className="text-[10px] text-slate-500 line-through font-mono">
-                                                ₹{(totalOnRoad + totalSavings).toLocaleString()}
-                                            </span>
-                                        )}
-                                        <span className="text-lg font-black text-[#FFD700] font-mono">
-                                            ₹{displayOnRoad.toLocaleString()}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
-                                    <>
-                                        <div
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-6 bg-white/10`}
-                                        />
-                                        <span
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline'} text-[10px] font-black uppercase tracking-widest text-emerald-400`}
-                                        >
-                                            ✦ O'Club Privileged Saving: ₹
-                                            {(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}
-                                        </span>
-                                    </>
-                                )}
-
-                                {!coinPricing && showOClubPrompt && (
-                                    <>
-                                        <div
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-6 bg-white/10`}
-                                        />
-                                        <span
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline-flex'} items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black uppercase tracking-widest text-indigo-400`}
-                                        >
-                                            +13 O-Club Coins
-                                        </span>
-                                    </>
-                                )}
-
-                                {/* EMI & Tenure */}
-                                <div
-                                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-6 bg-white/10`}
-                                />
-                                <span
-                                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline'} text-[10px] font-black uppercase tracking-widest text-white font-mono tabular-nums`}
-                                >
-                                    EMI ₹{footerEmi.toLocaleString()} / {emiTenure}mo
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Right: Actions (Desktop) + CTA */}
-                        <div className="flex items-center gap-3 md:gap-4">
-                            {/* Action Icons — Desktop only */}
-                            <div className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} items-center gap-1`}>
-                                <ActionIcon
-                                    icon={Share2}
-                                    onClick={handleShareQuote}
-                                    colorClass="text-slate-400 hover:text-white"
-                                />
-                                <ActionIcon
-                                    icon={Heart}
-                                    onClick={handleSaveQuote}
-                                    colorClass="text-slate-400 hover:text-rose-500"
-                                />
-                            </div>
-                            <button
-                                onClick={handleBookingRequest}
-                                disabled={
-                                    isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
-                                }
-                                className={`h-11 px-5 md:px-6 font-black text-[11px] uppercase tracking-widest rounded-full shadow-xl flex items-center gap-2 transition-all group
-                                ${
-                                    isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
-                                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                        : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
-                                }
-                            `}
-                            >
-                                {isGated ? 'OPEN LEAD' : 'GET QUOTE'}
-                                <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <FloatingCommandBar
+                getProductImage={getProductImage}
+                displayModel={displayModel}
+                displayVariant={displayVariant}
+                displayColor={displayColor}
+                activeColorConfig={activeColorConfig}
+                displayOnRoad={displayOnRoad}
+                totalOnRoad={totalOnRoad}
+                totalSavings={totalSavings}
+                coinPricing={coinPricing}
+                showOClubPrompt={showOClubPrompt}
+                footerEmi={footerEmi}
+                emiTenure={emiTenure}
+                forceMobileLayout={forceMobileLayout}
+                handleShareQuote={handleShareQuote}
+                handleSaveQuote={handleSaveQuote}
+                handleBookingRequest={handleBookingRequest}
+                serviceability={serviceability}
+                isGated={isGated}
+            />
         </div>
     );
 }

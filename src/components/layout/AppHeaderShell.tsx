@@ -34,6 +34,9 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
 
     // Variant-based background and border styles
     const getBgClass = () => {
+        if (className.includes('header-solid-pdp')) {
+            return 'bg-white/92 border-b border-slate-200/90 backdrop-blur-xl shadow-sm transition-all duration-300';
+        }
         if (className.includes('header-transparent') || (transparentAtTop && !scrolled)) {
             return 'bg-transparent border-transparent shadow-none backdrop-blur-none';
         }

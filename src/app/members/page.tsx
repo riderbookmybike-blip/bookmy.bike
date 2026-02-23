@@ -107,7 +107,7 @@ const SLOT_COMBOS: SlotCombo[] = [
     { id: 'gems', icons: ['gem', 'gem', 'gem'], reward: '₹500 Cashback', weight: 2 },
     { id: 'coins', icons: ['coins', 'coins', 'coins'], reward: 'Free Accessories', weight: 2 },
     { id: 'gift-star', icons: ['gift', 'star', 'gift'], reward: '₹200 Voucher', weight: 4 },
-    { id: 'mix', icons: ['star', 'coins', 'gem'], reward: '50 O Club Points', weight: 6 },
+    { id: 'mix', icons: ['star', 'coins', 'gem'], reward: "50 O' Circle Points", weight: 6 },
 ];
 
 const getSlotIcon = (id: string) => SLOT_ICONS.find(icon => icon.id === id) || SLOT_ICONS[0];

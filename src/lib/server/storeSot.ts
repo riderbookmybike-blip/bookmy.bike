@@ -38,6 +38,18 @@ export function isStoreSotV2Enabled(): boolean {
     return flag === '1' || flag === 'true' || flag === 'on' || flag === 'yes';
 }
 
+/** Flatten variant-level spec columns into a flat Record for product.specs */
+const VARIANT_STRUCTURAL_KEYS = new Set(['id', 'name', 'slug', 'status']);
+export function flattenVariantSpecs(variant: Record<string, any>): Record<string, any> {
+    const specs: Record<string, any> = {};
+    for (const [key, value] of Object.entries(variant)) {
+        if (VARIANT_STRUCTURAL_KEYS.has(key)) continue;
+        if (value === null || value === undefined || value === '') continue;
+        specs[key] = value;
+    }
+    return specs;
+}
+
 /** Canonical SKU select string — single source for all queries */
 export const SKU_SELECT = `
     id,
@@ -56,7 +68,25 @@ export const SKU_SELECT = `
     colour_id,
     vehicle_variant_id,
     colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish),
-    vehicle_variant:cat_variants_vehicle!vehicle_variant_id(id, name, slug, status)
+    vehicle_variant:cat_variants_vehicle!vehicle_variant_id(
+        id, name, slug, status,
+        displacement, max_power, max_torque, transmission, mileage_arai,
+        front_brake, rear_brake, braking_system,
+        kerb_weight, seat_height, ground_clearance, fuel_capacity, wheelbase,
+        console_type, bluetooth, usb_charging, navigation,
+        engine_type, start_type, num_valves,
+        front_suspension, rear_suspension,
+        front_tyre, rear_tyre, tyre_type,
+        led_headlamp, led_tail_lamp, ride_modes,
+        battery_capacity, range_km, charging_time, motor_power,
+        cooling_system, cylinders, bore_stroke, compression_ratio, top_speed,
+        clutch, overall_length, overall_width, overall_height, chassis_type,
+        wheel_type, front_wheel_size, rear_wheel_size,
+        headlamp_type, speedometer, tripmeter, clock,
+        low_fuel_indicator, low_oil_indicator, low_battery_indicator,
+        pillion_seat, pillion_footrest, stand_alarm, pass_light, killswitch,
+        warranty_years, warranty_km, service_interval
+    )
 `;
 
 /** Canonical pricing select columns */
@@ -254,13 +284,13 @@ const buildInsuranceAddons = (row: Record<string, any>) => {
             };
         })
         .filter(Boolean) as {
-            id: string;
-            label: string;
-            price: number;
-            gst: number;
-            total: number;
-            default: boolean;
-        }[];
+        id: string;
+        label: string;
+        price: number;
+        gst: number;
+        total: number;
+        default: boolean;
+    }[];
 };
 
 // ─── 1. Model Resolution ────────────────────────────────────
@@ -576,25 +606,27 @@ export async function getPdpSnapshot({
     const resolvedVariant =
         variantSeed || matchedVariant
             ? {
-                id: String(variantSeed?.variant_id || matchedVariant?.id || ''),
-                name: String(variantSeed?.variant_name || matchedVariant?.name || ''),
-                slug: String(
-                    variantSeed?.variant_slug || matchedVariant?.slug || slugify(String(matchedVariant?.name || ''))
-                ),
-                price_base: Number(variantSeed?.price_base || 0),
-                specs: {
-                    fuel_type: modelRow?.fuel_type,
-                    engine_cc: modelRow?.engine_cc,
-                },
-                brand: {
-                    name: modelRow?.brand?.name || make,
-                    slug: modelRow?.brand?.slug || slugify(make),
-                },
-                parent: {
-                    name: modelRow?.name || model,
-                    slug: modelRow?.slug || model,
-                },
-            }
+                  id: String(variantSeed?.variant_id || matchedVariant?.id || ''),
+                  name: String(variantSeed?.variant_name || matchedVariant?.name || ''),
+                  slug: String(
+                      variantSeed?.variant_slug || matchedVariant?.slug || slugify(String(matchedVariant?.name || ''))
+                  ),
+                  price_base: Number(variantSeed?.price_base || 0),
+                  specs: {
+                      fuel_type: modelRow?.fuel_type,
+                      // NOTE: engine_cc removed — displacement from cat_variants_vehicle is the SOT
+                      // Flatten variant-level spec columns from the vehicle_variant JOIN
+                      ...(variantSeed?.vehicle_variant ? flattenVariantSpecs(variantSeed.vehicle_variant) : {}),
+                  },
+                  brand: {
+                      name: modelRow?.brand?.name || make,
+                      slug: modelRow?.brand?.slug || slugify(make),
+                  },
+                  parent: {
+                      name: modelRow?.name || model,
+                      slug: modelRow?.slug || model,
+                  },
+              }
             : null;
 
     const skuIds = activeSkus.map(s => s.id).filter(Boolean);
@@ -631,12 +663,12 @@ export async function getDealerDelta({
     const [vehicleRulesRes, bundleRulesRes, accessoryRulesRes] = await Promise.all([
         skuIds.length > 0
             ? (adminClient as any)
-                .from('cat_price_dealer')
-                .select('vehicle_color_id, offer_amount')
-                .in('vehicle_color_id', skuIds)
-                .eq('tenant_id', dealerId)
-                .eq('state_code', stateCode)
-                .eq('is_active', true)
+                  .from('cat_price_dealer')
+                  .select('vehicle_color_id, offer_amount')
+                  .in('vehicle_color_id', skuIds)
+                  .eq('tenant_id', dealerId)
+                  .eq('state_code', stateCode)
+                  .eq('is_active', true)
             : Promise.resolve({ data: [] }),
         (adminClient as any)
             .from('cat_price_dealer')
@@ -646,11 +678,11 @@ export async function getDealerDelta({
             .eq('inclusion_type', 'BUNDLE'),
         accessoryIds && accessoryIds.length > 0
             ? (adminClient as any)
-                .from('cat_price_dealer')
-                .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
-                .in('vehicle_color_id', accessoryIds)
-                .eq('tenant_id', dealerId)
-                .eq('state_code', stateCode)
+                  .from('cat_price_dealer')
+                  .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
+                  .in('vehicle_color_id', accessoryIds)
+                  .eq('tenant_id', dealerId)
+                  .eq('state_code', stateCode)
             : Promise.resolve({ data: [] }),
     ]);
 

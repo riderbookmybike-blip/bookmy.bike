@@ -282,23 +282,26 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
         // Auto-fill when pincode reaches 6 digits
         if (field === 'pincode' && value.length === 6 && /^\d{6}$/.test(value)) {
             setPincodeLoading(true);
-            getPincodeDetails(value).then(result => {
-                if (result.success && result.data) {
-                    setEditFields(prev => ({
-                        ...prev,
-                        state: result.data.state || prev.state,
-                        district: result.data.district || prev.district,
-                        taluka: result.data.taluka || prev.taluka,
-                    }));
-                    toast.success(`Location: ${result.data.district}, ${result.data.state}`);
-                } else {
-                    toast.error('Pincode not found');
-                }
-            }).catch(() => {
-                toast.error('Failed to lookup pincode');
-            }).finally(() => {
-                setPincodeLoading(false);
-            });
+            getPincodeDetails(value)
+                .then(result => {
+                    if (result.success && result.data) {
+                        setEditFields(prev => ({
+                            ...prev,
+                            state: result.data.state || prev.state,
+                            district: result.data.district || prev.district,
+                            taluka: result.data.taluka || prev.taluka,
+                        }));
+                        toast.success(`Location: ${result.data.district}, ${result.data.state}`);
+                    } else {
+                        toast.error('Pincode not found');
+                    }
+                })
+                .catch(() => {
+                    toast.error('Failed to lookup pincode');
+                })
+                .finally(() => {
+                    setPincodeLoading(false);
+                });
         }
     };
 
@@ -366,7 +369,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                 docs.map(async (doc: any) => {
                     try {
                         urls[doc.id] = await getSignedUrlAction(doc.path);
-                    } catch { }
+                    } catch {}
                 })
             );
             setDocSignedUrls(urls);
@@ -496,7 +499,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                         </div>
                     </PhoneSection>
 
-                    <PhoneSection title="O'Club Wallet" count={profile.oclubLedger?.length || 0} defaultOpen>
+                    <PhoneSection title="O' Circle Wallet" count={profile.oclubLedger?.length || 0} defaultOpen>
                         <div className="space-y-3">
                             <div className="flex items-center justify-between bg-indigo-600/10 border border-indigo-500/20 rounded-xl px-4 py-2">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700">
@@ -605,7 +608,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                     {/* O'CLUB QUICK VIEW */}
                     <div className="bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/20 p-4">
                         <div className="flex items-center justify-between text-indigo-100 text-[9px] font-black uppercase tracking-widest mb-1.5 opacity-80">
-                            <span>O'Club Balance</span>
+                            <span>O' Circle Balance</span>
                             <Wallet size={12} />
                         </div>
                         <div className="text-xl font-black text-white">{oclubBalance.toLocaleString()} pts</div>
@@ -795,7 +798,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                         </div>
                     </PhoneSection>
 
-                    <PhoneSection title="O-Club Ledger" count={profile.oclubLedger?.length}>
+                    <PhoneSection title="O' Circle Ledger" count={profile.oclubLedger?.length}>
                         <div className="space-y-2 pt-3">
                             {profile.oclubLedger?.map((entry: any, idx: number) => (
                                 <div
@@ -1069,7 +1072,11 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                         disabled={editSaving}
                                         className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
                                     >
-                                        {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                        {editSaving ? (
+                                            <Loader2 size={14} className="animate-spin" />
+                                        ) : (
+                                            <Save size={14} />
+                                        )}
                                         {editSaving ? 'Saving...' : 'Save'}
                                     </button>
                                 </>
@@ -1202,10 +1209,40 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                             {profile.member?.primary_phone || profile.member?.phone || '—'}
                                         </span>
                                     </div>
-                                    <EditableField label="Email" field="primaryEmail" value={profile.member?.primary_email || profile.member?.email || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
-                                    <EditableField label="PAN" field="panNumber" value={profile.member?.pan_number || ''} mono isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
-                                    <EditableField label="Aadhaar" field="aadhaarNumber" value={profile.member?.aadhaar_number || ''} mono isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
-                                    <EditableField label="DOB" field="dob" value={formatDate(profile.member?.date_of_birth)} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField
+                                        label="Email"
+                                        field="primaryEmail"
+                                        value={profile.member?.primary_email || profile.member?.email || ''}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
+                                    <EditableField
+                                        label="PAN"
+                                        field="panNumber"
+                                        value={profile.member?.pan_number || ''}
+                                        mono
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
+                                    <EditableField
+                                        label="Aadhaar"
+                                        field="aadhaarNumber"
+                                        value={profile.member?.aadhaar_number || ''}
+                                        mono
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
+                                    <EditableField
+                                        label="DOB"
+                                        field="dob"
+                                        value={formatDate(profile.member?.date_of_birth)}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
                                 </div>
                             </div>
 
@@ -1258,10 +1295,38 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                     Work & Location
                                 </div>
                                 <div className="space-y-3">
-                                    <EditableField label="Company" field="workCompany" value={profile.member?.work_company || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
-                                    <EditableField label="Designation" field="workDesignation" value={profile.member?.work_designation || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
-                                    <EditableField label="Work Email" field="workEmail" value={profile.member?.work_email || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
-                                    <EditableField label="Work Phone" field="workPhone" value={profile.member?.work_phone || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField
+                                        label="Company"
+                                        field="workCompany"
+                                        value={profile.member?.work_company || ''}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
+                                    <EditableField
+                                        label="Designation"
+                                        field="workDesignation"
+                                        value={profile.member?.work_designation || ''}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
+                                    <EditableField
+                                        label="Work Email"
+                                        field="workEmail"
+                                        value={profile.member?.work_email || ''}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
+                                    <EditableField
+                                        label="Work Phone"
+                                        field="workPhone"
+                                        value={profile.member?.work_phone || ''}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
                                     <div className="flex items-start justify-between gap-3">
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap mt-1">
                                             Pincode
@@ -1272,11 +1337,15 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                     type="text"
                                                     maxLength={6}
                                                     value={editFields.pincode ?? ''}
-                                                    onChange={e => handleEditField('pincode', e.target.value.replace(/\D/g, ''))}
+                                                    onChange={e =>
+                                                        handleEditField('pincode', e.target.value.replace(/\D/g, ''))
+                                                    }
                                                     placeholder="6-digit"
                                                     className="text-[12px] font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-right w-28 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all"
                                                 />
-                                                {pincodeLoading && <Loader2 size={14} className="animate-spin text-indigo-500" />}
+                                                {pincodeLoading && (
+                                                    <Loader2 size={14} className="animate-spin text-indigo-500" />
+                                                )}
                                             </div>
                                         ) : (
                                             <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
@@ -1284,10 +1353,38 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                             </span>
                                         )}
                                     </div>
-                                    <EditableField label="State" field="state" value={profile.member?.state || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
-                                    <EditableField label="RTO" field="rto" value={profile.member?.rto || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
-                                    <EditableField label="District" field="district" value={profile.member?.district || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
-                                    <EditableField label="Taluka" field="taluka" value={profile.member?.taluka || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField
+                                        label="State"
+                                        field="state"
+                                        value={profile.member?.state || ''}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
+                                    <EditableField
+                                        label="RTO"
+                                        field="rto"
+                                        value={profile.member?.rto || ''}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
+                                    <EditableField
+                                        label="District"
+                                        field="district"
+                                        value={profile.member?.district || ''}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
+                                    <EditableField
+                                        label="Taluka"
+                                        field="taluka"
+                                        value={profile.member?.taluka || ''}
+                                        isEditing={isEditing}
+                                        editFields={editFields}
+                                        onFieldChange={handleEditField}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -1362,7 +1459,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                     </div>
                                     <div>
                                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            O'Club Wallet
+                                            O' Circle Wallet
                                         </div>
                                         <div className="text-lg font-black text-slate-900 dark:text-white">
                                             Balance Overview
@@ -1838,7 +1935,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                 <div key={doc.id} className="shrink-0 w-24 group">
                                                     <div className="w-24 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                                                         {(doc.file_type || '').includes('image') &&
-                                                            docSignedUrls[doc.id] ? (
+                                                        docSignedUrls[doc.id] ? (
                                                             <img
                                                                 src={docSignedUrls[doc.id]}
                                                                 alt={doc.purpose || ''}
@@ -1943,7 +2040,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                 <div key={doc.id} className="shrink-0 w-24 group">
                                                     <div className="w-24 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                                                         {(doc.file_type || '').includes('image') &&
-                                                            docSignedUrls[doc.id] ? (
+                                                        docSignedUrls[doc.id] ? (
                                                             <img
                                                                 src={docSignedUrls[doc.id]}
                                                                 alt={doc.purpose || ''}
@@ -2049,7 +2146,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                 <div key={doc.id} className="shrink-0 w-24 group">
                                                     <div className="w-24 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                                                         {(doc.file_type || '').includes('image') &&
-                                                            docSignedUrls[doc.id] ? (
+                                                        docSignedUrls[doc.id] ? (
                                                             <img
                                                                 src={docSignedUrls[doc.id]}
                                                                 alt={doc.purpose || ''}

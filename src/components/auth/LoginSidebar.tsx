@@ -18,7 +18,6 @@ import {
     Linkedin,
 } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useTenant, TenantType } from '@/lib/tenant/tenantContext';

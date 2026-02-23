@@ -193,7 +193,7 @@ export async function submitLead(formData: FormData) {
                     } as any
                 );
             } catch (err) {
-                console.error('O-Club referral credit failed:', err);
+                console.error("O' Circle referral credit failed:", err);
             }
         }
 

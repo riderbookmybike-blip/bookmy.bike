@@ -180,8 +180,8 @@ export function useSystemPDPLogic({
         : 0;
     const pricingLocationLabel =
         pricingReady &&
-            fallbackPricing?.location?.district &&
-            String(fallbackPricing.location.district).toUpperCase() !== 'ALL'
+        fallbackPricing?.location?.district &&
+        String(fallbackPricing.location.district).toUpperCase() !== 'ALL'
             ? fallbackPricing.location.district
             : undefined;
 
@@ -214,26 +214,26 @@ export function useSystemPDPLogic({
             const dynamicFeeEntries =
                 val.fees && typeof val.fees === 'object'
                     ? Object.entries(val.fees)
-                        .map(([key, amount]) => ({
-                            label: key
-                                .replace(/([A-Z])/g, ' $1')
-                                .replace(/^./, (ch: string) => ch.toUpperCase())
-                                .trim(),
-                            amount: numeric(amount),
-                        }))
-                        .filter(entry => entry.amount > 0)
+                          .map(([key, amount]) => ({
+                              label: key
+                                  .replace(/([A-Z])/g, ' $1')
+                                  .replace(/^./, (ch: string) => ch.toUpperCase())
+                                  .trim(),
+                              amount: numeric(amount),
+                          }))
+                          .filter(entry => entry.amount > 0)
                     : [];
             const dynamicTaxEntries =
                 val.tax && typeof val.tax === 'object'
                     ? Object.entries(val.tax)
-                        .map(([key, amount]) => ({
-                            label: key
-                                .replace(/([A-Z])/g, ' $1')
-                                .replace(/^./, (ch: string) => ch.toUpperCase())
-                                .trim(),
-                            amount: numeric(amount),
-                        }))
-                        .filter(entry => entry.amount > 0)
+                          .map(([key, amount]) => ({
+                              label: key
+                                  .replace(/([A-Z])/g, ' $1')
+                                  .replace(/^./, (ch: string) => ch.toUpperCase())
+                                  .trim(),
+                              amount: numeric(amount),
+                          }))
+                          .filter(entry => entry.amount > 0)
                     : [];
 
             const hasDetails =
@@ -246,13 +246,13 @@ export function useSystemPDPLogic({
                 ? dynamicFeeEntries.length > 0 || dynamicTaxEntries.length > 0
                     ? [...dynamicFeeEntries, ...dynamicTaxEntries]
                     : [
-                        { label: 'Road Tax', amount: numeric(val.roadTax) },
-                        { label: 'Reg. Charges', amount: numeric(val.registrationCharges) },
-                        { label: 'Smart Card', amount: numeric(val.smartCardCharges) },
-                        { label: 'Hypothecation', amount: numeric(val.hypothecationCharges) },
-                        { label: 'Postal Charges', amount: numeric(val.postalCharges) },
-                        { label: 'Cess', amount: numeric(val.cessAmount) },
-                    ].filter(x => x.amount > 0)
+                          { label: 'Road Tax', amount: numeric(val.roadTax) },
+                          { label: 'Reg. Charges', amount: numeric(val.registrationCharges) },
+                          { label: 'Smart Card', amount: numeric(val.smartCardCharges) },
+                          { label: 'Hypothecation', amount: numeric(val.hypothecationCharges) },
+                          { label: 'Postal Charges', amount: numeric(val.postalCharges) },
+                          { label: 'Cess', amount: numeric(val.cessAmount) },
+                      ].filter(x => x.amount > 0)
                 : [{ label: 'Registration (Estimated)', amount: numeric(val.total) }];
             return { total: numeric(val.total), breakdown: b };
         }
@@ -342,9 +342,9 @@ export function useSystemPDPLogic({
 
     const insuranceBreakdown = pricingReady
         ? fallbackPricing?.insurance_breakdown || [
-            { label: 'Liability Only', amount: tpWithGst, detail: '5Y Cover' },
-            { label: 'Comprehensive', amount: odWithGst, detail: '1Y Cover' },
-        ]
+              { label: 'Liability Only', amount: tpWithGst, detail: '5Y Cover' },
+              { label: 'Comprehensive', amount: odWithGst, detail: '1Y Cover' },
+          ]
         : [];
     const otherCharges = 0;
 
@@ -379,7 +379,7 @@ export function useSystemPDPLogic({
                 name: a.label,
                 price: priceWithGst,
                 description: a.type === 'PERCENTAGE' ? `${a.percentage}% of ${a.basis}` : 'Fixed Coverage',
-                discountPrice: 0,
+                discountPrice: undefined,
                 isMandatory: inclusionType === 'MANDATORY',
                 inclusionType: inclusionType,
                 breakdown: [
@@ -404,13 +404,13 @@ export function useSystemPDPLogic({
         const resolvedBreakdown =
             addonTotal > 0
                 ? [
-                    { label: 'Base Premium', amount: addon.price },
-                    { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
-                ]
+                      { label: 'Base Premium', amount: addon.price },
+                      { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
+                  ]
                 : ruleMatch?.breakdown || [
-                    { label: 'Base Premium', amount: addon.price },
-                    { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
-                ];
+                      { label: 'Base Premium', amount: addon.price },
+                      { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
+                  ];
         const resolvedInclusionType = ruleMatch?.inclusionType || 'OPTIONAL';
 
         return {
@@ -418,7 +418,7 @@ export function useSystemPDPLogic({
             name: addon.label,
             price: resolvedPrice,
             description: 'Coverage',
-            discountPrice: 0,
+            discountPrice: undefined,
             isMandatory: ruleMatch?.isMandatory || false,
             inclusionType: resolvedInclusionType,
             breakdown: resolvedBreakdown,
@@ -562,11 +562,11 @@ export function useSystemPDPLogic({
 
     const colorDelta = pricingReady
         ? Number(
-            fallbackPricing?.dealer?.offer ||
-            activeColorConfig?.dealerOffer ||
-            activeColorConfig?.pricingOverride?.dealerOffer ||
-            0
-        )
+              fallbackPricing?.dealer?.offer ||
+                  activeColorConfig?.dealerOffer ||
+                  activeColorConfig?.pricingOverride?.dealerOffer ||
+                  0
+          )
         : 0;
     const colorDiscount = colorDelta < 0 ? Math.abs(colorDelta) : 0;
     const colorSurge = colorDelta > 0 ? colorDelta : 0;
@@ -631,7 +631,7 @@ export function useSystemPDPLogic({
                 expiresAt: Date.now() + 24 * 60 * 60 * 1000,
             };
             localStorage.setItem('bmb_finance_scheme_cache', JSON.stringify(payload));
-        } catch { }
+        } catch {}
     }, [financeScheme]);
 
     // ── Step 1: Compute upfront charges FIRST (needed for DP constraints) ──
@@ -687,7 +687,7 @@ export function useSystemPDPLogic({
         } else {
             emi = Math.round(
                 (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, emiTenure)) /
-                (Math.pow(1 + monthlyRate, emiTenure) - 1)
+                    (Math.pow(1 + monthlyRate, emiTenure) - 1)
             );
         }
     }
@@ -732,8 +732,8 @@ export function useSystemPDPLogic({
             charge.taxStatus === 'INCLUSIVE'
                 ? ` (incl. ${charge.taxRate}% GST)`
                 : charge.taxStatus === 'EXCLUSIVE'
-                    ? ` + ${charge.taxRate}% GST`
-                    : '';
+                  ? ` + ${charge.taxRate}% GST`
+                  : '';
 
         financeChargeItems.push({
             id: charge.id || `charge_${idx}`,

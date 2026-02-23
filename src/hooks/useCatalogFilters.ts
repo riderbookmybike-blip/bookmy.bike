@@ -224,10 +224,10 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 displacement < 125
                     ? '< 125cc'
                     : displacement < 250
-                        ? '125-250cc'
-                        : displacement < 500
-                            ? '250-500cc'
-                            : '> 500cc';
+                      ? '125-250cc'
+                      : displacement < 500
+                        ? '250-500cc'
+                        : '> 500cc';
             const matchesCC = selectedCC.length === 0 || selectedCC.includes(ccTag);
 
             const frontBrake = (v.specifications as any)?.brakes?.front?.toLowerCase?.() || '';
@@ -274,10 +274,10 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 weightRaw > 0 && weightRaw < 110
                     ? '< 110kg'
                     : weightRaw >= 110 && weightRaw <= 140
-                        ? '110-140kg'
-                        : weightRaw > 140
-                            ? '> 140kg'
-                            : 'Unknown';
+                      ? '110-140kg'
+                      : weightRaw > 140
+                        ? '> 140kg'
+                        : 'Unknown';
             const matchesWeight = selectedWeights.length === 0 || selectedWeights.includes(weightTag);
 
             const matchesFinish =
@@ -305,7 +305,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 matchesFinish &&
                 matchesPrice &&
                 matchesEMI &&
-                (!showOClubOnly || (v.price?.offerPrice || 0) > 0) // Example logic: O'Club items usually have offers
+                (!showOClubOnly || (v.price?.offerPrice || 0) > 0) // Example logic: O' Circle items usually have offers
             );
         });
     }, [

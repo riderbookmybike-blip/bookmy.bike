@@ -346,7 +346,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         group: 'Rewards',
         items: [
             {
-                title: 'O-Club',
+                title: "O' Circle",
                 href: '/dashboard/oclub',
                 icon: Wallet,
                 color: 'text-emerald-500',

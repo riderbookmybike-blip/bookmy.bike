@@ -23,6 +23,7 @@ import {
     getDealerDelta,
     SKU_SELECT,
     getPdpSnapshot,
+    flattenVariantSpecs,
 } from '@/lib/server/storeSot';
 
 type Props = {
@@ -331,7 +332,9 @@ export default async function Page({ params, searchParams }: Props) {
                   price_base: Number(variantSeed?.price_base || 0),
                   specs: {
                       fuel_type: modelRow?.fuel_type,
-                      engine_cc: modelRow?.engine_cc,
+                      // NOTE: engine_cc removed — displacement from cat_variants_vehicle is the SOT
+                      // Flatten variant-level spec columns for TechSpecsSection
+                      ...(variantSeed?.vehicle_variant ? flattenVariantSpecs(variantSeed.vehicle_variant) : {}),
                   },
                   brand: {
                       name: modelRow?.brand?.name || resolvedParams.make,
@@ -378,10 +381,10 @@ export default async function Page({ params, searchParams }: Props) {
     if (!resolvedVariant) {
         console.error('PDP Fetch Error:', fetchError);
         return (
-            <div className="min-h-screen flex items-center justify-center bg-black bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black text-white p-20 text-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
-                <div className="relative z-10 glass-panel border border-white/10 p-12 rounded-[3rem] shadow-2xl max-w-lg mx-auto backdrop-blur-xl">
-                    <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-red-500/20 text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 p-20 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+                <div className="relative z-10 border border-slate-200 bg-white p-12 rounded-[3rem] shadow-sm max-w-lg mx-auto">
+                    <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-red-500/20 text-red-500">
                         <svg
                             width="40"
                             height="40"
@@ -397,10 +400,10 @@ export default async function Page({ params, searchParams }: Props) {
                             <line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
                     </div>
-                    <h1 className="text-4xl font-black italic tracking-tighter mb-4 text-white">
+                    <h1 className="text-4xl font-black italic tracking-tighter mb-4 text-slate-900">
                         PRODUCT <span className="text-red-500">NOT FOUND</span>
                     </h1>
-                    <p className="text-slate-400 uppercase tracking-widest font-bold text-xs leading-relaxed">
+                    <p className="text-slate-500 uppercase tracking-widest font-bold text-xs leading-relaxed">
                         {fetchError
                             ? fetchError.message
                             : 'The requested configuration is currently unavailable in our catalog.'}
@@ -408,7 +411,7 @@ export default async function Page({ params, searchParams }: Props) {
                     <div className="mt-8 flex justify-center gap-4">
                         <a
                             href="/store"
-                            className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95"
+                            className="px-8 py-4 bg-white hover:bg-slate-100 border border-slate-300 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95"
                         >
                             Return to Store
                         </a>
@@ -421,7 +424,7 @@ export default async function Page({ params, searchParams }: Props) {
     const item = resolvedVariant as CatalogItem;
     const parentSpecs: Record<string, any> = {
         fuel_type: modelRow?.fuel_type,
-        engine_cc: modelRow?.engine_cc,
+        // NOTE: engine_cc removed — displacement from cat_variants_vehicle is the SOT
     };
 
     const makeSlug = (item.brand as any)?.slug || slugify(item.brand?.name || resolvedParams.make || '');
@@ -1025,7 +1028,12 @@ export default async function Page({ params, searchParams }: Props) {
         variant: item.name,
         basePrice: Number(baseExShowroom),
         colors: colors,
-        specs: { ...parentSpecs, ...item.specs },
+        specs: {
+            ...parentSpecs,
+            ...item.specs,
+            // Also pull variant specs from active SKU if not already present via SOT
+            ...(variantSeed?.vehicle_variant ? flattenVariantSpecs(variantSeed.vehicle_variant) : {}),
+        },
         tenant_id: winningDealerId, // Dealer tenant for quote creation
     };
 

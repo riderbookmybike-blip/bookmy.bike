@@ -2200,11 +2200,11 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     <div className="mx-4 mt-4 space-y-4">
                         {!memberId ? (
                             <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
-                                Member not linked yet. O Club wallet becomes available after member linkage.
+                                Member not linked yet. O' Circle wallet becomes available after member linkage.
                             </div>
                         ) : walletLoading ? (
                             <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl p-6 text-xs text-slate-400">
-                                Loading O Club wallet...
+                                Loading O' Circle wallet...
                             </div>
                         ) : (
                             <>
@@ -2237,7 +2237,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                 <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden">
                                     <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5">
                                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            O Club Ledger
+                                            O' Circle Ledger
                                         </div>
                                     </div>
                                     <div className="divide-y divide-slate-100 dark:divide-white/5">

@@ -1621,10 +1621,10 @@ export const DesktopCatalog = ({
                                                     </div>
                                                     <div className="text-left">
                                                         <span className="block text-xs font-black uppercase tracking-widest text-slate-900">
-                                                            O'Circle Premium
+                                                            O' Circle Premium
                                                         </span>
                                                         <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                            Exclusive O-Circle Offers
+                                                            Exclusive O' Circle Offers
                                                         </span>
                                                     </div>
                                                 </div>

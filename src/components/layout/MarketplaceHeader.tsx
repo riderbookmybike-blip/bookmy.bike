@@ -46,12 +46,13 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     }, []);
 
     const isHome = pathname === '/' || pathname === '/store' || pathname?.match(/^\/d[2-8]$/);
+    const isPdpRoute = Boolean(pathname?.match(/^\/store\/[^/]+\/[^/]+\/[^/]+/));
 
     // Quick rollback: set navPreset to 'wide'.
     const navPreset: 'tight' | 'wide' = 'tight';
     const rightGapClass = navPreset === 'tight' ? 'gap-3 lg:gap-6' : 'gap-4 lg:gap-10';
 
-    const isHeaderTransparent = isHome && !scrolled;
+    const isHeaderTransparent = isHome && !scrolled && !isPdpRoute;
 
     const mobileMenuButtonClass = 'text-black hover:bg-black/5';
 
@@ -61,10 +62,10 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     return (
         <AppHeaderShell
             scrolled={scrolled}
-            visible={isVisible}
+            visible={isPdpRoute ? true : isVisible}
             transparentAtTop={true}
             variant="marketplace"
-            className={`${isHeaderTransparent || (isPhone && isHome) ? 'header-transparent' : ''}`}
+            className={`${isHeaderTransparent || (isPhone && isHome) ? 'header-transparent' : ''} ${isPdpRoute ? 'header-solid-pdp' : ''}`}
             left={
                 <Link href="/" className="flex items-center group h-full">
                     <div className="flex items-center justify-center transition-all duration-300">
@@ -95,7 +96,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
                     <ProfileDropdown
                         onLoginClick={onLoginClick}
-                        scrolled={!isHeaderTransparent}
+                        scrolled={!isHeaderTransparent || isPdpRoute}
                         theme="light"
                         tone="light"
                         externalOpen={isSidebarOpen}

@@ -42,7 +42,7 @@ export const M2Footer = () => {
             links: [
                 { label: 'About Us', href: '#' },
                 { label: 'Our Blog', href: '/blog' },
-                { label: "O'Circle", href: '/store/ocircle' },
+                { label: "O' Circle", href: '/store/ocircle' },
                 { label: 'Partner Login', href: '/login' },
                 { label: 'Media Kit', href: '/mediakit' },
                 { label: 'Contact', href: '#' },
@@ -84,8 +84,8 @@ export const M2Footer = () => {
                             </span>
                         </h3>
                         <p className="text-xs text-slate-500 font-bold leading-relaxed mt-4 max-w-[280px]">
-                            India's premier marketplace for the next generation of riders. Engineering excellence into every
-                            booking.
+                            India's premier marketplace for the next generation of riders. Engineering excellence into
+                            every booking.
                         </p>
                     </div>
 
@@ -120,10 +120,11 @@ export const M2Footer = () => {
                                                 <li key={i}>
                                                     <Link
                                                         href={link.href}
-                                                        className={`text-[10px] font-black transition-all uppercase tracking-wider hover:translate-x-1 inline-block ${(link as any).highlight
-                                                            ? 'text-brand-primary'
-                                                            : 'text-slate-500 hover:text-slate-900'
-                                                            }`}
+                                                        className={`text-[10px] font-black transition-all uppercase tracking-wider hover:translate-x-1 inline-block ${
+                                                            (link as any).highlight
+                                                                ? 'text-brand-primary'
+                                                                : 'text-slate-500 hover:text-slate-900'
+                                                        }`}
                                                     >
                                                         {link.label}
                                                     </Link>
@@ -146,10 +147,11 @@ export const M2Footer = () => {
                                                             <li key={i}>
                                                                 <Link
                                                                     href={link.href}
-                                                                    className={`text-xs font-bold transition-colors uppercase tracking-wide ${(link as any).highlight
-                                                                        ? 'text-slate-950 underline decoration-slate-300'
-                                                                        : 'text-slate-400 hover:text-slate-900'
-                                                                        }`}
+                                                                    className={`text-xs font-bold transition-colors uppercase tracking-wide ${
+                                                                        (link as any).highlight
+                                                                            ? 'text-slate-950 underline decoration-slate-300'
+                                                                            : 'text-slate-400 hover:text-slate-900'
+                                                                    }`}
                                                                 >
                                                                     {link.label}
                                                                 </Link>
@@ -170,7 +172,11 @@ export const M2Footer = () => {
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8 mt-20 pt-10 border-t border-slate-100">
                     <div className="flex gap-3">
                         <SocialIcon icon={<Newspaper size={16} />} href="/blog" bg="hover:bg-slate-900" />
-                        <SocialIcon icon={<Instagram size={16} />} href="https://instagram.com" bg="hover:bg-slate-900" />
+                        <SocialIcon
+                            icon={<Instagram size={16} />}
+                            href="https://instagram.com"
+                            bg="hover:bg-slate-900"
+                        />
                         <SocialIcon icon={<Twitter size={16} />} href="https://twitter.com" bg="hover:bg-slate-900" />
                         <SocialIcon icon={<Linkedin size={16} />} href="https://linkedin.com" bg="hover:bg-slate-900" />
                         <SocialIcon icon={<Facebook size={16} />} href="https://facebook.com" bg="hover:bg-slate-900" />

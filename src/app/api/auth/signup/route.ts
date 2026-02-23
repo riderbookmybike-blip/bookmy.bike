@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
         try {
             await adminClient.rpc('oclub_credit_signup', { p_member_id: userId });
         } catch (err) {
-            console.error('Signup O-Club bonus error:', err);
+            console.error("Signup O' Circle bonus error:", err);
         }
 
         // 4. Auto-Login

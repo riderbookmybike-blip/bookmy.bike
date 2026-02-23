@@ -110,7 +110,7 @@ const FAQ = [
     },
     {
         q: 'Can I transfer my membership or B-Coins?',
-        a: "Yes! O'Circle membership and B-Coins are fully transferable to any family member through your profile settings.",
+        a: "Yes! O' Circle membership and B-Coins are fully transferable to any family member through your profile settings.",
     },
 ];
 

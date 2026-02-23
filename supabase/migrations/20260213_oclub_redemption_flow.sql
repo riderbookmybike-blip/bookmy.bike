@@ -1,9 +1,9 @@
 -- ==========================================================================
--- Migration: O-Club Redemption Flow (Sponsored + System/Referral)
+-- Migration: O' Circle Redemption Flow (Sponsored + System/Referral)
 -- Date: 2026-02-13
 -- ==========================================================================
 
--- Apply O-Club coins to a booking (system/referral settle immediately, sponsored held)
+-- Apply O' Circle coins to a booking (system/referral settle immediately, sponsored held)
 CREATE OR REPLACE FUNCTION public.oclub_apply_booking_coins(
     p_booking_id uuid,
     p_member_id uuid,
