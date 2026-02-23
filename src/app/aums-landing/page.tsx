@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { ArrowRight, BarChart3, Database, Globe, Lock, Play, Shield, Terminal, Zap } from 'lucide-react';
 import { AumsHeader } from '@/components/layout/AumsHeader';
 import { AumsFooter } from '@/components/layout/AumsFooter';
-import LoginSidebar from '@/components/auth/LoginSidebar';
+const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 
 export default function AumsLandingPage() {
     const [isLoginOpen, setIsLoginOpen] = useState(false);

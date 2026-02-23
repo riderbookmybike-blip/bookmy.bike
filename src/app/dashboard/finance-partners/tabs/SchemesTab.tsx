@@ -18,7 +18,18 @@ import {
     Copy,
     Loader2,
 } from 'lucide-react';
-import SchemeEditor from '../SchemeEditor';
+import dynamic from 'next/dynamic';
+
+const SchemeEditor = dynamic(() => import('../SchemeEditor'), {
+    loading: () => (
+        <div className="flex items-center justify-center min-h-[400px]">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Loading Editor...</span>
+            </div>
+        </div>
+    ),
+});
 import { updateBankSchemes } from '../actions';
 import { formatDisplayIdForUI } from '@/lib/displayId';
 

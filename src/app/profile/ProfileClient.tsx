@@ -43,8 +43,8 @@ import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import { updateMemberProfile } from '@/actions/profileActions';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-
-import LoginSidebar from '@/components/auth/LoginSidebar';
+import dynamic from 'next/dynamic';
+const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 import { getDefaultAvatar } from '@/lib/avatars';
 import { ThemeModeSelector } from '@/components/ui/theme-mode-selector';
 
