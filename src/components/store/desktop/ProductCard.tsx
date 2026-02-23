@@ -268,6 +268,7 @@ export const ProductCard = ({
         coinsUsed: 13,
     };
     const bcoinAdjustment = coinPricing.discount || 0;
+    const isShowingEffectivePrice = bcoinAdjustment > 0;
 
     // If dealer offer exists, price is CONFIRMED not estimated
     const isConfirmedPrice = !!bestOffer;
@@ -978,11 +979,11 @@ export const ProductCard = ({
                         <div className="flex flex-col gap-1.5">
                             <div className="flex flex-col gap-1">
                                 <span
-                                    className={`${showOClubPrompt ? 'text-lg md:text-xl line-through text-slate-400' : 'text-[22px] md:text-3xl font-black'} italic text-slate-900 dark:text-white leading-none`}
+                                    className={`${isShowingEffectivePrice ? 'text-lg md:text-xl line-through text-slate-400' : 'text-[22px] md:text-3xl font-black'} italic text-slate-900 dark:text-white leading-none`}
                                 >
                                     ₹{offerPrice.toLocaleString('en-IN')}
                                 </span>
-                                {showOClubPrompt && (
+                                {isShowingEffectivePrice && (
                                     <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
                                         ₹{(offerPrice - bcoinAdjustment).toLocaleString('en-IN')}
                                     </span>
@@ -1053,7 +1054,7 @@ export const ProductCard = ({
                             </div>
                         </div>
 
-                        <div className="flex flex-col items-end">
+                        <div className="flex flex-col items-end mt-7 md:mt-8">
                             <div className="flex items-baseline">
                                 <span className="text-[22px] md:text-3xl font-black text-emerald-600 dark:text-emerald-500 italic leading-none">
                                     {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
@@ -1091,7 +1092,7 @@ export const ProductCard = ({
                 {/* Optional Mileage Line (Subtle) */}
 
                 {!isPdp && (
-                    <div className="mt-1.5 md:mt-4 space-y-1.5 md:space-y-2">
+                    <div className="mt-1.5 md:mt-4 space-y-1.5 md:space-y-2 relative z-20 w-full">
                         {isUnserviceable ? (
                             <button
                                 onClick={handleGetQuoteClick}
@@ -1140,7 +1141,7 @@ export const ProductCard = ({
                         )}
                     </div>
                 )}
-                <div className="flex items-center justify-center gap-2 opacity-80 pt-1">
+                <div className="flex items-center justify-center gap-2 opacity-80 pt-1 mt-1">
                     <StarRating rating={v.rating || 4.5} size={9} />
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                         • {getStableReviewCount(v)} Ratings
