@@ -18,6 +18,7 @@ export async function generateMetadata({
     const canonical = `/store/${make}/${model}`;
     const title = `${brand} ${modelName} Variants | BookMyBike`;
     const description = `Browse ${brand} ${modelName} variants, colors, and prices. Compare offers and book online.`;
+    const ogImageUrl = `${baseUrl}/api/og?make=${make}&model=${model}`;
 
     return {
         title,
@@ -29,11 +30,13 @@ export async function generateMetadata({
             url: `${baseUrl}${canonical}`,
             siteName: 'BookMyBike',
             type: 'website',
+            images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${brand} ${modelName} Variants` }],
         },
         twitter: {
             card: 'summary_large_image',
             title,
             description,
+            images: [ogImageUrl],
         },
     };
 }

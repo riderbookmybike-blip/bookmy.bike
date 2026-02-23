@@ -13,6 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ make: str
     const canonical = `/store/${make}`;
     const title = `${brand} Bikes & Scooters | BookMyBike`;
     const description = `Explore the complete ${brand} lineup. Compare variants, prices, and offers on BookMyBike.`;
+    const ogImageUrl = `${baseUrl}/api/og?make=${make}`;
 
     return {
         title,
@@ -24,11 +25,13 @@ export async function generateMetadata({ params }: { params: Promise<{ make: str
             url: `${baseUrl}${canonical}`,
             siteName: 'BookMyBike',
             type: 'website',
+            images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${brand} Bikes & Scooters` }],
         },
         twitter: {
             card: 'summary_large_image',
             title,
             description,
+            images: [ogImageUrl],
         },
     };
 }
