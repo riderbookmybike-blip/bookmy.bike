@@ -238,22 +238,22 @@ export const MobileCatalog = ({
                 break;
             case 'mileage':
                 vehicles.sort((a, b) => {
-                    const ma = parseFloat((a as any).specs?.mileage || '0');
-                    const mb = parseFloat((b as any).specs?.mileage || '0');
+                    const ma = parseFloat(a.specifications?.engine?.mileage || '0');
+                    const mb = parseFloat(b.specifications?.engine?.mileage || '0');
                     return mb - ma; // Highest mileage first
                 });
                 break;
             case 'seatHeight':
                 vehicles.sort((a, b) => {
-                    const sa = parseFloat((a as any).specs?.seatHeight || '0');
-                    const sb = parseFloat((b as any).specs?.seatHeight || '0');
+                    const sa = parseFloat(a.specifications?.dimensions?.seatHeight || '0');
+                    const sb = parseFloat(b.specifications?.dimensions?.seatHeight || '0');
                     return sa - sb; // Lowest seat height first
                 });
                 break;
             case 'kerbWeight':
                 vehicles.sort((a, b) => {
-                    const wa = parseFloat((a as any).specs?.kerbWeight || '0');
-                    const wb = parseFloat((b as any).specs?.kerbWeight || '0');
+                    const wa = parseFloat(a.specifications?.dimensions?.kerbWeight || '0');
+                    const wb = parseFloat(b.specifications?.dimensions?.kerbWeight || '0');
                     return wa - wb; // Lightest first
                 });
                 break;
@@ -266,7 +266,7 @@ export const MobileCatalog = ({
         if (!searchQuery.trim()) return results;
         const q = searchQuery.toLowerCase().trim();
         // When searching, search across ALL items regardless of body type filter
-        return (items || []).filter((v: any) => {
+        return (items || []).filter((v: ProductVariant) => {
             const name = (v.displayName || v.model || '').toLowerCase();
             const make = (v.make || '').toLowerCase();
             const combined = `${make} ${name}`;
@@ -399,7 +399,7 @@ export const MobileCatalog = ({
                 tenure={tenure}
                 onTenureChange={setTenure}
                 sortBy={sortBy}
-                onSortChange={val => setSortBy(val as any)}
+                onSortChange={val => setSortBy(val as typeof sortBy)}
             />
 
             <LocationPicker

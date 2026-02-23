@@ -129,9 +129,17 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     // ── Derived lead reference (must be before any useState that accesses lead) ──
     const lead = profile.lead || {};
 
-    const [activeTab, setActiveTab] = useState<
-        'LEAD' | 'FINANCE' | 'TRANSACTIONS' | 'MEMBER' | 'DOCUMENTS' | 'TASKS' | 'NOTES' | 'TIMELINE' | 'OCLUB'
-    >('LEAD');
+    type TabKey =
+        | 'LEAD'
+        | 'FINANCE'
+        | 'TRANSACTIONS'
+        | 'MEMBER'
+        | 'DOCUMENTS'
+        | 'TASKS'
+        | 'NOTES'
+        | 'TIMELINE'
+        | 'OCLUB';
+    const [activeTab, setActiveTab] = useState<TabKey>('LEAD');
     const [groups, setGroups] = useState({
         transactionQuotes: true,
         transactionBookings: true,
@@ -183,11 +191,15 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const bookingCount = profile.bookings?.length || 0;
     const receiptCount = profile.receipts?.length || 0;
     const leadLocationProfile =
-        lead?.raw?.utm_data && typeof lead.raw.utm_data === 'object' ? (lead.raw.utm_data.location_profile as any) : {};
+        lead?.raw?.utm_data && typeof lead.raw.utm_data === 'object'
+            ? (((lead.raw.utm_data as Record<string, unknown>).location_profile as
+                  | Record<string, string>
+                  | undefined) ?? {})
+            : ({} as Record<string, string>);
     const leadArea = lead.area || leadLocationProfile?.area || '—';
     const leadDistrict = lead.district || leadLocationProfile?.district || '—';
     const leadState = lead.state || leadLocationProfile?.state || '—';
-    const legacyTimelineEvents = Array.isArray(lead?.events_log) ? (lead.events_log as any[]) : [];
+    const legacyTimelineEvents = Array.isArray(lead?.events_log) ? (lead.events_log as Record<string, unknown>[]) : [];
     const timelineEntries = useMemo<LeadTimelineEntry[]>(() => {
         const fromLeadEvents = leadEvents.map(event => ({
             id: `event-${event.id}`,
@@ -450,8 +462,8 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             setSavingNote(false);
             return;
         }
-        if ((result as any).note) {
-            setNotes(prev => [(result as any).note, ...prev]);
+        if ('note' in result && result.note) {
+            setNotes(prev => [result.note as LeadModuleNote, ...prev]);
         }
         setNoteDraft('');
         setNoteAttachments([]);
@@ -481,8 +493,8 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             setSavingTask(false);
             return;
         }
-        if ((result as any).task) {
-            setTasks(prev => [(result as any).task, ...prev]);
+        if ('task' in result && result.task) {
+            setTasks(prev => [result.task as (typeof tasks)[number], ...prev]);
         }
         setTaskDraft('');
         setTaskDueDate('');
@@ -1187,7 +1199,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     {tabs.map((tab, idx) => (
                         <button
                             key={tab.key}
-                            onClick={() => setActiveTab(tab.key as any)}
+                            onClick={() => setActiveTab(tab.key as TabKey)}
                             className={cn(
                                 'py-3 text-center transition-all relative whitespace-nowrap',
                                 'w-full',
@@ -1919,7 +1931,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             />
                             <select
                                 value={taskPriority}
-                                onChange={e => setTaskPriority(e.target.value as any)}
+                                onChange={e => setTaskPriority(e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT')}
                                 className="h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 text-xs font-black uppercase"
                             >
                                 <option value="LOW">Low</option>
