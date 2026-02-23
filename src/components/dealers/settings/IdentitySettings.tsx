@@ -126,8 +126,8 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                 if (result && !result.error) {
                     setPincodeLookup({
                         district: result.district || '',
-                        taluka: (result as any).taluka || '',
-                        area: (result as any).area || '',
+                        taluka: result.taluka || '',
+                        area: result.area || '',
                         state: result.state || '',
                         stateCode: result.stateCode || '',
                     });
@@ -189,7 +189,8 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
             alert('Details updated successfully');
         } catch (error: unknown) {
             console.error('Error updating details:', error);
-            alert(error?.message || 'Failed to update details');
+            const message = error instanceof Error ? error.message : 'Failed to update details';
+            alert(message);
         } finally {
             setLoading(false);
         }

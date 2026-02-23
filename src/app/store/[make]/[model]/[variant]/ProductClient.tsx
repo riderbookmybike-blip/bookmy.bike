@@ -692,11 +692,11 @@ export default function ProductClient({
                         source: 'PDP_QUICK_QUOTE',
                     });
 
-                    if (leadResult.success && (leadResult as any).leadId) {
+                    if (leadResult.success && 'leadId' in leadResult && leadResult.leadId) {
                         const commercials = buildCommercials();
-                        const quoteResult: any = await createQuoteAction({
+                        const quoteResult = await createQuoteAction({
                             tenant_id: sessionDealerId || product.tenant_id || '',
-                            lead_id: (leadResult as any).leadId,
+                            lead_id: leadResult.leadId,
                             variant_id: product.id,
                             color_id: colorSkuId || undefined,
                             commercials,
