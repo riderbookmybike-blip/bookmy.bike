@@ -27,13 +27,13 @@ export default function TabNavigation({ tabs, activeTab, onTabChange, className 
                             border flex items-center justify-center gap-2
                             ${isActive
                                 ? 'bg-brand-primary border-brand-primary text-black shadow-lg shadow-brand-primary/25 scale-105 z-10'
-                                : 'bg-transparent border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 dark:hover:border-slate-700'
+                                : 'bg-transparent border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
                             }
                         `}
                     >
                         <span>{tab.label}</span>
                         {tab.count !== undefined && tab.count !== null && (
-                            <span className={`inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full text-[8px] font-bold ${isActive ? 'bg-black text-brand-primary' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+                            <span className={`inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full text-[8px] font-bold ${isActive ? 'bg-black text-brand-primary' : 'bg-slate-200 text-slate-500'}`}>
                                 {tab.count}
                             </span>
                         )}

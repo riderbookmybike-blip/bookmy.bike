@@ -63,7 +63,7 @@ export default function FinanceTab({
                 <Icon className="w-8 h-8" />
             </div>
             <div>
-                <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
+                <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 leading-none">
                     {title}
                 </h3>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1.5">{subtext}</p>
@@ -80,7 +80,7 @@ export default function FinanceTab({
             />
 
             {/* Premium Down Payment Slider */}
-            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-[2.5rem] p-8 space-y-6">
+            <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8 space-y-6">
                 <div className="flex justify-between items-end">
                     <div>
                         <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
@@ -115,7 +115,7 @@ export default function FinanceTab({
                                             </span>
                                         )}
                                         <div
-                                            className={`w-[1px] ${is10k ? 'h-3 bg-slate-400' : 'h-1.5 bg-slate-300 dark:bg-slate-600'}`}
+                                            className={`w-[1px] ${is10k ? 'h-3 bg-slate-400' : 'h-1.5 bg-slate-300'}`}
                                         />
                                     </div>
                                 );
@@ -127,7 +127,7 @@ export default function FinanceTab({
                     {/* Slider Track - Split Style */}
                     <div className="relative h-8 flex items-center mt-6">
                         {/* Background Track (ahead of thumb - thin) */}
-                        <div className="absolute inset-x-0 h-1 rounded-full bg-slate-200 dark:bg-slate-800" />
+                        <div className="absolute inset-x-0 h-1 rounded-full bg-slate-200" />
 
                         {/* Filled Track (behind thumb - bold) */}
                         <div
@@ -205,7 +205,7 @@ export default function FinanceTab({
                             className={`group relative p-4 rounded-[2.5rem] border transition-all duration-300 flex items-center justify-between gap-4 cursor-pointer overflow-visible
                                 ${isSelected
                                     ? 'bg-brand-primary/5 border-brand-primary/30'
-                                    : 'bg-white/[0.03] border-slate-200 dark:border-white/5 hover:bg-white/[0.05] hover:border-slate-300 dark:hover:border-white/10'
+                                    : 'bg-white/[0.03] border-slate-200 hover:bg-white/[0.05] hover:border-slate-300'
                                 }
                             `}
                         >
@@ -222,13 +222,13 @@ export default function FinanceTab({
                                         className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all shrink-0
                                         ${isSelected
                                                 ? 'bg-brand-primary border-brand-primary text-black shadow-[0_0_15px_rgba(255,215,0,0.25)]'
-                                                : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400'
+                                                : 'bg-slate-100 border-slate-200 text-slate-400'
                                             }`}
                                     >
                                         <Zap size={20} />
                                     </div>
                                     <div>
-                                        <p className={`text-xs md:text-sm font-black uppercase italic tracking-wider transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                                        <p className={`text-xs md:text-sm font-black uppercase italic tracking-wider transition-colors ${isSelected ? 'text-slate-900' : 'text-slate-500'}`}>
                                             {tenure} Months
                                         </p>
                                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
@@ -266,7 +266,7 @@ export default function FinanceTab({
                                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300
                                         ${isSelected
                                             ? 'border-brand-primary bg-brand-primary scale-110'
-                                            : 'border-slate-300 dark:border-white/20'
+                                            : 'border-slate-300'
                                         }`}
                                     >
                                         {isSelected && (

@@ -33,7 +33,7 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                 className="fixed bottom-0 inset-x-0 z-[100] pb-[env(safe-area-inset-bottom)]"
             >
                 <div className="mx-auto max-w-3xl px-4 pb-4">
-                    <div className="bg-white/95 dark:bg-[#141618]/95 backdrop-blur-2xl rounded-2xl border border-slate-200 dark:border-white/10 shadow-[0_-8px_40px_rgba(0,0,0,0.15)] dark:shadow-[0_-8px_40px_rgba(0,0,0,0.5)] p-3">
+                    <div className="bg-white/95 backdrop-blur-2xl rounded-2xl border border-slate-200 shadow-[0_-8px_40px_rgba(0,0,0,0.15)],0,0,0.5)] p-3">
                         <div className="flex items-center gap-3">
                             {/* Icon + Label */}
                             <div className="flex items-center gap-2 pl-2 shrink-0">
@@ -44,14 +44,14 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
                                         Compare
                                     </p>
-                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                    <p className="text-[10px] font-bold text-slate-600">
                                         {items.length} selected
                                     </p>
                                 </div>
                             </div>
 
                             {/* Separator */}
-                            <div className="w-px h-10 bg-slate-200 dark:bg-white/10 shrink-0" />
+                            <div className="w-px h-10 bg-slate-200 shrink-0" />
 
                             {/* Thumbnails */}
                             <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
@@ -61,9 +61,9 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                                         initial={{ scale: 0, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
                                         exit={{ scale: 0, opacity: 0 }}
-                                        className="relative group flex items-center gap-2 px-2 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 shrink-0"
+                                        className="relative group flex items-center gap-2 px-2 py-1.5 rounded-xl bg-slate-50 border border-slate-100 shrink-0"
                                     >
-                                        <div className="w-10 h-10 relative rounded-lg overflow-hidden bg-white dark:bg-white/5">
+                                        <div className="w-10 h-10 relative rounded-lg overflow-hidden bg-white">
                                             <Image
                                                 src={item.imageUrl}
                                                 alt={item.model}
@@ -76,13 +76,13 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                                             <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 truncate">
                                                 {item.make}
                                             </p>
-                                            <p className="text-[10px] font-black text-slate-700 dark:text-white truncate">
+                                            <p className="text-[10px] font-black text-slate-700 truncate">
                                                 {item.model}
                                             </p>
                                         </div>
                                         <button
                                             onClick={() => onRemove(item.modelSlug)}
-                                            className="w-5 h-5 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
+                                            className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
                                         >
                                             <X size={10} />
                                         </button>
@@ -93,9 +93,9 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                                 {Array.from({ length: Math.max(0, 2 - items.length) }).map((_, i) => (
                                     <div
                                         key={`empty-${i}`}
-                                        className="w-[120px] h-[46px] rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0"
+                                        className="w-[120px] h-[46px] rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center shrink-0"
                                     >
-                                        <span className="text-[9px] font-bold text-slate-300 dark:text-white/20">
+                                        <span className="text-[9px] font-bold text-slate-300">
                                             + Add
                                         </span>
                                     </div>

@@ -378,10 +378,10 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
             {items.map(item => (
                 <div
                     key={item.key}
-                    className="flex items-center justify-between py-2.5 border-b border-slate-100 dark:border-white/[0.03] last:border-0"
+                    className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
                 >
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{item.label}</span>
-                    <span className="text-xs font-bold text-slate-800 dark:text-white text-right">{item.value}</span>
+                    <span className="text-xs text-slate-500 font-medium">{item.label}</span>
+                    <span className="text-xs font-bold text-slate-800 text-right">{item.value}</span>
                 </div>
             ))}
         </div>
@@ -397,7 +397,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                     return (
                         <div
                             key={cat.id}
-                            className="glass-panel bg-white/90 dark:bg-[#0b0d10]/40 rounded-3xl border border-slate-200 dark:border-white/5 shadow-xl overflow-hidden"
+                            className="glass-panel bg-white/90 rounded-3xl border border-slate-200 shadow-xl overflow-hidden"
                         >
                             <button
                                 onClick={() => setActiveCategory(isOpen ? null : cat.id)}
@@ -411,7 +411,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                                         <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
                                             {cat.label}
                                         </p>
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        <p className="text-[11px] text-slate-500">
                                             {cat.items.length} specs
                                         </p>
                                     </div>
@@ -423,7 +423,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                             </button>
                             {isOpen && (
                                 <div className="px-5 pb-5">
-                                    <div className="border-t border-slate-200/60 dark:border-white/5 pt-4">
+                                    <div className="border-t border-slate-200/60 pt-4">
                                         {renderSpecList(cat.items)}
                                     </div>
                                 </div>
@@ -458,17 +458,17 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                             className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
                                 ${
                                     isActive
-                                        ? 'flex-[3] bg-white dark:bg-[#0b0d10] border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_40px_80px_rgba(0,0,0,0.5)]'
-                                        : 'flex-[0.5] bg-white/40 dark:bg-white/[0.03] backdrop-blur-xl border-white/60 dark:border-white/5 hover:bg-white/60 dark:hover:bg-white/[0.06] shadow-lg shadow-black/[0.03]'
+                                        ? 'flex-[3] bg-white border-slate-200 shadow-2xl,0,0,0.5)]'
+                                        : 'flex-[0.5] bg-white/40 backdrop-blur-xl border-white/60 hover:bg-white/60 shadow-lg shadow-black/[0.03]'
                                 }`}
                         >
                             {/* Header / Category Label */}
                             <div
-                                className={`p-6 flex items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100 dark:border-white/5' : ''}`}
+                                className={`p-6 flex items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100' : ''}`}
                             >
                                 <div
                                     className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
-                                    ${isActive ? 'bg-brand-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-slate-200 dark:bg-white/5 text-slate-400 dark:text-zinc-600'}`}
+                                    ${isActive ? 'bg-brand-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-slate-200 text-slate-400'}`}
                                 >
                                     <Icon size={20} />
                                 </div>
@@ -479,7 +479,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                                     <span className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
                                         {cat.label}
                                     </span>
-                                    <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold whitespace-nowrap">
+                                    <span className="text-[10px] text-slate-500 font-bold whitespace-nowrap">
                                         {cat.items.length} specs
                                     </span>
                                 </div>
@@ -509,7 +509,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                                             exit={{ opacity: 0 }}
                                             className="absolute inset-0 flex items-center justify-center pointer-events-none"
                                         >
-                                            <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 dark:text-white/10 -rotate-90 whitespace-nowrap">
+                                            <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 -rotate-90 whitespace-nowrap">
                                                 {cat.label}
                                             </span>
                                         </motion.div>
@@ -519,7 +519,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
 
                             {/* Bottom Fade (Active state) */}
                             {isActive && (
-                                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 dark:from-[#0b0d10] dark:via-[#0b0d10]/40 to-transparent pointer-events-none z-10" />
+                                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
                             )}
                         </motion.div>
                     );

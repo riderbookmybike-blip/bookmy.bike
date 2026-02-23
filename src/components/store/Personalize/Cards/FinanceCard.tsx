@@ -118,10 +118,10 @@ export default function FinanceCard({
     const [expandedTenure, setExpandedTenure] = useState<number | null>(null);
 
     return (
-        <div className="md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:dark:backdrop-blur-none md:border-0 md:shadow-none rounded-[2.5rem] md:rounded-none overflow-hidden flex flex-col h-full group/fcard relative">
+        <div className="md:bg-transparent md:backdrop-blur-none md:border-0 md:shadow-none rounded-[2.5rem] md:rounded-none overflow-hidden flex flex-col h-full group/fcard relative">
             <div className="flex-1 flex flex-col">
                 {/* Column headers */}
-                <div className="w-full grid grid-cols-5 px-5 pb-1 mb-1.5 border-b border-slate-100 dark:border-white/5 shrink-0">
+                <div className="w-full grid grid-cols-5 px-5 pb-1 mb-1.5 border-b border-slate-100 shrink-0">
                     <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-left">
                         EMI
                     </span>
@@ -160,17 +160,17 @@ export default function FinanceCard({
                                 }`}
                             >
                                 <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-left ${isSelected ? 'text-brand-primary' : 'text-slate-700 dark:text-white/60'}`}
+                                    className={`text-[10px] font-black font-mono tracking-tight text-left ${isSelected ? 'text-brand-primary' : 'text-slate-700'}`}
                                 >
                                     ₹{calculatedEmiForT.toLocaleString()}
                                 </span>
                                 <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-left ${isSelected ? 'text-brand-primary' : 'text-slate-600 dark:text-slate-400'}`}
+                                    className={`text-[10px] font-black font-mono tracking-tight text-left ${isSelected ? 'text-brand-primary' : 'text-slate-600'}`}
                                 >
                                     {String(t).padStart(2, '0')} Months
                                 </span>
                                 <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-center ${isSelected ? 'text-brand-primary' : 'text-slate-500 dark:text-white/40'}`}
+                                    className={`text-[10px] font-black font-mono tracking-tight text-center ${isSelected ? 'text-brand-primary' : 'text-slate-500'}`}
                                 >
                                     ₹{grossLoan.toLocaleString()}
                                 </span>
@@ -180,7 +180,7 @@ export default function FinanceCard({
                                     +₹{Math.max(0, totalInterest).toLocaleString()}
                                 </span>
                                 <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-right ${isSelected ? 'text-brand-primary' : 'text-slate-500 dark:text-white/40'}`}
+                                    className={`text-[10px] font-black font-mono tracking-tight text-right ${isSelected ? 'text-brand-primary' : 'text-slate-500'}`}
                                 >
                                     ₹{totalCost.toLocaleString()}
                                 </span>

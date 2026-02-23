@@ -53,7 +53,7 @@ export default function PricingCard({
     productImage,
     pricingSource,
     leadName,
-    infoColorClass = 'text-slate-500 dark:text-slate-400',
+    infoColorClass = 'text-slate-500',
     serviceability,
     coinPricing = null,
     showOClubPrompt = false,
@@ -63,14 +63,14 @@ export default function PricingCard({
     const displayOriginal = originalPrice || totalOnRoad + totalSavings;
 
     return (
-        <div className="md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:dark:backdrop-blur-none md:border-0 md:shadow-none rounded-[2.5rem] md:rounded-none overflow-hidden flex flex-col h-full">
+        <div className="md:bg-transparent md:backdrop-blur-none md:border-0 md:shadow-none rounded-[2.5rem] md:rounded-none overflow-hidden flex flex-col h-full">
             {/* Lead Name Banner */}
             {leadName && (
                 <div className="mb-4 p-3 bg-brand-primary/10 border border-brand-primary/20 rounded-2xl shrink-0">
                     <p className="text-[9px] font-black uppercase text-brand-primary tracking-widest leading-none mb-1">
                         Quoting for
                     </p>
-                    <p className="text-lg font-black text-slate-900 dark:text-white uppercase leading-none">
+                    <p className="text-lg font-black text-slate-900 uppercase leading-none">
                         {leadName}
                     </p>
                 </div>
@@ -83,11 +83,11 @@ export default function PricingCard({
                     .map((item, idx) => (
                         <div key={idx} className="group/item relative">
                             <div className="flex justify-between items-center">
-                                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                                     {item.label}
                                 </span>
                                 <span
-                                    className={`text-[11px] font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'}`}
+                                    className={`text-[11px] font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700'}`}
                                 >
                                     {item.isDeduction ? '-' : ''}₹
                                     {typeof item.value === 'number'
@@ -107,7 +107,7 @@ export default function PricingCard({
                                             <p className="text-[9px] font-black uppercase tracking-widest text-brand-primary mb-0.5">
                                                 {item.label}
                                             </p>
-                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">
+                                            <p className="text-[9px] text-slate-500 font-medium">
                                                 Breakdown & Details
                                             </p>
                                         </div>
@@ -124,7 +124,7 @@ export default function PricingCard({
                                                             <span className="text-[9px] font-bold text-white uppercase tracking-tighter">
                                                                 {opt.name.replace(' Registration', '')}
                                                             </span>
-                                                            <span className="text-[8px] text-slate-400 dark:text-slate-400 max-w-[120px] truncate">
+                                                            <span className="text-[8px] text-slate-400 max-w-[120px] truncate">
                                                                 {opt.description}
                                                             </span>
                                                         </div>
@@ -146,7 +146,7 @@ export default function PricingCard({
                                                             key={bIdx}
                                                             className="flex justify-between items-center text-[9px]"
                                                         >
-                                                            <span className="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">
+                                                            <span className="text-slate-600 font-bold uppercase tracking-tight">
                                                                 {b.label}
                                                             </span>
                                                             <span className="text-white font-mono">
@@ -163,7 +163,7 @@ export default function PricingCard({
                                                 {item.helpText.map((text, hIdx) => (
                                                     <p
                                                         key={hIdx}
-                                                        className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed"
+                                                        className="text-[9px] text-slate-500 leading-relaxed"
                                                     >
                                                         • {text}
                                                     </p>

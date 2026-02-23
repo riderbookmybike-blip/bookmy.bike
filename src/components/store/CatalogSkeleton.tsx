@@ -9,24 +9,24 @@ interface SkeletonCardProps {
 export const ProductCardSkeleton = ({ viewMode = 'grid' }: SkeletonCardProps) => {
     if (viewMode === 'list') {
         return (
-            <div className="flex gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-white/5 animate-pulse">
+            <div className="flex gap-4 p-4 bg-white rounded-2xl border border-slate-100 animate-pulse">
                 {/* Image Skeleton */}
-                <div className="w-32 h-24 bg-slate-200 dark:bg-slate-800 rounded-xl shrink-0" />
+                <div className="w-32 h-24 bg-slate-200 rounded-xl shrink-0" />
 
                 {/* Content */}
                 <div className="flex-1 space-y-3">
-                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24" />
-                    <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-40" />
+                    <div className="h-4 bg-slate-200 rounded w-24" />
+                    <div className="h-5 bg-slate-200 rounded w-40" />
                     <div className="flex gap-4">
-                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-20" />
-                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16" />
+                        <div className="h-4 bg-slate-200 rounded w-20" />
+                        <div className="h-4 bg-slate-200 rounded w-16" />
                     </div>
                 </div>
 
                 {/* Price */}
                 <div className="text-right space-y-2">
-                    <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-24 ml-auto" />
-                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16 ml-auto" />
+                    <div className="h-6 bg-slate-200 rounded w-24 ml-auto" />
+                    <div className="h-4 bg-slate-200 rounded w-16 ml-auto" />
                 </div>
             </div>
         );
@@ -34,38 +34,38 @@ export const ProductCardSkeleton = ({ viewMode = 'grid' }: SkeletonCardProps) =>
 
     // Grid view skeleton
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-white/5 overflow-hidden animate-pulse">
+        <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden animate-pulse">
             {/* Image Area */}
-            <div className="relative aspect-[4/3] bg-slate-200 dark:bg-slate-800">
+            <div className="relative aspect-[4/3] bg-slate-200">
                 {/* Brand logo skeleton */}
-                <div className="absolute top-3 left-3 w-12 h-6 bg-slate-300 dark:bg-slate-700 rounded" />
+                <div className="absolute top-3 left-3 w-12 h-6 bg-slate-300 rounded" />
                 {/* Heart icon skeleton */}
-                <div className="absolute top-3 right-3 w-8 h-8 bg-slate-300 dark:bg-slate-700 rounded-full" />
+                <div className="absolute top-3 right-3 w-8 h-8 bg-slate-300 rounded-full" />
             </div>
 
             {/* Content */}
             <div className="p-4 space-y-3">
                 {/* Model name */}
-                <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                <div className="h-5 bg-slate-200 rounded w-3/4" />
 
                 {/* Specs row */}
                 <div className="flex gap-3">
-                    <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-full w-16" />
-                    <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-full w-20" />
+                    <div className="h-6 bg-slate-200 rounded-full w-16" />
+                    <div className="h-6 bg-slate-200 rounded-full w-20" />
                 </div>
 
                 {/* Price */}
-                <div className="pt-2 border-t border-slate-100 dark:border-white/5">
-                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-20 mb-2" />
-                    <div className="h-7 bg-slate-200 dark:bg-slate-800 rounded w-28" />
+                <div className="pt-2 border-t border-slate-100">
+                    <div className="h-4 bg-slate-200 rounded w-20 mb-2" />
+                    <div className="h-7 bg-slate-200 rounded w-28" />
                 </div>
 
                 {/* Color swatches */}
                 <div className="flex gap-2 pt-2">
-                    <div className="w-5 h-5 bg-slate-200 dark:bg-slate-800 rounded-full" />
-                    <div className="w-5 h-5 bg-slate-200 dark:bg-slate-800 rounded-full" />
-                    <div className="w-5 h-5 bg-slate-200 dark:bg-slate-800 rounded-full" />
-                    <div className="w-5 h-5 bg-slate-200 dark:bg-slate-800 rounded-full" />
+                    <div className="w-5 h-5 bg-slate-200 rounded-full" />
+                    <div className="w-5 h-5 bg-slate-200 rounded-full" />
+                    <div className="w-5 h-5 bg-slate-200 rounded-full" />
+                    <div className="w-5 h-5 bg-slate-200 rounded-full" />
                 </div>
             </div>
         </div>

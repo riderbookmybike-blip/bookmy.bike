@@ -52,27 +52,27 @@ import { computeOClubPricing, OCLUB_COIN_VALUE } from '@/lib/oclub/coin';
 const FinanceTab = dynamic(() => import('./Personalize/Tabs/FinanceTab'), {
     loading: () => (
         <div className="space-y-6 animate-pulse">
-            <div className="h-20 bg-slate-100 dark:bg-white/5 rounded-3xl" />
-            <div className="h-40 bg-slate-100 dark:bg-white/5 rounded-3xl" />
-            <div className="h-32 bg-slate-100 dark:bg-white/5 rounded-3xl" />
+            <div className="h-20 bg-slate-100 rounded-3xl" />
+            <div className="h-40 bg-slate-100 rounded-3xl" />
+            <div className="h-32 bg-slate-100 rounded-3xl" />
         </div>
     ),
 });
 
 const InsuranceTab = dynamic(() => import('./Personalize/Tabs/InsuranceTab'), {
-    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />,
+    loading: () => <div className="h-64 bg-slate-100 rounded-3xl animate-pulse" />,
 });
 
 const RegistrationTab = dynamic(() => import('./Personalize/Tabs/RegistrationTab'), {
-    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />,
+    loading: () => <div className="h-64 bg-slate-100 rounded-3xl animate-pulse" />,
 });
 
 const ServicesTab = dynamic(() => import('./Personalize/Tabs/ServicesTab'), {
-    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />,
+    loading: () => <div className="h-64 bg-slate-100 rounded-3xl animate-pulse" />,
 });
 
 const WarrantyTab = dynamic(() => import('./Personalize/Tabs/WarrantyTab'), {
-    loading: () => <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />,
+    loading: () => <div className="h-64 bg-slate-100 rounded-3xl animate-pulse" />,
 });
 
 import PricingCard from './Personalize/Cards/PricingCard';
@@ -508,8 +508,8 @@ export function DesktopPDP({
                     disabled={isMandatory}
                     className={`w-full h-full p-4 rounded-3xl border transition-all duration-500 flex flex-col justify-between gap-4 group/btn
                         ${isSelected
-                            ? 'bg-brand-primary/[0.08] dark:bg-brand-primary/[0.04] border-brand-primary/40 shadow-[0_15px_40px_rgba(255,215,0,0.1)]'
-                            : 'bg-white/40 dark:bg-white/[0.02] border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10 hover:bg-white dark:hover:bg-white/[0.04]'
+                            ? 'bg-brand-primary/[0.08] border-brand-primary/40 shadow-[0_15px_40px_rgba(255,215,0,0.1)]'
+                            : 'bg-white/40 border-slate-100 hover:border-slate-200 hover:bg-white'
                         } ${isMandatory ? 'cursor-default' : 'cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5'}`}
                 >
                     <div className="w-full flex items-start justify-between gap-3">
@@ -518,7 +518,7 @@ export function DesktopPDP({
                                 className={`w-9 h-9 rounded-2xl flex items-center justify-center border transition-all duration-500 shrink-0
                                 ${isSelected
                                         ? 'bg-brand-primary text-black border-brand-primary shadow-[0_0_20px_rgba(255,215,0,0.5)] scale-105'
-                                        : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-zinc-600 border-slate-200 dark:border-white/10'
+                                        : 'bg-slate-100 text-slate-400 border-slate-200'
                                     }`}
                             >
                                 {isRadio ? (
@@ -535,18 +535,18 @@ export function DesktopPDP({
                             </div>
                             <div className="flex flex-col items-start min-w-0">
                                 <span
-                                    className={`text-xs font-black uppercase tracking-tight leading-tight mb-1 truncate w-full ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-zinc-400'}`}
+                                    className={`text-xs font-black uppercase tracking-tight leading-tight mb-1 truncate w-full ${isSelected ? 'text-slate-900' : 'text-slate-500'}`}
                                 >
                                     {item.displayName || item.name}
                                 </span>
                                 <div className="flex items-baseline gap-1.5">
                                     <span
-                                        className={`text-sm font-black font-mono ${isSelected ? 'text-brand-primary' : 'text-slate-900 dark:text-zinc-300'}`}
+                                        className={`text-sm font-black font-mono ${isSelected ? 'text-brand-primary' : 'text-slate-900'}`}
                                     >
                                         ₹{finalPrice.toLocaleString()}
                                     </span>
                                     {item.discountPrice > 0 && (
-                                        <span className="text-[10px] text-slate-400 dark:text-zinc-600 line-through font-bold">
+                                        <span className="text-[10px] text-slate-400 line-through font-bold">
                                             ₹{item.price.toLocaleString()}
                                         </span>
                                     )}
@@ -565,7 +565,7 @@ export function DesktopPDP({
 
                     {item.description && (
                         <p
-                            className={`text-[10px] leading-relaxed text-left line-clamp-2 ${isSelected ? 'text-slate-700 dark:text-zinc-400' : 'text-slate-400 dark:text-zinc-600'}`}
+                            className={`text-[10px] leading-relaxed text-left line-clamp-2 ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}
                         >
                             {item.description}
                         </p>
@@ -589,7 +589,7 @@ export function DesktopPDP({
                             {breakdown && breakdown.length > 0 && (
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                                             Price Breakdown
                                         </span>
                                         <div className="flex-1 h-px bg-white/5" />
@@ -663,15 +663,15 @@ export function DesktopPDP({
                                 key={acc.id}
                                 onClick={() => !acc.isMandatory && toggleAccessory(acc.id)}
                                 className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] ${isSelected
-                                    ? 'border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10'
-                                    : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-white/[0.02]'
-                                    } ${idx > 0 ? 'border-t border-t-slate-100/80 dark:border-t-white/5' : ''}`}
+                                    ? 'border-l-emerald-500 bg-emerald-50/50'
+                                    : 'border-l-transparent hover:bg-slate-50'
+                                    } ${idx > 0 ? 'border-t border-t-slate-100/80' : ''}`}
                             >
                                 {/* Checkbox */}
                                 <div
                                     className={`w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all shrink-0 ${isSelected
-                                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40'
-                                        : 'border-2 border-slate-300 dark:border-zinc-600 group-hover:border-emerald-400'
+                                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
+                                        : 'border-2 border-slate-300 group-hover:border-emerald-400'
                                         }`}
                                 >
                                     {isSelected && <CheckCircle2 size={12} strokeWidth={3} />}
@@ -680,8 +680,8 @@ export function DesktopPDP({
                                 {/* Image */}
                                 <div
                                     className={`w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${skuImg
-                                        ? 'bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 shadow-sm'
-                                        : 'bg-slate-50 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10'
+                                        ? 'bg-white border border-slate-100 shadow-sm'
+                                        : 'bg-slate-50 border border-dashed border-slate-200'
                                         }`}
                                 >
                                     {skuImg ? (
@@ -693,7 +693,7 @@ export function DesktopPDP({
                                             className="object-contain"
                                         />
                                     ) : (
-                                        <Package size={16} className="text-slate-300 dark:text-zinc-600" />
+                                        <Package size={16} className="text-slate-300" />
                                     )}
                                 </div>
 
@@ -701,21 +701,21 @@ export function DesktopPDP({
                                 <div className="flex-1 min-w-0">
                                     <p
                                         className={`text-[12px] font-black tracking-tight leading-tight truncate ${isSelected
-                                            ? 'text-slate-900 dark:text-white'
-                                            : 'text-slate-700 dark:text-zinc-300'
+                                            ? 'text-slate-900'
+                                            : 'text-slate-700'
                                             }`}
                                     >
                                         {line1 || toTitle(acc.name)}
                                     </p>
                                     {subVariant && (
                                         <p
-                                            className={`text-[11px] font-medium mt-0.5 truncate leading-tight ${isSelected ? 'text-slate-600 dark:text-zinc-400' : 'text-slate-500 dark:text-zinc-400'}`}
+                                            className={`text-[11px] font-medium mt-0.5 truncate leading-tight ${isSelected ? 'text-slate-600' : 'text-slate-500'}`}
                                         >
                                             {toTitle(subVariant)}
                                         </p>
                                     )}
                                     {line3 && (
-                                        <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 truncate leading-tight">
+                                        <p className="text-[10px] text-slate-400 mt-0.5 truncate leading-tight">
                                             {line3}
                                         </p>
                                     )}
@@ -723,17 +723,17 @@ export function DesktopPDP({
 
                                 {/* Qty ± */}
                                 {isSelected && (
-                                    <div className="flex items-center gap-1 shrink-0 bg-slate-100/80 dark:bg-white/5 rounded-lg px-1 py-0.5">
+                                    <div className="flex items-center gap-1 shrink-0 bg-slate-100/80 rounded-lg px-1 py-0.5">
                                         <button
                                             onClick={e => {
                                                 e.stopPropagation();
                                                 updateQuantity(acc.id, Math.max(1, quantity - 1));
                                             }}
-                                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 dark:text-zinc-400 text-sm font-bold hover:bg-white dark:hover:bg-white/10 transition-colors"
+                                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 text-sm font-bold hover:bg-white transition-colors"
                                         >
                                             −
                                         </button>
-                                        <span className="w-5 text-center text-[11px] font-black text-slate-700 dark:text-zinc-300">
+                                        <span className="w-5 text-center text-[11px] font-black text-slate-700">
                                             {quantity}
                                         </span>
                                         <button
@@ -741,7 +741,7 @@ export function DesktopPDP({
                                                 e.stopPropagation();
                                                 updateQuantity(acc.id, Math.min(maxQty, quantity + 1));
                                             }}
-                                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 dark:text-zinc-400 text-sm font-bold hover:bg-white dark:hover:bg-white/10 transition-colors"
+                                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 text-sm font-bold hover:bg-white transition-colors"
                                         >
                                             +
                                         </button>
@@ -752,18 +752,18 @@ export function DesktopPDP({
                                 <div className="flex flex-col items-end shrink-0 min-w-[72px]">
                                     <span
                                         className={`text-[13px] font-extrabold tabular-nums ${isSelected
-                                            ? 'text-emerald-600 dark:text-emerald-400'
-                                            : 'text-slate-800 dark:text-zinc-200'
+                                            ? 'text-emerald-600'
+                                            : 'text-slate-800'
                                             }`}
                                     >
                                         {finalPrice === 0 ? 'FREE' : `₹${finalPrice.toLocaleString()}`}
                                     </span>
                                     {hasDiscount && (
                                         <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[10px] text-slate-400 dark:text-zinc-600 line-through tabular-nums">
+                                            <span className="text-[10px] text-slate-400 line-through tabular-nums">
                                                 ₹{acc.price.toLocaleString()}
                                             </span>
-                                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded-full leading-none">
+                                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
                                                 {savingsPct}% off
                                             </span>
                                         </div>
@@ -806,15 +806,15 @@ export function DesktopPDP({
                                 key={item.id}
                                 onClick={() => !isMandatory && onToggle(item.id)}
                                 className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] ${selected
-                                    ? 'border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10'
-                                    : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-white/[0.02]'
-                                    } ${idx > 0 ? 'border-t border-t-slate-100/80 dark:border-t-white/5' : ''} ${isMandatory ? 'cursor-default' : ''}`}
+                                    ? 'border-l-emerald-500 bg-emerald-50/50'
+                                    : 'border-l-transparent hover:bg-slate-50'
+                                    } ${idx > 0 ? 'border-t border-t-slate-100/80' : ''} ${isMandatory ? 'cursor-default' : ''}`}
                             >
                                 {/* Checkbox / Radio */}
                                 <div
                                     className={`w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all shrink-0 ${selected
-                                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40'
-                                        : 'border-2 border-slate-300 dark:border-zinc-600 group-hover:border-emerald-400'
+                                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
+                                        : 'border-2 border-slate-300 group-hover:border-emerald-400'
                                         }`}
                                 >
                                     {selected &&
@@ -829,14 +829,14 @@ export function DesktopPDP({
                                 <div className="flex-1 min-w-0">
                                     <p
                                         className={`text-[12px] font-semibold leading-tight truncate ${selected
-                                            ? 'text-slate-900 dark:text-white'
-                                            : 'text-slate-700 dark:text-zinc-300'
+                                            ? 'text-slate-900'
+                                            : 'text-slate-700'
                                             }`}
                                     >
                                         {toTitle(item.displayName || item.name)}
                                     </p>
                                     {item.description && (
-                                        <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 truncate leading-tight">
+                                        <p className="text-[10px] text-slate-400 mt-0.5 truncate leading-tight">
                                             {item.description}
                                         </p>
                                     )}
@@ -875,18 +875,18 @@ export function DesktopPDP({
                                 <div className="flex flex-col items-end shrink-0 min-w-[72px]">
                                     <span
                                         className={`text-[13px] font-extrabold tabular-nums ${selected
-                                            ? 'text-emerald-600 dark:text-emerald-400'
-                                            : 'text-slate-800 dark:text-zinc-200'
+                                            ? 'text-emerald-600'
+                                            : 'text-slate-800'
                                             }`}
                                     >
                                         {finalPrice === 0 ? 'FREE' : `₹${finalPrice.toLocaleString()}`}
                                     </span>
                                     {hasDiscount && (
                                         <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[10px] text-slate-400 dark:text-zinc-600 line-through tabular-nums">
+                                            <span className="text-[10px] text-slate-400 line-through tabular-nums">
                                                 ₹{item.price.toLocaleString()}
                                             </span>
-                                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded-full leading-none">
+                                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
                                                 {savingsPct}% off
                                             </span>
                                         </div>
@@ -921,7 +921,7 @@ export function DesktopPDP({
             const totalGst = Math.max(0, totalInsurance - netPremium);
 
             const TreeLine = () => (
-                <span className="text-slate-300 dark:text-zinc-700 mr-2 text-[13px] font-light select-none">└</span>
+                <span className="text-slate-300 mr-2 text-[13px] font-light select-none">└</span>
             );
 
             // Tooltip descriptions for insurance components
@@ -960,14 +960,14 @@ export function DesktopPDP({
                 if (!tip) return null;
                 return (
                     <span className="relative group/tip inline-flex ml-1">
-                        <span className="w-3.5 h-3.5 rounded-full bg-slate-100 dark:bg-zinc-800 inline-flex items-center justify-center cursor-help shrink-0 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
-                            <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 leading-none select-none">
+                        <span className="w-3.5 h-3.5 rounded-full bg-slate-100 inline-flex items-center justify-center cursor-help shrink-0 hover:bg-slate-200 transition-colors">
+                            <span className="text-[8px] font-bold text-slate-400 leading-none select-none">
                                 i
                             </span>
                         </span>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 px-3 py-2 rounded-lg bg-slate-800 dark:bg-zinc-200 text-[10px] leading-relaxed text-white dark:text-zinc-900 font-medium shadow-lg opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-200 z-50 pointer-events-none">
+                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 px-3 py-2 rounded-lg bg-slate-800 text-[10px] leading-relaxed text-white font-medium shadow-lg opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-200 z-50 pointer-events-none">
                             {tip}
-                            <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800 dark:border-t-zinc-200" />
+                            <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
                         </span>
                     </span>
                 );
@@ -977,32 +977,32 @@ export function DesktopPDP({
                 <>
                     <div>
                         {/* Header: INSURANCE PACKAGE */}
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 flex items-center gap-2">
+                        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
                             <Shield size={14} className="text-emerald-500" />
-                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">
+                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
                                 Insurance Package
                             </span>
                         </div>
 
                         {/* Third Party (Basic) */}
-                        <div className="px-4 py-2.5 border-b border-slate-50 dark:border-white/[0.03]">
+                        <div className="px-4 py-2.5 border-b border-slate-50">
                             <div className="flex items-center justify-between">
-                                <span className="flex items-center text-[11px] font-semibold text-slate-700 dark:text-zinc-300">
+                                <span className="flex items-center text-[11px] font-semibold text-slate-700">
                                     <TreeLine />
                                     Third Party (Basic)
                                     <InfoTip tip={tipMap['tp']} />
                                 </span>
-                                <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                <span className="text-[12px] font-bold tabular-nums text-slate-700">
                                     ₹{Number(insuranceTP || 0).toLocaleString()}
                                 </span>
                             </div>
                             <div className="ml-6 mt-1 space-y-0.5">
                                 <div className="flex items-center justify-between">
-                                    <span className="flex items-center text-[10px] text-slate-500 dark:text-zinc-500 italic">
+                                    <span className="flex items-center text-[10px] text-slate-500 italic">
                                         <TreeLine />
                                         Liability Only (5 Years Cover)
                                     </span>
-                                    <span className="text-[10px] tabular-nums text-slate-500 dark:text-zinc-500">
+                                    <span className="text-[10px] tabular-nums text-slate-500">
                                         ₹{Number(insuranceTP || 0).toLocaleString()}
                                     </span>
                                 </div>
@@ -1010,7 +1010,7 @@ export function DesktopPDP({
                                     ?.filter((b: any) => !b.label.toLowerCase().includes('gst'))
                                     .map((b: any, i: number) => (
                                         <div key={i} className="flex items-center justify-between ml-5">
-                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-600">
+                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
                                                 {b.label}: ₹{Number(b.amount || 0).toLocaleString()}
                                             </span>
                                         </div>
@@ -1019,24 +1019,24 @@ export function DesktopPDP({
                         </div>
 
                         {/* Own Damage (OD) */}
-                        <div className="px-4 py-2.5 border-b border-slate-50 dark:border-white/[0.03]">
+                        <div className="px-4 py-2.5 border-b border-slate-50">
                             <div className="flex items-center justify-between">
-                                <span className="flex items-center text-[11px] font-semibold text-slate-700 dark:text-zinc-300">
+                                <span className="flex items-center text-[11px] font-semibold text-slate-700">
                                     <TreeLine />
                                     Own Damage (OD)
                                     <InfoTip tip={tipMap['od']} />
                                 </span>
-                                <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                <span className="text-[12px] font-bold tabular-nums text-slate-700">
                                     ₹{Number(insuranceOD || 0).toLocaleString()}
                                 </span>
                             </div>
                             <div className="ml-6 mt-1 space-y-0.5">
                                 <div className="flex items-center justify-between">
-                                    <span className="flex items-center text-[10px] text-slate-500 dark:text-zinc-500 italic">
+                                    <span className="flex items-center text-[10px] text-slate-500 italic">
                                         <TreeLine />
                                         Comprehensive (1 Year Cover)
                                     </span>
-                                    <span className="text-[10px] tabular-nums text-slate-500 dark:text-zinc-500">
+                                    <span className="text-[10px] tabular-nums text-slate-500">
                                         ₹{Number(insuranceOD || 0).toLocaleString()}
                                     </span>
                                 </div>
@@ -1044,7 +1044,7 @@ export function DesktopPDP({
                                     ?.filter((b: any) => !b.label.toLowerCase().includes('gst'))
                                     .map((b: any, i: number) => (
                                         <div key={i} className="flex items-center justify-between ml-5">
-                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-600">
+                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
                                                 {b.label}: ₹{Number(b.amount || 0).toLocaleString()}
                                             </span>
                                         </div>
@@ -1054,9 +1054,9 @@ export function DesktopPDP({
 
                         {/* OPTIONAL ADD-ONS section */}
                         {availableInsuranceAddons.length > 0 && (
-                            <div className="border-t border-slate-200/80 dark:border-white/10">
-                                <div className="px-4 py-2 bg-slate-50/60 dark:bg-white/[0.015]">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-zinc-500">
+                            <div className="border-t border-slate-200/80">
+                                <div className="px-4 py-2 bg-slate-50/60">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
                                         Optional Add-Ons
                                     </span>
                                 </div>
@@ -1072,7 +1072,7 @@ export function DesktopPDP({
                                             onClick={() => {
                                                 if (!isBundled) toggleInsuranceAddon(addon.id);
                                             }}
-                                            className={`px-4 py-2.5 border-t border-slate-50 dark:border-white/[0.03] transition-all duration-200 ${!isBundled ? 'cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.015]' : ''}`}
+                                            className={`px-4 py-2.5 border-t border-slate-50 transition-all duration-200 ${!isBundled ? 'cursor-pointer hover:bg-slate-50/50' : ''}`}
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2.5">
@@ -1080,8 +1080,8 @@ export function DesktopPDP({
                                                     {!isBundled ? (
                                                         <div
                                                             className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-all duration-200 ${isActive
-                                                                ? 'bg-emerald-500 shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40'
-                                                                : 'border-[1.5px] border-slate-300 dark:border-zinc-600 hover:border-emerald-400'
+                                                                ? 'bg-emerald-500 shadow-sm shadow-emerald-200'
+                                                                : 'border-[1.5px] border-slate-300 hover:border-emerald-400'
                                                                 }`}
                                                         >
                                                             {isActive && (
@@ -1101,9 +1101,9 @@ export function DesktopPDP({
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <div className="w-4 h-4 rounded bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                                                        <div className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center shrink-0">
                                                             <svg
-                                                                className="w-2.5 h-2.5 text-slate-400 dark:text-zinc-500"
+                                                                className="w-2.5 h-2.5 text-slate-400"
                                                                 fill="none"
                                                                 viewBox="0 0 24 24"
                                                                 stroke="currentColor"
@@ -1118,19 +1118,19 @@ export function DesktopPDP({
                                                         </div>
                                                     )}
                                                     <span
-                                                        className={`text-[11px] font-semibold ${isActive || isBundled ? 'text-slate-700 dark:text-zinc-300' : 'text-slate-500 dark:text-zinc-500'}`}
+                                                        className={`text-[11px] font-semibold ${isActive || isBundled ? 'text-slate-700' : 'text-slate-500'}`}
                                                     >
                                                         {addon.name}
                                                         <InfoTip tip={getAddonTip(addon.name)} />
                                                     </span>
                                                     {isBundled && (
-                                                        <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded-full">
+                                                        <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
                                                             Included
                                                         </span>
                                                     )}
                                                 </div>
                                                 <span
-                                                    className={`text-[12px] font-bold tabular-nums ${hasOffer && (isActive || isBundled) ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-zinc-300'}`}
+                                                    className={`text-[12px] font-bold tabular-nums ${hasOffer && (isActive || isBundled) ? 'text-emerald-600' : 'text-slate-700'}`}
                                                 >
                                                     {effectivePrice === 0 && (isActive || isBundled)
                                                         ? 'FREE'
@@ -1147,7 +1147,7 @@ export function DesktopPDP({
                                                             .map((b: any, i: number) => (
                                                                 <span
                                                                     key={i}
-                                                                    className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-600"
+                                                                    className="text-[9px] font-semibold uppercase tracking-wider text-slate-400"
                                                                 >
                                                                     {b.label}: ₹{Number(b.amount || 0).toLocaleString()}
                                                                 </span>
@@ -1166,35 +1166,35 @@ export function DesktopPDP({
                         )}
 
                         {/* Net Premium */}
-                        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200/80 dark:border-white/10">
-                            <span className="flex items-center text-[11px] text-slate-600 dark:text-zinc-400 font-medium">
+                        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200/80">
+                            <span className="flex items-center text-[11px] text-slate-600 font-medium">
                                 <TreeLine />
                                 Net Premium
                                 <InfoTip tip={tipMap['net_premium']} />
                             </span>
-                            <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                            <span className="text-[12px] font-bold tabular-nums text-slate-700">
                                 ₹{netPremium.toLocaleString()}
                             </span>
                         </div>
 
                         {/* GST */}
-                        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-50 dark:border-white/[0.03]">
-                            <span className="flex items-center text-[11px] text-slate-600 dark:text-zinc-400 font-medium">
+                        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-50">
+                            <span className="flex items-center text-[11px] text-slate-600 font-medium">
                                 <TreeLine />
                                 GST ({insuranceGstRate}% GST)
                                 <InfoTip tip={tipMap['gst']} />
                             </span>
-                            <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                            <span className="text-[12px] font-bold tabular-nums text-slate-700">
                                 ₹{totalGst.toLocaleString()}
                             </span>
                         </div>
 
                         {/* Total Insurance footer */}
-                        <div className="flex items-center justify-between px-4 py-2.5 border-t-2 border-slate-200 dark:border-white/10 bg-slate-50/40 dark:bg-white/[0.015]">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">
+                        <div className="flex items-center justify-between px-4 py-2.5 border-t-2 border-slate-200 bg-slate-50/40">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                                 Total Insurance
                             </span>
-                            <span className="text-[13px] font-black tabular-nums text-slate-900 dark:text-white">
+                            <span className="text-[13px] font-black tabular-nums text-slate-900">
                                 ₹{totalInsurance.toLocaleString()}
                             </span>
                         </div>
@@ -1234,16 +1234,16 @@ export function DesktopPDP({
 
             // Tree connector component
             const TreeLine = () => (
-                <span className="text-slate-300 dark:text-zinc-700 mr-2 text-[13px] font-light select-none">└</span>
+                <span className="text-slate-300 mr-2 text-[13px] font-light select-none">└</span>
             );
 
             return (
                 <>
-                    <div className="rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.02] overflow-hidden shadow-sm">
+                    <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
                         {/* Header: REGISTRATION (RTO) + Total */}
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 flex items-center gap-2">
+                        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
                             <ClipboardList size={14} className="text-emerald-500" />
-                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">
+                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
                                 Registration (RTO)
                             </span>
                         </div>
@@ -1254,13 +1254,13 @@ export function DesktopPDP({
                                 {fixedCharges.map((b: any, i: number) => (
                                     <div
                                         key={i}
-                                        className={`flex items-center justify-between px-4 py-2 ${i > 0 ? 'border-t border-slate-50 dark:border-white/[0.03]' : ''}`}
+                                        className={`flex items-center justify-between px-4 py-2 ${i > 0 ? 'border-t border-slate-50' : ''}`}
                                     >
-                                        <span className="flex items-center text-[11px] text-slate-600 dark:text-zinc-400 font-medium">
+                                        <span className="flex items-center text-[11px] text-slate-600 font-medium">
                                             <TreeLine />
                                             {b.label}
                                         </span>
-                                        <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                        <span className="text-[12px] font-bold tabular-nums text-slate-700">
                                             ₹{Number(b.amount || 0).toLocaleString()}
                                         </span>
                                     </div>
@@ -1269,9 +1269,9 @@ export function DesktopPDP({
                         )}
 
                         {/* Road Tax — section header + 3 vertical radio rows */}
-                        <div className="border-t border-slate-200/80 dark:border-white/10">
-                            <div className="px-4 py-2 bg-slate-50/60 dark:bg-white/[0.015]">
-                                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-zinc-500">
+                        <div className="border-t border-slate-200/80">
+                            <div className="px-4 py-2 bg-slate-50/60">
+                                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
                                     Road Tax
                                 </span>
                             </div>
@@ -1328,32 +1328,32 @@ export function DesktopPDP({
                                     <div
                                         key={typeId}
                                         onClick={() => setRegType(typeId)}
-                                        className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-200 border-l-[3px] border-t border-t-slate-50 dark:border-t-white/[0.03] ${isActive
-                                            ? 'border-l-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10'
-                                            : 'border-l-transparent hover:bg-slate-50/50 dark:hover:bg-white/[0.015]'
+                                        className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-200 border-l-[3px] border-t border-t-slate-50 ${isActive
+                                            ? 'border-l-emerald-500 bg-emerald-50/40'
+                                            : 'border-l-transparent hover:bg-slate-50/50'
                                             }`}
                                     >
                                         {/* Radio dot */}
                                         <div
                                             className={`w-4 h-4 rounded-full flex items-center justify-center transition-all shrink-0 ${isActive
-                                                ? 'bg-emerald-500 shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40'
-                                                : 'border-[1.5px] border-slate-300 dark:border-zinc-600'
+                                                ? 'bg-emerald-500 shadow-sm shadow-emerald-200'
+                                                : 'border-[1.5px] border-slate-300'
                                                 }`}
                                         >
                                             {isActive && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                         </div>
                                         <span
                                             className={`flex-1 text-[11px] font-semibold ${isActive
-                                                ? 'text-slate-900 dark:text-white'
-                                                : 'text-slate-600 dark:text-zinc-400'
+                                                ? 'text-slate-900'
+                                                : 'text-slate-600'
                                                 }`}
                                         >
                                             {displayName}
                                         </span>
                                         <span
                                             className={`text-[12px] font-bold tabular-nums ${isActive
-                                                ? 'text-emerald-600 dark:text-emerald-400'
-                                                : 'text-slate-700 dark:text-zinc-300'
+                                                ? 'text-emerald-600'
+                                                : 'text-slate-700'
                                                 }`}
                                         >
                                             ₹{roadTaxAmt.toLocaleString()}
@@ -1365,36 +1365,36 @@ export function DesktopPDP({
 
                         {/* Cess — tree line, auto-updates per type */}
                         {cessEntry && (
-                            <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200/80 dark:border-white/10">
-                                <span className="flex items-center text-[11px] text-slate-600 dark:text-zinc-400 font-medium">
+                            <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200/80">
+                                <span className="flex items-center text-[11px] text-slate-600 font-medium">
                                     <TreeLine />
                                     Cess Amount
                                 </span>
-                                <span className="text-[12px] font-bold tabular-nums text-slate-700 dark:text-zinc-300">
+                                <span className="text-[12px] font-bold tabular-nums text-slate-700">
                                     ₹{Number(cessEntry.amount || 0).toLocaleString()}
                                 </span>
                             </div>
                         )}
 
                         {/* Total footer */}
-                        <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-200/80 dark:border-white/10 bg-slate-50/40 dark:bg-white/[0.01]">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">
+                        <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-200/80 bg-slate-50/40">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                                 Total Registration
                             </span>
-                            <span className="text-[13px] font-black tabular-nums text-slate-900 dark:text-white">
+                            <span className="text-[13px] font-black tabular-nums text-slate-900">
                                 ₹{(selectedItem?.price || 0).toLocaleString()}
                             </span>
                         </div>
                     </div>
 
                     {/* Info: Required Documents / Process for selected type */}
-                    <div className="mt-3 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] px-4 py-3">
+                    <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">
                         {regType === 'STATE' && (
                             <div className="space-y-1.5">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                                     State Registration
                                 </p>
-                                <p className="text-[10.5px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                                <p className="text-[10.5px] text-slate-500 leading-relaxed">
                                     Valid for the state of registration. You will need to provide Aadhaar Card, Address
                                     Proof, Passport-size Photos, and PAN Card. Processing takes 7–15 working days at the
                                     local RTO.
@@ -1403,10 +1403,10 @@ export function DesktopPDP({
                         )}
                         {regType === 'BH' && (
                             <div className="space-y-1.5">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                                     Bharat Series (BH)
                                 </p>
-                                <p className="text-[10.5px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                                <p className="text-[10.5px] text-slate-500 leading-relaxed">
                                     Pan-India validity — no re-registration needed when moving states. Ideal for
                                     Defence, Central Govt, PSU employees &amp; private-sector transferees. You will need
                                     Aadhaar Card, Address Proof, Passport-size Photos, PAN Card, and Employer Transfer
@@ -1416,10 +1416,10 @@ export function DesktopPDP({
                         )}
                         {regType === 'COMPANY' && (
                             <div className="space-y-1.5">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                                     Company Registration
                                 </p>
-                                <p className="text-[10.5px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                                <p className="text-[10.5px] text-slate-500 leading-relaxed">
                                     Registered under a corporate entity. You will need Company PAN Card, GST
                                     Certificate, Board Resolution or Authorization Letter, and Certificate of
                                     Incorporation. Higher road tax applies.
@@ -1498,7 +1498,7 @@ export function DesktopPDP({
     const ActionIcon = ({ icon: Icon, onClick, colorClass = 'text-slate-400 hover:text-brand-primary' }: any) => (
         <button
             onClick={onClick}
-            className={`p-2.5 rounded-full hover:bg-white dark:hover:bg-white/10 transition-all duration-300 hover:scale-110 active:scale-95 group/icon ${colorClass}`}
+            className={`p-2.5 rounded-full hover:bg-white transition-all duration-300 hover:scale-110 active:scale-95 group/icon ${colorClass}`}
         >
             <Icon size={18} strokeWidth={2.5} />
         </button>
@@ -1540,11 +1540,11 @@ export function DesktopPDP({
     };
 
     return (
-        <div className="relative min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500 font-sans pt-0 pb-20">
+        <div className="relative min-h-screen bg-slate-50 transition-colors duration-500 font-sans pt-0 pb-20">
             {/* Cinematic Mesh Background */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div
-                    className="absolute inset-0 opacity-40 dark:opacity-20 transition-all duration-[2000ms] blur-[120px]"
+                    className="absolute inset-0 opacity-40 transition-all duration-[2000ms] blur-[120px]"
                     style={{
                         background: `
                             radial-gradient(circle at 20% 20%, ${activeColorConfig.hex}44, transparent 40%),
@@ -1601,19 +1601,19 @@ export function DesktopPDP({
                                 onClick={() => setHeroActiveTab(card.id)}
                                 className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
                                     ${isActive
-                                        ? 'flex-[3] bg-white dark:bg-[#0b0d10] border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_40px_80px_rgba(0,0,0,0.5)]'
-                                        : 'flex-[0.5] bg-white/40 dark:bg-white/[0.03] backdrop-blur-xl border-white/60 dark:border-white/5 hover:bg-white/60 dark:hover:bg-white/[0.06] shadow-lg shadow-black/[0.03]'
+                                        ? 'flex-[3] bg-white border-slate-200 shadow-2xl,0,0,0.5)]'
+                                        : 'flex-[0.5] bg-white/40 backdrop-blur-xl border-white/60 hover:bg-white/60 shadow-lg shadow-black/[0.03]'
                                     }`}
                             >
                                 {/* Header */}
                                 <div
-                                    className={`p-6 items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100 dark:border-white/5' : ''} ${isActive && card.id === 'GALLERY' ? 'grid grid-cols-[auto_1fr_auto]' : 'flex'}`}
+                                    className={`p-6 items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100' : ''} ${isActive && card.id === 'GALLERY' ? 'grid grid-cols-[auto_1fr_auto]' : 'flex'}`}
                                 >
                                     {/* Left: Icon + Label + Color Name */}
                                     <div className="flex items-center gap-3">
                                         <div
                                             className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
-                                            ${isActive ? 'bg-brand-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-slate-200 dark:bg-white/5 text-slate-400 dark:text-zinc-600'}`}
+                                            ${isActive ? 'bg-brand-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-slate-200 text-slate-400'}`}
                                         >
                                             <Icon size={20} />
                                         </div>
@@ -1624,7 +1624,7 @@ export function DesktopPDP({
                                                 {card.label}
                                             </span>
                                             {card.id !== 'FINANCE' && card.id !== 'PRICING' && (
-                                                <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold whitespace-nowrap">
+                                                <span className="text-[10px] text-slate-500 font-bold whitespace-nowrap">
                                                     {card.subtext}
                                                 </span>
                                             )}
@@ -1651,7 +1651,7 @@ export function DesktopPDP({
                                                                 className={`w-7 h-7 rounded-full transition-all duration-300 border-2 ${isSel ? 'border-[#F4B000] scale-110 shadow-[0_0_8px_rgba(255,215,0,0.4)]' : 'border-transparent hover:scale-110'}`}
                                                             >
                                                                 <div
-                                                                    className="w-full h-full rounded-full border border-black/10 dark:border-white/20 relative overflow-hidden"
+                                                                    className="w-full h-full rounded-full border border-black/10 relative overflow-hidden"
                                                                     style={{ backgroundColor: color.hex }}
                                                                 >
                                                                     {/* Shimmer gloss effect — enhanced */}
@@ -1682,7 +1682,7 @@ export function DesktopPDP({
                                             </button>
                                             <button
                                                 onClick={() => handleSaveQuote()}
-                                                className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-all hover:scale-110 border border-black/10 dark:border-white/20"
+                                                className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-all hover:scale-110 border border-black/10"
                                                 title="Save to Favorites"
                                             >
                                                 <Heart size={14} className="text-rose-400" />
@@ -1848,7 +1848,7 @@ export function DesktopPDP({
                                                                     >
                                                                         <div className="flex flex-col">
                                                                             <span
-                                                                                className={`text-[11px] font-bold uppercase tracking-widest ${indent ? 'text-slate-400 dark:text-slate-500' : 'text-slate-500 dark:text-slate-400'}`}
+                                                                                className={`text-[11px] font-bold uppercase tracking-widest ${indent ? 'text-slate-400' : 'text-slate-500'}`}
                                                                             >
                                                                                 {label}
                                                                             </span>
@@ -1859,7 +1859,7 @@ export function DesktopPDP({
                                                                             )}
                                                                         </div>
                                                                         <span
-                                                                            className={`text-[11px] font-mono font-black ${accent || 'text-slate-700 dark:text-slate-300'}`}
+                                                                            className={`text-[11px] font-mono font-black ${accent || 'text-slate-700'}`}
                                                                         >
                                                                             {value}
                                                                         </span>
@@ -1869,7 +1869,7 @@ export function DesktopPDP({
                                                                 return (
                                                                     <div className="flex flex-col h-full">
                                                                         {/* HEADER: Finance Partner */}
-                                                                        <div className="space-y-2 pb-3 border-b border-slate-200/60 dark:border-white/5 shrink-0">
+                                                                        <div className="space-y-2 pb-3 border-b border-slate-200/60 shrink-0">
                                                                             <Row
                                                                                 label="Financier"
                                                                                 value={
@@ -1911,7 +1911,7 @@ export function DesktopPDP({
                                                                                 accent="text-brand-primary font-black"
                                                                             />
 
-                                                                            <div className="border-t border-slate-200/60 dark:border-white/5" />
+                                                                            <div className="border-t border-slate-200/60" />
 
                                                                             <Row
                                                                                 label="Down Payment"
@@ -1947,7 +1947,7 @@ export function DesktopPDP({
                                                                                 accent="text-brand-primary"
                                                                             />
 
-                                                                            <div className="border-t border-slate-200/60 dark:border-white/5" />
+                                                                            <div className="border-t border-slate-200/60" />
 
                                                                             <Row
                                                                                 label="Total Extra Pay"
@@ -1974,7 +1974,7 @@ export function DesktopPDP({
                                                 exit={{ opacity: 0 }}
                                                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
                                             >
-                                                <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 dark:text-white/10 -rotate-90 whitespace-nowrap">
+                                                <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 -rotate-90 whitespace-nowrap">
                                                     {card.label}
                                                 </span>
                                             </motion.div>
@@ -1984,11 +1984,11 @@ export function DesktopPDP({
 
                                 {/* Section 3: Footer — Offer Price (PRICING only, shrink-0) */}
                                 {isActive && card.id === 'PRICING' && (
-                                    <div className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 dark:border-white/5 bg-brand-primary/[0.03] relative z-10">
+                                    <div className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03] relative z-10">
                                         <div className="flex justify-between items-end">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-1">
-                                                    <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-600 dark:text-slate-400">
+                                                    <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-600">
                                                         On-Road Price
                                                     </span>
                                                 </div>
@@ -1998,7 +1998,7 @@ export function DesktopPDP({
                                                             .filter(Boolean)
                                                             .join(' • ') || data.pricingSource;
                                                     return src ? (
-                                                        <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">
+                                                        <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest leading-none">
                                                             ({src})
                                                         </span>
                                                     ) : null;
@@ -2006,7 +2006,7 @@ export function DesktopPDP({
                                             </div>
                                             <div className="text-right flex flex-col items-end">
                                                 {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
-                                                    <span className="text-xs font-bold text-slate-400 dark:text-zinc-600 line-through decoration-red-500/50 decoration-2 mr-1">
+                                                    <span className="text-xs font-bold text-slate-400 line-through decoration-red-500/50 decoration-2 mr-1">
                                                         On Road ₹{(totalOnRoad + totalSavings).toLocaleString()}
                                                     </span>
                                                 )}
@@ -2014,7 +2014,7 @@ export function DesktopPDP({
                                                     ₹{displayOnRoad.toLocaleString()}
                                                 </span>
                                                 {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
-                                                    <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                                                    <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
                                                         ⚡ You Save ₹
                                                         {(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}
                                                     </span>
@@ -2030,18 +2030,18 @@ export function DesktopPDP({
                                 )}
                                 {/* Section 3: Footer — EMI (FINANCE_SUMMARY only, shrink-0) */}
                                 {isActive && card.id === 'FINANCE_SUMMARY' && (
-                                    <div className="shrink-0 min-h-[118px] pl-[76px] pr-[76px] pt-4 pb-8 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-[#0b0d10] relative z-10">
+                                    <div className="shrink-0 min-h-[118px] pl-[76px] pr-[76px] pt-4 pb-8 border-t border-slate-100 bg-white relative z-10">
                                         <div className="flex justify-between items-start">
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-600 dark:text-slate-400">
+                                                <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-600">
                                                     Monthly EMI
                                                 </span>
                                             </div>
                                             <div className="text-right flex flex-col items-end">
-                                                <span className="text-4xl font-black tracking-tight text-slate-900 dark:text-[#FFD700] font-mono tabular-nums leading-none">
+                                                <span className="text-4xl font-black tracking-tight text-slate-900 font-mono tabular-nums leading-none">
                                                     ₹{footerEmi.toLocaleString()}
                                                 </span>
-                                                <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                                                <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
                                                     / {emiTenure}mo
                                                 </span>
                                             </div>
@@ -2052,11 +2052,11 @@ export function DesktopPDP({
                                 {/* Section 3: Footer — Down Payment (FINANCE only, shrink-0) */}
                                 {isActive && card.id === 'FINANCE' && maxDownPayment > minDownPayment && (
                                     <div
-                                        className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 dark:border-white/5 bg-brand-primary/[0.03]"
+                                        className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03]"
                                         onClick={e => e.stopPropagation()}
                                     >
                                         <div className="flex items-center justify-between mb-1.5">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                                                 Down Payment
                                             </span>
                                             <div className="flex items-center gap-0">
@@ -2073,7 +2073,7 @@ export function DesktopPDP({
                                                             animateDP(from, val);
                                                         }
                                                     }}
-                                                    className="bg-transparent text-xs font-black font-mono tracking-tight text-slate-900 dark:text-white outline-none border-b border-transparent focus:border-brand-primary transition-all p-0"
+                                                    className="bg-transparent text-xs font-black font-mono tracking-tight text-slate-900 outline-none border-b border-transparent focus:border-brand-primary transition-all p-0"
                                                     style={{
                                                         width: `${Math.max(String(userDownPayment || 0).length, 1) * 8 + 4}px`,
                                                     }}
@@ -2121,8 +2121,8 @@ export function DesktopPDP({
                                                                 transform: 'translateX(-50%)',
                                                             }}
                                                         >
-                                                            <div className="w-[1px] h-[6px] bg-slate-400 dark:bg-white/25 rounded-full" />
-                                                            <span className="text-[6px] font-black text-slate-400 dark:text-white/25 mt-[1px] tabular-nums whitespace-nowrap">
+                                                            <div className="w-[1px] h-[6px] bg-slate-400 rounded-full" />
+                                                            <span className="text-[6px] font-black text-slate-400 mt-[1px] tabular-nums whitespace-nowrap">
                                                                 {label}
                                                             </span>
                                                         </div>
@@ -2136,7 +2136,7 @@ export function DesktopPDP({
                                                     milestones.push(
                                                         <div
                                                             key={v}
-                                                            className="absolute top-1/2 -translate-y-1/2 w-[1px] h-[2px] bg-slate-400 dark:bg-white opacity-10 rounded-full"
+                                                            className="absolute top-1/2 -translate-y-1/2 w-[1px] h-[2px] bg-slate-400 opacity-10 rounded-full"
                                                             style={{ left: `${pct}%` }}
                                                         />
                                                     );
@@ -2199,7 +2199,7 @@ export function DesktopPDP({
                                     card.id !== 'GALLERY' &&
                                     card.id !== 'FINANCE' &&
                                     card.id !== 'PRICING' && (
-                                        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 dark:from-[#0b0d10] dark:via-[#0b0d10]/40 to-transparent pointer-events-none z-10" />
+                                        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
                                     )}
                             </motion.div>
                         );
@@ -2228,7 +2228,7 @@ export function DesktopPDP({
                         return (
                             <div
                                 key={category.id}
-                                className="glass-panel bg-white/90 dark:bg-[#0b0d10]/40 rounded-3xl border border-slate-200 dark:border-white/5 shadow-xl overflow-hidden"
+                                className="glass-panel bg-white/90 rounded-3xl border border-slate-200 shadow-xl overflow-hidden"
                             >
                                 <button
                                     onClick={() => setMobileConfigOpen(isOpen ? null : category.id)}
@@ -2242,7 +2242,7 @@ export function DesktopPDP({
                                             <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
                                                 {category.label}
                                             </p>
-                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                            <p className="text-[11px] text-slate-500">
                                                 {category.subtext}
                                             </p>
                                         </div>
@@ -2254,7 +2254,7 @@ export function DesktopPDP({
                                 </button>
                                 {isOpen && (
                                     <div className="px-5 pb-5">
-                                        <div className="border-t border-slate-200/60 dark:border-white/5 pt-4 space-y-4">
+                                        <div className="border-t border-slate-200/60 pt-4 space-y-4">
                                             {renderCategoryContent(category.id)}
                                         </div>
                                     </div>
@@ -2283,17 +2283,17 @@ export function DesktopPDP({
                                 onClick={() => setActiveConfigTab(category.id)}
                                 className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
                                     ${isActive
-                                        ? 'flex-[3] bg-white dark:bg-[#0b0d10] border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_40px_80px_rgba(0,0,0,0.5)]'
-                                        : 'flex-[0.5] bg-white/40 dark:bg-white/[0.03] backdrop-blur-xl border-white/60 dark:border-white/5 hover:bg-white/60 dark:hover:bg-white/[0.06] shadow-lg shadow-black/[0.03]'
+                                        ? 'flex-[3] bg-white border-slate-200 shadow-2xl,0,0,0.5)]'
+                                        : 'flex-[0.5] bg-white/40 backdrop-blur-xl border-white/60 hover:bg-white/60 shadow-lg shadow-black/[0.03]'
                                     }`}
                             >
                                 {/* Header / Category Label (Always visible) */}
                                 <div
-                                    className={`p-6 flex items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100 dark:border-white/5' : ''}`}
+                                    className={`p-6 flex items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100' : ''}`}
                                 >
                                     <div
                                         className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
-                                        ${isActive ? 'bg-brand-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-slate-200 dark:bg-white/5 text-slate-400 dark:text-zinc-600'}`}
+                                        ${isActive ? 'bg-brand-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-slate-200 text-slate-400'}`}
                                     >
                                         <Icon size={20} />
                                     </div>
@@ -2304,7 +2304,7 @@ export function DesktopPDP({
                                         <span className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
                                             {category.label}
                                         </span>
-                                        <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold whitespace-nowrap">
+                                        <span className="text-[10px] text-slate-500 font-bold whitespace-nowrap">
                                             {category.subtext}
                                         </span>
                                     </div>
@@ -2334,7 +2334,7 @@ export function DesktopPDP({
                                                 exit={{ opacity: 0 }}
                                                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
                                             >
-                                                <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 dark:text-white/10 -rotate-90 whitespace-nowrap">
+                                                <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 -rotate-90 whitespace-nowrap">
                                                     {category.label}
                                                 </span>
                                             </motion.div>
@@ -2344,7 +2344,7 @@ export function DesktopPDP({
 
                                 {/* Unified Bottom Fade (Active state) */}
                                 {isActive && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 dark:from-[#0b0d10] dark:via-[#0b0d10]/40 to-transparent pointer-events-none z-10" />
+                                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
                                 )}
                             </motion.div>
                         );
@@ -2497,7 +2497,7 @@ export function DesktopPDP({
                                 }
                                 className={`h-11 px-5 md:px-6 font-black text-[11px] uppercase tracking-widest rounded-full shadow-xl flex items-center gap-2 transition-all group
                                 ${isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
-                                        ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                                         : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
                                     }
                             `}

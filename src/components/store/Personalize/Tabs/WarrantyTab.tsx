@@ -15,7 +15,7 @@ export default function WarrantyTab({ warrantyItems }: WarrantyTabProps) {
                 <Icon className="w-8 h-8" />
             </div>
             <div>
-                <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
+                <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 leading-none">
                     {title}
                 </h3>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1.5">{subtext}</p>

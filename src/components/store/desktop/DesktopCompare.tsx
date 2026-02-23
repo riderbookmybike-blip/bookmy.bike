@@ -348,22 +348,22 @@ function getBarPercent(val: string | null, allValues: (string | null)[]): number
 }
 
 function formatSpecValue(val: string | null, label: string): React.ReactNode {
-    if (!val) return <span className="text-slate-300 dark:text-white/20 italic">—</span>;
+    if (!val) return <span className="text-slate-300 italic">—</span>;
 
     const lower = val.trim().toLowerCase();
 
     // Boolean → icon
     if (lower === 'true' || lower === 'yes') {
         return (
-            <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
-                <Check size={12} className="text-emerald-600 dark:text-emerald-400" />
+            <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                <Check size={12} className="text-emerald-600" />
             </div>
         );
     }
     if (lower === 'false' || lower === 'no') {
         return (
-            <div className="w-5 h-5 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
-                <X size={12} className="text-red-400 dark:text-red-400/70" />
+            <div className="w-5 h-5 rounded-full bg-red-50 flex items-center justify-center">
+                <X size={12} className="text-red-400" />
             </div>
         );
     }
@@ -662,7 +662,7 @@ export default function DesktopCompare() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-slate-50 dark:bg-[#0b0d10] flex items-center justify-center">
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-10 h-10 border-2 border-[#F4B000] border-t-transparent rounded-full animate-spin" />
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
@@ -675,7 +675,7 @@ export default function DesktopCompare() {
 
     if (!modelGroup || sortedVariants.length === 0) {
         return (
-            <div className="min-h-screen bg-slate-50 dark:bg-[#0b0d10] flex items-center justify-center">
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-center space-y-4">
                     <p className="text-lg font-black uppercase tracking-widest text-slate-400">Model not found</p>
                     <button
@@ -691,34 +691,34 @@ export default function DesktopCompare() {
 
     return (
         <>
-            <div className="min-h-screen bg-slate-50 dark:bg-[#0b0d10] transition-colors duration-500">
+            <div className="min-h-screen bg-slate-50 transition-colors duration-500">
                 {/* Discovery Bar */}
                 <div className="page-container pt-4 pb-4">
                     <header className="hidden md:block sticky z-[90] py-0" style={{ top: 'var(--header-h)' }}>
                         <div className="w-full">
-                            <div className="rounded-full bg-slate-50/15 dark:bg-[#0b0d10]/25 backdrop-blur-3xl border border-slate-200 dark:border-white/10 shadow-2xl h-14 px-4 flex items-center">
+                            <div className="rounded-full bg-slate-50/15 backdrop-blur-3xl border border-slate-200 shadow-2xl h-14 px-4 flex items-center">
                                 <div className="flex items-center gap-3 w-full">
                                     <button
                                         onClick={() => router.push('/store/catalog')}
-                                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white shrink-0"
+                                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 border border-slate-200 text-slate-600 hover:text-slate-900 shrink-0"
                                         title="Back to Catalog"
                                     >
                                         <Menu size={16} />
                                     </button>
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-2 w-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2 h-10">
+                                        <div className="flex items-center gap-2 w-full bg-white/70 border border-slate-200 rounded-full px-4 py-2 h-10">
                                             <Search size={14} className="text-slate-400" />
                                             <input
                                                 type="text"
                                                 placeholder="Search brand, product, variant"
                                                 value={searchQuery}
                                                 onChange={e => setSearchQuery(e.target.value)}
-                                                className="flex-1 min-w-0 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                                                className="flex-1 min-w-0 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300"
                                             />
                                             {searchQuery && (
                                                 <button
                                                     onClick={() => setSearchQuery('')}
-                                                    className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                                    className="text-slate-400 hover:text-slate-900"
                                                 >
                                                     <X size={14} />
                                                 </button>
@@ -728,7 +728,7 @@ export default function DesktopCompare() {
                                     <div className="relative">
                                         <button
                                             onClick={handleShare}
-                                            className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:text-[#F4B000] hover:border-[#F4B000]/30 transition-all shrink-0"
+                                            className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 border border-slate-200 text-slate-600 hover:text-[#F4B000] hover:border-[#F4B000]/30 transition-all shrink-0"
                                             title="Share Comparison"
                                         >
                                             {shareTooltip ? (
@@ -780,10 +780,10 @@ export default function DesktopCompare() {
                             }}
                         >
                             <div className="page-container py-1">
-                                <div className="bg-white/95 dark:bg-[#0f1115]/95 backdrop-blur-xl border border-black/[0.06] dark:border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-0 py-2">
+                                <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-0 py-2">
                                     <div className="flex items-stretch">
                                         {/* Left label column — matches 180px spec key column */}
-                                        <div className="w-[180px] shrink-0 flex flex-col items-center justify-center px-3 border-r border-black/[0.04] dark:border-white/5">
+                                        <div className="w-[180px] shrink-0 flex flex-col items-center justify-center px-3 border-r border-black/[0.04]">
                                             <GitCompareArrows size={18} className="text-[#F4B000] mb-1.5" />
                                             <span className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400 text-center leading-tight">
                                                 {activeVariants.length} Variants
@@ -843,7 +843,7 @@ export default function DesktopCompare() {
                                                                     e.stopPropagation();
                                                                     removeVariant(v.id);
                                                                 }}
-                                                                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center hover:bg-red-500 hover:text-white text-slate-400 transition-all z-10"
+                                                                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center hover:bg-red-500 hover:text-white text-slate-400 transition-all z-10"
                                                                 title="Remove from comparison"
                                                             >
                                                                 <X size={10} />
@@ -860,7 +860,7 @@ export default function DesktopCompare() {
                                                             <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 truncate leading-tight">
                                                                 {v.make} {v.model}
                                                             </p>
-                                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate leading-tight mt-0.5">
+                                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-900 truncate leading-tight mt-0.5">
                                                                 {v.variant}
                                                             </p>
                                                             {/* Color Swatches */}
@@ -884,7 +884,7 @@ export default function DesktopCompare() {
                                                                                     }));
                                                                                 }
                                                                             }}
-                                                                            className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${currentHex === c.hexCode
+                                                                            className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${currentHex === c.hexCode
                                                                                 ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
                                                                                 : ''
                                                                                 }`}
@@ -909,10 +909,10 @@ export default function DesktopCompare() {
                         </div>
 
                         <div className="page-container py-6">
-                            <div className="bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="bg-white border border-black/[0.04] rounded-2xl overflow-hidden shadow-sm">
                                 {/* ── Financial Comparison Section ── */}
                                 <div>
-                                    <div className="px-4 py-2.5 border-b border-black/[0.04] dark:border-white/5 bg-gradient-to-r from-[#F4B000]/5 to-transparent">
+                                    <div className="px-4 py-2.5 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
                                         <div className="flex items-center gap-2">
                                             <IndianRupee size={12} className="text-[#F4B000]/60" />
                                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
@@ -922,24 +922,24 @@ export default function DesktopCompare() {
                                     </div>
                                     {/* 1. On-Road Price */}
                                     <div
-                                        className="grid border-b border-black/[0.04] dark:border-white/5"
+                                        className="grid border-b border-black/[0.04]"
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
-                                        <div className="px-4 py-3 bg-slate-50/40 dark:bg-white/[0.01] border-r border-black/[0.04] dark:border-white/5 flex items-center gap-1.5">
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
                                             <IndianRupee
                                                 size={12}
-                                                className="text-slate-300 dark:text-white/20 shrink-0"
+                                                className="text-slate-300 shrink-0"
                                             />
-                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                            <span className="text-[10px] font-bold text-slate-500">
                                                 On-Road Price
                                             </span>
                                         </div>
                                         {activeVariants.map((v, vIdx) => (
                                             <div
                                                 key={vIdx}
-                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04] dark:border-white/5' : ''}`}
+                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                             >
-                                                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                                                <span className="text-[11px] font-bold text-slate-600">
                                                     ₹
                                                     {(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString(
                                                         'en-IN'
@@ -950,15 +950,15 @@ export default function DesktopCompare() {
                                     </div>
                                     {/* 2. Discount / Surge */}
                                     <div
-                                        className="grid border-b border-black/[0.04] dark:border-white/5"
+                                        className="grid border-b border-black/[0.04]"
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
-                                        <div className="px-4 py-3 bg-slate-50/40 dark:bg-white/[0.01] border-r border-black/[0.04] dark:border-white/5 flex items-center gap-1.5">
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
                                             <TrendingDown
                                                 size={12}
-                                                className="text-slate-300 dark:text-white/20 shrink-0"
+                                                className="text-slate-300 shrink-0"
                                             />
-                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                            <span className="text-[10px] font-bold text-slate-500">
                                                 Platform Discount / Surge Charges
                                             </span>
                                         </div>
@@ -969,7 +969,7 @@ export default function DesktopCompare() {
                                             return (
                                                 <div
                                                     key={vIdx}
-                                                    className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04] dark:border-white/5' : ''}`}
+                                                    className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                                 >
                                                     <span
                                                         className={`text-[11px] font-black ${isDiscount ? 'text-emerald-600' : isSurge ? 'text-red-500' : 'text-slate-400'}`}
@@ -986,12 +986,12 @@ export default function DesktopCompare() {
                                     </div>
                                     {/* 3. Offer Price (INR) + B Coin side by side */}
                                     <div
-                                        className="grid border-b border-black/[0.04] dark:border-white/5 bg-[#F4B000]/[0.04]"
+                                        className="grid border-b border-black/[0.04] bg-[#F4B000]/[0.04]"
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
-                                        <div className="px-4 py-3 bg-slate-50/40 dark:bg-white/[0.01] border-r border-black/[0.04] dark:border-white/5 flex items-center gap-1.5">
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
                                             <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">
+                                            <span className="text-[10px] font-bold text-slate-700">
                                                 Offer Price
                                             </span>
                                         </div>
@@ -1001,9 +1001,9 @@ export default function DesktopCompare() {
                                             return (
                                                 <div
                                                     key={vIdx}
-                                                    className={`px-4 py-3 flex items-center justify-center gap-2 text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04] dark:border-white/5' : ''}`}
+                                                    className={`px-4 py-3 flex items-center justify-center gap-2 text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                                 >
-                                                    <span className="text-[12px] font-black text-slate-900 dark:text-white">
+                                                    <span className="text-[12px] font-black text-slate-900">
                                                         ₹{offerPrice.toLocaleString('en-IN')}
                                                     </span>
                                                     <span className="text-[8px] text-slate-300">|</span>
@@ -1019,15 +1019,15 @@ export default function DesktopCompare() {
                                     </div>
                                     {/* 4. Downpayment (editable, shared) */}
                                     <div
-                                        className="grid border-b border-black/[0.04] dark:border-white/5"
+                                        className="grid border-b border-black/[0.04]"
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
-                                        <div className="px-4 py-3 bg-slate-50/40 dark:bg-white/[0.01] border-r border-black/[0.04] dark:border-white/5 flex items-center gap-1.5">
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
                                             <CreditCard
                                                 size={12}
-                                                className="text-slate-300 dark:text-white/20 shrink-0"
+                                                className="text-slate-300 shrink-0"
                                             />
-                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                            <span className="text-[10px] font-bold text-slate-500">
                                                 Downpayment
                                             </span>
                                             <button
@@ -1044,7 +1044,7 @@ export default function DesktopCompare() {
                                         {activeVariants.map((_, vIdx) => (
                                             <div
                                                 key={vIdx}
-                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04] dark:border-white/5' : ''}`}
+                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                             >
                                                 {editingDownpayment ? (
                                                     <input
@@ -1067,7 +1067,7 @@ export default function DesktopCompare() {
                                                         className="w-20 text-center text-[11px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
                                                     />
                                                 ) : (
-                                                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                                                    <span className="text-[11px] font-bold text-slate-600">
                                                         ₹{downpayment.toLocaleString('en-IN')}
                                                     </span>
                                                 )}
@@ -1076,15 +1076,15 @@ export default function DesktopCompare() {
                                     </div>
                                     {/* 5. Tenure (editable, shared) */}
                                     <div
-                                        className="grid border-b border-black/[0.04] dark:border-white/5"
+                                        className="grid border-b border-black/[0.04]"
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
-                                        <div className="px-4 py-3 bg-slate-50/40 dark:bg-white/[0.01] border-r border-black/[0.04] dark:border-white/5 flex items-center gap-1.5">
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
                                             <Calendar
                                                 size={12}
-                                                className="text-slate-300 dark:text-white/20 shrink-0"
+                                                className="text-slate-300 shrink-0"
                                             />
-                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                            <span className="text-[10px] font-bold text-slate-500">
                                                 Tenure
                                             </span>
                                             <button
@@ -1098,7 +1098,7 @@ export default function DesktopCompare() {
                                         {activeVariants.map((_, vIdx) => (
                                             <div
                                                 key={vIdx}
-                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04] dark:border-white/5' : ''}`}
+                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                             >
                                                 {editingTenure ? (
                                                     <div className="flex gap-1 flex-wrap justify-center">
@@ -1111,7 +1111,7 @@ export default function DesktopCompare() {
                                                                 }}
                                                                 className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${tenure === t
                                                                     ? 'bg-[#F4B000] text-black'
-                                                                    : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
+                                                                    : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
                                                                     }`}
                                                             >
                                                                 {t}mo
@@ -1119,7 +1119,7 @@ export default function DesktopCompare() {
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                                                    <span className="text-[11px] font-bold text-slate-600">
                                                         {tenure} months
                                                     </span>
                                                 )}
@@ -1131,14 +1131,14 @@ export default function DesktopCompare() {
                                         className="grid border-b-2 border-[#F4B000]/20"
                                         style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
                                     >
-                                        <div className="px-4 py-3 bg-[#F4B000]/[0.06] border-r border-black/[0.04] dark:border-white/5 flex items-center gap-1.5">
+                                        <div className="px-4 py-3 bg-[#F4B000]/[0.06] border-r border-black/[0.04] flex items-center gap-1.5">
                                             <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
                                             <span className="text-[10px] font-bold text-[#F4B000]">EMI</span>
                                         </div>
                                         {activeVariants.map((v, vIdx) => (
                                             <div
                                                 key={vIdx}
-                                                className={`px-4 py-3 flex items-center justify-center text-center bg-[#F4B000]/[0.04] ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04] dark:border-white/5' : ''}`}
+                                                className={`px-4 py-3 flex items-center justify-center text-center bg-[#F4B000]/[0.04] ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                             >
                                                 <span className="text-[12px] font-black text-[#F4B000]">
                                                     ₹{getEmi(v, downpayment, tenure).toLocaleString('en-IN')}/mo
@@ -1152,7 +1152,7 @@ export default function DesktopCompare() {
                                 {/* Section 1: What's Different */}
                                 {smartSpecs.diffSpecs.length > 0 && (
                                     <div>
-                                        <div className="px-4 py-2 border-b border-black/[0.04] dark:border-white/5 bg-gradient-to-r from-[#F4B000]/5 to-transparent">
+                                        <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
                                             <div className="flex items-center gap-2">
                                                 <GitCompareArrows size={12} className="text-[#F4B000]/60" />
                                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
@@ -1168,12 +1168,12 @@ export default function DesktopCompare() {
                                             return (
                                                 <div
                                                     key={`diff-${rIdx}`}
-                                                    className="grid border-b border-black/[0.04] dark:border-white/5 last:border-b-0 bg-[#F4B000]/[0.04] hover:bg-[#F4B000]/[0.08] transition-colors"
+                                                    className="grid border-b border-black/[0.04] last:border-b-0 bg-[#F4B000]/[0.04] hover:bg-[#F4B000]/[0.08] transition-colors"
                                                     style={{
                                                         gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
                                                     }}
                                                 >
-                                                    <div className="px-4 py-3 bg-slate-50/40 dark:bg-white/[0.01] border-r border-black/[0.04] dark:border-white/5 flex items-center gap-1.5">
+                                                    <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
                                                         {(() => {
                                                             const SpecIcon = getSpecIcon(row.label);
                                                             return (
@@ -1183,7 +1183,7 @@ export default function DesktopCompare() {
                                                                 />
                                                             );
                                                         })()}
-                                                        <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">
+                                                        <span className="text-[10px] font-bold text-slate-700">
                                                             {row.label}
                                                         </span>
                                                     </div>
@@ -1197,10 +1197,10 @@ export default function DesktopCompare() {
                                                         return (
                                                             <div
                                                                 key={vIdx}
-                                                                className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04] dark:border-white/5' : ''} ${isBest ? 'bg-emerald-50/60 dark:bg-emerald-500/[0.06]' : ''}`}
+                                                                className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''} ${isBest ? 'bg-emerald-50/60' : ''}`}
                                                             >
                                                                 <span
-                                                                    className={`text-[11px] font-semibold ${!val ? 'text-slate-300 dark:text-white/20 italic' : isBest ? 'text-emerald-600 dark:text-emerald-400 font-black' : isUnique ? 'text-[#F4B000] font-bold' : 'text-slate-700 dark:text-slate-300'}`}
+                                                                    className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : isBest ? 'text-emerald-600 font-black' : isUnique ? 'text-[#F4B000] font-bold' : 'text-slate-700'}`}
                                                                 >
                                                                     {isBest && (
                                                                         <Trophy
@@ -1211,7 +1211,7 @@ export default function DesktopCompare() {
                                                                     {formatSpecValue(val, row.label)}
                                                                 </span>
                                                                 {barPct !== null && (
-                                                                    <div className="w-full max-w-[80px] h-1 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden">
+                                                                    <div className="w-full max-w-[80px] h-1 rounded-full bg-slate-100 overflow-hidden">
                                                                         <div
                                                                             className={`h-full rounded-full transition-all ${isBest ? 'bg-emerald-400' : 'bg-[#F4B000]/40'}`}
                                                                             style={{ width: `${barPct}%` }}
@@ -1230,10 +1230,10 @@ export default function DesktopCompare() {
                                 {/* Section 2: All Specifications */}
                                 {smartSpecs.restSpecs.length > 0 && (
                                     <div>
-                                        <div className="px-4 py-2 border-b border-black/[0.04] dark:border-white/5 bg-gradient-to-r from-slate-100/60 dark:from-white/[0.02] to-transparent">
+                                        <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-slate-100/60 to-transparent">
                                             <div className="flex items-center gap-2">
                                                 <CircleDot size={12} className="text-slate-400" />
-                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
                                                     All Specifications
                                                 </span>
                                             </div>
@@ -1241,22 +1241,22 @@ export default function DesktopCompare() {
                                         {smartSpecs.restSpecs.map((row, rIdx) => (
                                             <div
                                                 key={`rest-${rIdx}`}
-                                                className={`grid border-b border-black/[0.04] dark:border-white/5 last:border-b-0 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors ${rIdx % 2 === 1 ? 'bg-slate-50/30 dark:bg-white/[0.008]' : ''}`}
+                                                className={`grid border-b border-black/[0.04] last:border-b-0 hover:bg-slate-50/50 transition-colors ${rIdx % 2 === 1 ? 'bg-slate-50/30' : ''}`}
                                                 style={{
                                                     gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
                                                 }}
                                             >
-                                                <div className="px-4 py-3 bg-slate-50/40 dark:bg-white/[0.01] border-r border-black/[0.04] dark:border-white/5 flex items-center gap-1.5">
+                                                <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
                                                     {(() => {
                                                         const SpecIcon = getSpecIcon(row.label);
                                                         return (
                                                             <SpecIcon
                                                                 size={12}
-                                                                className="shrink-0 text-slate-300 dark:text-white/20"
+                                                                className="shrink-0 text-slate-300"
                                                             />
                                                         );
                                                     })()}
-                                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                                    <span className="text-[10px] font-bold text-slate-500">
                                                         {row.label}
                                                     </span>
                                                 </div>
@@ -1268,15 +1268,15 @@ export default function DesktopCompare() {
                                                     return (
                                                         <div
                                                             key={vIdx}
-                                                            className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04] dark:border-white/5' : ''}`}
+                                                            className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                                         >
                                                             <span
-                                                                className={`text-[11px] font-semibold ${!val ? 'text-slate-300 dark:text-white/20 italic' : 'text-slate-700 dark:text-slate-300'}`}
+                                                                className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : 'text-slate-700'}`}
                                                             >
                                                                 {formatSpecValue(val, row.label)}
                                                             </span>
                                                             {isNumeric && (
-                                                                <div className="w-full max-w-[60px] h-[2px] rounded-full bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-white/5 dark:via-white/10 dark:to-white/5" />
+                                                                <div className="w-full max-w-[60px] h-[2px] rounded-full bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200" />
                                                             )}
                                                         </div>
                                                     );
@@ -1300,15 +1300,15 @@ export default function DesktopCompare() {
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
                     <div
                         onClick={e => e.stopPropagation()}
-                        className="relative z-10 w-full max-w-2xl mx-auto rounded-t-3xl bg-white dark:bg-slate-900 border-t border-x border-slate-200 dark:border-white/10 shadow-2xl p-6 space-y-6 animate-in slide-in-from-bottom-4 duration-300"
+                        className="relative z-10 w-full max-w-2xl mx-auto rounded-t-3xl bg-white border-t border-x border-slate-200 shadow-2xl p-6 space-y-6 animate-in slide-in-from-bottom-4 duration-300"
                     >
                         <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">
                                 Finance Settings
                             </h3>
                             <button
                                 onClick={() => setIsDpEditOpen(false)}
-                                className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                className="text-slate-400 hover:text-slate-900"
                             >
                                 <X size={18} />
                             </button>
@@ -1320,7 +1320,7 @@ export default function DesktopCompare() {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                     Downpayment
                                 </span>
-                                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                <span className="text-lg font-black text-emerald-600">
                                     ₹{dpDraft.toLocaleString('en-IN')}
                                 </span>
                             </div>
@@ -1333,7 +1333,7 @@ export default function DesktopCompare() {
                                 onChange={e => setDpDraft(Number(e.target.value))}
                                 className="w-full accent-[#F4B000] h-2 rounded-full"
                             />
-                            <div className="flex justify-between text-[8px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                            <div className="flex justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest">
                                 <span>₹0</span>
                                 <span>₹25K</span>
                                 <span>₹50K</span>
@@ -1345,7 +1345,7 @@ export default function DesktopCompare() {
                                     <button
                                         key={val}
                                         onClick={() => setDpDraft(val)}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
                                     >
                                         ₹{val / 1000}K
                                     </button>
@@ -1354,12 +1354,12 @@ export default function DesktopCompare() {
                         </div>
 
                         {/* Tenure */}
-                        <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-white/5">
+                        <div className="space-y-3 pt-2 border-t border-slate-100">
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                     Tenure
                                 </span>
-                                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                <span className="text-lg font-black text-emerald-600">
                                     {tenure} months
                                 </span>
                             </div>
@@ -1368,7 +1368,7 @@ export default function DesktopCompare() {
                                     <button
                                         key={val}
                                         onClick={() => setTenure(val)}
-                                        className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                        className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
                                     >
                                         {val}mo
                                     </button>

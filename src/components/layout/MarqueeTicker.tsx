@@ -30,10 +30,10 @@ export const MarqueeTicker = () => {
             >
                 {duplicatedStats.map((stat, idx) => (
                     <div key={idx} className="flex items-center gap-2 font-mono tracking-tighter">
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                             {stat.label}
                         </span>
-                        <span className="text-sm font-black text-slate-900 dark:text-white">
+                        <span className="text-sm font-black text-slate-900">
                             {stat.value}
                         </span>
                         <span className={`text-[10px] font-bold flex items-center ${stat.isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>

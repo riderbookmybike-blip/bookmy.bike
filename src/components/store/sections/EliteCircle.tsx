@@ -72,7 +72,7 @@ export function EliteCircle() {
                 {/* Standardized 'Bottom-Up' Ruby Soft Tint (Light Theme) */}
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[80%] bg-[radial-gradient(circle_at_50%_100%,rgba(153,27,27,0.06),transparent_75%)] transition-all duration-1000" />
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-multiply" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-black/5 dark:from-[#0b0d10] dark:to-black/60 transition-colors duration-1000" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-black/5 transition-colors duration-1000" />
             </div>
 
             <div
@@ -101,11 +101,11 @@ export function EliteCircle() {
                                 <span className="text-emerald-600">{t('CIRCLE.')}</span>
                             </h1>
                             <div className="space-y-4 max-w-sm mx-auto lg:mx-0">
-                                <p className="text-lg md:text-xl text-slate-500 dark:text-zinc-400 font-medium leading-relaxed transition-colors">
+                                <p className="text-lg md:text-xl text-slate-500 font-medium leading-relaxed transition-colors">
                                     {t('Exclusive financial engineering for the modern rider.')}
                                 </p>
-                                <div className="h-px w-24 bg-slate-200 dark:bg-white/10 transition-colors mx-auto lg:mx-0" />
-                                <p className="text-sm font-bold text-slate-900 dark:text-white tracking-widest uppercase italic transition-colors">
+                                <div className="h-px w-24 bg-slate-200 transition-colors mx-auto lg:mx-0" />
+                                <p className="text-sm font-bold text-slate-900 tracking-widest uppercase italic transition-colors">
                                     {t('Ownership, accelerated.')}
                                 </p>
                             </div>

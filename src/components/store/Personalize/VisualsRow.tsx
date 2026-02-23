@@ -104,13 +104,13 @@ export default function VisualsRow({
     return (
         <div className={`relative ${className}`}>
             {/* 1. Primary Hero Visualizer - 3 Part Layout */}
-            <div className="relative h-[600px] md:h-full bg-white dark:bg-[#050505] md:bg-transparent md:dark:bg-transparent rounded-[4rem] md:rounded-none ring-1 ring-slate-100 dark:ring-white/10 md:ring-0 overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.08)] dark:shadow-2xl md:shadow-none transition-all duration-700 flex flex-col">
+            <div className="relative h-[600px] md:h-full bg-white md:bg-transparent rounded-[4rem] md:rounded-none ring-1 ring-slate-100 md:ring-0 overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.08)] md:shadow-none transition-all duration-700 flex flex-col">
                 {/* Atmospheric Background - Golden Spotlight (mobile only) */}
                 <div className="absolute inset-x-0 bottom-0 top-1/2 z-0 bg-gradient-to-t from-[#F4B000]/20 to-transparent opacity-60 blur-3xl rounded-b-[4rem] md:hidden" />
                 <div className="absolute inset-0 z-0 bg-radial-at-c from-white/10 to-transparent opacity-50 md:hidden" />
 
                 {/* Status Indicator (Top Right) - mobile only, desktop uses swatch dots */}
-                <div className="absolute top-8 right-8 z-20 flex items-center gap-2 bg-white/10 dark:bg-black/20 border border-white/20 dark:border-white/10 px-4 py-1.5 rounded-full backdrop-blur-xl shadow-lg ring-1 ring-white/20 md:hidden">
+                <div className="absolute top-8 right-8 z-20 flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-1.5 rounded-full backdrop-blur-xl shadow-lg ring-1 ring-white/20 md:hidden">
                     <div className="w-2 h-2 bg-[#F4B000] rounded-full animate-pulse shadow-[0_0_10px_rgba(244,176,0,0.8)]" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-[#F4B000]">In Stock</span>
                 </div>
@@ -119,14 +119,14 @@ export default function VisualsRow({
                 <div className="relative flex-[3] z-10 flex items-center justify-center overflow-hidden">
                     {/* Dynamic Backlight Glow */}
                     <div
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[60%] blur-[120px] opacity-20 dark:opacity-30 transition-all duration-1000 z-0 pointer-events-none"
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[60%] blur-[120px] opacity-20 transition-all duration-1000 z-0 pointer-events-none"
                         style={{ backgroundColor: activeColor.hex }}
                     />
 
                     {/* Skeleton Loader */}
                     {!imageLoaded && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-[65%] h-[70%] bg-gradient-to-br from-slate-200 to-slate-100 dark:from-white/5 dark:to-white/[0.02] rounded-3xl animate-pulse" />
+                            <div className="w-[65%] h-[70%] bg-gradient-to-br from-slate-200 to-slate-100 rounded-3xl animate-pulse" />
                         </div>
                     )}
 
@@ -147,7 +147,7 @@ export default function VisualsRow({
                             src={productImage || '/images/categories/scooter_nobg.png'}
                             alt="Product Visual"
                             onLoad={() => setImageLoaded(true)}
-                            className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] dark:drop-shadow-[0_60px_100px_rgba(0,0,0,0.9)] transition-opacity duration-500 ${
+                            className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)],0,0,0.9)] transition-opacity duration-500 ${
                                 imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
                             }`}
                         />
@@ -172,27 +172,27 @@ export default function VisualsRow({
                     {/* Gallery Navigation */}
                     <button
                         onClick={prevImage}
-                        className={`absolute left-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white transition-all active:scale-95 hover:scale-110 ${galaxyImages.length <= 1 ? 'hidden' : ''}`}
+                        className={`absolute left-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 transition-all active:scale-95 hover:scale-110 ${galaxyImages.length <= 1 ? 'hidden' : ''}`}
                     >
                         <ChevronLeft size={20} />
                     </button>
                     <button
                         onClick={nextImage}
-                        className={`absolute right-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 dark:text-white transition-all active:scale-95 hover:scale-110 ${galaxyImages.length <= 1 ? 'hidden' : ''}`}
+                        className={`absolute right-8 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-900 transition-all active:scale-95 hover:scale-110 ${galaxyImages.length <= 1 ? 'hidden' : ''}`}
                     >
                         <ChevronRight size={20} />
                     </button>
                 </div>
 
                 {/* PART 2: Color Name (10%) */}
-                <div className="flex-shrink-0 h-[50px] z-10 flex items-center justify-center bg-gradient-to-t from-white/50 to-transparent dark:from-[#050505]/50 md:hidden">
+                <div className="flex-shrink-0 h-[50px] z-10 flex items-center justify-center bg-gradient-to-t from-white/50 to-transparent md:hidden">
                     <p className="text-sm font-black uppercase tracking-[0.4em] text-[#F4B000] animate-in fade-in slide-in-from-bottom-2 duration-700">
                         {activeColorName}
                     </p>
                 </div>
 
                 {/* PART 3: Color Circles (15%) - Independent section */}
-                <div className="flex-shrink-0 h-[70px] z-10 flex items-center justify-center gap-4 px-4 bg-white dark:bg-[#050505] overflow-hidden md:hidden">
+                <div className="flex-shrink-0 h-[70px] z-10 flex items-center justify-center gap-4 px-4 bg-white overflow-hidden md:hidden">
                     {colors.map(color => {
                         const isSelected = selectedColor === color.id;
                         return (
@@ -205,11 +205,11 @@ export default function VisualsRow({
                                     className={`absolute inset-0 rounded-xl border-2 transition-all ${isSelected ? 'border-[#F4B000] scale-125' : 'border-transparent'}`}
                                 />
                                 <div
-                                    className={`w-full h-full rounded-xl border border-black/10 dark:border-white/20 shadow-inner ${color.class}`}
+                                    className={`w-full h-full rounded-xl border border-black/10 shadow-inner ${color.class}`}
                                     style={{ backgroundColor: color.hex }}
                                 />
                                 {/* Tooltip */}
-                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[8px] font-black uppercase tracking-widest rounded opacity-0 group-hover/color:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest rounded opacity-0 group-hover/color:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
                                     {color.name}
                                 </div>
                             </button>

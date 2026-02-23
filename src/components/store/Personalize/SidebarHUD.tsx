@@ -141,7 +141,7 @@ export default function SidebarHUD({
 
     return (
         <div
-            className="hidden lg:block lg:w-[440px] lg:sticky glass-panel dark:bg-[#0b0d10]/60 rounded-[3rem] overflow-hidden shadow-2xl flex-col animate-in fade-in slide-in-from-right-8 duration-700 h-fit lg:flex border border-slate-200 dark:border-white/5 relative"
+            className="hidden lg:block lg:w-[440px] lg:sticky glass-panel rounded-[3rem] overflow-hidden shadow-2xl flex-col animate-in fade-in slide-in-from-right-8 duration-700 h-fit lg:flex border border-slate-200 relative"
             style={{ top: 'var(--header-h)' }}
         >
             {/* Ambient Card Glow */}
@@ -152,7 +152,7 @@ export default function SidebarHUD({
                     {onShowVideo && (
                         <button
                             onClick={onShowVideo}
-                            className="p-2.5 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl text-slate-400 hover:text-red-600 transition-all"
+                            className="p-2.5 hover:bg-red-50 rounded-xl text-slate-400 hover:text-red-600 transition-all"
                             title="Watch Video Review"
                         >
                             <Youtube size={20} />
@@ -160,21 +160,21 @@ export default function SidebarHUD({
                     )}
                     <button
                         onClick={onDownload}
-                        className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400 hover:text-brand-primary transition-all"
+                        className="p-2.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-brand-primary transition-all"
                         title="Download Quote"
                     >
                         <Download size={16} />
                     </button>
                     <button
                         onClick={onShare}
-                        className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400 hover:text-brand-primary transition-all"
+                        className="p-2.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-brand-primary transition-all"
                         title="Share Configuration"
                     >
                         <Share2 size={16} />
                     </button>
                     <button
                         onClick={onSave}
-                        className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400 hover:text-rose-500 transition-all"
+                        className="p-2.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-rose-500 transition-all"
                         title="Add to Favorites"
                     >
                         <Heart size={16} />
@@ -187,7 +187,7 @@ export default function SidebarHUD({
                             <Zap size={14} />
                             Quoting for Customer
                         </div>
-                        <div className="text-xl font-black text-slate-900 dark:text-white uppercase mt-1">
+                        <div className="text-xl font-black text-slate-900 uppercase mt-1">
                             {leadName}
                         </div>
                     </div>
@@ -196,7 +196,7 @@ export default function SidebarHUD({
 
             {/* 2. Pricing Section */}
             <div className="px-8 py-5">
-                <div className="glass-card dark:bg-white/[0.02] rounded-3xl p-7 space-y-6">
+                <div className="glass-card rounded-3xl p-7 space-y-6">
                     <div className="space-y-4">
                         <AnimatePresence initial={false}>
                             {priceBreakup
@@ -216,12 +216,12 @@ export default function SidebarHUD({
                                             className="flex justify-between items-center text-[10px] relative group/item"
                                         >
                                             <span
-                                                className={`font-bold uppercase tracking-[0.1em] ${item.breakdown || item.helpText ? 'cursor-help border-b border-dotted border-slate-300 dark:border-white/20' : 'text-slate-500/80'}`}
+                                                className={`font-bold uppercase tracking-[0.1em] ${item.breakdown || item.helpText ? 'cursor-help border-b border-dotted border-slate-300' : 'text-slate-500/80'}`}
                                             >
                                                 {item.label}
                                             </span>
                                             <span
-                                                className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700 dark:text-slate-300'} flex items-center gap-1.5`}
+                                                className={`font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700'} flex items-center gap-1.5`}
                                             >
                                                 <span className={item.isDeduction ? 'animate-pulse' : ''}>
                                                     {item.isDeduction ? '-' : ''}
@@ -233,10 +233,10 @@ export default function SidebarHUD({
 
                                             {/* Tooltip for Breakdown or HelpText */}
                                             {(item.breakdown || item.helpText) && (
-                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[240px] rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-3 opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
+                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[240px] rounded-xl bg-slate-900 text-white p-3 opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
                                                     {item.breakdown ? (
                                                         <div className="space-y-1">
-                                                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-2 border-b border-white/20 dark:border-black/10 pb-1">
+                                                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-2 border-b border-white/20 pb-1">
                                                                 Breakdown
                                                             </p>
                                                             {item.breakdown.map((b, bIdx) => (
@@ -263,7 +263,7 @@ export default function SidebarHUD({
                                                         </div>
                                                     )}
                                                     {/* Arrow */}
-                                                    <div className="absolute top-full right-4 -mt-1 w-2 h-2 bg-slate-900 dark:bg-white rotate-45"></div>
+                                                    <div className="absolute top-full right-4 -mt-1 w-2 h-2 bg-slate-900 rotate-45"></div>
                                                 </div>
                                             )}
                                         </motion.div>
@@ -273,7 +273,7 @@ export default function SidebarHUD({
 
                         <button
                             onClick={() => setIsExpanded(!isExpanded)}
-                            className="w-full py-2 border border-slate-200 dark:border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-primary hover:border-brand-primary/30 transition-all flex items-center justify-center gap-2 group/toggle"
+                            className="w-full py-2 border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-primary hover:border-brand-primary/30 transition-all flex items-center justify-center gap-2 group/toggle"
                         >
                             <span>{isExpanded ? 'Show Less' : 'Show Full Breakdown'}</span>
                             <ChevronRight
@@ -283,9 +283,9 @@ export default function SidebarHUD({
                         </button>
                     </div>
 
-                    <div className="pt-6 border-t border-slate-100 dark:border-white/5 flex justify-between items-center group/price relative">
+                    <div className="pt-6 border-t border-slate-100 flex justify-between items-center group/price relative">
                         <div className="flex items-center gap-1.5 cursor-help group/tooltip">
-                            <span className="text-xs font-[900] uppercase italic tracking-wider text-slate-900 dark:text-white/40 border-b border-dotted border-slate-300 dark:border-white/10">
+                            <span className="text-xs font-[900] uppercase italic tracking-wider text-slate-900 border-b border-dotted border-slate-300">
                                 Final Price
                             </span>
                             {pricingSource && (
@@ -297,7 +297,7 @@ export default function SidebarHUD({
                             <Info size={12} className={infoColorClass} />
 
                             {/* Tooltip Content */}
-                            <div className="absolute bottom-full left-0 mb-2 px-4 py-3 bg-neutral-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-2xl">
+                            <div className="absolute bottom-full left-0 mb-2 px-4 py-3 bg-neutral-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-2xl">
                                 {serviceability.status === 'CHECKING' && 'Checking Serviceability...'}
                                 {serviceability.status === 'UNSET' && 'Set Location to check serviceability'}
                                 {serviceability.status === 'SET' && (
@@ -332,7 +332,7 @@ export default function SidebarHUD({
                         </div>
 
                         <div className="text-right">
-                            <span className="text-4xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-in zoom-in-95 duration-700">
+                            <span className="text-4xl font-black italic tracking-tighter text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-in zoom-in-95 duration-700">
                                 ₹{totalOnRoad.toLocaleString()}
                             </span>
                         </div>
@@ -342,7 +342,7 @@ export default function SidebarHUD({
 
             {/* 3. Finance Block */}
             <div className="px-8 py-4 space-y-6">
-                <div className="glass-card dark:bg-white/[0.02] rounded-3xl p-7 relative group transition-all overflow-hidden space-y-6">
+                <div className="glass-card rounded-3xl p-7 relative group transition-all overflow-hidden space-y-6">
                     {/* List-style Finance Details */}
                     <div className="space-y-4">
                         {[
@@ -402,7 +402,7 @@ export default function SidebarHUD({
                                         {item.label}
                                     </span>
                                     <span
-                                        className={`font-mono font-black tracking-tight uppercase ${item.isHighlight ? item.colorClass || 'text-brand-primary italic' : 'text-slate-900 dark:text-white'} flex items-center gap-1.5`}
+                                        className={`font-mono font-black tracking-tight uppercase ${item.isHighlight ? item.colorClass || 'text-brand-primary italic' : 'text-slate-900'} flex items-center gap-1.5`}
                                     >
                                         {item.value}
                                         {item.helpText && (
@@ -411,7 +411,7 @@ export default function SidebarHUD({
                                                     size={10}
                                                     className="text-slate-400 group-hover/help:text-slate-600"
                                                 />
-                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[200px] rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold uppercase tracking-wide px-2 py-1 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
+                                                <div className="absolute right-0 bottom-full mb-2 w-max max-w-[200px] rounded-lg bg-slate-900 text-white text-[9px] font-bold uppercase tracking-wide px-2 py-1 opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
                                                     {item.helpText}
                                                 </div>
                                             </div>
@@ -422,12 +422,12 @@ export default function SidebarHUD({
                     </div>
 
                     {/* Primary EMI Highlight (Aligned with Final Price) */}
-                    <div className="pt-6 border-t border-slate-100 dark:border-white/5 flex justify-between items-center group/price">
-                        <span className="text-xs font-[900] uppercase italic tracking-wider text-slate-900 dark:text-white/40">
+                    <div className="pt-6 border-t border-slate-100 flex justify-between items-center group/price">
+                        <span className="text-xs font-[900] uppercase italic tracking-wider text-slate-900">
                             Monthly EMI
                         </span>
                         <div className="text-right">
-                            <span className="text-4xl font-black italic tracking-tighter text-brand-primary dark:text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.2)]">
+                            <span className="text-4xl font-black italic tracking-tighter text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.2)]">
                                 ₹{emi.toLocaleString()}
                             </span>
                         </div>
@@ -436,14 +436,14 @@ export default function SidebarHUD({
             </div>
 
             {/* 3. Global Quote CTA */}
-            <div className="p-8 bg-slate-50 dark:bg-white/[0.02] border-t border-slate-100 dark:border-white/5 space-y-4">
+            <div className="p-8 bg-slate-50 border-t border-slate-100 space-y-4">
                 <button
                     onClick={onGetQuote}
                     disabled={serviceability.status === 'SET' && !serviceability.isServiceable}
                     className={`w-full h-18 py-6 rounded-[2rem] text-base font-black uppercase tracking-[0.2em] italic flex items-center justify-center gap-5 shadow-2xl transition-all group
                         ${
                             serviceability.status === 'SET' && !serviceability.isServiceable
-                                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                                 : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-black shadow-[#FFD700]/30 active:scale-[0.98]'
                         }`}
                 >

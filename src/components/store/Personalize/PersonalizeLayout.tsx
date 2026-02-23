@@ -11,13 +11,13 @@ interface PersonalizeLayoutProps {
 export default function PersonalizeLayout({ header, visuals, tabs, children, className = '' }: PersonalizeLayoutProps) {
     return (
         <section
-            className={`w-full bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-500 ${className}`}
+            className={`w-full bg-white text-slate-900 transition-colors duration-500 ${className}`}
         >
             <div className="page-container py-4 md:py-8 space-y-8">
                 {/* 1. Header Section */}
                 {header && (
                     <div
-                        className="sticky z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl px-6 -mx-6 py-4 border-b border-slate-200 dark:border-white/5 transition-all duration-300"
+                        className="sticky z-40 bg-white/80 backdrop-blur-xl px-6 -mx-6 py-4 border-b border-slate-200 transition-all duration-300"
                         style={{ top: 'var(--header-h)' }}
                     >
                         {header}
@@ -28,7 +28,7 @@ export default function PersonalizeLayout({ header, visuals, tabs, children, cla
                 <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">{visuals}</div>
 
                 {/* 3. Configuration Section (Tabs + Content) */}
-                <div className="bg-white dark:bg-slate-900/20 border border-slate-200 dark:border-white/5 rounded-[3rem] p-6 md:p-10 space-y-8 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-100 shadow-xl shadow-slate-200/50 dark:shadow-none">
+                <div className="bg-white border border-slate-200 rounded-[3rem] p-6 md:p-10 space-y-8 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-100 shadow-xl shadow-slate-200/50">
                     {/* Tab Navigation */}
                     <div className="flex justify-center md:justify-start overflow-x-auto pb-2">{tabs}</div>
 

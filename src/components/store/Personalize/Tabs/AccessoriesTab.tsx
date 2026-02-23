@@ -66,7 +66,7 @@ export default function AccessoriesTab({ items, selectedIds, onToggle }: Accesso
                             group relative p-4 rounded-xl border transition-all duration-300 cursor-pointer overflow-hidden
                             ${isSelected
                                 ? 'bg-brand-primary/10 border-brand-primary/50 shadow-lg shadow-brand-primary/10'
-                                : 'bg-white border-slate-200 hover:border-slate-300 dark:bg-slate-900/40 dark:border-slate-800 dark:hover:border-slate-700'
+                                : 'bg-white border-slate-200 hover:border-slate-300'
                             }
                             ${isMandatory ? 'cursor-default opacity-80' : ''}
                         `}
@@ -75,14 +75,14 @@ export default function AccessoriesTab({ items, selectedIds, onToggle }: Accesso
                             {/* Graphic / Icon Placeholder */}
                             <div className={`
                                 w-12 h-12 rounded-lg flex items-center justify-center shrink-0 transition-colors
-                                ${isSelected ? 'bg-brand-primary text-black' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'}
+                                ${isSelected ? 'bg-brand-primary text-black' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}
                             `}>
                                 {isSelected ? <Check size={20} className="stroke-[3]" /> : <Plus size={20} />}
                             </div>
 
                             {/* Info */}
                             <div className="flex-1">
-                                <h4 className={`text-sm font-black uppercase italic tracking-wider ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                                <h4 className={`text-sm font-black uppercase italic tracking-wider ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
                                     {item.displayName || item.name}
                                 </h4>
                                 {/* Tags for Hierarchy */}

@@ -18,7 +18,7 @@ export default function FavoritesPage() {
     if (isLoading) {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6">
-                <div className="w-12 h-12 border-4 border-slate-900 border-t-transparent rounded-full animate-spin dark:border-white dark:border-t-transparent" />
+                <div className="w-12 h-12 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 animate-pulse">
                     Loading Favorites...
                 </p>
@@ -32,9 +32,9 @@ export default function FavoritesPage() {
     return (
         <PageFrame variant="wide" noTopPadding className="space-y-10">
             {/* Header */}
-            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 pb-8 border-b border-slate-200 dark:border-white/10">
+            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 pb-8 border-b border-slate-200">
                 <div className="space-y-4">
-                    <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white">
+                    <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter text-slate-900">
                         Your{' '}
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-500">
                             Garage
@@ -42,7 +42,7 @@ export default function FavoritesPage() {
                     </h1>
                     <p className="text-sm font-medium text-slate-500 max-w-lg">
                         You've shortlisted{' '}
-                        <span className="font-bold text-slate-900 dark:text-white">{favorites.length}</span> machines.
+                        <span className="font-bold text-slate-900">{favorites.length}</span> machines.
                         Compare them side-by-side or proceed to booking.
                     </p>
                 </div>
@@ -59,12 +59,12 @@ export default function FavoritesPage() {
 
             {/* Empty State */}
             {favoriteVehicles.length === 0 && (
-                <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-8 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-[3rem]">
-                    <div className="w-20 h-20 bg-slate-200 dark:bg-white/10 rounded-full flex items-center justify-center">
+                <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-8 bg-slate-50 border border-slate-200 rounded-[3rem]">
+                    <div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center">
                         <Heart size={32} className="text-slate-400" />
                     </div>
                     <div className="space-y-2">
-                        <h3 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
+                        <h3 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900">
                             Your Garage is Empty
                         </h3>
                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">
@@ -73,7 +73,7 @@ export default function FavoritesPage() {
                     </div>
                     <Link
                         href="/store/catalog"
-                        className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all"
+                        className="px-8 py-3 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all"
                     >
                         Explore Catalog
                     </Link>
@@ -89,10 +89,10 @@ export default function FavoritesPage() {
                     return (
                         <div
                             key={v.id}
-                            className="group relative bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/5 rounded-[2rem] overflow-hidden hover:shadow-2xl transition-all duration-500 flex flex-col"
+                            className="group relative bg-white border border-slate-200 rounded-[2rem] overflow-hidden hover:shadow-2xl transition-all duration-500 flex flex-col"
                         >
                             {/* Image */}
-                            <div className="aspect-[4/3] bg-slate-100 dark:bg-[#14161b] flex items-center justify-center p-6 overflow-hidden relative group-hover:bg-slate-200 dark:group-hover:bg-[#1b1e24] transition-colors">
+                            <div className="aspect-[4/3] bg-slate-100 flex items-center justify-center p-6 overflow-hidden relative group-hover:bg-slate-200 transition-colors">
                                 {/* Remove Button */}
                                 <button
                                     onClick={() =>
@@ -104,13 +104,13 @@ export default function FavoritesPage() {
                                             imageUrl: v.imageUrl,
                                         })
                                     }
-                                    className="absolute top-4 right-4 z-20 w-8 h-8 bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                                    className="absolute top-4 right-4 z-20 w-8 h-8 bg-white/80 backdrop-blur-xl border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
                                 >
                                     <X size={14} />
                                 </button>
 
                                 <div className="relative w-full h-full flex items-center justify-center transform group-hover:scale-110 transition-transform duration-700 ease-out">
-                                    <span className="font-black text-[10px] text-slate-300 dark:text-slate-700 uppercase italic opacity-40 text-center tracking-[0.5em] leading-relaxed">
+                                    <span className="font-black text-[10px] text-slate-300 uppercase italic opacity-40 text-center tracking-[0.5em] leading-relaxed">
                                         {v.make} <br /> {v.model}
                                     </span>
                                 </div>
@@ -119,17 +119,17 @@ export default function FavoritesPage() {
                             {/* Content */}
                             <div className="p-6 space-y-6 flex-1 flex flex-col">
                                 <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 italic mb-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic mb-1">
                                         {v.make}
                                     </p>
-                                    <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
+                                    <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                                         {v.model}
                                     </h3>
                                 </div>
 
                                 <div className="mt-auto pt-4 flex flex-col gap-3">
                                     <div className="flex items-center justify-between">
-                                        <p className="text-lg font-black text-slate-900 dark:text-white tracking-tighter">
+                                        <p className="text-lg font-black text-slate-900 tracking-tighter">
                                             ₹{offerPrice.toLocaleString('en-IN')}
                                         </p>
                                     </div>
@@ -145,7 +145,7 @@ export default function FavoritesPage() {
                                             onClick={() =>
                                                 isInCompare(v.id) ? removeFromCompare(v.id) : addToCompare(v)
                                             }
-                                            className={`px-4 py-3 border rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all italic ${isInCompare(v.id) ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 dark:border-white/10 text-slate-500 hover:border-slate-900 dark:hover:border-white hover:text-slate-900 dark:hover:text-white'}`}
+                                            className={`px-4 py-3 border rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all italic ${isInCompare(v.id) ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-500 hover:border-slate-900 hover:text-slate-900'}`}
                                         >
                                             {isInCompare(v.id) ? 'Added' : 'Compare'}
                                         </button>

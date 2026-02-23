@@ -23,7 +23,7 @@ export default function DynamicHeader({ breadcrumb, actions, onBack, className =
                 {onBack && (
                     <button
                         onClick={onBack}
-                        className="group w-10 h-10 flex items-center justify-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full hover:bg-slate-900 dark:hover:bg-brand-primary transition-all duration-300 hover:scale-110 shadow-sm"
+                        className="group w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-full hover:bg-slate-900 transition-all duration-300 hover:scale-110 shadow-sm"
                     >
                         <ArrowLeft size={16} className="text-slate-500 group-hover:text-white transition-colors" />
                     </button>

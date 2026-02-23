@@ -80,14 +80,14 @@ export default function CascadingAccessorySelector({
     const activeItem = items.find(i => i.id === selectedId);
 
     return (
-        <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 space-y-6">
+        <div className="bg-slate-50 border border-slate-200 rounded-[2.5rem] p-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
                         {label || category}
                     </p>
-                    <h4 className="text-xl font-black italic text-slate-900 dark:text-white">
+                    <h4 className="text-xl font-black italic text-slate-900">
                         {activeItem ? activeItem.displayName || activeItem.name : 'Select Option'}
                     </h4>
                 </div>
@@ -112,8 +112,8 @@ export default function CascadingAccessorySelector({
                             className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border transition-all
                                 ${
                                     selectedMake === make
-                                        ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-black dark:border-white'
-                                        : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 hover:border-slate-300'
+                                        ? 'bg-slate-900 text-white border-slate-900'
+                                        : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                                 }
                             `}
                         >
@@ -136,7 +136,7 @@ export default function CascadingAccessorySelector({
                                     ${
                                         selectedModel === model
                                             ? 'bg-brand-primary/20 text-brand-primary border-brand-primary'
-                                            : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 hover:border-slate-300'
+                                            : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                                     }
                                 `}
                             >
@@ -149,7 +149,7 @@ export default function CascadingAccessorySelector({
 
             {/* Step 3: Variants/Colors (Cards) - Only if Model selected */}
             {selectedMake && selectedModel && availableVariants.length > 0 && (
-                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 pt-2 border-t border-slate-200 dark:border-white/5">
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 pt-2 border-t border-slate-200">
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Select Variant</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {availableVariants.map(variant => (
@@ -160,7 +160,7 @@ export default function CascadingAccessorySelector({
                                     ${
                                         variant.id === selectedId
                                             ? 'bg-brand-primary border-brand-primary shadow-lg shadow-brand-primary/20'
-                                            : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-brand-primary/50'
+                                            : 'bg-white border-slate-200 hover:border-brand-primary/50'
                                     }
                                 `}
                             >
@@ -172,7 +172,7 @@ export default function CascadingAccessorySelector({
                                     </p>
                                     <div className="flex items-center gap-2">
                                         <span
-                                            className={`text-sm font-black italic ${variant.id === selectedId ? 'text-black' : 'text-slate-900 dark:text-white'}`}
+                                            className={`text-sm font-black italic ${variant.id === selectedId ? 'text-black' : 'text-slate-900'}`}
                                         >
                                             ₹{variant.price.toLocaleString()}
                                         </span>

@@ -34,7 +34,7 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
 
     return (
         <nav
-            className="fixed bottom-0 left-0 right-0 z-[55] bg-white/95 dark:bg-[#0b0d10]/95 backdrop-blur-xl border-t border-slate-200/60 dark:border-white/10"
+            className="fixed bottom-0 left-0 right-0 z-[55] bg-white/95 backdrop-blur-xl border-t border-slate-200/60"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
             <div className="flex items-stretch justify-around h-[60px]">
@@ -47,8 +47,8 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
                             href={resolveHref(tab.href)}
                             className={`flex flex-col items-center justify-center flex-1 gap-0.5 transition-colors min-h-[44px] ${
                                 active
-                                    ? 'text-indigo-600 dark:text-indigo-400'
-                                    : 'text-slate-400 dark:text-slate-500 active:text-slate-600'
+                                    ? 'text-indigo-600'
+                                    : 'text-slate-400 active:text-slate-600'
                             }`}
                         >
                             <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
@@ -64,7 +64,7 @@ export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
                 {/* More tab — opens sidebar drawer */}
                 <button
                     onClick={onMoreClick}
-                    className="flex flex-col items-center justify-center flex-1 gap-0.5 text-slate-400 dark:text-slate-500 active:text-slate-600 transition-colors min-h-[44px]"
+                    className="flex flex-col items-center justify-center flex-1 gap-0.5 text-slate-400 active:text-slate-600 transition-colors min-h-[44px]"
                 >
                     <Menu size={20} strokeWidth={1.8} />
                     <span className="text-[9px] font-bold tracking-wider uppercase">More</span>
