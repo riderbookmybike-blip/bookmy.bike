@@ -443,7 +443,7 @@ export function DesktopPDP({
             comparisonOptions: data?.rtoOptions,
         },
         { label: 'Insurance', value: baseInsurance, breakdown: insuranceBreakdown },
-        { label: 'Insurance Add-ons', value: (data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0) },
+        { label: 'Insurance Add-ons', value: Math.round((data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0)) },
         {
             label: 'Mandatory Accessories',
             value: accessoriesPrice,
