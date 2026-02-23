@@ -161,7 +161,6 @@ export function LeadOverview({ lead }: { lead: Lead }) {
                     <div className="absolute bottom-4 right-4">
                         <button
                             onClick={() => {
-                                // @ts-ignore - Dynamic import to avoid SSR issues if any, though sonner is usually fine
                                 import('sonner').then(({ toast }) => toast.success('Intelligence Snapshot Recorded'));
                             }}
                             className="bg-indigo-600 text-white hover:bg-indigo-700 font-black text-[9px] uppercase tracking-widest px-4 py-2 rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-2"

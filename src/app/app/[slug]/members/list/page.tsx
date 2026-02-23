@@ -21,7 +21,7 @@ import {
     ArrowDown,
     FileText,
     CheckCircle,
-    ArrowLeft
+    ArrowLeft,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -60,9 +60,7 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
     const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
     // Force AUMS Tenant ID if slug is 'aums'
-    const targetTenantId = (slug && slug.toLowerCase() === 'aums')
-        ? 'f3e6e266-3ca5-4c67-91ce-b7cc98e30ee5'
-        : tenantId;
+    const targetTenantId = slug && slug.toLowerCase() === 'aums' ? 'f3e6e266-3ca5-4c67-91ce-b7cc98e30ee5' : tenantId;
 
     // Pagination State
     const [page, setPage] = useState(1);
@@ -86,7 +84,7 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
         setLoading(true);
 
         getMembersForTenant(targetTenantId, search, page, pageSize)
-            .then((res) => {
+            .then(res => {
                 setMembers((res.data || []) as any[]);
                 setTotalPages(res.metadata.totalPages);
                 setTotalRecords(res.metadata.total);
@@ -95,7 +93,18 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
     }, [targetTenantId, search, page]);
 
     const handleExportCSV = () => {
-        const headers = ['ID', 'Full Name', 'Phone', 'Email', 'Status', 'District', 'Leads', 'Quotes', 'Bookings', 'Joined On'];
+        const headers = [
+            'ID',
+            'Full Name',
+            'Phone',
+            'Email',
+            'Status',
+            'District',
+            'Leads',
+            'Quotes',
+            'Bookings',
+            'Joined On',
+        ];
         const rows = members.map(m => [
             m.display_id,
             m.full_name,
@@ -106,22 +115,20 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
             m.leads_count,
             m.quotes_count,
             m.bookings_count,
-            m.created_at ? new Date(m.created_at).toLocaleDateString() : ''
+            m.created_at ? new Date(m.created_at).toLocaleDateString() : '',
         ]);
 
-        const csvContent = "data:text/csv;charset=utf-8,"
-            + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+        const csvContent =
+            'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
 
         const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `registry_export_${new Date().toISOString().split('T')[0]}.csv`);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `registry_export_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
-
-
 
     // Grid Intelligence State
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'created_at', direction: 'desc' });
@@ -132,12 +139,11 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
     }>({
         status: [],
         district: [],
-        rto: []
+        rto: [],
     });
     const [activeFilterDropdown, setActiveFilterDropdown] = useState<string | null>(null);
 
     // Force AUMS Tenant ID if slug is 'aums'
-
 
     // Presence Sync
     useEffect(() => {
@@ -162,9 +168,11 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                 });
                 setOnlineUsers(userIds);
             })
-            .subscribe(async (status) => {
+            .subscribe(async status => {
                 if (status === 'SUBSCRIBED') {
-                    const { data: { user } } = await supabase.auth.getUser();
+                    const {
+                        data: { user },
+                    } = await supabase.auth.getUser();
                     if (user) {
                         await channel.track({ user_id: user.id, online_at: new Date().toISOString() });
                     }
@@ -176,13 +184,15 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
         };
     }, [targetTenantId, supabase]);
 
-
-
     // Derived Filters Options
     const filterOptions = useMemo(() => {
         const status = Array.from(new Set(members.map(m => m.member_status || 'ACTIVE'))).filter(Boolean);
-        const district = Array.from(new Set(members.map(m => m.district || 'Unassigned'))).filter(Boolean).sort();
-        const rto = Array.from(new Set(members.map(m => m.rto || 'NA'))).filter(Boolean).sort();
+        const district = Array.from(new Set(members.map(m => m.district || 'Unassigned')))
+            .filter(Boolean)
+            .sort();
+        const rto = Array.from(new Set(members.map(m => m.rto || 'NA')))
+            .filter(Boolean)
+            .sort();
         return { status, district, rto };
     }, [members]);
 
@@ -276,10 +286,8 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                     bValue = new Date(b.updated_at).getTime();
                     break;
                 default:
-                    // @ts-ignore
-                    aValue = a[sortConfig.key] || '';
-                    // @ts-ignore
-                    bValue = b[sortConfig.key] || '';
+                    aValue = (a as unknown as Record<string, unknown>)[sortConfig.key] || '';
+                    bValue = (b as unknown as Record<string, unknown>)[sortConfig.key] || '';
             }
 
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -295,27 +303,21 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
             quickFilters.hasLeads ||
             quickFilters.hasQuotes ||
             quickFilters.hasBookings;
-        const hasDropdown =
-            filters.status.length > 0 ||
-            filters.district.length > 0 ||
-            filters.rto.length > 0;
+        const hasDropdown = filters.status.length > 0 || filters.district.length > 0 || filters.rto.length > 0;
         return hasQuick || hasDropdown || search.length > 0;
     }, [quickFilters, filters, search]);
-
 
     const handleSort = (key: SortConfig['key']) => {
         setSortConfig(current => ({
             key,
-            direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+            direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
         }));
     };
 
     const toggleFilter = (type: keyof typeof filters, value: string) => {
         setFilters(prev => {
             const current = prev[type];
-            const updated = current.includes(value)
-                ? current.filter(item => item !== value)
-                : [...current, value];
+            const updated = current.includes(value) ? current.filter(item => item !== value) : [...current, value];
             return { ...prev, [type]: updated };
         });
     };
@@ -337,10 +339,23 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
         }
     };
 
-    const FilterDropdown = ({ title, options, type, align = 'left' }: { title: string, options: string[], type: keyof typeof filters, align?: 'left' | 'right' }) => (
+    const FilterDropdown = ({
+        title,
+        options,
+        type,
+        align = 'left',
+    }: {
+        title: string;
+        options: string[];
+        type: keyof typeof filters;
+        align?: 'left' | 'right';
+    }) => (
         <div className="relative">
             <button
-                onClick={(e) => { e.stopPropagation(); setActiveFilterDropdown(activeFilterDropdown === type ? null : type); }}
+                onClick={e => {
+                    e.stopPropagation();
+                    setActiveFilterDropdown(activeFilterDropdown === type ? null : type);
+                }}
                 className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors ${filters[type].length > 0 ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10' : 'text-slate-400'}`}
             >
                 <Filter size={14} strokeWidth={filters[type].length > 0 ? 3 : 2} />
@@ -353,12 +368,19 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.1 }}
                         className={`absolute top-full mt-2 ${align === 'right' ? 'right-0' : 'left-0'} w-56 bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden flex flex-col`}
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
                     >
                         <div className="p-3 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/[0.02]">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Filter {title}</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                Filter {title}
+                            </span>
                             {filters[type].length > 0 && (
-                                <button onClick={() => clearFilters(type)} className="text-[9px] font-bold text-rose-500 hover:underline">Clear</button>
+                                <button
+                                    onClick={() => clearFilters(type)}
+                                    className="text-[9px] font-bold text-rose-500 hover:underline"
+                                >
+                                    Clear
+                                </button>
                             )}
                         </div>
                         <div className="max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
@@ -368,13 +390,23 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                                     onClick={() => toggleFilter(type, opt)}
                                     className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left group"
                                 >
-                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${filters[type].includes(opt) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-white/20'}`}>
-                                        {filters[type].includes(opt) && <Check size={10} className="text-white" strokeWidth={4} />}
+                                    <div
+                                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${filters[type].includes(opt) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-white/20'}`}
+                                    >
+                                        {filters[type].includes(opt) && (
+                                            <Check size={10} className="text-white" strokeWidth={4} />
+                                        )}
                                     </div>
-                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{opt}</span>
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                                        {opt}
+                                    </span>
                                 </button>
                             ))}
-                            {options.length === 0 && <div className="p-4 text-center text-[10px] italic text-slate-400">No options available</div>}
+                            {options.length === 0 && (
+                                <div className="p-4 text-center text-[10px] italic text-slate-400">
+                                    No options available
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}
@@ -397,7 +429,9 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                         <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Registry // List</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">
+                            Registry // List
+                        </p>
                         <h1 className="text-2xl font-black tracking-tighter italic uppercase text-slate-900 dark:text-white leading-none">
                             All Members
                         </h1>
@@ -406,10 +440,13 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
 
                 <div className="flex items-center gap-3">
                     <div className="relative group min-w-[320px]">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={16} />
+                        <Search
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                            size={16}
+                        />
                         <input
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={e => setSearch(e.target.value)}
                             placeholder="Search registry..."
                             className="w-full bg-slate-50 dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 rounded-2xl py-2.5 pl-12 pr-10 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
                         />
@@ -485,7 +522,13 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                             <button
                                 type="button"
                                 onClick={() => {
-                                    setQuickFilters({ activeOnly: false, onlineOnly: false, hasLeads: false, hasQuotes: false, hasBookings: false });
+                                    setQuickFilters({
+                                        activeOnly: false,
+                                        onlineOnly: false,
+                                        hasLeads: false,
+                                        hasQuotes: false,
+                                        hasBookings: false,
+                                    });
                                     setFilters({ status: [], district: [], rto: [] });
                                     setSearch('');
                                 }}
@@ -500,67 +543,179 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                             <thead className="sticky top-0 z-10 bg-white dark:bg-[#0f1115] border-b border-slate-100 dark:border-white/5 shadow-sm">
                                 <tr>
                                     <th className="px-6 py-4 text-left w-[28%] sticky left-0 z-20 bg-white dark:bg-[#0f1115]">
-                                        <button onClick={() => handleSort('full_name')} className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors">
+                                        <button
+                                            onClick={() => handleSort('full_name')}
+                                            className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+                                        >
                                             Registry Profile
                                             <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <ArrowUp size={8} className={sortConfig.key === 'full_name' && sortConfig.direction === 'asc' ? 'text-indigo-600' : 'text-slate-300'} />
-                                                <ArrowDown size={8} className={sortConfig.key === 'full_name' && sortConfig.direction === 'desc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                                <ArrowUp
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'full_name' && sortConfig.direction === 'asc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
+                                                <ArrowDown
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'full_name' &&
+                                                        sortConfig.direction === 'desc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
                                             </div>
                                         </button>
                                     </th>
-                                    <th className="px-4 py-4 text-left w-[16%] text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300">Contact</th>
+                                    <th className="px-4 py-4 text-left w-[16%] text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300">
+                                        Contact
+                                    </th>
                                     <th className="px-4 py-4 text-left w-[15%]">
                                         <div className="flex items-center gap-2">
-                                            <button onClick={() => handleSort('district')} className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors">
+                                            <button
+                                                onClick={() => handleSort('district')}
+                                                className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+                                            >
                                                 Location
                                             </button>
-                                            <FilterDropdown title="District" options={filterOptions.district} type="district" />
+                                            <FilterDropdown
+                                                title="District"
+                                                options={filterOptions.district}
+                                                type="district"
+                                            />
                                         </div>
                                     </th>
                                     <th className="px-4 py-4 text-center w-[10%]">
-                                        <button onClick={() => handleSort('leads_count')} className="group flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full">
+                                        <button
+                                            onClick={() => handleSort('leads_count')}
+                                            className="group flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full"
+                                        >
                                             Leads
                                             <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <ArrowUp size={8} className={sortConfig.key === 'leads_count' && sortConfig.direction === 'asc' ? 'text-indigo-600' : 'text-slate-300'} />
-                                                <ArrowDown size={8} className={sortConfig.key === 'leads_count' && sortConfig.direction === 'desc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                                <ArrowUp
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'leads_count' &&
+                                                        sortConfig.direction === 'asc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
+                                                <ArrowDown
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'leads_count' &&
+                                                        sortConfig.direction === 'desc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
                                             </div>
                                         </button>
                                     </th>
                                     <th className="px-4 py-4 text-center w-[10%]">
-                                        <button onClick={() => handleSort('quotes_count')} className="group flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full">
+                                        <button
+                                            onClick={() => handleSort('quotes_count')}
+                                            className="group flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full"
+                                        >
                                             Quotes
                                             <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <ArrowUp size={8} className={sortConfig.key === 'quotes_count' && sortConfig.direction === 'asc' ? 'text-indigo-600' : 'text-slate-300'} />
-                                                <ArrowDown size={8} className={sortConfig.key === 'quotes_count' && sortConfig.direction === 'desc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                                <ArrowUp
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'quotes_count' &&
+                                                        sortConfig.direction === 'asc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
+                                                <ArrowDown
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'quotes_count' &&
+                                                        sortConfig.direction === 'desc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
                                             </div>
                                         </button>
                                     </th>
                                     <th className="px-4 py-4 text-center w-[10%]">
-                                        <button onClick={() => handleSort('bookings_count')} className="group flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full">
+                                        <button
+                                            onClick={() => handleSort('bookings_count')}
+                                            className="group flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full"
+                                        >
                                             Bookings
                                             <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <ArrowUp size={8} className={sortConfig.key === 'bookings_count' && sortConfig.direction === 'asc' ? 'text-indigo-600' : 'text-slate-300'} />
-                                                <ArrowDown size={8} className={sortConfig.key === 'bookings_count' && sortConfig.direction === 'desc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                                <ArrowUp
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'bookings_count' &&
+                                                        sortConfig.direction === 'asc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
+                                                <ArrowDown
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'bookings_count' &&
+                                                        sortConfig.direction === 'desc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
                                             </div>
                                         </button>
                                     </th>
                                     <th className="px-4 py-4 text-left w-[12%]">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300">Status</span>
-                                            <FilterDropdown title="Status" options={filterOptions.status} type="status" />
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300">
+                                                Status
+                                            </span>
+                                            <FilterDropdown
+                                                title="Status"
+                                                options={filterOptions.status}
+                                                type="status"
+                                            />
                                         </div>
                                     </th>
                                     <th className="px-4 py-4 text-left w-[10%]">
-                                        <button onClick={() => handleSort('created_at')} className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors">
+                                        <button
+                                            onClick={() => handleSort('created_at')}
+                                            className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+                                        >
                                             Joined On
                                             <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <ArrowUp size={8} className={sortConfig.key === 'created_at' && sortConfig.direction === 'asc' ? 'text-indigo-600' : 'text-slate-300'} />
-                                                <ArrowDown size={8} className={sortConfig.key === 'created_at' && sortConfig.direction === 'desc' ? 'text-indigo-600' : 'text-slate-300'} />
+                                                <ArrowUp
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'created_at' &&
+                                                        sortConfig.direction === 'asc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
+                                                <ArrowDown
+                                                    size={8}
+                                                    className={
+                                                        sortConfig.key === 'created_at' &&
+                                                        sortConfig.direction === 'desc'
+                                                            ? 'text-indigo-600'
+                                                            : 'text-slate-300'
+                                                    }
+                                                />
                                             </div>
                                         </button>
                                     </th>
                                     <th className="px-6 py-4 text-right w-[10%]">
-                                        <button onClick={() => handleSort('updated_at')} className="group flex items-center justify-end gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full">
+                                        <button
+                                            onClick={() => handleSort('updated_at')}
+                                            className="group flex items-center justify-end gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300 hover:text-indigo-600 transition-colors w-full"
+                                        >
                                             Activity
                                         </button>
                                     </th>
@@ -568,13 +723,17 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-white/[0.02]">
                                 {loading ? (
-                                    Array(15).fill(0).map((_, i) => (
-                                        <tr key={i} className="animate-pulse">
-                                            <td colSpan={9} className="px-6 py-3"><div className="h-4 bg-slate-100 dark:bg-white/5 rounded w-full" /></td>
-                                        </tr>
-                                    ))
+                                    Array(15)
+                                        .fill(0)
+                                        .map((_, i) => (
+                                            <tr key={i} className="animate-pulse">
+                                                <td colSpan={9} className="px-6 py-3">
+                                                    <div className="h-4 bg-slate-100 dark:bg-white/5 rounded w-full" />
+                                                </td>
+                                            </tr>
+                                        ))
                                 ) : processedMembers.length > 0 ? (
-                                    processedMembers.map((member) => {
+                                    processedMembers.map(member => {
                                         const updatedAt = member.updated_at ? new Date(member.updated_at) : null;
                                         const createdAt = member.created_at ? new Date(member.created_at) : null;
                                         return (
@@ -590,35 +749,52 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                                                         </div>
                                                         <div className="min-w-0">
                                                             <div className="flex items-center gap-2">
-                                                                <p className="font-bold text-sm text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors">{member.full_name}</p>
-                                                                {onlineUsers.has(member.id) && <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />}
+                                                                <p className="font-bold text-sm text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors">
+                                                                    {member.full_name}
+                                                                </p>
+                                                                {onlineUsers.has(member.id) && (
+                                                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                                                                )}
                                                             </div>
                                                             <p className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-wider">
-                                                                {member.display_id?.replace(/[^A-Z0-9]/gi, '').match(/.{1,3}/g)?.join('-') || member.display_id}
+                                                                {member.display_id
+                                                                    ?.replace(/[^A-Z0-9]/gi, '')
+                                                                    .match(/.{1,3}/g)
+                                                                    ?.join('-') || member.display_id}
                                                             </p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-2.5">
                                                     <div className="flex flex-col">
-                                                        <span className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300" title="db: primary_phone">
+                                                        <span
+                                                            className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300"
+                                                            title="db: primary_phone"
+                                                        >
                                                             {member.primary_phone || '—'}
                                                         </span>
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide truncate max-w-[160px]" title="db: primary_email">
+                                                        <span
+                                                            className="text-[10px] text-slate-400 font-bold uppercase tracking-wide truncate max-w-[160px]"
+                                                            title="db: primary_email"
+                                                        >
                                                             {member.primary_email || '—'}
                                                         </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-2.5">
                                                     <div className="flex flex-col">
-                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{member.taluka || member.district || '—'}</span>
-                                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">{member.rto || 'NA'}</span>
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                                            {member.taluka || member.district || '—'}
+                                                        </span>
+                                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">
+                                                            {member.rto || 'NA'}
+                                                        </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-2.5 text-center">
                                                     <button
                                                         type="button"
-                                                        onClick={(event) => event.stopPropagation()}
+                                                        onClick={event => event.stopPropagation()}
                                                         className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${member.leads_count ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' : 'bg-slate-100 dark:bg-[#0b0d10] text-slate-400 border-slate-200 dark:border-white/10'}`}
                                                     >
                                                         {member.leads_count || 0}
@@ -627,7 +803,7 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                                                 <td className="px-4 py-2.5 text-center">
                                                     <button
                                                         type="button"
-                                                        onClick={(event) => event.stopPropagation()}
+                                                        onClick={event => event.stopPropagation()}
                                                         className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${member.quotes_count ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-slate-100 dark:bg-[#0b0d10] text-slate-400 border-slate-200 dark:border-white/10'}`}
                                                     >
                                                         {member.quotes_count || 0}
@@ -636,16 +812,22 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                                                 <td className="px-4 py-2.5 text-center">
                                                     <button
                                                         type="button"
-                                                        onClick={(event) => event.stopPropagation()}
+                                                        onClick={event => event.stopPropagation()}
                                                         className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${member.bookings_count ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-slate-100 dark:bg-[#0b0d10] text-slate-400 border-slate-200 dark:border-white/10'}`}
                                                     >
                                                         {member.bookings_count || 0}
                                                     </button>
                                                 </td>
                                                 <td className="px-4 py-2.5">
-                                                    <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full ${getStatusConfig(member.member_status).pill}`}>
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${getStatusConfig(member.member_status).bg}`} />
-                                                        <span className={`text-[9px] font-black uppercase tracking-wider ${getStatusConfig(member.member_status).color}`}>
+                                                    <div
+                                                        className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full ${getStatusConfig(member.member_status).pill}`}
+                                                    >
+                                                        <div
+                                                            className={`w-1.5 h-1.5 rounded-full ${getStatusConfig(member.member_status).bg}`}
+                                                        />
+                                                        <span
+                                                            className={`text-[9px] font-black uppercase tracking-wider ${getStatusConfig(member.member_status).color}`}
+                                                        >
                                                             {member.member_status || 'ACTIVE'}
                                                         </span>
                                                     </div>
@@ -655,7 +837,13 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                                                         className="text-xs font-bold text-slate-600 dark:text-slate-300"
                                                         title={createdAt ? createdAt.toLocaleString('en-IN') : '—'}
                                                     >
-                                                        {createdAt ? createdAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                                                        {createdAt
+                                                            ? createdAt.toLocaleDateString('en-IN', {
+                                                                  day: '2-digit',
+                                                                  month: 'short',
+                                                                  year: '2-digit',
+                                                              })
+                                                            : '—'}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-2.5 text-right">
@@ -674,12 +862,20 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                                         <td colSpan={9} className="px-10 py-20 text-center space-y-4">
                                             <Users size={40} strokeWidth={1} className="mx-auto text-slate-300" />
                                             <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
-                                                {hasActiveFilters ? 'No entries match current filters' : 'No entries found'}
+                                                {hasActiveFilters
+                                                    ? 'No entries match current filters'
+                                                    : 'No entries found'}
                                             </p>
                                             {hasActiveFilters && (
                                                 <button
                                                     onClick={() => {
-                                                        setQuickFilters({ activeOnly: false, onlineOnly: false, hasLeads: false, hasQuotes: false, hasBookings: false });
+                                                        setQuickFilters({
+                                                            activeOnly: false,
+                                                            onlineOnly: false,
+                                                            hasLeads: false,
+                                                            hasQuotes: false,
+                                                            hasBookings: false,
+                                                        });
                                                         setFilters({ status: [], district: [], rto: [] });
                                                         setSearch('');
                                                     }}
@@ -704,7 +900,9 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                     </div>
                     <footer className="p-4 bg-white dark:bg-[#0f1115] border-t border-slate-100 dark:border-white/5 flex justify-between items-center text-xs font-bold text-slate-500 uppercase tracking-wider">
                         <div className="flex items-center gap-4">
-                            <span>Showing {members.length} of {totalRecords} records</span>
+                            <span>
+                                Showing {members.length} of {totalRecords} records
+                            </span>
                         </div>
                         <div className="flex items-center gap-2">
                             <button
@@ -714,7 +912,9 @@ export default function MembersListPage({ params }: { params: Promise<{ slug: st
                             >
                                 Previous
                             </button>
-                            <span className="px-2">Page {page} of {totalPages}</span>
+                            <span className="px-2">
+                                Page {page} of {totalPages}
+                            </span>
                             <button
                                 disabled={page === totalPages}
                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}

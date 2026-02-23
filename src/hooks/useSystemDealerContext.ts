@@ -394,7 +394,6 @@ export function useSystemDealerContext({
                     }
                 } else {
                     // MARKET BEST RESOLUTION (Default)
-                    // @ts-ignore - Types might be outdated for this RPC
                     const { data: offers } = (await supabase.rpc('get_market_best_offers', {
                         p_district_name: district || 'ALL',
                         p_state_code: stateCode || 'MH',
