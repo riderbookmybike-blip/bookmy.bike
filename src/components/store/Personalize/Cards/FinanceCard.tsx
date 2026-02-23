@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { HelpCircle, Clock, CheckCircle2, SlidersHorizontal, Edit2 } from 'lucide-react';
 import { formatDisplayIdForUI, unformatDisplayId } from '@/lib/displayId';
+import { formatInterestRate } from '@/utils/formatVehicleSpec';
 
 interface FinanceCardProps {
     emi: number;
@@ -100,7 +101,7 @@ export default function FinanceCard({
             helpText: charge.helpText,
         })),
         { label: 'Loan Amount', value: `₹${loanAmount.toLocaleString()}` },
-        { label: `Interest (${interestType})`, value: `${(annualInterest * 100).toFixed(2)}%`, isHighlight: true },
+        { label: `Interest (${interestType})`, value: formatInterestRate(annualInterest), isHighlight: true },
         {
             label: 'Approval Chance',
             value: downPayment / totalOnRoad > 0.25 ? 'High' : downPayment / totalOnRoad > 0.15 ? 'Medium' : 'Low',

@@ -31,6 +31,7 @@ import { KpiCard } from '@/components/dashboard/DashboardWidgets';
 import { KPIItem } from '@/components/layout/KPIBar';
 import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
 import { savePrices } from '@/actions/savePrices';
+import { formatCurrencyCompact } from '@/utils/formatVehicleSpec';
 
 interface SKUPriceRow {
     id: string; // vehicle_color_id
@@ -816,11 +817,7 @@ export default function PricingPage() {
         // Dynamic sum from Table's current view
         const totalValue = tableSummary.value;
         const formattedValue =
-            totalValue >= 10000000
-                ? `₹${(totalValue / 10000000).toFixed(2)} Cr`
-                : totalValue >= 100000
-                  ? `₹${(totalValue / 100000).toFixed(2)} L`
-                  : `₹${totalValue.toLocaleString()}`;
+            totalValue >= 1000 ? formatCurrencyCompact(totalValue) : `₹${totalValue.toLocaleString()}`;
 
         return (
             <div className="max-w-full mx-auto space-y-4 mb-4">

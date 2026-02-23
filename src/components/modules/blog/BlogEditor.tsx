@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -314,4 +314,3 @@ export default function BlogEditor({ postId }: { postId?: string }) {
         </div>
     );
 }
-// @ts-nocheck

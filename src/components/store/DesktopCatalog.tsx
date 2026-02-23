@@ -25,6 +25,7 @@ import { buildProductUrl, buildVariantExplorerUrl } from '@/lib/utils/urlHelper'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 import { groupProductsByModel } from '@/utils/variantGrouping';
+import { formatPriceLabel } from '@/utils/formatVehicleSpec';
 
 import { BRANDS as defaultBrands } from '@/config/market';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
@@ -727,10 +728,11 @@ export const DesktopCatalog = ({
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-2.5 rounded-xl border transition-all duration-300 ${selectedValues.includes(opt)
-                                        ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
-                                        : 'bg-white border-slate-200 hover:border-slate-300'
-                                        }`}
+                                    className={`group relative flex items-center justify-between p-2.5 rounded-xl border transition-all duration-300 ${
+                                        selectedValues.includes(opt)
+                                            ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
+                                            : 'bg-white border-slate-200 hover:border-slate-300'
+                                    }`}
                                 >
                                     <span
                                         className={`text-[9px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-800'}`}
@@ -944,9 +946,7 @@ export const DesktopCatalog = ({
                         <div className="mx-auto w-14 h-14 rounded-full bg-[#F4B000]/15 flex items-center justify-center">
                             <MapPin size={28} className="text-[#F4B000]" />
                         </div>
-                        <h2 className="text-xl font-black uppercase tracking-wide text-slate-900">
-                            Location Required
-                        </h2>
+                        <h2 className="text-xl font-black uppercase tracking-wide text-slate-900">Location Required</h2>
                         <p className="text-sm text-slate-600 leading-relaxed">
                             Nearest dealership aur accurate pricing ke liye aapki location zaroori hai.
                             <br />
@@ -1086,10 +1086,11 @@ export const DesktopCatalog = ({
                                                             onClick={() => {
                                                                 setSmartColor(c.name);
                                                             }}
-                                                            className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${normalize(smartColor || undefined) === normalize(c.name)
-                                                                ? 'ring-2 ring-brand-primary/40'
-                                                                : ''
-                                                                }`}
+                                                            className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${
+                                                                normalize(smartColor || undefined) === normalize(c.name)
+                                                                    ? 'ring-2 ring-brand-primary/40'
+                                                                    : ''
+                                                            }`}
                                                             style={{ background: c.hex || '#999' }}
                                                             title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
                                                         >
@@ -1309,10 +1310,11 @@ export const DesktopCatalog = ({
                                                             <button
                                                                 key={t}
                                                                 onClick={() => setTenure(t)}
-                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${tenure === t
-                                                                    ? 'bg-slate-900 text-white shadow-lg scale-105 ring-2 ring-brand-primary/20'
-                                                                    : 'bg-white/50 text-slate-400 hover:text-slate-600 hover:bg-white shadow-sm'
-                                                                    }`}
+                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${
+                                                                    tenure === t
+                                                                        ? 'bg-slate-900 text-white shadow-lg scale-105 ring-2 ring-brand-primary/20'
+                                                                        : 'bg-white/50 text-slate-400 hover:text-slate-600 hover:bg-white shadow-sm'
+                                                                }`}
                                                             >
                                                                 {t.toString().padStart(2, '0')}
                                                             </button>
@@ -1329,9 +1331,7 @@ export const DesktopCatalog = ({
                                                             Max On-Road Price
                                                         </span>
                                                         <span className="text-sm font-black text-slate-900 italic">
-                                                            {maxPrice >= 1000000
-                                                                ? 'Any'
-                                                                : `Under ${(maxPrice / 100000).toFixed(1)}L`}
+                                                            {maxPrice >= 1000000 ? 'Any' : formatPriceLabel(maxPrice)}
                                                         </span>
                                                     </div>
                                                     <div className="relative flex items-center h-6">
@@ -1436,12 +1436,13 @@ export const DesktopCatalog = ({
                     {/* Main Content Area */}
                     <div className="flex-1 space-y-6">
                         <div
-                            className={`grid ${viewMode === 'list'
-                                ? 'grid-cols-1 w-full gap-6'
-                                : isPhone
-                                    ? 'grid-cols-1 gap-4 w-full'
-                                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
-                                }`}
+                            className={`grid ${
+                                viewMode === 'list'
+                                    ? 'grid-cols-1 w-full gap-6'
+                                    : isPhone
+                                      ? 'grid-cols-1 gap-4 w-full'
+                                      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
+                            }`}
                         >
                             {/* Results Grid */}
                             {groupedDisplayResults.map((group, idx) => {
@@ -1477,17 +1478,17 @@ export const DesktopCatalog = ({
                                         onExplore={
                                             group.variantCount > 1
                                                 ? () => {
-                                                    const url = buildVariantExplorerUrl(group.make, group.model);
-                                                    router.push(url);
-                                                }
+                                                      const url = buildVariantExplorerUrl(group.make, group.model);
+                                                      router.push(url);
+                                                  }
                                                 : undefined
                                         }
                                         onExplodeColors={
                                             isSmart
                                                 ? () => {
-                                                    const key = `${v.make}::${v.model}::${v.variant}`;
-                                                    setExplodedVariant(prev => (prev === key ? null : key));
-                                                }
+                                                      const key = `${v.make}::${v.model}::${v.variant}`;
+                                                      setExplodedVariant(prev => (prev === key ? null : key));
+                                                  }
                                                 : undefined
                                         }
                                     />
@@ -1730,7 +1731,7 @@ export const DesktopCatalog = ({
                             tenure={tenure}
                             onTenureChange={setTenure}
                             sortBy={sortBy}
-                            onSortChange={() => { }} // Placeholder as sortBy is currently read-only in this component
+                            onSortChange={() => {}} // Placeholder as sortBy is currently read-only in this component
                         />
                     </>
                 )}
@@ -1887,9 +1888,7 @@ export const DesktopCatalog = ({
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                         Tenure
                                     </span>
-                                    <span className="text-lg font-black text-emerald-600">
-                                        {tenure} months
-                                    </span>
+                                    <span className="text-lg font-black text-emerald-600">{tenure} months</span>
                                 </div>
                                 <div className="flex items-center justify-center gap-2">
                                     {[12, 24, 36, 48, 60].map(val => (

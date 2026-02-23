@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -59,19 +59,20 @@ export const ServiceAreaManager = ({
 
         if (pinData) {
             setHomeInfo({
-                district: pinData.district,
-                lat: parseFloat(pinData.latitude),
-                lon: parseFloat(pinData.longitude),
+                district: pinData.district ?? '',
+                lat: parseFloat(String(pinData.latitude ?? 0)),
+                lon: parseFloat(String(pinData.longitude ?? 0)),
             });
         }
     };
 
     const fetchAllDistricts = async () => {
         // Fetch all unique districts in the state with their avg coordinates
+        // @ts-expect-error — RPC exists but not in generated Supabase types
         const { data } = await supabase.rpc('get_state_districts', { p_state_code: defaultStateCode });
 
-        if (data) {
-            setAllDistricts(data);
+        if (data && Array.isArray(data)) {
+            setAllDistricts(data as any[]);
         } else {
             // Fallback: simple query if RPC doesn't exist (assuming we might need to create it)
             const { data: fallbackData } = await supabase
@@ -381,4 +382,3 @@ export const ServiceAreaManager = ({
         </div>
     );
 };
-// @ts-nocheck

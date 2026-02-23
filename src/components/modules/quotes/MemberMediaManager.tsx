@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { formatFileSize } from '@/utils/formatVehicleSpec';
 import {
     X,
     Upload,
@@ -63,13 +64,6 @@ interface MemberDocument {
     file_size?: number | null;
     created_at: string;
     metadata?: Record<string, any>;
-}
-
-function formatFileSize(bytes?: number | null): string {
-    if (!bytes) return '—';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function getFileTypeLabel(fileType: string): string {

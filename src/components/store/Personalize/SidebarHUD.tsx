@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { formatDisplayIdForUI, unformatDisplayId } from '@/lib/displayId';
+import { formatInterestRate } from '@/utils/formatVehicleSpec';
 
 interface SidebarHUDProps {
     product: any;
@@ -187,9 +188,7 @@ export default function SidebarHUD({
                             <Zap size={14} />
                             Quoting for Customer
                         </div>
-                        <div className="text-xl font-black text-slate-900 uppercase mt-1">
-                            {leadName}
-                        </div>
+                        <div className="text-xl font-black text-slate-900 uppercase mt-1">{leadName}</div>
                     </div>
                 )}
             </div>
@@ -360,7 +359,7 @@ export default function SidebarHUD({
                             { label: 'Loan Amount', value: `₹${loanAmount.toLocaleString()}` },
                             {
                                 label: `Interest Rate (${interestType || 'REDUCING'})`,
-                                value: `${(annualInterest * 100).toFixed(2)}%`,
+                                value: formatInterestRate(annualInterest),
                                 isHighlight: true,
                             },
                             { label: 'Duration', value: `${emiTenure} Months` },
