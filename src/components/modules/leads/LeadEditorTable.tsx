@@ -126,6 +126,9 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const isPhone = device === 'phone';
     const { tenantSlug, tenantId } = useTenant();
 
+    // ── Derived lead reference (must be before any useState that accesses lead) ──
+    const lead = profile.lead || {};
+
     const [activeTab, setActiveTab] = useState<
         'LEAD' | 'FINANCE' | 'TRANSACTIONS' | 'MEMBER' | 'DOCUMENTS' | 'TASKS' | 'NOTES' | 'TIMELINE' | 'OCLUB'
     >('LEAD');
@@ -179,7 +182,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const quoteCount = profile.quotes?.length || 0;
     const bookingCount = profile.bookings?.length || 0;
     const receiptCount = profile.receipts?.length || 0;
-    const lead = profile.lead || {};
     const leadLocationProfile =
         lead?.raw?.utm_data && typeof lead.raw.utm_data === 'object' ? (lead.raw.utm_data.location_profile as any) : {};
     const leadArea = lead.area || leadLocationProfile?.area || '—';
