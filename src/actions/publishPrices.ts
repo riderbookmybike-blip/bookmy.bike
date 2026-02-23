@@ -673,12 +673,12 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
 
     // Push Invalidation: Global Catalog
     if (results.some(r => r.success)) {
-        (revalidateTag as any)(CACHE_TAGS.catalog_global);
+        revalidateTag(CACHE_TAGS.catalog_global, 'max');
     }
 
     // Push Invalidation: Affected Tenants
     for (const tenantId of affectedTenants) {
-        (revalidateTag as any)(tenantTag(tenantId));
+        revalidateTag(tenantTag(tenantId), 'max');
     }
 
     // 6. Send batched notifications per tenant

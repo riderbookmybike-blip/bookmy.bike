@@ -92,7 +92,7 @@ export async function savePrices(
             // Push Invalidation: Trigger revalidation for each unique district
             const uniqueDistricts = Array.from(new Set(prices.map(p => p.district || 'ALL')));
             for (const district of uniqueDistricts) {
-                (revalidateTag as any)(districtTag(district));
+                revalidateTag(districtTag(district), 'max');
             }
         }
 
@@ -110,12 +110,13 @@ export async function savePrices(
                 }
             }
             // Push Invalidation: Catalog is global
-            (revalidateTag as any)(CACHE_TAGS.catalog_global);
+            revalidateTag(CACHE_TAGS.catalog_global, 'max');
         }
 
         return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
         console.error('[savePrices] Exception:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: message };
     }
 }
