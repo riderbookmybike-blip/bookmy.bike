@@ -17,7 +17,6 @@ export function useSystemCatalogLogic(leadId?: string) {
     const [resolvedStudioId, setResolvedStudioId] = useState<string | null>(null);
     const [resolvedDealerName, setResolvedDealerName] = useState<string | null>(null);
     const disableOffersRef = useRef(false);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const updateDebug = (_data: Record<string, any>) => {};
     const isValidUuid = (value: unknown) =>
         typeof value === 'string' &&

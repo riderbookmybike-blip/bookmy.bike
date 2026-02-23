@@ -140,16 +140,11 @@ export const DesktopCatalog = ({
     const makeOptions = availableMakes && availableMakes.length > 0 ? availableMakes : defaultBrands;
     const activeCategory = selectedBodyTypes.length === 1 ? selectedBodyTypes[0] : 'ALL';
 
-    // Fallback for filteredVehicles if untyped or missing
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const vehicles = Array.isArray(filteredVehicles) ? filteredVehicles : [];
-
     // Local State
     const [isTv] = useState(_variant === 'tv');
     const isSmart = mode === 'smart';
     const [sortBy] = useState<'popular' | 'price' | 'emi'>('popular');
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const viewMode = 'grid' as 'grid' | 'list';
     const [isEmiOpen, setIsEmiOpen] = useState(true);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
