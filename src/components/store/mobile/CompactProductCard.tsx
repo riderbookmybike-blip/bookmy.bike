@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Heart, Pencil, CircleHelp } from 'lucide-react';
+import { Heart, Pencil, CircleHelp, ArrowRight, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 import type { ProductVariant } from '@/types/productMaster';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
-import { coinsNeededForPrice } from '@/lib/oclub/coin';
+import { coinsNeededForPrice, computeOClubPricing, discountForCoins } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import Image from 'next/image';
 
@@ -20,6 +20,8 @@ interface CompactProductCardProps {
     leadId?: string;
     onEditDownpayment?: () => void;
     fallbackDealerId?: string | null;
+    walletCoins?: number | null;
+    showOClubPrompt?: boolean;
 }
 
 export function CompactProductCard({
@@ -30,6 +32,8 @@ export function CompactProductCard({
     leadId,
     onEditDownpayment,
     fallbackDealerId,
+    walletCoins,
+    showOClubPrompt,
 }: CompactProductCardProps) {
     const { isFavorite, toggleFavorite } = useFavorites();
     const isSaved = isFavorite(v.id);
@@ -48,15 +52,31 @@ export function CompactProductCard({
         setSelectedHex(primaryColor?.hexCode || null);
     }, [v.id, v.imageUrl, v.availableColors]);
 
-    // Price
-    const displayPrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
+    // B-Coin Logic
+    const baseDisplayPrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
+
+    // B-Coin dynamic adjustment
+    const hasCoinsToUse = (walletCoins || 0) > 0;
+    const isShowingEffectivePrice = showOClubPrompt || (walletCoins !== null && hasCoinsToUse);
+
+    const coinPricing =
+        walletCoins !== null && walletCoins !== undefined && hasCoinsToUse
+            ? computeOClubPricing(baseDisplayPrice, Number(walletCoins))
+            : (v.price as any)?.coinPricing || {
+                discount: 1000,
+                coinsUsed: 13,
+            };
+
+    const bcoinAdjustment = isShowingEffectivePrice ? coinPricing.discount || 0 : 0;
+    const displayPrice = Math.max(0, baseDisplayPrice - bcoinAdjustment);
 
     // EMI
     const activeTenure = tenure || 36;
     const loanAmount = Math.max(0, displayPrice - downpayment);
     const factor = EMI_FACTORS[activeTenure] ?? EMI_FACTORS[36];
     const emiValue = Math.max(0, Math.round(loanAmount * factor));
-    const bcoinTotal = coinsNeededForPrice(displayPrice);
+
+    const bcoinTotal = coinsNeededForPrice(baseDisplayPrice);
 
     // Swatches (show all visually)
     const swatches = v.availableColors || [];
@@ -95,7 +115,7 @@ export function CompactProductCard({
             data-dealer-id={v.dealerId || fallbackDealerId || ''}
             data-offer-delta={offerDeltaForParity}
             data-district={navigableDistrict || ''}
-            className="group relative flex flex-col bg-white border border-slate-100 rounded-2xl overflow-hidden transition-all duration-300 active:scale-[0.98] shadow-sm hover:shadow-md hover:border-slate-200"
+            className="group relative flex flex-col bg-white border border-slate-100 rounded-2xl overflow-hidden hover:overflow-visible transition-all duration-300 active:scale-[0.98] shadow-sm hover:shadow-md hover:border-slate-200 hover:z-[50]"
         >
             {/* Favorite Button */}
             <button
@@ -153,7 +173,7 @@ export function CompactProductCard({
 
                 {/* Modern Pricing & EMI Stack */}
                 <div className="mt-auto flex flex-col gap-3">
-                    {/* Offer Price / Starting From */}
+                    {/* On-Road Price */}
                     <div className="flex flex-col items-start">
                         <div className="flex items-center gap-1.5 mb-1">
                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.1em] italic">
@@ -163,13 +183,66 @@ export function CompactProductCard({
                         </div>
                         <div className="flex items-center gap-2">
                             <p className="text-[18px] font-black text-slate-900 leading-none">
-                                ₹{displayPrice.toLocaleString('en-IN')}
+                                ₹{(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString('en-IN')}
                             </p>
-                            <div className="flex items-center gap-1 bg-[#F4B000]/10 px-1.5 py-0.5 rounded border border-[#F4B000]/20">
+                            <div className="flex items-center gap-1 bg-[#F4B000]/10 px-1.5 py-0.5 rounded border border-[#F4B000]/20 relative group/bcoin">
                                 <Logo variant="icon" size={8} />
                                 <span className="text-[9px] font-black text-[#F4B000] italic leading-none">
                                     {bcoinTotal.toLocaleString('en-IN')}
                                 </span>
+                                <CircleHelp
+                                    size={8}
+                                    className="text-[#F4B000]/60 hover:text-[#F4B000] cursor-help transition-colors"
+                                />
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 p-3 bg-[#0f1115] border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-xl opacity-0 invisible group-hover/bcoin:opacity-100 group-hover/bcoin:visible transition-all pointer-events-auto z-[100] shadow-2xl min-w-[200px] text-center">
+                                    <div className="flex flex-col gap-2.5">
+                                        {showOClubPrompt ? (
+                                            <>
+                                                <div className="space-y-1">
+                                                    <div className="text-slate-200 text-[10px] leading-tight flex flex-col items-center gap-1">
+                                                        <span>You are a step away from earning</span>
+                                                        <span className="text-[#F4B000] text-sm italic flex items-center gap-1">
+                                                            {coinPricing.coinsUsed} <Logo variant="icon" size={10} />
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-slate-400 text-[8px] font-medium leading-normal normal-case">
+                                                        Signup now to join O&apos;Club and unlock this special member
+                                                        price.
+                                                    </p>
+                                                </div>
+                                                <span
+                                                    onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = '/store/ocircle'; }}
+                                                    className="w-full py-2 bg-[#F4B000] text-black rounded-lg font-black flex items-center justify-center gap-1.5 cursor-pointer"
+                                                >
+                                                    Join O&apos;Club <ArrowRight size={10} />
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="space-y-1">
+                                                    <div className="text-slate-200 text-[10px] leading-tight flex flex-col items-center gap-1">
+                                                        <span>You have just earned</span>
+                                                        <span className="text-emerald-400 text-sm italic flex items-center gap-1">
+                                                            {coinPricing.coinsUsed} <Logo variant="icon" size={10} />
+                                                        </span>
+                                                        <span>by signup!</span>
+                                                    </div>
+                                                    <p className="text-slate-400 text-[8px] font-medium leading-normal normal-case">
+                                                        Applied to your member specific offer price.
+                                                    </p>
+                                                </div>
+                                                <span
+                                                    onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = '/store/ocircle'; }}
+                                                    className="text-[#F4B000] hover:underline flex items-center justify-center gap-1 py-1 border-t border-white/5 mt-1 cursor-pointer"
+                                                >
+                                                    O&apos;Club Benefits <ArrowRight size={10} />
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#0f1115] border-b border-r border-white/10 rotate-45" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -226,7 +299,7 @@ export function CompactProductCard({
                 <div className="flex items-center gap-3 px-3 pb-4 overflow-x-auto hide-scrollbar w-full">
                     {swatches.map((color, i) => (
                         <button
-                            key={`${color.hexCode || i}`}
+                            key={`${color.hexCode}-${i}`}
                             onClick={e => {
                                 e.preventDefault();
                                 e.stopPropagation();

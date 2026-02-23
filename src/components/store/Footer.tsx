@@ -52,6 +52,7 @@ export const Footer = () => {
             links: [
                 { label: t('About Us'), href: '#' },
                 { label: t('Our Blog'), href: '/blog' },
+                { label: t("O'Circle"), href: '/store/ocircle', highlight: true },
                 { label: t('Partner Login'), href: '/login' },
                 { label: t('Media Kit'), href: '/mediakit' },
                 { label: t('Contact'), href: '#' },
@@ -120,11 +121,10 @@ export const Footer = () => {
                                     layout
                                     onMouseEnter={() => setActiveSection(idx)}
                                     onClick={() => setActiveSection(idx)}
-                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between flex-shrink-0 lg:flex-shrink snap-center ${
-                                        isActive
-                                            ? `w-[300px] lg:w-auto lg:flex-[3] bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_0_80px_rgba(0,0,0,0.5)]`
-                                            : 'w-[80px] lg:w-auto lg:flex-[1] bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-zinc-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-white/10'
-                                    }`}
+                                    className={`relative rounded-[2rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between flex-shrink-0 lg:flex-shrink snap-center ${isActive
+                                        ? `w-[300px] lg:w-auto lg:flex-[3] bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-slate-200 dark:border-white/10 shadow-2xl dark:shadow-[0_0_80px_rgba(0,0,0,0.5)]`
+                                        : 'w-[80px] lg:w-auto lg:flex-[1] bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-zinc-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-white/10'
+                                        }`}
                                 >
                                     <div className="absolute inset-0 p-8 flex flex-col justify-between">
                                         {/* Header / Vertical Title */}
@@ -143,9 +143,9 @@ export const Footer = () => {
                                         <div className="relative flex-1 flex items-center">
                                             {/* Inactive Vertical Text */}
                                             <div
-                                                className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-all duration-500 ${!isActive ? 'opacity-100' : 'opacity-0'}`}
+                                                className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 pointer-events-none transition-all duration-500 before:content-none after:content-none ${!isActive ? 'opacity-100' : 'opacity-0'}`}
                                             >
-                                                <span className="text-4xl font-black uppercase tracking-widest text-slate-200 dark:text-white/20 whitespace-nowrap">
+                                                <span className="text-4xl font-black uppercase tracking-widest text-slate-200 dark:text-white/20 whitespace-nowrap px-4 bg-transparent border-none">
                                                     {section.title}
                                                 </span>
                                             </div>
@@ -154,7 +154,7 @@ export const Footer = () => {
                                             <div
                                                 className={`w-full transition-all duration-500 delay-100 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 absolute inset-0 pointer-events-none'}`}
                                             >
-                                                <h4 className="text-4xl font-black uppercase italic tracking-tighter mb-8 leading-none drop-shadow-sm text-transparent bg-clip-text bg-gradient-to-r from-[#F4B000] to-amber-200">
+                                                <h4 className="text-4xl font-black uppercase italic tracking-tighter mb-8 leading-none drop-shadow-sm text-transparent bg-clip-text bg-gradient-to-r from-[#F4B000] to-amber-200 px-1 py-1 -ml-1">
                                                     {section.title}
                                                 </h4>
                                                 <ul className="space-y-3">
@@ -162,11 +162,10 @@ export const Footer = () => {
                                                         <li key={i}>
                                                             <Link
                                                                 href={link.href}
-                                                                className={`text-lg font-medium transition-colors flex items-center gap-2 group/link ${
-                                                                    link.highlight
-                                                                        ? 'text-slate-900 dark:text-white hover:text-slate-700 dark:hover:text-white/80 underline decoration-slate-300 dark:decoration-white/30'
-                                                                        : 'text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
-                                                                }`}
+                                                                className={`text-lg font-medium transition-colors flex items-center gap-2 group/link ${link.highlight
+                                                                    ? 'text-slate-900 dark:text-white hover:text-slate-700 dark:hover:text-white/80 underline decoration-slate-300 dark:decoration-white/30'
+                                                                    : 'text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                                                                    }`}
                                                             >
                                                                 {link.label}
                                                                 <ArrowRight

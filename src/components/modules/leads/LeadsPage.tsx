@@ -275,6 +275,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         phone: string;
         pincode: string;
         interestText: string;
+        organisation?: string;
         model?: string;
         dob?: string;
         selectedDealerId?: string;
@@ -295,6 +296,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
             customer_pincode: formData.pincode,
             customer_dob: formData.dob,
             interest_text: formData.interestText,
+            organisation: formData.organisation,
             model: formData.model,
             source: 'CRM_MANUAL',
             owner_tenant_id: tenantId,
@@ -377,11 +379,10 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                 key={chip}
                                 onClick={() => setStatusFilter(chip)}
                                 data-crm-allow
-                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
-                                    statusFilter === chip
+                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${statusFilter === chip
                                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
                                         : 'bg-white dark:bg-white/5 text-slate-500 border border-slate-200 dark:border-white/10'
-                                }`}
+                                    }`}
                             >
                                 {chip}
                             </button>
@@ -552,134 +553,134 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                             ))}
                         </div>
                     ) : /* ── LIST VIEW: Phone-optimized cards vs Desktop table ── */
-                    isPhone ? (
-                        <div className="space-y-2 pb-4">
-                            {leads.map(lead => (
-                                <button
-                                    key={lead.id}
-                                    onClick={() => handleOpenLead(lead.id)}
-                                    className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden transition-all active:scale-[0.98] min-h-[56px]"
-                                    data-crm-allow
-                                >
-                                    <div className="flex">
-                                        <div className="w-1 shrink-0 bg-indigo-500" />
-                                        <div className="flex-1 px-3.5 py-3 min-w-0">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                                                    {formatDisplayId(lead.displayId)}
-                                                </span>
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600">
-                                                        {lead.status || 'NEW'}
+                        isPhone ? (
+                            <div className="space-y-2 pb-4">
+                                {leads.map(lead => (
+                                    <button
+                                        key={lead.id}
+                                        onClick={() => handleOpenLead(lead.id)}
+                                        className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden transition-all active:scale-[0.98] min-h-[56px]"
+                                        data-crm-allow
+                                    >
+                                        <div className="flex">
+                                            <div className="w-1 shrink-0 bg-indigo-500" />
+                                            <div className="flex-1 px-3.5 py-3 min-w-0">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                                                        {formatDisplayId(lead.displayId)}
                                                     </span>
-                                                    <span
-                                                        className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${getSlaBadgeClass(lead.slaBucket)}`}
-                                                    >
-                                                        {getSlaLabel(lead.slaBucket)}
-                                                    </span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600">
+                                                            {lead.status || 'NEW'}
+                                                        </span>
+                                                        <span
+                                                            className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${getSlaBadgeClass(lead.slaBucket)}`}
+                                                        >
+                                                            {getSlaLabel(lead.slaBucket)}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="text-[13px] font-black tracking-tight uppercase truncate text-slate-900 dark:text-white mb-0.5">
-                                                {lead.customerName}
-                                            </div>
-                                            <div className="text-[10px] font-bold text-slate-400 truncate mb-1">
-                                                {getLocationLabel(lead)}
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] font-bold text-slate-400 truncate">
-                                                    {lead.phone}
-                                                </span>
-                                                <div className="flex items-center gap-2 shrink-0">
-                                                    <a
-                                                        href={`tel:${lead.phone}`}
-                                                        onClick={e => e.stopPropagation()}
-                                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 active:scale-90 transition-transform"
-                                                        data-crm-allow
-                                                    >
-                                                        <PhoneIcon size={12} />
-                                                    </a>
-                                                    <span className="text-[9px] font-black text-slate-500">
-                                                        {lead.intentScore || 'COLD'}
+                                                <div className="text-[13px] font-black tracking-tight uppercase truncate text-slate-900 dark:text-white mb-0.5">
+                                                    {lead.customerName}
+                                                </div>
+                                                <div className="text-[10px] font-bold text-slate-400 truncate mb-1">
+                                                    {getLocationLabel(lead)}
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] font-bold text-slate-400 truncate">
+                                                        {lead.phone}
                                                     </span>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <a
+                                                            href={`tel:${lead.phone}`}
+                                                            onClick={e => e.stopPropagation()}
+                                                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 active:scale-90 transition-transform"
+                                                            data-crm-allow
+                                                        >
+                                                            <PhoneIcon size={12} />
+                                                        </a>
+                                                        <span className="text-[9px] font-black text-slate-500">
+                                                            {lead.intentScore || 'COLD'}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-sm">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="border-b border-slate-100 dark:border-white/5">
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Lead ID
-                                        </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Customer
-                                        </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Phone
-                                        </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Status
-                                        </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Follow-up
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {leads.map(lead => (
-                                        <tr
-                                            key={lead.id}
-                                            onClick={() => handleOpenLead(lead.id)}
-                                            className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/5 last:border-0"
-                                        >
-                                            <td className="p-6">
-                                                <div className="text-xs font-black text-indigo-500 uppercase tracking-widest">
-                                                    {formatDisplayId(lead.displayId)}
-                                                </div>
-                                            </td>
-                                            <td className="p-6">
-                                                <div className="text-sm font-black italic uppercase tracking-tighter text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
-                                                    {lead.customerName}
-                                                </div>
-                                                <div className="text-[10px] font-bold text-slate-400 mt-1">
-                                                    {getLocationLabel(lead)}
-                                                </div>
-                                            </td>
-                                            <td className="p-6">
-                                                <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase">
-                                                    {lead.phone}
-                                                </div>
-                                            </td>
-                                            <td className="p-6">
-                                                <div className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block bg-slate-100 dark:bg-white/5 text-slate-400">
-                                                    {lead.status}
-                                                </div>
-                                            </td>
-                                            <td className="p-6">
-                                                <div
-                                                    className={`inline-flex items-center px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${getSlaBadgeClass(lead.slaBucket)}`}
-                                                >
-                                                    {getSlaLabel(lead.slaBucket)}
-                                                </div>
-                                                <div className="text-[10px] font-bold text-slate-400 mt-1">
-                                                    {lead.nextFollowUpAt
-                                                        ? formatDateLabel(lead.nextFollowUpAt)
-                                                        : lead.openTaskCount > 0
-                                                          ? 'No due date'
-                                                          : 'No task'}
-                                                </div>
-                                            </td>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-sm">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-white/5">
+                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                Lead ID
+                                            </th>
+                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                Customer
+                                            </th>
+                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                Phone
+                                            </th>
+                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                Status
+                                            </th>
+                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                Follow-up
+                                            </th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                    </thead>
+                                    <tbody>
+                                        {leads.map(lead => (
+                                            <tr
+                                                key={lead.id}
+                                                onClick={() => handleOpenLead(lead.id)}
+                                                className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/5 last:border-0"
+                                            >
+                                                <td className="p-6">
+                                                    <div className="text-xs font-black text-indigo-500 uppercase tracking-widest">
+                                                        {formatDisplayId(lead.displayId)}
+                                                    </div>
+                                                </td>
+                                                <td className="p-6">
+                                                    <div className="text-sm font-black italic uppercase tracking-tighter text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                                                        {lead.customerName}
+                                                    </div>
+                                                    <div className="text-[10px] font-bold text-slate-400 mt-1">
+                                                        {getLocationLabel(lead)}
+                                                    </div>
+                                                </td>
+                                                <td className="p-6">
+                                                    <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase">
+                                                        {lead.phone}
+                                                    </div>
+                                                </td>
+                                                <td className="p-6">
+                                                    <div className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block bg-slate-100 dark:bg-white/5 text-slate-400">
+                                                        {lead.status}
+                                                    </div>
+                                                </td>
+                                                <td className="p-6">
+                                                    <div
+                                                        className={`inline-flex items-center px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${getSlaBadgeClass(lead.slaBucket)}`}
+                                                    >
+                                                        {getSlaLabel(lead.slaBucket)}
+                                                    </div>
+                                                    <div className="text-[10px] font-bold text-slate-400 mt-1">
+                                                        {lead.nextFollowUpAt
+                                                            ? formatDateLabel(lead.nextFollowUpAt)
+                                                            : lead.openTaskCount > 0
+                                                                ? 'No due date'
+                                                                : 'No task'}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     {paginationControls}
                 </ModuleLanding>
                 <LeadForm
@@ -781,11 +782,10 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                     <button
                                         key={lead.id}
                                         onClick={() => handleOpenLead(lead.id)}
-                                        className={`w-full text-left rounded-xl border transition-all duration-300 group overflow-hidden ${
-                                            isActive
+                                        className={`w-full text-left rounded-xl border transition-all duration-300 group overflow-hidden ${isActive
                                                 ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
                                                 : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/[0.06] hover:border-indigo-500/30 text-slate-900 dark:text-white hover:shadow-md'
-                                        }`}
+                                            }`}
                                     >
                                         <div className="flex">
                                             <div
@@ -794,41 +794,36 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                             <div className="flex-1 px-3.5 py-3 min-w-0">
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <span
-                                                        className={`text-[9px] font-black uppercase tracking-wider ${
-                                                            isActive ? 'text-white/70' : 'text-slate-400'
-                                                        }`}
+                                                        className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-white/70' : 'text-slate-400'
+                                                            }`}
                                                     >
                                                         {formatDisplayId(lead.displayId)}
                                                     </span>
                                                     <span
-                                                        className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
-                                                            isActive
+                                                        className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${isActive
                                                                 ? 'bg-white/20 text-white'
                                                                 : 'bg-indigo-500/10 text-indigo-600'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {lead.status || 'NEW'}
                                                     </span>
                                                 </div>
                                                 <div
-                                                    className={`text-[12px] font-black tracking-tight uppercase truncate mb-0.5 ${
-                                                        isActive ? 'text-white' : 'text-slate-800 dark:text-white'
-                                                    }`}
+                                                    className={`text-[12px] font-black tracking-tight uppercase truncate mb-0.5 ${isActive ? 'text-white' : 'text-slate-800 dark:text-white'
+                                                        }`}
                                                 >
                                                     {lead.customerName}
                                                 </div>
                                                 <div
-                                                    className={`text-[10px] font-bold truncate mb-0.5 ${
-                                                        isActive ? 'text-white/70' : 'text-slate-400'
-                                                    }`}
+                                                    className={`text-[10px] font-bold truncate mb-0.5 ${isActive ? 'text-white/70' : 'text-slate-400'
+                                                        }`}
                                                 >
                                                     {getLocationLabel(lead)}
                                                 </div>
                                                 <div className="flex items-center justify-between">
                                                     <span
-                                                        className={`text-[10px] font-bold truncate ${
-                                                            isActive ? 'text-white/70' : 'text-slate-400'
-                                                        }`}
+                                                        className={`text-[10px] font-bold truncate ${isActive ? 'text-white/70' : 'text-slate-400'
+                                                            }`}
                                                     >
                                                         {lead.phone}
                                                     </span>
@@ -840,11 +835,10 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                                 </div>
                                                 <div className="mt-1">
                                                     <span
-                                                        className={`inline-flex px-1.5 py-0.5 rounded border text-[7px] font-black uppercase tracking-widest ${
-                                                            isActive
+                                                        className={`inline-flex px-1.5 py-0.5 rounded border text-[7px] font-black uppercase tracking-widest ${isActive
                                                                 ? 'text-white border-white/30 bg-white/10'
                                                                 : getSlaBadgeClass(lead.slaBucket)
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {getSlaLabel(lead.slaBucket)}
                                                     </span>

@@ -1,7 +1,7 @@
 'use client';
 
-import { Footer } from '@/components/store/Footer';
+import { M2Footer } from '@/components/store/mobile/M2Footer';
 
 export const MarketplaceFooter = () => {
-    return <Footer />;
+    return <M2Footer />;
 };

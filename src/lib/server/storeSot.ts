@@ -254,13 +254,13 @@ const buildInsuranceAddons = (row: Record<string, any>) => {
             };
         })
         .filter(Boolean) as {
-        id: string;
-        label: string;
-        price: number;
-        gst: number;
-        total: number;
-        default: boolean;
-    }[];
+            id: string;
+            label: string;
+            price: number;
+            gst: number;
+            total: number;
+            default: boolean;
+        }[];
 };
 
 // ─── 1. Model Resolution ────────────────────────────────────
@@ -576,25 +576,25 @@ export async function getPdpSnapshot({
     const resolvedVariant =
         variantSeed || matchedVariant
             ? {
-                  id: String(variantSeed?.variant_id || matchedVariant?.id || ''),
-                  name: String(variantSeed?.variant_name || matchedVariant?.name || ''),
-                  slug: String(
-                      variantSeed?.variant_slug || matchedVariant?.slug || slugify(String(matchedVariant?.name || ''))
-                  ),
-                  price_base: Number(variantSeed?.price_base || 0),
-                  specs: {
-                      fuel_type: modelRow?.fuel_type,
-                      engine_cc: modelRow?.engine_cc,
-                  },
-                  brand: {
-                      name: modelRow?.brand?.name || make,
-                      slug: modelRow?.brand?.slug || slugify(make),
-                  },
-                  parent: {
-                      name: modelRow?.name || model,
-                      slug: modelRow?.slug || model,
-                  },
-              }
+                id: String(variantSeed?.variant_id || matchedVariant?.id || ''),
+                name: String(variantSeed?.variant_name || matchedVariant?.name || ''),
+                slug: String(
+                    variantSeed?.variant_slug || matchedVariant?.slug || slugify(String(matchedVariant?.name || ''))
+                ),
+                price_base: Number(variantSeed?.price_base || 0),
+                specs: {
+                    fuel_type: modelRow?.fuel_type,
+                    engine_cc: modelRow?.engine_cc,
+                },
+                brand: {
+                    name: modelRow?.brand?.name || make,
+                    slug: modelRow?.brand?.slug || slugify(make),
+                },
+                parent: {
+                    name: modelRow?.name || model,
+                    slug: modelRow?.slug || model,
+                },
+            }
             : null;
 
     const skuIds = activeSkus.map(s => s.id).filter(Boolean);
@@ -631,12 +631,12 @@ export async function getDealerDelta({
     const [vehicleRulesRes, bundleRulesRes, accessoryRulesRes] = await Promise.all([
         skuIds.length > 0
             ? (adminClient as any)
-                  .from('cat_price_dealer')
-                  .select('vehicle_color_id, offer_amount')
-                  .in('vehicle_color_id', skuIds)
-                  .eq('tenant_id', dealerId)
-                  .eq('state_code', stateCode)
-                  .eq('is_active', true)
+                .from('cat_price_dealer')
+                .select('vehicle_color_id, offer_amount')
+                .in('vehicle_color_id', skuIds)
+                .eq('tenant_id', dealerId)
+                .eq('state_code', stateCode)
+                .eq('is_active', true)
             : Promise.resolve({ data: [] }),
         (adminClient as any)
             .from('cat_price_dealer')
@@ -646,11 +646,11 @@ export async function getDealerDelta({
             .eq('inclusion_type', 'BUNDLE'),
         accessoryIds && accessoryIds.length > 0
             ? (adminClient as any)
-                  .from('cat_price_dealer')
-                  .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
-                  .in('vehicle_color_id', accessoryIds)
-                  .eq('tenant_id', dealerId)
-                  .eq('state_code', stateCode)
+                .from('cat_price_dealer')
+                .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
+                .in('vehicle_color_id', accessoryIds)
+                .eq('tenant_id', dealerId)
+                .eq('state_code', stateCode)
             : Promise.resolve({ data: [] }),
     ]);
 
@@ -777,7 +777,13 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
         return [];
     }
 
-    const skuIds = skus.map((s: any) => s.id);
+    // Filter to VEHICLE-type products only — exclude accessories & services from catalog
+    const vehicleSkus = skus.filter((s: any) => {
+        const productType = String(s.model?.product_type || '').toUpperCase();
+        return productType === 'VEHICLE' || productType === '';
+    });
+
+    const skuIds = vehicleSkus.map((s: any) => s.id);
     const { data: pricing } = await (adminClient as any)
         .from('cat_price_state_mh')
         .select(
@@ -789,7 +795,7 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
 
     const pricingMap = new Map<string, any>((pricing || []).map((p: any) => [p.sku_id, p]));
 
-    return skus.map((sku: any) => {
+    return vehicleSkus.map((sku: any) => {
         const model = sku.model;
         const brand = model?.brand;
         const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;

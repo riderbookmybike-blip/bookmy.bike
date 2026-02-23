@@ -127,6 +127,8 @@ export const DesktopCatalog = ({
         setMaxPrice,
         maxEMI,
         setMaxEMI,
+        showOClubOnly,
+        setShowOClubOnly,
         availableMakes,
         filteredVehicles,
         toggleFilter,
@@ -725,11 +727,10 @@ export const DesktopCatalog = ({
                                 <button
                                     key={opt}
                                     onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-2.5 rounded-xl border transition-all duration-300 ${
-                                        selectedValues.includes(opt)
-                                            ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
-                                            : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
-                                    }`}
+                                    className={`group relative flex items-center justify-between p-2.5 rounded-xl border transition-all duration-300 ${selectedValues.includes(opt)
+                                        ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
+                                        : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/20'
+                                        }`}
                                 >
                                     <span
                                         className={`text-[9px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900 dark:text-brand-primary' : 'text-slate-500 dark:text-slate-300 group-hover:text-slate-800 dark:hover:text-slate-100'}`}
@@ -1085,11 +1086,10 @@ export const DesktopCatalog = ({
                                                             onClick={() => {
                                                                 setSmartColor(c.name);
                                                             }}
-                                                            className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${
-                                                                normalize(smartColor || undefined) === normalize(c.name)
-                                                                    ? 'ring-2 ring-brand-primary/40'
-                                                                    : ''
-                                                            }`}
+                                                            className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${normalize(smartColor || undefined) === normalize(c.name)
+                                                                ? 'ring-2 ring-brand-primary/40'
+                                                                : ''
+                                                                }`}
                                                             style={{ background: c.hex || '#999' }}
                                                             title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
                                                         >
@@ -1309,11 +1309,10 @@ export const DesktopCatalog = ({
                                                             <button
                                                                 key={t}
                                                                 onClick={() => setTenure(t)}
-                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${
-                                                                    tenure === t
-                                                                        ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
-                                                                        : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
-                                                                }`}
+                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${tenure === t
+                                                                    ? 'bg-slate-900 dark:bg-brand-primary text-white dark:text-black shadow-lg scale-105 ring-2 ring-brand-primary/20'
+                                                                    : 'bg-white/50 dark:bg-slate-800/30 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 shadow-sm'
+                                                                    }`}
                                                             >
                                                                 {t.toString().padStart(2, '0')}
                                                             </button>
@@ -1437,13 +1436,12 @@ export const DesktopCatalog = ({
                     {/* Main Content Area */}
                     <div className="flex-1 space-y-6">
                         <div
-                            className={`grid ${
-                                viewMode === 'list'
-                                    ? 'grid-cols-1 w-full gap-6'
-                                    : isPhone
-                                      ? 'grid-cols-1 gap-4 w-full'
-                                      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
-                            }`}
+                            className={`grid ${viewMode === 'list'
+                                ? 'grid-cols-1 w-full gap-6'
+                                : isPhone
+                                    ? 'grid-cols-1 gap-4 w-full'
+                                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
+                                }`}
                         >
                             {/* Results Grid */}
                             {groupedDisplayResults.map((group, idx) => {
@@ -1479,17 +1477,17 @@ export const DesktopCatalog = ({
                                         onExplore={
                                             group.variantCount > 1
                                                 ? () => {
-                                                      const url = buildVariantExplorerUrl(group.make, group.model);
-                                                      router.push(url);
-                                                  }
+                                                    const url = buildVariantExplorerUrl(group.make, group.model);
+                                                    router.push(url);
+                                                }
                                                 : undefined
                                         }
                                         onExplodeColors={
                                             isSmart
                                                 ? () => {
-                                                      const key = `${v.make}::${v.model}::${v.variant}`;
-                                                      setExplodedVariant(prev => (prev === key ? null : key));
-                                                  }
+                                                    const key = `${v.make}::${v.model}::${v.variant}`;
+                                                    setExplodedVariant(prev => (prev === key ? null : key));
+                                                }
                                                 : undefined
                                         }
                                     />
@@ -1611,6 +1609,38 @@ export const DesktopCatalog = ({
                                                 />
                                             </div>
                                         </div>
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                                                Special Filters
+                                            </h4>
+                                            <button
+                                                onClick={() => setShowOClubOnly(!showOClubOnly)}
+                                                className={`w-full p-6 rounded-[2rem] border transition-all flex items-center justify-between group ${showOClubOnly ? 'bg-[#F4B000]/10 border-[#F4B000]/30 shadow-lg shadow-[#F4B000]/5' : 'bg-slate-50 dark:bg-white/[0.03] border-slate-200 dark:border-white/5'}`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div
+                                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${showOClubOnly ? 'bg-[#F4B000] text-black' : 'bg-white dark:bg-white/10 text-slate-400'}`}
+                                                    >
+                                                        <Sparkles size={20} />
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <span className="block text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                                            O'Circle Premium
+                                                        </span>
+                                                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                            Exclusive O-Circle Offers
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div
+                                                    className={`w-10 h-6 rounded-full relative transition-colors ${showOClubOnly ? 'bg-[#F4B000]' : 'bg-slate-200 dark:bg-slate-800'}`}
+                                                >
+                                                    <div
+                                                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${showOClubOnly ? 'left-5' : 'left-1'}`}
+                                                    />
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {/* Right Column: Filters */}
@@ -1700,7 +1730,7 @@ export const DesktopCatalog = ({
                             tenure={tenure}
                             onTenureChange={setTenure}
                             sortBy={sortBy}
-                            onSortChange={() => {}} // Placeholder as sortBy is currently read-only in this component
+                            onSortChange={() => { }} // Placeholder as sortBy is currently read-only in this component
                         />
                     </>
                 )}

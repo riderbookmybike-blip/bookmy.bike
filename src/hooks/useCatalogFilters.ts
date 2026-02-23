@@ -70,6 +70,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const [selectedFinishes, setSelectedFinishes] = useState<string[]>([]);
     const [maxPrice, setMaxPrice] = useState<number>(1000000); // 10 Lakh default
     const [maxEMI, setMaxEMI] = useState<number>(20000); // 20k default
+    const [showOClubOnly, setShowOClubOnly] = useState(false);
 
     // Dynamic EMI States
     const [downpayment, _setDownpayment] = useState(() => {
@@ -168,6 +169,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         else params.delete('maxPrice');
         if (debouncedMaxEMI < 20000) params.set('maxEMI', debouncedMaxEMI.toString());
         else params.delete('maxEMI');
+        if (showOClubOnly) params.set('oclub', '1');
+        else params.delete('oclub');
 
         const queryString = params.toString();
         if (queryString !== searchParams.toString()) {
@@ -187,6 +190,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         tenure,
         debouncedMaxPrice,
         debouncedMaxEMI,
+        showOClubOnly,
         availableMakes,
     ]);
 
@@ -220,10 +224,10 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 displacement < 125
                     ? '< 125cc'
                     : displacement < 250
-                      ? '125-250cc'
-                      : displacement < 500
-                        ? '250-500cc'
-                        : '> 500cc';
+                        ? '125-250cc'
+                        : displacement < 500
+                            ? '250-500cc'
+                            : '> 500cc';
             const matchesCC = selectedCC.length === 0 || selectedCC.includes(ccTag);
 
             const frontBrake = (v.specifications as any)?.brakes?.front?.toLowerCase?.() || '';
@@ -270,10 +274,10 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 weightRaw > 0 && weightRaw < 110
                     ? '< 110kg'
                     : weightRaw >= 110 && weightRaw <= 140
-                      ? '110-140kg'
-                      : weightRaw > 140
-                        ? '> 140kg'
-                        : 'Unknown';
+                        ? '110-140kg'
+                        : weightRaw > 140
+                            ? '> 140kg'
+                            : 'Unknown';
             const matchesWeight = selectedWeights.length === 0 || selectedWeights.includes(weightTag);
 
             const matchesFinish =
@@ -300,7 +304,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 matchesWeight &&
                 matchesFinish &&
                 matchesPrice &&
-                matchesEMI
+                matchesEMI &&
+                (!showOClubOnly || (v.price?.offerPrice || 0) > 0) // Example logic: O'Club items usually have offers
             );
         });
     }, [
@@ -319,6 +324,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         selectedFinishes,
         maxPrice,
         maxEMI,
+        maxEMI,
+        showOClubOnly,
         downpayment, // Added dependency for EMI calculation
         availableMakes,
     ]);
@@ -344,6 +351,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setMaxPrice(1000000);
         setMaxEMI(20000);
         setDownpayment(0);
+        setShowOClubOnly(false);
     };
 
     return {
@@ -379,6 +387,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setMaxPrice,
         maxEMI,
         setMaxEMI,
+        showOClubOnly,
+        setShowOClubOnly,
         availableMakes,
         filteredVehicles,
         toggleFilter,

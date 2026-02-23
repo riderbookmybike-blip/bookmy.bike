@@ -281,18 +281,18 @@ export default function PricingLedgerTable({
             const isVehicle = activeCategory === 'vehicles';
             const headers = isVehicle
                 ? [
-                      '#',
-                      'Product',
-                      'Variant',
-                      'Color',
-                      'Ex-Showroom',
-                      'Offer',
-                      'RTO',
-                      'Insurance',
-                      'On-Road',
-                      'Delta',
-                      'Status',
-                  ]
+                    '#',
+                    'Product',
+                    'Variant',
+                    'Color',
+                    'Ex-Showroom',
+                    'Offer',
+                    'RTO',
+                    'Insurance',
+                    'On-Road',
+                    'Delta',
+                    'Status',
+                ]
                 : ['#', 'Category/Sub', 'Product', 'Variant', 'Ex-Showroom', 'Offer', 'Inclusion', 'Status'];
 
             // Sort and group by brand
@@ -373,22 +373,22 @@ export default function PricingLedgerTable({
                     },
                     columnStyles: isVehicle
                         ? {
-                              0: { halign: 'center', cellWidth: 7 },
-                              4: { halign: 'right', cellWidth: 20 },
-                              5: { halign: 'right', cellWidth: 16 },
-                              6: { halign: 'right', cellWidth: 16 },
-                              7: { halign: 'right', cellWidth: 18 },
-                              8: { halign: 'right', cellWidth: 20, fontStyle: 'bold' },
-                              9: { halign: 'right', cellWidth: 16 },
-                              10: { halign: 'center', cellWidth: 14 },
-                          }
+                            0: { halign: 'center', cellWidth: 7 },
+                            4: { halign: 'right', cellWidth: 20 },
+                            5: { halign: 'right', cellWidth: 16 },
+                            6: { halign: 'right', cellWidth: 16 },
+                            7: { halign: 'right', cellWidth: 18 },
+                            8: { halign: 'right', cellWidth: 20, fontStyle: 'bold' },
+                            9: { halign: 'right', cellWidth: 16 },
+                            10: { halign: 'center', cellWidth: 14 },
+                        }
                         : {
-                              0: { halign: 'center', cellWidth: 7 },
-                              4: { halign: 'right', cellWidth: 20 },
-                              5: { halign: 'right', cellWidth: 16 },
-                              6: { halign: 'center' },
-                              7: { halign: 'center', cellWidth: 14 },
-                          },
+                            0: { halign: 'center', cellWidth: 7 },
+                            4: { halign: 'right', cellWidth: 20 },
+                            5: { halign: 'right', cellWidth: 16 },
+                            6: { halign: 'center' },
+                            7: { halign: 'center', cellWidth: 14 },
+                        },
                     didDrawPage: () => {
                         const pageH = pdf.internal.pageSize.getHeight();
                         pdf.setFontSize(7);
@@ -417,7 +417,7 @@ export default function PricingLedgerTable({
     const [currentPage, setCurrentPage] = useState(1);
     const [filters, setFilters] = useState<Partial<Record<keyof SKUPriceRow, string>>>({});
     const [sortConfig, setSortConfig] = useState<{ key: keyof SKUPriceRow; direction: 'asc' | 'desc' } | null>(null);
-    const [deltaDrafts, setDeltaDrafts] = useState<Record<string, string>>({});
+
     const [searchText, setSearchText] = useState('');
     const [prevSelectedCategory, setPrevSelectedCategory] = useState(selectedCategory);
     const [prevFilters, setPrevFilters] = useState({ filters, selectedBrand, selectedSubCategory, selectedStateId });
@@ -779,8 +779,8 @@ export default function PricingLedgerTable({
             (selectedSkuIds.size > 0
                 ? getModelForId(selectedSkuIds.values().next().value as string)
                 : selectedModel && selectedModel !== 'ALL'
-                  ? selectedModel
-                  : tableSkus[0]?.model) || null;
+                    ? selectedModel
+                    : tableSkus[0]?.model) || null;
         if (!baseModel) return;
         const modelRows = tableSkus.filter(s => s.model === baseModel);
         setSelectedSkuIds(new Set(modelRows.map(s => s.id)));
@@ -1352,10 +1352,10 @@ export default function PricingLedgerTable({
                                                         {key === 'engineCc'
                                                             ? 'Power'
                                                             : key === 'product'
-                                                              ? 'Product'
-                                                              : key === 'model'
                                                                 ? 'Product'
-                                                                : key}{' '}
+                                                                : key === 'model'
+                                                                    ? 'Product'
+                                                                    : key}{' '}
                                                         <ArrowUpDown
                                                             size={12}
                                                             className={`opacity-30 ${sortConfig?.key === dataKey ? 'text-emerald-600 opacity-100' : ''}`}
@@ -1493,12 +1493,11 @@ export default function PricingLedgerTable({
                                                 : 'Final Price'}
                                             <ArrowUpDown
                                                 size={10}
-                                                className={`opacity-30 ${
-                                                    sortConfig?.key ===
+                                                className={`opacity-30 ${sortConfig?.key ===
                                                     (activeCategory === 'vehicles' && isAums ? 'onRoad' : 'offerAmount')
-                                                        ? 'text-emerald-600 opacity-100'
-                                                        : ''
-                                                }`}
+                                                    ? 'text-emerald-600 opacity-100'
+                                                    : ''
+                                                    }`}
                                             />
                                         </div>
                                     </th>
@@ -1709,10 +1708,9 @@ export default function PricingLedgerTable({
                                                             isAums && onUpdatePrice(sku.id, Number(e.target.value))
                                                         }
                                                         className={`w-24 rounded-lg px-2 py-1 text-[10px] font-black text-right transition-all 
-                                                            ${
-                                                                !isAums || !canEdit
-                                                                    ? 'bg-transparent border-transparent text-slate-900 dark:text-slate-100 cursor-default'
-                                                                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 dark:text-white'
+                                                            ${!isAums || !canEdit
+                                                                ? 'bg-transparent border-transparent text-slate-900 dark:text-slate-100 cursor-default'
+                                                                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 dark:text-white'
                                                             } 
                                                             ${isDirty ? 'text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-900/20' : ''}
                                                         `}
@@ -1779,8 +1777,8 @@ export default function PricingLedgerTable({
                                                                                         >
                                                                                             {detail?.total
                                                                                                 ? formatMoney(
-                                                                                                      detail.total
-                                                                                                  )
+                                                                                                    detail.total
+                                                                                                )
                                                                                                 : 'N/A'}
                                                                                         </span>
                                                                                     </div>
@@ -1927,8 +1925,8 @@ export default function PricingLedgerTable({
                                                                             <span className="text-slate-300 font-mono">
                                                                                 {formatMoney(
                                                                                     (sku.insurance_data.od?.gst || 0) +
-                                                                                        (sku.insurance_data.tp?.gst ||
-                                                                                            0)
+                                                                                    (sku.insurance_data.tp?.gst ||
+                                                                                        0)
                                                                                 )}
                                                                             </span>
                                                                         </div>
@@ -1961,7 +1959,7 @@ export default function PricingLedgerTable({
                                                                                             <span className="text-slate-300 font-mono">
                                                                                                 {formatMoney(
                                                                                                     addon.total ??
-                                                                                                        addon.price
+                                                                                                    addon.price
                                                                                                 )}
                                                                                             </span>
                                                                                         </div>
@@ -2101,10 +2099,9 @@ export default function PricingLedgerTable({
                                                                 onUpdateOffer(sku.id, newDelta);
                                                             }}
                                                             className={`w-24 rounded-lg px-2 py-1 text-[10px] font-bold text-right outline-none transition-all
-                                                                ${
-                                                                    !canEdit
-                                                                        ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
-                                                                        : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                                                ${!canEdit
+                                                                    ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
+                                                                    : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                                                                 }
                                                             `}
                                                         />
@@ -2133,105 +2130,29 @@ export default function PricingLedgerTable({
                                                 <td className="px-2 py-1 text-right">
                                                     {(() => {
                                                         // Delta = OnRoad (AUMS base) - OfferOnRoad (dealer input)
-                                                        // offerDelta here is the dealer's Offer On Road price
+                                                        // Auto-calculated, read-only
                                                         const onRoadBase = sku.onRoad || 0;
-                                                        const dealerOfferPrice = onRoadBase + offerDelta; // offerDelta is the adjustment
-                                                        const delta = onRoadBase - dealerOfferPrice; // = -offerDelta
-                                                        return (
-                                                            <div className="flex items-center justify-end gap-1">
-                                                                <input
-                                                                    type="text"
-                                                                    inputMode="numeric"
-                                                                    step={1}
-                                                                    min={-25000}
-                                                                    max={25000}
-                                                                    value={
-                                                                        deltaDrafts[sku.id] ??
-                                                                        String(Math.trunc(delta || 0))
-                                                                    }
-                                                                    readOnly={!canEdit}
-                                                                    title="Delta (On-road - Offer). Allowed range: -25000 to +25000."
-                                                                    onFocus={() => {
-                                                                        setDeltaDrafts(prev => ({
-                                                                            ...prev,
-                                                                            [sku.id]: String(Math.trunc(delta || 0)),
-                                                                        }));
-                                                                    }}
-                                                                    onChange={e => {
-                                                                        const raw = e.target.value.trim();
-                                                                        if (!/^-?\d*$/.test(raw)) return;
-
-                                                                        setDeltaDrafts(prev => ({
-                                                                            ...prev,
-                                                                            [sku.id]: raw,
-                                                                        }));
-
-                                                                        if (raw === '' || raw === '-') return;
-                                                                        const enteredDelta = Math.max(
-                                                                            -25000,
-                                                                            Math.min(25000, Math.trunc(Number(raw)))
-                                                                        );
-                                                                        // Offer adjustment is inverse of delta:
-                                                                        // delta = onRoad - offerPrice and offerPrice = onRoad + offerAmount
-                                                                        // => delta = -offerAmount
-                                                                        onUpdateOffer(sku.id, -enteredDelta);
-                                                                    }}
-                                                                    onBlur={() => {
-                                                                        const raw = (deltaDrafts[sku.id] ?? '').trim();
-                                                                        if (raw !== '' && raw !== '-') {
-                                                                            const enteredDelta = Math.max(
-                                                                                -25000,
-                                                                                Math.min(25000, Math.trunc(Number(raw)))
-                                                                            );
-                                                                            onUpdateOffer(sku.id, -enteredDelta);
-                                                                        }
-                                                                        setDeltaDrafts(prev => {
-                                                                            const next = { ...prev };
-                                                                            delete next[sku.id];
-                                                                            return next;
-                                                                        });
-                                                                    }}
-                                                                    className={`w-20 rounded-lg px-2 py-1 text-[10px] font-bold text-right outline-none transition-all
-                                                                        ${
-                                                                            !canEdit
-                                                                                ? 'bg-transparent border-transparent text-slate-500 dark:text-slate-400 cursor-default'
-                                                                                : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-slate-700 dark:text-slate-200'
-                                                                        }
-                                                                    `}
-                                                                />
-                                                                {isSelected && selectedSkuIds.size > 1 && (
-                                                                    <button
-                                                                        type="button"
-                                                                        title="Copy delta to all selected rows"
-                                                                        onClick={() => {
-                                                                            const currentDelta = Math.trunc(delta || 0);
-                                                                            selectedSkuIds.forEach(id => {
-                                                                                if (id !== sku.id) {
-                                                                                    // offerAmount is inverse of delta
-                                                                                    onUpdateOffer(id, -currentDelta);
-                                                                                }
-                                                                            });
-                                                                        }}
-                                                                        className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 dark:text-amber-400 transition-all"
-                                                                    >
-                                                                        <Copy size={12} />
-                                                                    </button>
-                                                                )}
-                                                                <span
-                                                                    className={`inline-flex items-center gap-1 font-black text-xs ${
-                                                                        delta > 0
-                                                                            ? 'text-emerald-600'
-                                                                            : delta < 0
-                                                                              ? 'text-rose-600'
-                                                                              : 'text-slate-300'
-                                                                    }`}
-                                                                >
-                                                                    {delta > 0 ? (
-                                                                        <Sparkles size={12} />
-                                                                    ) : delta < 0 ? (
-                                                                        <Zap size={12} />
-                                                                    ) : null}
+                                                        const delta = -(offerDelta); // delta = onRoad - offerPrice = -offerAmount
+                                                        if (delta === 0)
+                                                            return (
+                                                                <span className="text-xs font-bold text-slate-300">
+                                                                    —
                                                                 </span>
+                                                            );
+                                                        const isDiscount = delta > 0; // positive delta = dealer offering below on-road = discount
+                                                        return (
+                                                            <div
+                                                                className={`inline-flex items-center gap-1 font-black text-xs ${isDiscount ? 'text-emerald-600' : 'text-rose-600'}`}
+                                                                title={`Auto-calculated: On-road (₹${onRoadBase.toLocaleString()}) - Offer Price = ${delta > 0 ? '-' : '+'}₹${Math.abs(delta).toLocaleString()}`}
+                                                            >
+                                                                {isDiscount ? (
+                                                                    <Sparkles size={12} />
+                                                                ) : (
+                                                                    <Zap size={12} />
+                                                                )}
+                                                                {isDiscount
+                                                                    ? `-₹${Math.abs(delta).toLocaleString()}`
+                                                                    : `+₹${Math.abs(delta).toLocaleString()}`}
                                                             </div>
                                                         );
                                                     })()}
@@ -2254,8 +2175,8 @@ export default function PricingLedgerTable({
                                                     const state = isAums
                                                         ? sku.displayState || 'Draft'
                                                         : sku.localIsActive
-                                                          ? 'Live'
-                                                          : 'Inactive';
+                                                            ? 'Live'
+                                                            : 'Inactive';
                                                     const displayLabel = !isAums
                                                         ? state === 'Live'
                                                             ? 'Active'
@@ -2283,8 +2204,8 @@ export default function PricingLedgerTable({
                                                         ? state === 'In Review'
                                                             ? ['Published']
                                                             : state === 'Published'
-                                                              ? ['Live']
-                                                              : baseOptions
+                                                                ? ['Live']
+                                                                : baseOptions
                                                         : ['Active', 'Inactive'];
                                                     const selectedOpt = isAums ? state : displayLabel;
                                                     return (
@@ -2353,7 +2274,7 @@ export default function PricingLedgerTable({
                                                                                                 (stageMap[opt] ===
                                                                                                     'PUBLISHED' ||
                                                                                                     stageMap[opt] ===
-                                                                                                        'LIVE') &&
+                                                                                                    'LIVE') &&
                                                                                                 !canPublish(sku)
                                                                                             ) {
                                                                                                 alert(
@@ -2388,16 +2309,15 @@ export default function PricingLedgerTable({
                                                                                             onUpdateStatus(
                                                                                                 sku.id,
                                                                                                 statusMap[opt] ||
-                                                                                                    'DRAFT'
+                                                                                                'DRAFT'
                                                                                             );
                                                                                         }
                                                                                         setOpenStatusDropdownId(null);
                                                                                     }}
-                                                                                    className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-between ${
-                                                                                        selectedOpt === opt
-                                                                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600'
-                                                                                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                                                                    }`}
+                                                                                    className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-between ${selectedOpt === opt
+                                                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600'
+                                                                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                                                                        }`}
                                                                                 >
                                                                                     {isAums && opt === 'Live'
                                                                                         ? 'Active'
@@ -2424,11 +2344,10 @@ export default function PricingLedgerTable({
                                                             if (onUpdatePopular)
                                                                 onUpdatePopular(sku.id, !sku.isPopular);
                                                         }}
-                                                        className={`p-2 rounded-xl transition-all ${
-                                                            sku.isPopular
-                                                                ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 scale-110 shadow-lg shadow-amber-500/10'
-                                                                : 'bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500 hover:bg-slate-100'
-                                                        }`}
+                                                        className={`p-2 rounded-xl transition-all ${sku.isPopular
+                                                            ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 scale-110 shadow-lg shadow-amber-500/10'
+                                                            : 'bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500 hover:bg-slate-100'
+                                                            }`}
                                                         title={
                                                             sku.isPopular ? 'Remove Popular Badge' : 'Mark as Popular'
                                                         }
@@ -2522,10 +2441,10 @@ export default function PricingLedgerTable({
                             colKey === 'engineCc'
                                 ? 'Power'
                                 : colKey === 'displayState'
-                                  ? 'Status'
-                                  : colKey === 'product' || colKey === 'model'
-                                    ? 'Product'
-                                    : colKey.charAt(0).toUpperCase() + colKey.slice(1);
+                                    ? 'Status'
+                                    : colKey === 'product' || colKey === 'model'
+                                        ? 'Product'
+                                        : colKey.charAt(0).toUpperCase() + colKey.slice(1);
 
                         return (
                             <>

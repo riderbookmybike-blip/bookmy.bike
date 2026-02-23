@@ -241,6 +241,15 @@ export default function DealerProfileContent({ dealerId, superAdminMode = false,
                             <MetadataRow label="Created" value={format(new Date(dealer.created_at), 'dd MMM yyyy')} />
                             <MetadataRow label="Zone" value="West Zone (MH)" />
                             <MetadataRow label="Type" value={dealer.type.replace('_', ' ')} />
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="font-bold text-slate-500 uppercase">Brand</span>
+                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${dealer.brand_type === 'MULTIBRAND'
+                                    ? 'bg-indigo-500/10 text-indigo-400'
+                                    : 'bg-emerald-500/10 text-emerald-400'
+                                    }`}>
+                                    {dealer.brand_type === 'MULTIBRAND' ? 'Multibrand' : 'Monobrand'}
+                                </span>
+                            </div>
                             <MetadataRow label="System ID" value={dealer.id.slice(0, 8)} isMono />
                         </div>
                     </div>

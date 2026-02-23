@@ -97,7 +97,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         onLoginClick={onLoginClick}
                         scrolled={!isHeaderTransparent}
                         theme="light"
-                        tone="dark"
+                        tone="light"
                         externalOpen={isSidebarOpen}
                         onOpenChange={setIsSidebarOpen}
                     />

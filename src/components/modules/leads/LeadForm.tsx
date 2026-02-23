@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import SlideOver from '@/components/ui/SlideOver';
 import { Button } from '@/components/ui/button';
-import { User, Phone, MapPin, Bike, Send, Cake, Paperclip, FileText } from 'lucide-react';
+import { User, Phone, MapPin, Bike, Send, Cake, Paperclip, FileText, Building2 } from 'lucide-react';
 import { normalizeIndianPhone, parseDateToISO } from '@/lib/utils/inputFormatters';
 
 interface LeadFormProps {
@@ -14,7 +14,8 @@ interface LeadFormProps {
         phone: string;
         pincode: string;
         interestText: string;
-        model?: string;
+        organisation?: string;
+
         dob?: string;
         selectedDealerId?: string;
         attachmentPurpose?: string;
@@ -48,15 +49,16 @@ export default function LeadForm({
     ];
 
     const [customerName, setCustomerName] = useState('');
+    const [organisation, setOrganisation] = useState('');
     const [phone, setPhone] = useState('');
     const [pincode, setPincode] = useState('');
-    const [model, setModel] = useState('');
+
     const [interestText, setInterestText] = useState('');
     const [dob, setDob] = useState('');
     const [attachmentPurpose, setAttachmentPurpose] = useState('Aadhaar Card');
     const [attachments, setAttachments] = useState<File[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [catalogModels, setCatalogModels] = useState<string[]>([]);
+
     const [isCheckingPhone, setIsCheckingPhone] = useState(false);
     const [isExistingCustomer, setIsExistingCustomer] = useState(false);
     const [hasActiveDelivery, setHasActiveDelivery] = useState(false);
@@ -84,19 +86,7 @@ export default function LeadForm({
         setSelectedDealerId(initialSelectedDealerId || '');
     }, [initialSelectedDealerId, isOpen]);
 
-    // Fetch dynamic models on mount
-    React.useEffect(() => {
-        const fetchModels = async () => {
-            const { getCatalogModels } = await import('@/actions/crm');
-            const models = await getCatalogModels();
-            if (models && models.length > 0) {
-                setCatalogModels(models);
-            } else {
-                setCatalogModels(['Ather 450X', 'TVS iQube', 'Ola S1 Pro', 'Bajaj Chetak']);
-            }
-        };
-        fetchModels();
-    }, []);
+
 
     const [docCount, setDocCount] = useState(0);
 
@@ -273,7 +263,8 @@ export default function LeadForm({
                 phone,
                 pincode,
                 interestText: interestText.trim(),
-                model: model || undefined,
+                organisation: organisation.trim() || undefined,
+
                 dob: dob || undefined,
                 selectedDealerId: selectedDealerId || undefined,
                 attachmentPurpose,
@@ -284,9 +275,10 @@ export default function LeadForm({
             });
             // ONLY reset form if onSubmit succeeded
             setCustomerName('');
+            setOrganisation('');
             setPhone('');
             setPincode('');
-            setModel('');
+
             setInterestText('');
             setDob('');
             setIsExistingCustomer(false);
@@ -390,6 +382,26 @@ export default function LeadForm({
                         </div>
                     </div>
 
+                    {/* Organisation Name */}
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">
+                            Organisation
+                        </label>
+                        <div className="relative group">
+                            <Building2
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                                size={18}
+                            />
+                            <input
+                                type="text"
+                                value={organisation}
+                                onChange={e => setOrganisation(e.target.value)}
+                                placeholder="e.g. SUVIDHA HOTEL, RATHI ENTERPRISES"
+                                className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.25rem] text-sm font-black tracking-tight text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/5 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 dark:focus:border-indigo-500/60 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500 uppercase"
+                            />
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                         {/* Pincode */}
                         <div className="space-y-2">
@@ -463,29 +475,7 @@ export default function LeadForm({
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">
-                            Interested Vehicle
-                        </label>
-                        <div className="relative group">
-                            <Bike
-                                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600"
-                                size={18}
-                            />
-                            <select
-                                value={model}
-                                onChange={e => setModel(e.target.value)}
-                                className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.25rem] text-sm font-black tracking-tight text-slate-900 dark:text-white focus:bg-white dark:focus:bg-white/5 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 dark:focus:border-indigo-500/60 outline-none transition-all"
-                            >
-                                <option value="">Select model (optional)</option>
-                                {catalogModels.map(catalogModel => (
-                                    <option key={catalogModel} value={catalogModel}>
-                                        {catalogModel}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
+
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">

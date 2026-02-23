@@ -424,14 +424,14 @@ export function ProfileDropdown({
     const isLight = tone === 'light' || (tone !== 'dark' && (mounted ? theme !== 'dark' : true));
     const isDarkSurface = !isLight;
     const triggerClass = isDarkSurface
-        ? 'border-white/20 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
-        : 'border-slate-200/80 text-slate-900 hover:bg-slate-100 hover:border-slate-200 dark:border-white/10 dark:text-white dark:hover:bg-white/10';
+        ? 'border-white/10 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+        : 'border-slate-900/10 text-slate-900 hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10 shadow-sm';
 
     const displayName = user
         ? user.user_metadata?.full_name?.split(' ')[0] ||
-          user.user_metadata?.name?.split(' ')[0] ||
-          user.email?.split('@')[0] ||
-          'User'
+        user.user_metadata?.name?.split(' ')[0] ||
+        user.email?.split('@')[0] ||
+        'User'
         : 'Guest';
 
     /** Animation Variants borrowed from LoginSidebar */
@@ -589,8 +589,8 @@ export function ProfileDropdown({
                                                                     getDefaultAvatar(
                                                                         user.id,
                                                                         user.user_metadata?.full_name ||
-                                                                            user.user_metadata?.name ||
-                                                                            user.email
+                                                                        user.user_metadata?.name ||
+                                                                        user.email
                                                                     )
                                                                 }
                                                                 alt={user.user_metadata?.full_name || 'Profile'}
@@ -631,8 +631,8 @@ export function ProfileDropdown({
                                                                 {location.stateCode
                                                                     ? `(${location.stateCode})`
                                                                     : location.state
-                                                                      ? `(${location.state})`
-                                                                      : ''}
+                                                                        ? `(${location.state})`
+                                                                        : ''}
                                                             </div>
                                                         )}
                                                     </div>
@@ -747,12 +747,11 @@ export function ProfileDropdown({
                                                                             }
                                                                             disabled={uploading}
                                                                             title={preset.label}
-                                                                            className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-all duration-200 hover:scale-110 ${
-                                                                                user.user_metadata?.avatar_url ===
+                                                                            className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-all duration-200 hover:scale-110 ${user.user_metadata?.avatar_url ===
                                                                                 preset.url
-                                                                                    ? 'ring-[#F4B000] shadow-lg shadow-[#F4B000]/30'
-                                                                                    : 'ring-transparent hover:ring-slate-300 dark:hover:ring-white/20'
-                                                                            } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                                                                                ? 'ring-[#F4B000] shadow-lg shadow-[#F4B000]/30'
+                                                                                : 'ring-transparent hover:ring-slate-300 dark:hover:ring-white/20'
+                                                                                } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
                                                                         >
                                                                             <img
                                                                                 src={preset.url}
@@ -885,11 +884,10 @@ export function ProfileDropdown({
                                                                     return (
                                                                         <div
                                                                             key={t.id || t.slug || ''}
-                                                                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all group hover:shadow-md relative overflow-hidden ${
-                                                                                isActive
-                                                                                    ? 'bg-brand-primary/5 border-brand-primary/20 dark:bg-brand-primary/10'
-                                                                                    : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/5'
-                                                                            }`}
+                                                                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all group hover:shadow-md relative overflow-hidden ${isActive
+                                                                                ? 'bg-brand-primary/5 border-brand-primary/20 dark:bg-brand-primary/10'
+                                                                                : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/5'
+                                                                                }`}
                                                                         >
                                                                             <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center shrink-0 text-slate-400">
                                                                                 {getTenantIcon(t.type || '')}
@@ -913,9 +911,9 @@ export function ProfileDropdown({
                                                                                 href={`/app/${t.slug}/dashboard`}
                                                                                 {...(!isActive
                                                                                     ? {
-                                                                                          target: '_blank',
-                                                                                          rel: 'noopener noreferrer',
-                                                                                      }
+                                                                                        target: '_blank',
+                                                                                        rel: 'noopener noreferrer',
+                                                                                    }
                                                                                     : {})}
                                                                                 onClick={() => {
                                                                                     if (isActive) setIsOpen(false);
@@ -976,9 +974,10 @@ export function ProfileDropdown({
                                         </div>
                                     </div>
                                 </motion.div>
-                            </div>
-                        )}
-                    </AnimatePresence>,
+                            </div >
+                        )
+                        }
+                    </AnimatePresence >,
                     document.body
                 )}
         </>

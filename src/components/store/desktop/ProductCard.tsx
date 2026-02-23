@@ -145,7 +145,7 @@ export const ProductCard = ({
                     bankName: parsed.bankName || undefined,
                 });
             }
-        } catch {}
+        } catch { }
     }, []);
     const isSwatchesExpanded = false;
     const [selectedHex, setSelectedHex] = useState<string | null>(() => {
@@ -307,7 +307,7 @@ export const ProductCard = ({
             0,
             Math.round(
                 (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, activeTenure)) /
-                    (Math.pow(1 + monthlyRate, activeTenure) - 1)
+                (Math.pow(1 + monthlyRate, activeTenure) - 1)
             )
         );
     })();
@@ -737,11 +737,10 @@ export const ProductCard = ({
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.3 }}
-                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${
-                            bestOffer.price < 0
-                                ? 'bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-400/30'
-                                : 'bg-rose-500 dark:bg-rose-600 text-white border-rose-400/30'
-                        }`}
+                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${bestOffer.price < 0
+                            ? 'bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-400/30'
+                            : 'bg-rose-500 dark:bg-rose-600 text-white border-rose-400/30'
+                            }`}
                     >
                         <motion.div
                             animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
@@ -894,7 +893,7 @@ export const ProductCard = ({
                     <div className="flex flex-col items-start pr-4">
                         <div className="relative group/offer flex items-center gap-1.5 mb-1.5">
                             <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.1em] italic">
-                                {variantCount && variantCount > 1 ? 'Starting from' : 'Offer Price'}
+                                On Road
                             </p>
                             <CircleHelp
                                 size={12}
@@ -904,7 +903,7 @@ export const ProductCard = ({
                                 {/* Header */}
                                 <div className="px-3.5 py-2 bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
                                     <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                        Price Breakdown
+                                        On Road Breakdown
                                     </p>
                                 </div>
                                 {/* Rows */}
@@ -979,14 +978,16 @@ export const ProductCard = ({
                         <div className="flex flex-col gap-1.5">
                             <div className="flex flex-col gap-1">
                                 <span
-                                    className={`${isShowingEffectivePrice ? 'text-lg md:text-xl line-through text-slate-400' : 'text-[22px] md:text-3xl font-black'} italic text-slate-900 dark:text-white leading-none`}
+                                    className={`${isShowingEffectivePrice ? 'text-lg md:text-xl font-normal line-through text-slate-800 dark:text-slate-400' : 'text-[22px] md:text-3xl font-black'} italic text-slate-900 dark:text-white leading-none`}
                                 >
                                     ₹{offerPrice.toLocaleString('en-IN')}
                                 </span>
                                 {isShowingEffectivePrice && (
-                                    <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
-                                        ₹{(offerPrice - bcoinAdjustment).toLocaleString('en-IN')}
-                                    </span>
+                                    <div className="flex items-center">
+                                        <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
+                                            ₹{(offerPrice - bcoinAdjustment).toLocaleString('en-IN')}
+                                        </span>
+                                    </div>
                                 )}
                             </div>
 
@@ -1054,22 +1055,10 @@ export const ProductCard = ({
                             </div>
                         </div>
 
-                        <div className="flex flex-col items-end mt-7 md:mt-8">
-                            <div className="flex items-baseline">
-                                <span className="text-[22px] md:text-3xl font-black text-emerald-600 dark:text-emerald-500 italic leading-none">
-                                    {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
-                                </span>
-                                <span className="text-slate-300 dark:text-white/15 text-lg font-light select-none mx-1">
-                                    /
-                                </span>
-                                <span className="text-base md:text-lg font-bold text-emerald-600/60 dark:text-emerald-500/60 italic leading-none">
-                                    {tenure}
-                                </span>
-                            </div>
-
-                            <div className="mt-1 flex items-center gap-1 bg-emerald-500/5 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/10">
-                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-                                    Downpayment ₹{(downpayment || 0).toLocaleString('en-IN')}
+                        <div className="flex flex-col items-end">
+                            <div className="mb-1 flex items-center gap-1 px-1">
+                                <span className={`${isShowingEffectivePrice ? 'text-lg md:text-xl font-normal text-slate-800 dark:text-slate-400' : 'text-[22px] md:text-3xl font-black text-slate-900 dark:text-white'} italic leading-none`}>
+                                    ₹{(downpayment || 0).toLocaleString('en-IN')}
                                 </span>
                                 {onEditDownpayment && (
                                     <button
@@ -1078,12 +1067,26 @@ export const ProductCard = ({
                                             e.preventDefault();
                                             onEditDownpayment();
                                         }}
-                                        className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-emerald-500/60 hover:text-emerald-600 hover:bg-emerald-500/10 transition-all"
+                                        className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-colors"
                                         title="Edit Downpayment"
                                     >
-                                        <Pencil size={9} />
+                                        <Pencil size={11} />
                                     </button>
                                 )}
+                            </div>
+
+                            <div className="flex flex-col items-end">
+                                <span className={`text-[22px] md:text-3xl font-black ${isShowingEffectivePrice ? 'text-brand-primary' : 'text-slate-900 dark:text-white'} italic leading-none`}>
+                                    {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
+                                </span>
+                                <div className="flex items-center gap-1.5 pl-0.5 mt-1">
+                                    <span className="text-base md:text-lg font-bold italic text-slate-600 dark:text-brand-primary/80 leading-none">
+                                        {tenure}
+                                    </span>
+                                    <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 italic">
+                                        month
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>

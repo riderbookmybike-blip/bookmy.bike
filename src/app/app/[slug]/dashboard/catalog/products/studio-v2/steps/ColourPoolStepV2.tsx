@@ -109,11 +109,13 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
         const newOrder = [...colours];
         const [moved] = newOrder.splice(currentIndex, 1);
         newOrder.splice(targetIdx, 0, moved);
-        onUpdate(newOrder);
+        // Sync position fields to match new array order (so SKU Matrix sorts correctly)
+        const withPositions = newOrder.map((c, i) => ({ ...c, position: i }));
+        onUpdate(withPositions);
         try {
             await reorderColours(
                 model.id,
-                newOrder.map(c => c.id)
+                withPositions.map(c => c.id)
             );
             toast.success(`Moved to position ${targetIdx + 1}`);
         } catch {
@@ -332,11 +334,10 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                     return (
                         <div
                             key={colour.id}
-                            className={`group relative rounded-2xl border-2 transition-all ${
-                                isEditing
+                            className={`group relative rounded-2xl border-2 transition-all ${isEditing
                                     ? 'border-indigo-300 dark:border-indigo-500/40 shadow-lg shadow-indigo-500/5 bg-white dark:bg-white/5'
                                     : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/[0.03] hover:border-slate-200 dark:hover:border-white/10'
-                            }`}
+                                }`}
                         >
                             <div className="p-5">
                                 <div className="flex items-center gap-4">

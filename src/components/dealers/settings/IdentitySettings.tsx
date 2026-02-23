@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Camera, Save, Building2, MapPin, Phone, Mail, Globe, Image as ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
@@ -41,7 +41,27 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
         pincode: dealer.pincode || '',
         phone: dealer.phone || '',
         email: dealer.email || '',
+        brand_type: dealer.brand_type || 'MONOBRAND',
     });
+    const [allBrands, setAllBrands] = useState<{ id: string; name: string; logo_url: string | null }[]>([]);
+    const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
+    const [brandsLoading, setBrandsLoading] = useState(true);
+
+    // Fetch brands on mount
+    useEffect(() => {
+        const fetchBrands = async () => {
+            setBrandsLoading(true);
+            const supabase = createClient();
+            const [{ data: brands }, { data: dealerBrands }] = await Promise.all([
+                supabase.from('cat_brands').select('id, name, logo_url').eq('is_active', true).order('name'),
+                supabase.from('dealer_brands').select('brand_id').eq('tenant_id', dealer.id),
+            ]);
+            setAllBrands(brands || []);
+            setSelectedBrandIds((dealerBrands || []).map((db: any) => db.brand_id));
+            setBrandsLoading(false);
+        };
+        fetchBrands();
+    }, [dealer.id]);
 
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -152,6 +172,17 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                     },
                     { onConflict: 'tenant_id, district' }
                 );
+            }
+
+            // Save dealer brands
+            await supabase.from('dealer_brands').delete().eq('tenant_id', dealer.id);
+            if (selectedBrandIds.length > 0) {
+                const rows = selectedBrandIds.map((brandId, idx) => ({
+                    tenant_id: dealer.id,
+                    brand_id: brandId,
+                    is_primary: idx === 0,
+                }));
+                await supabase.from('dealer_brands').insert(rows);
             }
 
             onUpdate();
@@ -335,6 +366,84 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                                     className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                 />
                             </div>
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Brand Type
+                            </label>
+                            <div className="flex gap-2">
+                                {(['MONOBRAND', 'MULTIBRAND'] as const).map(bt => (
+                                    <button
+                                        key={bt}
+                                        type="button"
+                                        onClick={() => {
+                                            setFormData({ ...formData, brand_type: bt });
+                                            // When switching to MONOBRAND, keep only first brand
+                                            if (bt === 'MONOBRAND' && selectedBrandIds.length > 1) {
+                                                setSelectedBrandIds(prev => [prev[0]]);
+                                            }
+                                        }}
+                                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${formData.brand_type === bt
+                                            ? bt === 'MONOBRAND'
+                                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                                : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                                            : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-400 hover:bg-white/5'
+                                            }`}
+                                    >
+                                        {bt === 'MONOBRAND' ? '🏍️ Monobrand' : '🏬 Multibrand'}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-1">
+                                {formData.brand_type === 'MONOBRAND'
+                                    ? 'Single manufacturer — e.g. Hero, TVS, Honda exclusive dealership'
+                                    : 'Multiple manufacturers — sells bikes from various brands'}
+                            </p>
+                        </div>
+
+                        {/* Brand Selector */}
+                        <div className="space-y-3 md:col-span-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                {formData.brand_type === 'MONOBRAND' ? 'Select Brand' : 'Select Brands'}
+                            </label>
+                            {brandsLoading ? (
+                                <div className="text-xs text-slate-400 animate-pulse">Loading brands...</div>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {allBrands
+                                        .filter(b => !['GENERIC', 'AUTOCARE', "O'CLUB PRIVILLAGE", 'RAI TECH', 'STUDDS'].includes(b.name))
+                                        .map(brand => {
+                                            const isSelected = selectedBrandIds.includes(brand.id);
+                                            return (
+                                                <button
+                                                    key={brand.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (formData.brand_type === 'MONOBRAND') {
+                                                            setSelectedBrandIds(isSelected ? [] : [brand.id]);
+                                                        } else {
+                                                            setSelectedBrandIds(prev =>
+                                                                isSelected
+                                                                    ? prev.filter(id => id !== brand.id)
+                                                                    : [...prev, brand.id]
+                                                            );
+                                                        }
+                                                    }}
+                                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${isSelected
+                                                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 ring-1 ring-amber-500/20'
+                                                        : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                                                        }`}
+                                                >
+                                                    {isSelected && '✓ '}{brand.name}
+                                                </button>
+                                            );
+                                        })}
+                                </div>
+                            )}
+                            {selectedBrandIds.length === 0 && !brandsLoading && (
+                                <p className="text-[10px] text-amber-500 mt-1">⚠ No brand selected — please select at least one brand</p>
+                            )}
                         </div>
 
                         <div className="space-y-2">

@@ -824,17 +824,16 @@ export default function DesktopCompare() {
                                                 return (
                                                     <div
                                                         key={v.id}
-                                                        className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${
-                                                            isCheapest
-                                                                ? 'border border-[#F4B000]/20'
-                                                                : 'border border-transparent'
-                                                        }`}
+                                                        className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${isCheapest
+                                                            ? 'border border-[#F4B000]/20'
+                                                            : 'border border-transparent'
+                                                            }`}
                                                         style={{
                                                             backgroundColor: currentHex
                                                                 ? `${currentHex}1A`
                                                                 : isCheapest
-                                                                  ? 'rgba(244,176,0,0.05)'
-                                                                  : 'rgba(248,250,252,0.6)',
+                                                                    ? 'rgba(244,176,0,0.05)'
+                                                                    : 'rgba(248,250,252,0.6)',
                                                         }}
                                                     >
                                                         {/* Remove Button */}
@@ -885,11 +884,10 @@ export default function DesktopCompare() {
                                                                                     }));
                                                                                 }
                                                                             }}
-                                                                            className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${
-                                                                                currentHex === c.hexCode
-                                                                                    ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
-                                                                                    : ''
-                                                                            }`}
+                                                                            className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${currentHex === c.hexCode
+                                                                                ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
+                                                                                : ''
+                                                                                }`}
                                                                             style={{ background: c.hexCode }}
                                                                             title={c.name}
                                                                         >
@@ -961,7 +959,7 @@ export default function DesktopCompare() {
                                                 className="text-slate-300 dark:text-white/20 shrink-0"
                                             />
                                             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                                Discount / Surge
+                                                Platform Discount / Surge Charges
                                             </span>
                                         </div>
                                         {activeVariants.map((v, vIdx) => {
@@ -979,8 +977,8 @@ export default function DesktopCompare() {
                                                         {isDiscount
                                                             ? `−₹${disc.toLocaleString('en-IN')}`
                                                             : isSurge
-                                                              ? `+₹${Math.abs(disc).toLocaleString('en-IN')}`
-                                                              : '—'}
+                                                                ? `+₹${Math.abs(disc).toLocaleString('en-IN')}`
+                                                                : '—'}
                                                     </span>
                                                 </div>
                                             );
@@ -1111,11 +1109,10 @@ export default function DesktopCompare() {
                                                                     setTenure(t);
                                                                     setEditingTenure(false);
                                                                 }}
-                                                                className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${
-                                                                    tenure === t
-                                                                        ? 'bg-[#F4B000] text-black'
-                                                                        : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
-                                                                }`}
+                                                                className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${tenure === t
+                                                                    ? 'bg-[#F4B000] text-black'
+                                                                    : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
+                                                                    }`}
                                                             >
                                                                 {t}mo
                                                             </button>

@@ -111,10 +111,12 @@ export default function SKUMediaManager({
 
     // Image Dimensions State
     const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+    const [fileMeta, setFileMeta] = useState<{ type: string; size: string } | null>(null);
     const [isCropping, setIsCropping] = useState(false);
+    const [activeCrop, setActiveCrop] = useState<string | null>(null);
     const [contentPadding, setContentPadding] = useState(8); // Internal padding percentage
 
-    // Load image dimensions when primary image changes
+    // Load image dimensions + file metadata when primary image changes
     useEffect(() => {
         if (primaryImage) {
             const img = new Image();
@@ -122,13 +124,29 @@ export default function SKUMediaManager({
                 setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
             };
             img.src = getProxiedUrl(primaryImage);
+
+            // Fetch file type & size via HEAD request
+            fetch(getProxiedUrl(primaryImage), { method: 'HEAD' })
+                .then(res => {
+                    const contentType = res.headers.get('content-type') || '';
+                    const contentLength = parseInt(res.headers.get('content-length') || '0', 10);
+                    const ext = contentType.split('/').pop()?.toUpperCase() || '?';
+                    const sizeStr = contentLength > 1048576
+                        ? `${(contentLength / 1048576).toFixed(1)} MB`
+                        : contentLength > 0
+                            ? `${Math.round(contentLength / 1024)} KB`
+                            : '?';
+                    setFileMeta({ type: ext, size: sizeStr });
+                })
+                .catch(() => setFileMeta(null));
         } else {
             setImageDimensions(null);
+            setFileMeta(null);
         }
     }, [primaryImage]);
 
     // Smart Crop: Auto-trim transparent pixels and optionally fit to aspect ratio
-    const handleSmartCrop = async (targetAspectRatio?: number) => {
+    const handleSmartCrop = async (targetAspectRatio?: number, cropLabel?: string) => {
         if (!primaryImage) return;
         setIsCropping(true);
 
@@ -226,16 +244,16 @@ export default function SKUMediaManager({
                 croppedCanvas.height
             );
 
-            // Convert to blob and upload
+            // Convert to blob and upload — prefer WebP for smaller files
             const blob = await new Promise<Blob>(resolve => {
-                croppedCanvas.toBlob(b => resolve(b!), 'image/png', 1.0);
+                croppedCanvas.toBlob(b => resolve(b!), 'image/webp', 0.92);
             });
 
             const supabase = createClient();
-            const fileName = `catalog/cropped_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.png`;
+            const fileName = `catalog/cropped_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.webp`;
 
             const { error: uploadError } = await supabase.storage.from('vehicles').upload(fileName, blob, {
-                contentType: 'image/png',
+                contentType: 'image/webp',
                 upsert: false,
             });
 
@@ -249,6 +267,7 @@ export default function SKUMediaManager({
             const newImages = images.map(img => (img === primaryImage ? publicUrl : img));
             setImages(newImages);
             setPrimaryImage(publicUrl);
+            setActiveCrop(cropLabel || null);
             toast.success(`Cropped to ${croppedCanvas.width}×${croppedCanvas.height}px`);
         } catch (err) {
             console.error('[Smart Crop] Error:', err);
@@ -262,7 +281,7 @@ export default function SKUMediaManager({
         if (!primaryImage) return;
         setIsRemovingBg(true);
         try {
-            const BG_TIMEOUT_MS = 20000;
+            const BG_TIMEOUT_MS = 120000;
             const MAX_BG_DIM = 1600;
             const withTimeout = <T,>(promise: Promise<T>, ms: number) =>
                 Promise.race([
@@ -274,9 +293,11 @@ export default function SKUMediaManager({
                 try {
                     const img = await createImageBitmap(blob);
                     const maxDim = Math.max(img.width, img.height);
-                    if (maxDim <= MAX_BG_DIM) return blob;
+                    const needsResize = maxDim > MAX_BG_DIM;
+                    const needsConvert = blob.type !== 'image/png' && blob.type !== 'image/webp';
+                    if (!needsResize && !needsConvert) return blob;
 
-                    const scale = MAX_BG_DIM / maxDim;
+                    const scale = needsResize ? MAX_BG_DIM / maxDim : 1;
                     const width = Math.max(1, Math.round(img.width * scale));
                     const height = Math.max(1, Math.round(img.height * scale));
                     const canvas = document.createElement('canvas');
@@ -286,7 +307,7 @@ export default function SKUMediaManager({
                     if (!ctx) return blob;
                     ctx.drawImage(img, 0, 0, width, height);
                     const resizedBlob = await new Promise<Blob>((resolve, reject) => {
-                        canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Resize failed'))), 'image/png', 0.92);
+                        canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Resize failed'))), blob.type === 'image/webp' ? 'image/webp' : 'image/png', 0.92);
                     });
                     return resizedBlob;
                 } catch {
@@ -309,11 +330,12 @@ export default function SKUMediaManager({
             );
 
             const supabase = createClient();
-            const fileName = `catalog/nobg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.png`;
+            const ext = resultBlob.type === 'image/webp' ? 'webp' : 'png';
+            const fileName = `catalog/nobg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
             const arrayBuffer = await resultBlob.arrayBuffer();
 
             const { error: uploadError } = await supabase.storage.from('vehicles').upload(fileName, arrayBuffer, {
-                contentType: 'image/png',
+                contentType: resultBlob.type || 'image/png',
                 upsert: false,
             });
 
@@ -539,38 +561,14 @@ export default function SKUMediaManager({
                     {activeTab === 'alignment' ? (
                         <>
                             {/* LEFT: Alignment Workspace */}
-                            <div className="flex-[1.5] bg-slate-50 dark:bg-black/40 p-8 flex flex-col gap-6 border-r border-slate-100 dark:border-white/5 overflow-y-auto">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-amber-100 text-amber-600 rounded-lg">
-                                            <Move size={16} />
-                                        </div>
-                                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">
-                                            Alignment Workspace
-                                        </h3>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => {
-                                                setZoomFactor(1.0);
-                                                setOffsetX(0);
-                                                setOffsetY(0);
-                                                setIsFlipped(false);
-                                            }}
-                                            className="p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors"
-                                            title="Reset Alignment"
-                                        >
-                                            <RotateCcw size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="relative flex items-center justify-center py-8">
+                            <div className="flex-[3] bg-slate-50 dark:bg-black/40 p-6 flex flex-col gap-4 border-r border-slate-100 dark:border-white/5">
+                                <div className="relative flex-1 flex items-center justify-center min-h-0">
                                     <div
                                         className="relative rounded-[2rem] border-4 border-white dark:border-slate-800 overflow-hidden shadow-inner group"
                                         style={{
-                                            width: '400px',
-                                            height: `${400 * (344 / 300)}px`,
+                                            width: '100%',
+                                            maxWidth: '480px',
+                                            aspectRatio: '300 / 344',
                                             background: `repeating-conic-gradient(#e5e7eb 0% 25%, #f3f4f6 0% 50%) 50% / 20px 20px`,
                                         }}
                                     >
@@ -649,27 +647,39 @@ export default function SKUMediaManager({
                                             </motion.div>
                                         </div>
 
-                                        <div className="absolute bottom-4 left-4 flex items-center gap-3 z-40">
-                                            <div className="px-3 py-1.5 bg-black/80 backdrop-blur-xl rounded-xl border border-white/10 text-white flex items-center gap-2 shadow-2xl">
-                                                <span className="text-[9px] font-black tracking-widest uppercase opacity-60">
+                                        <div className="absolute bottom-3 left-3 flex items-center gap-3 z-40">
+                                            <div className="px-2.5 py-1 bg-black/80 backdrop-blur-xl rounded-lg border border-white/10 text-white flex items-center gap-1.5 shadow-2xl">
+                                                <span className="text-[8px] font-black tracking-widest uppercase opacity-60">
                                                     Scale
                                                 </span>
-                                                <span className="text-[10px] font-black italic">
+                                                <span className="text-[9px] font-black italic">
                                                     {(zoomFactor * 100).toFixed(0)}%
                                                 </span>
-                                                <div className="w-[1px] h-2.5 bg-white/20" />
-                                                <span className="text-[9px] font-black tracking-widest uppercase opacity-60">
+                                                <div className="w-[1px] h-2 bg-white/20" />
+                                                <span className="text-[8px] font-black tracking-widest uppercase opacity-60">
                                                     Pos
                                                 </span>
-                                                <span className="text-[9px] font-mono opacity-80">
+                                                <span className="text-[8px] font-mono opacity-80">
                                                     {offsetX.toFixed(0)}, {offsetY.toFixed(0)}
                                                 </span>
                                                 {imageDimensions && (
                                                     <>
-                                                        <div className="w-[1px] h-2.5 bg-white/20" />
-                                                        <Ruler size={10} className="opacity-60" />
-                                                        <span className="text-[9px] font-mono opacity-80">
+                                                        <div className="w-[1px] h-2 bg-white/20" />
+                                                        <Ruler size={9} className="opacity-60" />
+                                                        <span className="text-[8px] font-mono opacity-80">
                                                             {imageDimensions.width}×{imageDimensions.height}
+                                                        </span>
+                                                    </>
+                                                )}
+                                                {fileMeta && (
+                                                    <>
+                                                        <div className="w-[1px] h-2 bg-white/20" />
+                                                        <span className="text-[8px] font-mono opacity-80">
+                                                            {fileMeta.type}
+                                                        </span>
+                                                        <div className="w-[1px] h-2 bg-white/20" />
+                                                        <span className="text-[8px] font-mono opacity-80">
+                                                            {fileMeta.size}
                                                         </span>
                                                     </>
                                                 )}
@@ -677,330 +687,149 @@ export default function SKUMediaManager({
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-4 p-6 bg-white dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/5">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                Precise Zoom
-                                            </label>
-                                            <div className="flex gap-1">
-                                                {[0.8, 1.0, 1.2].map(v => (
-                                                    <button
-                                                        key={v}
-                                                        onClick={() => setZoomFactor(v)}
-                                                        className={`px-2 py-1 rounded-md text-[9px] font-bold ${zoomFactor === v ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-black/20 text-slate-400'}`}
-                                                    >
-                                                        {v.toFixed(1)}x
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0.5"
-                                            max="2.0"
-                                            step="0.01"
-                                            value={zoomFactor}
-                                            onChange={e => setZoomFactor(parseFloat(e.target.value))}
-                                            className="w-full h-1.5 bg-slate-100 dark:bg-white/10 rounded-full appearance-none accent-indigo-600 cursor-pointer"
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <button
-                                            onClick={() => setIsFlipped(!isFlipped)}
-                                            className={`flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all ${isFlipped ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600' : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-slate-200'}`}
-                                        >
-                                            <RefreshCw
-                                                size={20}
-                                                className={`mb-2 ${isFlipped ? 'animate-spin-slow' : ''}`}
-                                            />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">
-                                                Mirror
-                                            </span>
-                                        </button>
-
-                                        <label className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
-                                            <RefreshCw size={20} className="mb-2" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">
-                                                Replace
-                                            </span>
-                                            <input
-                                                type="file"
-                                                hidden
-                                                accept="image/*"
-                                                onChange={initiateReplace}
-                                                disabled={!primaryImage}
-                                            />
-                                        </label>
-
-                                        <button
-                                            onClick={handleRemoveBg}
-                                            disabled={!primaryImage || isRemovingBg}
-                                            className={`flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all ${isRemovingBg ? 'border-violet-600 bg-violet-50 dark:bg-violet-600/10 text-violet-600' : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-violet-400 hover:text-violet-600'} disabled:opacity-50 disabled:cursor-not-allowed`}
-                                        >
-                                            {isRemovingBg ? (
-                                                <Loader2 size={20} className="mb-2 animate-spin" />
-                                            ) : (
-                                                <Eraser size={20} className="mb-2" />
-                                            )}
-                                            <span className="text-[9px] font-black uppercase tracking-widest">
-                                                Remove BG
-                                            </span>
-                                        </button>
-
-                                        <div className="col-span-3 flex flex-col gap-3 p-4 rounded-3xl border-2 border-slate-100 dark:border-white/5 bg-white dark:bg-white/5">
-                                            <div className="flex items-center gap-2">
-                                                {isCropping ? (
-                                                    <Loader2 size={14} className="animate-spin text-amber-600" />
-                                                ) : (
-                                                    <Crop size={14} className="text-slate-400" />
-                                                )}
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Smart Crop
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {(
-                                                    [
-                                                        { label: 'Auto Trim', ratio: undefined },
-                                                        { label: '1:1', ratio: 1 },
-                                                        { label: '4:3', ratio: 4 / 3 },
-                                                        { label: '16:9', ratio: 16 / 9 },
-                                                        { label: 'Card', ratio: 300 / 344 },
-                                                    ] as { label: string; ratio: number | undefined }[]
-                                                ).map(opt => (
-                                                    <button
-                                                        key={opt.label}
-                                                        onClick={() => handleSmartCrop(opt.ratio)}
-                                                        disabled={!primaryImage || isCropping}
-                                                        className="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 text-slate-500 dark:text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-600/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                                                    >
-                                                        {opt.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onClick={initiateDelete}
-                                            disabled={!primaryImage}
-                                            className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-slate-100 dark:border-white/5 bg-white dark:bg-white/5 text-slate-400 hover:border-red-400 hover:text-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <Trash2 size={20} className="mb-2" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">
-                                                Delete
-                                            </span>
-                                        </button>
-
-                                        <label className="flex flex-col items-center justify-center p-4 rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
-                                            <Plus size={20} className="mb-2" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">
-                                                Add New
-                                            </span>
-                                            <input
-                                                type="file"
-                                                hidden
-                                                accept="image/*"
-                                                onChange={e => handleFileUpload(e, 'image')}
-                                            />
-                                        </label>
-                                    </div>
-                                </div>
                             </div>
 
-                            {/* RIGHT: Live Preview Simulator */}
-                            <div className="flex-1 p-8 overflow-y-auto space-y-6 bg-white dark:bg-slate-900">
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
-                                            <Maximize2 size={14} />
-                                        </div>
-                                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">
-                                            Live Preview
-                                        </h3>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                            Real-time card simulation
-                                        </p>
-                                        {primaryImage && (
-                                            <a
-                                                href={primaryImage}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
-                                            >
-                                                <ExternalLink size={10} /> Verify in DB
-                                            </a>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Mobile Preview */}
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                            Mobile View
-                                        </span>
-                                    </div>
-                                    <div
-                                        className="scale-[0.7] origin-top-left"
-                                        style={{ width: '300px', height: '450px' }}
-                                    >
-                                        <div className="bg-white dark:bg-[#0f1115] border border-black/[0.04] dark:border-white/10 rounded-[2rem] overflow-hidden flex flex-col shadow-xl min-h-[520px]">
-                                            <div className="h-[344px] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-4 border-b border-black/[0.04] dark:border-white/5 overflow-hidden">
-                                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 dark:to-black/30 z-0" />
-                                                <motion.img
-                                                    animate={{
-                                                        scale: zoomFactor,
-                                                        scaleX: isFlipped ? -zoomFactor : zoomFactor,
-                                                        x: offsetX,
-                                                        y: offsetY,
-                                                    }}
-                                                    transition={{ duration: 0.3 }}
-                                                    src={getProxiedUrl(
-                                                        primaryImage || '/images/categories/motorcycle_nobg.png'
-                                                    )}
-                                                    className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[92%] h-[92%] object-contain z-10"
-                                                />
-                                            </div>
-                                            <div className="p-6 flex-1 flex flex-col justify-between bg-[#FAFAFA] dark:bg-[#0f1115]">
-                                                <div>
-                                                    <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
-                                                        {skuName}
-                                                    </h3>
-                                                    <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                        STANDARD
-                                                    </p>
-                                                </div>
-                                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <span className="text-2xl font-black italic text-slate-900 dark:text-white">
-                                                            ₹1,50,000
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <span className="text-2xl font-black text-green-600">
-                                                            ₹5,250
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <button className="w-full h-11 bg-[#F4B000] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] mt-2">
-                                                    Know More
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Desktop Preview */}
-                                <div className="space-y-3 pt-6">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-amber-500" />
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                            Desktop View
-                                        </span>
-                                    </div>
-                                    <div
-                                        className="scale-[0.5] origin-top-left"
-                                        style={{ width: '900px', height: '350px' }}
-                                    >
-                                        <div className="bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden flex shadow-sm min-h-[22rem]">
-                                            <div className="w-[38%] bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center relative p-8 border-r border-slate-100 dark:border-white/5 overflow-hidden">
-                                                <motion.img
-                                                    animate={{
-                                                        scale: zoomFactor,
-                                                        scaleX: isFlipped ? -zoomFactor : zoomFactor,
-                                                        x: offsetX,
-                                                        y: offsetY,
-                                                    }}
-                                                    transition={{ duration: 0.3 }}
-                                                    src={getProxiedUrl(
-                                                        primaryImage || '/images/categories/motorcycle_nobg.png'
-                                                    )}
-                                                    className="w-[85%] h-[85%] object-contain z-10"
-                                                />
-                                            </div>
-                                            <div className="flex-1 p-10 flex flex-col justify-between">
-                                                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
-                                                    {skuName}
-                                                </h3>
-                                                <div className="flex items-center justify-between pt-6">
-                                                    <div>
-                                                        <span className="text-3xl font-black text-slate-900 dark:text-white leading-none tracking-tight">
-                                                            ₹1,50,000
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-3xl font-black text-brand-primary leading-none">
-                                                            ₹5,250
-                                                        </p>
-                                                    </div>
-                                                    <button className="px-10 py-4 bg-[#F4B000] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em]">
-                                                        Know More
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Quick Tools Card */}
-                                <div className="pt-6 border-t border-slate-100 dark:border-white/5 space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-violet-100 text-violet-600 rounded-lg">
-                                            <Upload size={14} />
-                                        </div>
-                                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">
-                                            Quick Tools
-                                        </h3>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <label className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] text-slate-400 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all cursor-pointer">
-                                            <Upload size={18} className="mb-1.5" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">
-                                                Upload
-                                            </span>
-                                            <input
-                                                type="file"
-                                                hidden
-                                                accept="image/*"
-                                                multiple
-                                                onChange={e => handleFileUpload(e, 'image')}
-                                            />
+                            {/* RIGHT: Compact Controls */}
+                            <div className="flex-[2] p-5 flex flex-col gap-4 bg-white dark:bg-slate-900">
+                                {/* Zoom */}
+                                <div className="p-4 bg-slate-50 dark:bg-white/[0.03] rounded-2xl border border-slate-100 dark:border-white/5 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                            Zoom
                                         </label>
+                                        <div className="flex gap-1">
+                                            {[0.8, 1.0, 1.2].map(v => (
+                                                <button
+                                                    key={v}
+                                                    onClick={() => setZoomFactor(v)}
+                                                    className={`px-2 py-0.5 rounded text-[8px] font-bold ${zoomFactor === v ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-black/20 text-slate-400'}`}
+                                                >
+                                                    {v.toFixed(1)}x
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0.5"
+                                        max="2.0"
+                                        step="0.01"
+                                        value={zoomFactor}
+                                        onChange={e => setZoomFactor(parseFloat(e.target.value))}
+                                        className="w-full h-1 bg-slate-200 dark:bg-white/10 rounded-full appearance-none accent-indigo-600 cursor-pointer"
+                                    />
+                                </div>
 
-                                        <button
-                                            onClick={() => handleSmartCrop(300 / 344)}
-                                            disabled={!primaryImage || isCropping}
-                                            className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >
-                                            {isCropping ? (
-                                                <Loader2 size={18} className="mb-1.5 animate-spin" />
-                                            ) : (
-                                                <Crop size={18} className="mb-1.5" />
-                                            )}
-                                            <span className="text-[9px] font-black uppercase tracking-widest">
-                                                Smart Crop
-                                            </span>
-                                        </button>
+                                {/* Action Buttons — 2×3 grid */}
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button
+                                        onClick={() => setIsFlipped(!isFlipped)}
+                                        className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border transition-all ${isFlipped ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600' : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-slate-200 hover:text-slate-600'}`}
+                                    >
+                                        <RefreshCw size={16} className="mb-1" />
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Mirror</span>
+                                    </button>
+
+                                    <label className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
+                                        <RefreshCw size={16} className="mb-1" />
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Replace</span>
+                                        <input type="file" hidden accept="image/*" onChange={initiateReplace} disabled={!primaryImage} />
+                                    </label>
+
+                                    <button
+                                        onClick={handleRemoveBg}
+                                        disabled={!primaryImage || isRemovingBg}
+                                        className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border transition-all ${isRemovingBg ? 'border-violet-500 bg-violet-50 dark:bg-violet-600/10 text-violet-600' : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-violet-400 hover:text-violet-600'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    >
+                                        {isRemovingBg ? <Loader2 size={16} className="mb-1 animate-spin" /> : <Eraser size={16} className="mb-1" />}
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Remove BG</span>
+                                    </button>
+
+                                    <button
+                                        onClick={initiateDelete}
+                                        disabled={!primaryImage}
+                                        className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-red-400 hover:text-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Trash2 size={16} className="mb-1" />
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Delete</span>
+                                    </button>
+
+                                    <label className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
+                                        <Plus size={16} className="mb-1" />
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Add New</span>
+                                        <input type="file" hidden accept="image/*" onChange={e => handleFileUpload(e, 'image')} />
+                                    </label>
+
+                                    <button
+                                        onClick={() => {
+                                            setZoomFactor(1.0);
+                                            setOffsetX(0);
+                                            setOffsetY(0);
+                                            setIsFlipped(false);
+                                        }}
+                                        className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-amber-400 hover:text-amber-600 transition-all"
+                                    >
+                                        <RotateCcw size={16} className="mb-1" />
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Reset</span>
+                                    </button>
+                                </div>
+
+                                {/* Smart Crop */}
+                                <div className="p-4 bg-slate-50 dark:bg-white/[0.03] rounded-2xl border border-slate-100 dark:border-white/5 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        {isCropping ? <Loader2 size={12} className="animate-spin text-amber-600" /> : <Crop size={12} className="text-slate-400" />}
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Smart Crop</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {([
+                                            { label: 'Auto Trim', ratio: undefined },
+                                            { label: '1:1', ratio: 1 },
+                                            { label: '4:3', ratio: 4 / 3 },
+                                            { label: '16:9', ratio: 16 / 9 },
+                                            { label: 'Card', ratio: 300 / 344 },
+                                        ] as { label: string; ratio: number | undefined }[]).map(opt => (
+                                            <button
+                                                key={opt.label}
+                                                onClick={() => handleSmartCrop(opt.ratio, opt.label)}
+                                                disabled={!primaryImage || isCropping}
+                                                className={[
+                                                    'rounded-lg font-black uppercase tracking-widest border transition-all disabled:opacity-40 disabled:cursor-not-allowed',
+                                                    opt.label === 'Card'
+                                                        ? 'px-4 py-1.5 text-[9px]'
+                                                        : 'px-2.5 py-1 text-[8px]',
+                                                    activeCrop === opt.label
+                                                        ? 'border-amber-400 bg-amber-50 dark:bg-amber-600/10 text-amber-600 ring-1 ring-amber-400/50'
+                                                        : 'border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 text-slate-500 dark:text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-600/10',
+                                                ].join(' ')}
+                                            >
+                                                {activeCrop === opt.label && '✓ '}{opt.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
 
-                                <div className="pt-6 border-t border-slate-100 dark:border-white/5">
-                                    <label className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-black/20 rounded-2xl cursor-pointer group">
+                                {/* Verify + Apply toggle */}
+                                <div className="mt-auto space-y-3">
+                                    {primaryImage && (
+                                        <a
+                                            href={primaryImage}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors w-full"
+                                        >
+                                            <ExternalLink size={10} /> Open Original Image
+                                        </a>
+                                    )}
+
+                                    <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-black/20 rounded-xl cursor-pointer group">
                                         <div
-                                            className={`w-10 h-6 border-2 rounded-full relative transition-all ${applyVideosToAll ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 dark:border-white/10'}`}
+                                            className={`w-9 h-5 border-2 rounded-full relative transition-all shrink-0 ${applyVideosToAll ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 dark:border-white/10'}`}
                                         >
                                             <div
-                                                className={`absolute top-1 w-3 h-3 rounded-full transition-all ${applyVideosToAll ? 'right-1 bg-white' : 'left-1 bg-slate-300'}`}
+                                                className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${applyVideosToAll ? 'right-0.5 bg-white' : 'left-0.5 bg-slate-300'}`}
                                             />
                                         </div>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
                                             Apply to all variants
                                         </span>
                                         <input
@@ -1097,7 +926,7 @@ export default function SKUMediaManager({
                     <div className="hidden md:flex items-center gap-2 text-slate-400">
                         <Check size={14} className="text-emerald-500" />
                         <span className="text-[9px] font-bold uppercase tracking-widest">
-                            All changes live-previewed
+                            All changes auto-saved
                         </span>
                     </div>
                     <div className="flex gap-4">

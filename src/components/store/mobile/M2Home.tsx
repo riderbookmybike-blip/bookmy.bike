@@ -27,13 +27,14 @@ import { CATEGORIES, MARKET_METRICS } from '@/config/market';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
-import { M2Footer } from './M2Footer';
+import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { selectTrendingModels } from '@/lib/store/trending';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
+import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { ProductCard } from '../desktop/ProductCard';
 import { CompactProductCard } from './CompactProductCard';
 
@@ -145,7 +146,10 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
 
     // EMI Calculator state
     const basePrice = 120000;
+    const { availableCoins, isLoggedIn } = useOClubWallet();
     const [downpayment, setDownpayment] = useState(25000);
+
+    const [scrolled, setScrolled] = useState(false);
     const tenure = 36;
     const interestRate = 9.5; // 9.5% p.a
 
@@ -228,7 +232,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
                 />
 
                 {/* Hero Content */}
-                <div className="relative z-10 px-5 md:px-12 lg:px-20 pb-[110px] md:pb-0 flex flex-col gap-5 md:items-center md:text-center md:max-w-3xl lg:max-w-4xl md:mx-auto">
+                <div className="relative z-10 pb-[110px] md:pb-0 flex flex-col gap-5 md:items-center md:text-center md:max-w-3xl lg:max-w-4xl md:mx-auto page-container">
                     {/* Tag line */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -347,7 +351,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
             {/* ══════════════════════════════════════════════
                 SECTION 2: QUICK CATEGORY CARDS
             ══════════════════════════════════════════════ */}
-            <section className="relative py-10 md:py-16 lg:py-20 px-5 md:px-12 lg:px-20">
+            <section className="relative py-10 md:py-16 lg:py-20 page-container">
                 {/* Subtle top glow */}
                 <div
                     className="absolute top-0 left-1/2 -translate-x-1/2 w-[200px] h-[100px] rounded-full blur-[80px] opacity-30"
@@ -428,8 +432,8 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
                 SECTION 3: TRENDING — HORIZONTAL SCROLL
             ══════════════════════════════════════════════ */}
             {trendingItems.length > 0 && (
-                <section className="py-10 md:py-16 lg:py-20">
-                    <div className="flex items-end justify-between px-5 md:px-12 lg:px-20 mb-5 md:mb-8 max-w-[1440px] mx-auto">
+                <section className="py-10 md:py-16 lg:py-20 page-container">
+                    <div className="flex items-end justify-between mb-5 md:mb-8 max-w-[1440px] mx-auto">
                         <div>
                             <p className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: GOLD }}>
                                 Popular Right Now
@@ -458,16 +462,25 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 md:gap-8 px-5 md:px-12 lg:px-20 pb-4 max-w-[1440px] mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 md:gap-5 pb-4 max-w-[1440px] mx-auto">
                         {trendingItems.map((item: any) =>
                             isPhone ? (
-                                <CompactProductCard key={item.id} v={item} downpayment={downpayment} tenure={tenure} />
+                                <CompactProductCard
+                                    key={item.id}
+                                    v={item}
+                                    downpayment={downpayment}
+                                    tenure={tenure}
+                                    walletCoins={isLoggedIn ? availableCoins : null}
+                                    showOClubPrompt={!isLoggedIn}
+                                />
                             ) : (
                                 <ProductCard
                                     key={item.id}
                                     v={item}
                                     downpayment={downpayment}
                                     tenure={tenure}
+                                    walletCoins={isLoggedIn ? availableCoins : null}
+                                    showOClubPrompt={!isLoggedIn}
                                     serviceability={{
                                         status: parsedLocation ? 'serviceable' : 'unset',
                                         location: trendingLocationName,
@@ -483,7 +496,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
             {/* ══════════════════════════════════════════════
                 SECTION 4: TRUST SIGNALS
             ══════════════════════════════════════════════ */}
-            <section className="py-12 md:py-20 px-5 bg-white">
+            <section className="py-12 md:py-20 bg-white page-container">
                 <div className="max-w-[1440px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
                     {[
                         { icon: Shield, label: 'Genuine Pricing', desc: 'No hidden dealership fees' },
@@ -512,7 +525,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
             {/* ══════════════════════════════════════════════
                 SECTION 5: HOW IT WORKS
             ══════════════════════════════════════════════ */}
-            <section className="py-20 md:py-32 px-5 md:px-12 lg:px-20 border-t border-slate-100 bg-white overflow-hidden">
+            <section className="py-20 md:py-32 border-t border-slate-100 bg-white overflow-hidden page-container">
                 <div className="max-w-[1440px] mx-auto flex flex-col items-center">
                     <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 mb-2">The Process</p>
                     <h2 className="text-2xl md:text-4xl font-black tracking-tight text-center mb-12 md:mb-20 text-slate-900">
@@ -593,7 +606,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
             {/* ══════════════════════════════════════════════
                 SECTION 6: BRAND GRID
             ══════════════════════════════════════════════ */}
-            <section className="py-12 md:py-16 lg:py-20 px-5 md:px-12 lg:px-20">
+            <section className="py-12 md:py-16 lg:py-20 page-container">
                 <div className="max-w-[1440px] mx-auto">
                     <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 mb-1">
                         Official Partners
@@ -610,7 +623,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
                         </span>
                     </h2>
 
-                    <div className="grid grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-4 px-5 md:px-12 lg:px-20">
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-4">
                         {brands.slice(0, 12).map((brand: any, i: number) => {
                             const color = BRAND_COLORS[brand.name.toUpperCase()] || '#ffffff';
                             return (
@@ -658,133 +671,134 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
             {/* ══════════════════════════════════════════════
                 SECTION 7: SOCIAL PROOF — TESTIMONIALS
             ══════════════════════════════════════════════ */}
-            <section className="py-20 md:py-32 px-5 md:px-12 lg:px-20 bg-slate-50 border-y border-slate-100">
-                <div className="max-w-[1440px] mx-auto">
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 mb-1">Real Stories</p>
-                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-6 md:mb-8 text-slate-900">
-                        Riders
-                        <span
-                            className="text-transparent bg-clip-text ml-2"
-                            style={{
-                                backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
-                            }}
-                        >
-                            Love Us
-                        </span>
-                    </h2>
-
-                    {/* Mobile: carousel */}
-                    <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 md:hidden shadow-sm">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={activeTestimonial}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.3 }}
-                                className="flex flex-col gap-4"
+            <section className="py-20 md:py-32 bg-slate-50 border-y border-slate-100">
+                <div className="page-container">
+                    <div className="max-w-[1440px] mx-auto">
+                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 mb-1">Real Stories</p>
+                        <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-6 md:mb-8 text-slate-900">
+                            Riders
+                            <span
+                                className="text-transparent bg-clip-text ml-2"
+                                style={{
+                                    backgroundImage: `linear-gradient(90deg, ${GOLD}, ${GOLD_INT})`,
+                                }}
                             >
-                                {/* Stars */}
-                                <div className="flex gap-1">
-                                    {Array.from({ length: TESTIMONIALS[activeTestimonial].rating }).map((_, i) => (
-                                        <Star key={i} size={14} fill={GOLD} stroke="none" />
-                                    ))}
-                                </div>
+                                Love Us
+                            </span>
+                        </h2>
 
-                                {/* Quote */}
-                                <p className="text-sm text-slate-600 font-medium leading-relaxed italic">
-                                    &ldquo;{TESTIMONIALS[activeTestimonial].text}&rdquo;
-                                </p>
-
-                                {/* Author */}
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs font-black text-slate-900">
-                                            {TESTIMONIALS[activeTestimonial].name}
-                                        </p>
-                                        <p className="text-[11px] text-slate-400 mt-0.5">
-                                            {TESTIMONIALS[activeTestimonial].bike}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-                                        <Check size={10} className="text-emerald-400" />
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
-                                            Verified
-                                        </span>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </AnimatePresence>
-
-                        {/* Dots */}
-                        <div className="flex items-center justify-center gap-2 mt-5">
-                            {TESTIMONIALS.map((_, i) => (
-                                <button
-                                    key={i}
-                                    type="button"
-                                    aria-label={`Show testimonial ${i + 1}`}
-                                    onClick={() => setActiveTestimonial(i)}
-                                    className="transition-all"
+                        {/* Mobile: carousel */}
+                        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 md:hidden shadow-sm">
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={activeTestimonial}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="flex flex-col gap-4"
                                 >
-                                    <div
-                                        className={`rounded-full transition-all duration-300 ${
-                                            i === activeTestimonial ? 'w-6 h-1.5' : 'w-1.5 h-1.5 bg-slate-200'
-                                        }`}
-                                        style={i === activeTestimonial ? { background: GOLD } : undefined}
-                                    />
-                                </button>
+                                    {/* Stars */}
+                                    <div className="flex gap-1">
+                                        {Array.from({ length: TESTIMONIALS[activeTestimonial].rating }).map((_, i) => (
+                                            <Star key={i} size={14} fill={GOLD} stroke="none" />
+                                        ))}
+                                    </div>
+
+                                    {/* Quote */}
+                                    <p className="text-sm text-slate-600 font-medium leading-relaxed italic">
+                                        &ldquo;{TESTIMONIALS[activeTestimonial].text}&rdquo;
+                                    </p>
+
+                                    {/* Author */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs font-black text-slate-900">
+                                                {TESTIMONIALS[activeTestimonial].name}
+                                            </p>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">
+                                                {TESTIMONIALS[activeTestimonial].bike}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
+                                            <Check size={10} className="text-emerald-400" />
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
+                                                Verified
+                                            </span>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </AnimatePresence>
+
+                            {/* Dots */}
+                            <div className="flex items-center justify-center gap-2 mt-5">
+                                {TESTIMONIALS.map((_, i) => (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        aria-label={`Show testimonial ${i + 1}`}
+                                        onClick={() => setActiveTestimonial(i)}
+                                        className="transition-all"
+                                    >
+                                        <div
+                                            className={`rounded-full transition-all duration-300 ${i === activeTestimonial ? 'w-6 h-1.5' : 'w-1.5 h-1.5 bg-slate-200'
+                                                }`}
+                                            style={i === activeTestimonial ? { background: GOLD } : undefined}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Desktop: show all testimonials side by side */}
+                        <div className="hidden md:grid md:grid-cols-3 gap-4">
+                            {TESTIMONIALS.map((t, i) => (
+                                <div
+                                    key={i}
+                                    className="flex flex-col gap-4 p-6 rounded-3xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow"
+                                >
+                                    <div className="flex gap-1">
+                                        {Array.from({ length: t.rating }).map((_, j) => (
+                                            <Star key={j} size={14} fill={GOLD} stroke="none" />
+                                        ))}
+                                    </div>
+                                    <p className="text-sm text-slate-600 font-medium leading-relaxed italic flex-1">
+                                        &ldquo;{t.text}&rdquo;
+                                    </p>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs font-black text-slate-900">{t.name}</p>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">{t.bike}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
+                                            <Check size={10} className="text-emerald-400" />
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
+                                                Verified
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             ))}
                         </div>
-                    </div>
 
-                    {/* Desktop: show all testimonials side by side */}
-                    <div className="hidden md:grid md:grid-cols-3 gap-4">
-                        {TESTIMONIALS.map((t, i) => (
-                            <div
-                                key={i}
-                                className="flex flex-col gap-4 p-6 rounded-3xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow"
-                            >
-                                <div className="flex gap-1">
-                                    {Array.from({ length: t.rating }).map((_, j) => (
-                                        <Star key={j} size={14} fill={GOLD} stroke="none" />
-                                    ))}
+                        {/* Trust metrics */}
+                        <div className="mt-5 md:mt-8 grid grid-cols-3 gap-3 md:gap-4">
+                            {[
+                                { value: '4.8★', label: 'Avg Rating' },
+                                { value: '2,100+', label: 'Deliveries' },
+                                { value: '98%', label: 'Satisfaction' },
+                            ].map((metric, i) => (
+                                <div
+                                    key={i}
+                                    className="flex flex-col items-center py-4 rounded-2xl border border-slate-100 bg-white shadow-sm"
+                                >
+                                    <span className="text-base md:text-lg font-black text-slate-900">{metric.value}</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">
+                                        {metric.label}
+                                    </span>
                                 </div>
-                                <p className="text-sm text-slate-600 font-medium leading-relaxed italic flex-1">
-                                    &ldquo;{t.text}&rdquo;
-                                </p>
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs font-black text-slate-900">{t.name}</p>
-                                        <p className="text-[11px] text-slate-400 mt-0.5">{t.bike}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-                                        <Check size={10} className="text-emerald-400" />
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
-                                            Verified
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Trust metrics */}
-                    <div className="mt-5 md:mt-8 grid grid-cols-3 gap-3 md:gap-4">
-                        {[
-                            { value: '4.8★', label: 'Avg Rating' },
-                            { value: '2,100+', label: 'Deliveries' },
-                            { value: '98%', label: 'Satisfaction' },
-                        ].map((metric, i) => (
-                            <div
-                                key={i}
-                                className="flex flex-col items-center py-4 rounded-2xl border border-slate-100 bg-white shadow-sm"
-                            >
-                                <span className="text-base md:text-lg font-black text-slate-900">{metric.value}</span>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">
-                                    {metric.label}
-                                </span>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
             </section>
@@ -792,7 +806,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
             {/* ══════════════════════════════════════════════
                 SECTION 8: SERVICE AREAS
             ══════════════════════════════════════════════ */}
-            <section className="py-20 md:py-28 px-5 md:px-12 lg:px-20 bg-white">
+            <section className="py-20 md:py-28 bg-white page-container">
                 <div className="max-w-[1440px] mx-auto">
                     <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 mb-1">
                         Where We Serve
@@ -829,7 +843,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
             {/* ══════════════════════════════════════════════
                 SECTION 9: FINAL CTA — BOOKING STRIP
             ══════════════════════════════════════════════ */}
-            <section className="relative py-14 md:py-20 lg:py-24 px-5 md:px-12 lg:px-20 overflow-hidden">
+            <section className="relative py-14 md:py-20 lg:py-24 page-container overflow-hidden">
                 {/* Background glow */}
                 <div
                     className="absolute inset-0 opacity-20"
@@ -879,7 +893,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
                     </div>
                 </div>
             </section>
-            <M2Footer />
+            <MarketplaceFooter />
         </div>
     );
 }

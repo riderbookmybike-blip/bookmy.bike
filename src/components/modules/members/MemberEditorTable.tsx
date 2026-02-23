@@ -4,7 +4,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { DisplayId } from '@/components/ui/DisplayId';
 import DocumentManager from '@/components/modules/leads/DocumentManager';
-import { getMemberDocuments, getSignedUrlAction } from '@/actions/crm';
+import { getMemberDocuments, getSignedUrlAction, updateMemberProfile } from '@/actions/crm';
+import { getPincodeDetails } from '@/actions/pincode';
 import {
     Calendar,
     ChevronDown,
@@ -22,10 +23,15 @@ import {
     MapPin,
     BadgeCheck,
     Plus,
+    Save,
+    X,
+    Pencil,
+    Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDisplayId } from '@/utils/displayId';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { toast } from 'sonner';
 
 export interface MemberProfile {
     member: {
@@ -75,6 +81,45 @@ const formatAddressLines = (lines: Array<string | null | undefined>) => {
     const cleaned = lines.filter(Boolean);
     return cleaned.length > 0 ? cleaned.join(', ') : '—';
 };
+
+const EditableField = ({
+    label,
+    field,
+    value,
+    mono,
+    isEditing,
+    editFields,
+    onFieldChange,
+}: {
+    label: string;
+    field: string;
+    value: string;
+    mono?: boolean;
+    isEditing: boolean;
+    editFields: Record<string, string>;
+    onFieldChange: (field: string, value: string) => void;
+}) => (
+    <div className="flex items-start justify-between gap-3">
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap mt-1">
+            {label}
+        </span>
+        {isEditing ? (
+            <input
+                type="text"
+                value={editFields[field] ?? ''}
+                onChange={e => onFieldChange(field, e.target.value)}
+                className={cn(
+                    'text-[12px] font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-right w-40 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all',
+                    mono && 'font-mono'
+                )}
+            />
+        ) : (
+            <span className={cn('text-[12px] font-bold text-slate-700 dark:text-slate-200', mono && 'font-mono')}>
+                {value || '—'}
+            </span>
+        )}
+    </div>
+);
 
 function cn(...inputs: any[]) {
     return inputs.filter(Boolean).join(' ');
@@ -211,6 +256,100 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
         docBookings: false,
     });
 
+    // ── Edit mode state ──
+    const [isEditing, setIsEditing] = useState(false);
+    const [editSaving, setEditSaving] = useState(false);
+    const [editFields, setEditFields] = useState({
+        primaryEmail: profile.member?.primary_email || profile.member?.email || '',
+        panNumber: profile.member?.pan_number || '',
+        aadhaarNumber: profile.member?.aadhaar_number || '',
+        dob: profile.member?.date_of_birth || '',
+        workCompany: profile.member?.work_company || '',
+        workDesignation: profile.member?.work_designation || '',
+        workEmail: profile.member?.work_email || '',
+        workPhone: profile.member?.work_phone || '',
+        pincode: profile.member?.pincode || '',
+        state: profile.member?.state || '',
+        rto: profile.member?.rto || '',
+        district: profile.member?.district || '',
+        taluka: profile.member?.taluka || '',
+    });
+    const [pincodeLoading, setPincodeLoading] = useState(false);
+
+    const handleEditField = (field: string, value: string) => {
+        setEditFields(prev => ({ ...prev, [field]: value }));
+
+        // Auto-fill when pincode reaches 6 digits
+        if (field === 'pincode' && value.length === 6 && /^\d{6}$/.test(value)) {
+            setPincodeLoading(true);
+            getPincodeDetails(value).then(result => {
+                if (result.success && result.data) {
+                    setEditFields(prev => ({
+                        ...prev,
+                        state: result.data.state || prev.state,
+                        district: result.data.district || prev.district,
+                        taluka: result.data.taluka || prev.taluka,
+                    }));
+                    toast.success(`Location: ${result.data.district}, ${result.data.state}`);
+                } else {
+                    toast.error('Pincode not found');
+                }
+            }).catch(() => {
+                toast.error('Failed to lookup pincode');
+            }).finally(() => {
+                setPincodeLoading(false);
+            });
+        }
+    };
+
+    const handleSave = async () => {
+        setEditSaving(true);
+        try {
+            const result = await updateMemberProfile(profile.member.id, {
+                primaryEmail: editFields.primaryEmail || undefined,
+                dob: editFields.dob || undefined,
+                workCompany: editFields.workCompany || undefined,
+                workDesignation: editFields.workDesignation || undefined,
+                workEmail: editFields.workEmail || undefined,
+                workPhone: editFields.workPhone || undefined,
+                pincode: editFields.pincode || undefined,
+                state: editFields.state || undefined,
+                district: editFields.district || undefined,
+                taluka: editFields.taluka || undefined,
+            });
+            if (result.success) {
+                toast.success('Member profile updated');
+                setIsEditing(false);
+                router.refresh();
+            } else {
+                toast.error(result.error || 'Failed to save');
+            }
+        } catch {
+            toast.error('Failed to save profile');
+        } finally {
+            setEditSaving(false);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditFields({
+            primaryEmail: profile.member?.primary_email || profile.member?.email || '',
+            panNumber: profile.member?.pan_number || '',
+            aadhaarNumber: profile.member?.aadhaar_number || '',
+            dob: profile.member?.date_of_birth || '',
+            workCompany: profile.member?.work_company || '',
+            workDesignation: profile.member?.work_designation || '',
+            workEmail: profile.member?.work_email || '',
+            workPhone: profile.member?.work_phone || '',
+            pincode: profile.member?.pincode || '',
+            state: profile.member?.state || '',
+            rto: profile.member?.rto || '',
+            district: profile.member?.district || '',
+            taluka: profile.member?.taluka || '',
+        });
+        setIsEditing(false);
+    };
+
     // --- Document preview state (for inline thumbnails) ---
     const [memberDocs, setMemberDocs] = useState<any[]>([]);
     const [docSignedUrls, setDocSignedUrls] = useState<Record<string, string>>({});
@@ -227,7 +366,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                 docs.map(async (doc: any) => {
                     try {
                         urls[doc.id] = await getSignedUrlAction(doc.path);
-                    } catch {}
+                    } catch { }
                 })
             );
             setDocSignedUrls(urls);
@@ -917,9 +1056,31 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors">
-                                Edit
-                            </button>
+                            {isEditing ? (
+                                <>
+                                    <button
+                                        onClick={handleCancelEdit}
+                                        className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                                    >
+                                        <X size={14} /> Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={editSaving}
+                                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                    >
+                                        {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                        {editSaving ? 'Saving...' : 'Save'}
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                                >
+                                    <Pencil size={12} /> Edit
+                                </button>
+                            )}
                             <div className="relative group">
                                 <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
                                     New Transaction <ChevronDown size={14} />
@@ -1041,38 +1202,10 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                             {profile.member?.primary_phone || profile.member?.phone || '—'}
                                         </span>
                                     </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Email
-                                        </span>
-                                        <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300">
-                                            {profile.member?.primary_email || profile.member?.email || '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            PAN
-                                        </span>
-                                        <span className="text-[12px] font-mono font-bold text-slate-700 dark:text-slate-200">
-                                            {profile.member?.pan_number || '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Aadhaar
-                                        </span>
-                                        <span className="text-[12px] font-mono font-bold text-slate-700 dark:text-slate-200">
-                                            {profile.member?.aadhaar_number || '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            DOB
-                                        </span>
-                                        <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300">
-                                            {formatDate(profile.member?.date_of_birth)}
-                                        </span>
-                                    </div>
+                                    <EditableField label="Email" field="primaryEmail" value={profile.member?.primary_email || profile.member?.email || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField label="PAN" field="panNumber" value={profile.member?.pan_number || ''} mono isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField label="Aadhaar" field="aadhaarNumber" value={profile.member?.aadhaar_number || ''} mono isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField label="DOB" field="dob" value={formatDate(profile.member?.date_of_birth)} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
                                 </div>
                             </div>
 
@@ -1125,62 +1258,36 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                     Work & Location
                                 </div>
                                 <div className="space-y-3">
+                                    <EditableField label="Company" field="workCompany" value={profile.member?.work_company || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField label="Designation" field="workDesignation" value={profile.member?.work_designation || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField label="Work Email" field="workEmail" value={profile.member?.work_email || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField label="Work Phone" field="workPhone" value={profile.member?.work_phone || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
                                     <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Company
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap mt-1">
+                                            Pincode
                                         </span>
-                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                            {profile.member?.work_company || '—'}
-                                        </span>
+                                        {isEditing ? (
+                                            <div className="flex items-center gap-1.5">
+                                                <input
+                                                    type="text"
+                                                    maxLength={6}
+                                                    value={editFields.pincode ?? ''}
+                                                    onChange={e => handleEditField('pincode', e.target.value.replace(/\D/g, ''))}
+                                                    placeholder="6-digit"
+                                                    className="text-[12px] font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-right w-28 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all"
+                                                />
+                                                {pincodeLoading && <Loader2 size={14} className="animate-spin text-indigo-500" />}
+                                            </div>
+                                        ) : (
+                                            <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                                                {profile.member?.pincode || '—'}
+                                            </span>
+                                        )}
                                     </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Designation
-                                        </span>
-                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                            {profile.member?.work_designation || '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Work Email
-                                        </span>
-                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                            {profile.member?.work_email || '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Work Phone
-                                        </span>
-                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                            {profile.member?.work_phone || '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            RTO
-                                        </span>
-                                        <span className="text-[12px] font-black text-slate-900 dark:text-white">
-                                            {profile.member?.rto || '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            District
-                                        </span>
-                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                            {profile.member?.district || '—'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Taluka
-                                        </span>
-                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                            {profile.member?.taluka || '—'}
-                                        </span>
-                                    </div>
+                                    <EditableField label="State" field="state" value={profile.member?.state || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField label="RTO" field="rto" value={profile.member?.rto || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField label="District" field="district" value={profile.member?.district || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
+                                    <EditableField label="Taluka" field="taluka" value={profile.member?.taluka || ''} isEditing={isEditing} editFields={editFields} onFieldChange={handleEditField} />
                                 </div>
                             </div>
                         </div>
@@ -1731,7 +1838,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                 <div key={doc.id} className="shrink-0 w-24 group">
                                                     <div className="w-24 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                                                         {(doc.file_type || '').includes('image') &&
-                                                        docSignedUrls[doc.id] ? (
+                                                            docSignedUrls[doc.id] ? (
                                                             <img
                                                                 src={docSignedUrls[doc.id]}
                                                                 alt={doc.purpose || ''}
@@ -1836,7 +1943,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                 <div key={doc.id} className="shrink-0 w-24 group">
                                                     <div className="w-24 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                                                         {(doc.file_type || '').includes('image') &&
-                                                        docSignedUrls[doc.id] ? (
+                                                            docSignedUrls[doc.id] ? (
                                                             <img
                                                                 src={docSignedUrls[doc.id]}
                                                                 alt={doc.purpose || ''}
@@ -1942,7 +2049,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                 <div key={doc.id} className="shrink-0 w-24 group">
                                                     <div className="w-24 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                                                         {(doc.file_type || '').includes('image') &&
-                                                        docSignedUrls[doc.id] ? (
+                                                            docSignedUrls[doc.id] ? (
                                                             <img
                                                                 src={docSignedUrls[doc.id]}
                                                                 alt={doc.purpose || ''}

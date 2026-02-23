@@ -1,0 +1,2 @@
+"use strict";(self.__LOADABLE_LOADED_CHUNKS__=self.__LOADABLE_LOADED_CHUNKS__||[]).push([[11984],{840669:(e,t,n)=>{n.r(t),n.d(t,{default:()=>o});var r=n(296540);const o=function(e){return r.createElement("svg",{width:e.width,height:e.height,viewBox:"0 0 256 256",style:e.style},r.createElement("path",{fill:"none",d:"M0 0h256v256H0z"}),r.createElement("path",{fill:"none",stroke:e.strokeColor,strokeLinecap:"round",strokeLinejoin:"round",strokeWidth:16,d:"m48 160 80-80 80 80"}))}}}]);
+//# sourceMappingURL=CaretUpIcon.js.map

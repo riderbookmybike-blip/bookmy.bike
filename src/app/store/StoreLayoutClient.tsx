@@ -127,11 +127,10 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
         <FavoritesProvider>
             <ColorProvider>
                 <div
-                    className={`marketplace min-h-screen ${
-                        isLandingPage
+                    className={`marketplace min-h-screen ${isLandingPage
                             ? 'bg-white text-black'
-                            : 'bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white'
-                    } font-sans selection:bg-red-500/30 transition-colors duration-300`}
+                            : 'bg-slate-50 text-slate-900'
+                        } font-sans selection:bg-red-500/30 transition-colors duration-300`}
                 >
                     <Script
                         src="https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/3.0.3/js-cloudimage-360-view.min.js"
