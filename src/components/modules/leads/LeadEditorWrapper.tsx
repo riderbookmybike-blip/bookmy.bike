@@ -1,9 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getLeadById, getQuotesForLead, getBookingsForLead, getReceiptsForEntity } from '@/actions/crm';
-import LeadEditorTable from '@/components/modules/leads/LeadEditorTable';
+
+const LeadEditorTable = dynamic(() => import('@/components/modules/leads/LeadEditorTable'), {
+    loading: () => (
+        <div className="p-4 sm:p-8 md:p-12 space-y-6 sm:space-y-8 animate-pulse">
+            <div className="h-32 sm:h-40 bg-slate-100 dark:bg-white/5 rounded-2xl sm:rounded-[2.5rem]" />
+            <div className="h-48 sm:h-64 bg-slate-100 dark:bg-white/5 rounded-2xl sm:rounded-[2.5rem]" />
+        </div>
+    ),
+});
 
 export default function LeadEditorWrapper({ leadId }: { leadId: string }) {
     const { tenantId } = useTenant();

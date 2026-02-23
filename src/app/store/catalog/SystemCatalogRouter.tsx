@@ -1,13 +1,36 @@
 'use client';
 
 import React from 'react';
-import { DesktopCatalog } from '@/components/store/DesktopCatalog';
-import { MobileCatalog } from '@/components/store/mobile/MobileCatalog';
+import dynamic from 'next/dynamic';
+
+const DesktopCatalog = dynamic(() => import('@/components/store/DesktopCatalog').then(m => m.DesktopCatalog), {
+    loading: () => (
+        <div className="p-8 space-y-6 animate-pulse">
+            <div className="h-14 bg-slate-100 rounded-2xl" />
+            <div className="grid grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                    <div key={i} className="h-72 bg-slate-100 rounded-3xl" />
+                ))}
+            </div>
+        </div>
+    ),
+});
+
+const MobileCatalog = dynamic(() => import('@/components/store/mobile/MobileCatalog').then(m => m.MobileCatalog), {
+    loading: () => (
+        <div className="p-4 space-y-4 animate-pulse">
+            <div className="h-12 bg-slate-100 rounded-xl" />
+            {[1, 2, 3].map(i => (
+                <div key={i} className="h-48 bg-slate-100 rounded-2xl" />
+            ))}
+        </div>
+    ),
+});
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { ProductVariant } from '@/types/productMaster';
 import { useSearchParams } from 'next/navigation';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
-import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
+
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface SystemCatalogRouterProps {
@@ -115,9 +138,5 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store', initialDevice
 }
 
 export default function SystemCatalogRouter(props: SystemCatalogRouterProps) {
-    return (
-        <FavoritesProvider>
-            {props.mode === 'smart' ? <SmartCatalogRouter {...props} /> : <DefaultCatalogRouter {...props} />}
-        </FavoritesProvider>
-    );
+    return props.mode === 'smart' ? <SmartCatalogRouter {...props} /> : <DefaultCatalogRouter {...props} />;
 }

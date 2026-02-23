@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { DashboardHeader } from '@/components/layout/DashboardHeader';
 import { useTenant } from '@/lib/tenant/tenantContext';
-import LoginSidebar from '@/components/auth/LoginSidebar';
+const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { UserRole } from '@/config/permissions';
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
-import LoginSidebar from '@/components/auth/LoginSidebar';
+const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import { usePathname } from 'next/navigation';
 import { ColorProvider } from '@/contexts/ColorContext';
@@ -128,10 +129,9 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
         <FavoritesProvider>
             <ColorProvider>
                 <div
-                    className={`marketplace min-h-screen ${isLandingPage
-                        ? 'bg-white text-black'
-                        : 'bg-slate-50 text-slate-900'
-                        } font-sans selection:bg-red-500/30 transition-colors duration-300`}
+                    className={`marketplace min-h-screen ${
+                        isLandingPage ? 'bg-white text-black' : 'bg-slate-50 text-slate-900'
+                    } font-sans selection:bg-red-500/30 transition-colors duration-300`}
                 >
                     <Script
                         src="https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/3.0.3/js-cloudimage-360-view.min.js"

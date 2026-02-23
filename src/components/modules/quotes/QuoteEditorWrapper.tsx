@@ -1,8 +1,26 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
-import QuoteEditorTable, { QuoteData } from './QuoteEditorTable';
+import type { QuoteData } from './QuoteEditorTable';
+
+const QuoteEditorTable = dynamic(() => import('./QuoteEditorTable'), {
+    loading: () => (
+        <div className="h-full bg-slate-50 dark:bg-[#0b0d10] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 overflow-hidden">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="w-28 h-5 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
+                    <div className="w-20 h-5 bg-indigo-100 dark:bg-indigo-500/10 rounded-full animate-pulse" />
+                </div>
+            </div>
+            <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 space-y-4">
+                <div className="h-12 bg-slate-100 dark:bg-white/5 rounded-xl animate-pulse" />
+                <div className="h-48 bg-slate-100 dark:bg-white/5 rounded-xl animate-pulse" />
+            </div>
+        </div>
+    ),
+});
 import {
     getQuoteById,
     updateQuotePricing,

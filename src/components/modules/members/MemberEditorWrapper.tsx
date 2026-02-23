@@ -1,9 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getMemberFullProfile } from '@/actions/members';
-import MemberEditorTable from '@/components/modules/members/MemberEditorTable';
+
+const MemberEditorTable = dynamic(() => import('@/components/modules/members/MemberEditorTable'), {
+    loading: () => (
+        <div className="p-12 space-y-8 animate-pulse">
+            <div className="h-40 bg-slate-100 dark:bg-white/5 rounded-[2.5rem]" />
+            <div className="h-64 bg-slate-100 dark:bg-white/5 rounded-[2.5rem]" />
+        </div>
+    ),
+});
 
 export default function MemberEditorWrapper({ memberId }: { memberId: string }) {
     const { tenantId } = useTenant();

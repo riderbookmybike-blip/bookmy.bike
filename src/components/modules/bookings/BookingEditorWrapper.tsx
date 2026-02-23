@@ -1,8 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
-import QuoteEditorTable, { QuoteData } from '@/components/modules/quotes/QuoteEditorTable';
+import type { QuoteData } from '@/components/modules/quotes/QuoteEditorTable';
+
+const QuoteEditorTable = dynamic(() => import('@/components/modules/quotes/QuoteEditorTable'), {
+    loading: () => (
+        <div className="flex items-center justify-center h-[60vh] text-sm text-slate-400">Loading editor...</div>
+    ),
+});
 import {
     getBookingById,
     getQuoteById,

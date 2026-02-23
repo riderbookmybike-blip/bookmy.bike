@@ -299,6 +299,53 @@ export const MOCK_SERVICES = [
 export type ProductType = 'VEHICLE' | 'ACCESSORY' | 'SERVICE';
 export type VehicleStatus = 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED' | 'UPCOMING';
 
+// --- Administrative Type Definitions ---
+// Used by ProductTabs, AdvancedColorEditor, VehicleSKUListView
+
+export interface MediaItem {
+    id: string;
+    type: 'image' | 'video';
+    url: string;
+    isShared?: boolean;
+    isPrimary?: boolean;
+}
+
+export interface ModelColor {
+    id: string;
+    name: string;
+    code: string; // Hex code, supports dual-tone via comma: "#AAA,#BBB"
+    finish?: 'MATT' | 'GLOSSY' | 'METALLIC' | 'SATIN';
+    variantIds?: string[];
+    primaryVariantIds?: string[];
+    media: MediaItem[];
+}
+
+export interface ModelVariant {
+    id: string;
+    name: string;
+    specs?: Record<string, unknown>;
+    status?: string;
+}
+
+export interface VehicleModel {
+    id: string;
+    name: string;
+    category?: string;
+    fuelType?: string;
+    hsnCode?: string;
+    gstRate?: number;
+    status?: string;
+    variants: ModelVariant[];
+}
+
+export interface ProductBrand {
+    id: string;
+    name: string;
+    type: string;
+    logoUrl?: string;
+    skuCount: number;
+}
+
 export interface DealerBrandConfig {
     id: string;
     dealerId: string;
