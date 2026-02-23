@@ -35,10 +35,13 @@ import {
     getLeadEventsAction,
     getMemberDocumentUrl,
     getLeadModuleStateAction,
+    updateLeadIntentScoreAction,
+    updateLeadAction,
     type LeadEventRecord,
     toggleLeadTaskAction,
 } from '@/actions/crm';
 import { getOClubLedger, getOClubWallet } from '@/actions/oclub';
+import { getMemberFullProfile } from '@/actions/members';
 import { createClient } from '@/lib/supabase/client';
 
 interface LeadProfile {
@@ -142,6 +145,8 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             completed_at: string | null;
             created_at: string;
             created_by: string | null;
+            priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+            assigned_to_name?: string | null;
         }>
     >([]);
     const [noteDraft, setNoteDraft] = useState('');
@@ -149,13 +154,25 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
     const [noteAttachmentUrls, setNoteAttachmentUrls] = useState<Record<string, string>>({});
     const [taskDraft, setTaskDraft] = useState('');
     const [taskDueDate, setTaskDueDate] = useState('');
+    const [taskPriority, setTaskPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
     const [savingNote, setSavingNote] = useState(false);
     const [savingTask, setSavingTask] = useState(false);
     const [walletLoading, setWalletLoading] = useState(false);
+    const [memberProfile, setMemberProfile] = useState<any | null>(null);
+    const [memberProfileLoading, setMemberProfileLoading] = useState(false);
     const [wallet, setWallet] = useState<any | null>(null);
     const [ledger, setLedger] = useState<any[]>([]);
     const [leadEventsLoading, setLeadEventsLoading] = useState(false);
     const [leadEvents, setLeadEvents] = useState<LeadEventRecord[]>([]);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editSaving, setEditSaving] = useState(false);
+    const [editForm, setEditForm] = useState({
+        customer_name: lead.customerName || '',
+        customer_phone: lead.phone || '',
+        customer_pincode: lead.pincode || '',
+        customer_dob: lead.dob || '',
+        interest_text: lead.interestText || lead.interestModel || '',
+    });
     const noteAttachmentInputRef = useRef<HTMLInputElement>(null);
     const supabase = useMemo(() => createClient(), []);
 
@@ -455,6 +472,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             leadId: lead.id,
             title,
             dueDate: taskDueDate || null,
+            priority: taskPriority,
         });
         if (!result.success) {
             toast.error(result.message || 'Failed to add task');
@@ -466,6 +484,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         }
         setTaskDraft('');
         setTaskDueDate('');
+        setTaskPriority('MEDIUM');
         setSavingTask(false);
         toast.success('Task added');
     };
@@ -494,12 +513,45 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         );
     };
 
-    const intentBadge =
-        lead.intentScore === 'HOT'
-            ? 'bg-rose-500/10 text-rose-600'
-            : lead.intentScore === 'WARM'
-              ? 'bg-amber-500/10 text-amber-600'
-              : 'bg-slate-100 text-slate-600';
+    const [localIntentScore, setLocalIntentScore] = useState<string>(lead.intentScore || 'COLD');
+    const [updatingScore, setUpdatingScore] = useState(false);
+
+    // Sync if lead data changes externally
+    useEffect(() => {
+        if (lead.intentScore) setLocalIntentScore(lead.intentScore);
+    }, [lead.intentScore]);
+
+    const handleScoreChange = async (newScore: 'HOT' | 'WARM' | 'COLD' | 'JUNK') => {
+        if (newScore === localIntentScore || updatingScore) return;
+        const previousScore = localIntentScore;
+        setLocalIntentScore(newScore); // optimistic
+        setUpdatingScore(true);
+        try {
+            const result = await updateLeadIntentScoreAction({ leadId: lead.id, intentScore: newScore });
+            if (!result.success) {
+                setLocalIntentScore(previousScore); // revert
+                toast.error(result.message || 'Failed to update score');
+            } else {
+                toast.success(`Score updated to ${newScore}`);
+            }
+        } catch {
+            setLocalIntentScore(previousScore);
+            toast.error('Failed to update score');
+        } finally {
+            setUpdatingScore(false);
+        }
+    };
+
+    const getScoreBadgeClass = (score: string) =>
+        score === 'HOT'
+            ? 'bg-rose-500/10 text-rose-600 border-rose-500/30'
+            : score === 'WARM'
+              ? 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+              : score === 'JUNK'
+                ? 'bg-slate-500/10 text-slate-500 border-slate-500/30'
+                : 'bg-blue-500/10 text-blue-600 border-blue-500/30';
+
+    const intentBadge = getScoreBadgeClass(localIntentScore);
 
     // ── PHONE DETAIL VIEW ──────────────────────────────────────────
     if (isPhone) {
@@ -580,7 +632,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                         intentBadge
                                     )}
                                 >
-                                    {lead.intentScore || 'COLD'}
+                                    {localIntentScore}
                                 </span>
                             </div>
                             {phoneNumber && (
@@ -648,7 +700,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             {[
                                 { label: 'Status', value: lead.status || 'NEW' },
                                 { label: 'Source', value: lead.source || '—' },
-                                { label: 'Score', value: lead.intentScore || 'COLD' },
+                                { label: 'Score', value: localIntentScore, isScore: true },
                                 { label: 'Interest', value: lead.interestModel || '—' },
                                 { label: 'Referral', value: lead.referralSource || '—' },
                                 { label: 'Phone', value: lead.phone || '—' },
@@ -658,17 +710,37 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                 { label: 'District', value: leadDistrict },
                                 { label: 'State', value: leadState },
                                 { label: 'Area', value: leadArea },
-                            ].map(row => (
+                            ].map(item => (
                                 <div
-                                    key={row.label}
-                                    className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-white/5 last:border-0"
+                                    key={item.label}
+                                    className="flex items-center justify-between py-2 px-1 border-b border-slate-100 dark:border-white/5 last:border-0"
                                 >
-                                    <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
-                                        {row.label}
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        {item.label}
                                     </span>
-                                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 text-right">
-                                        {row.value}
-                                    </span>
+                                    {'isScore' in item && item.isScore ? (
+                                        <div className="flex items-center gap-1">
+                                            {(['HOT', 'WARM', 'COLD', 'JUNK'] as const).map(s => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => handleScoreChange(s)}
+                                                    disabled={updatingScore}
+                                                    className={cn(
+                                                        'px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all',
+                                                        localIntentScore === s
+                                                            ? getScoreBadgeClass(s)
+                                                            : 'bg-transparent text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-400'
+                                                    )}
+                                                >
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                            {item.value}
+                                        </span>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -1024,7 +1096,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                             intentBadge
                                         )}
                                     >
-                                        {lead.intentScore || 'COLD'}
+                                        {localIntentScore}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3 text-xs text-slate-500">
@@ -1039,9 +1111,55 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors">
-                                Edit
-                            </button>
+                            {isEditing ? (
+                                <>
+                                    <button
+                                        onClick={async () => {
+                                            setEditSaving(true);
+                                            try {
+                                                const res = await updateLeadAction({ leadId: lead.id, ...editForm });
+                                                if (res.success) {
+                                                    setIsEditing(false);
+                                                    router.refresh();
+                                                    window.location.reload();
+                                                } else {
+                                                    alert(res.message || 'Failed to save');
+                                                }
+                                            } catch (err: any) {
+                                                alert(err?.message || 'Save failed');
+                                            } finally {
+                                                setEditSaving(false);
+                                            }
+                                        }}
+                                        disabled={editSaving}
+                                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-50"
+                                    >
+                                        {editSaving ? 'Saving...' : 'Save'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsEditing(false);
+                                            setEditForm({
+                                                customer_name: lead.customerName || '',
+                                                customer_phone: lead.phone || '',
+                                                customer_pincode: lead.pincode || '',
+                                                customer_dob: lead.dob || '',
+                                                interest_text: lead.interestText || lead.interestModel || '',
+                                            });
+                                        }}
+                                        className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="px-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors"
+                                >
+                                    Edit
+                                </button>
+                            )}
                             <button
                                 onClick={handleGenerateQuote}
                                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
@@ -1107,20 +1225,49 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">
                                         Lead Profile
                                     </span>
-                                    <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter truncate leading-tight">
-                                        {lead.customerName || 'Lead'}
-                                    </h2>
+                                    {isEditing ? (
+                                        <input
+                                            value={editForm.customer_name}
+                                            onChange={e => setEditForm(f => ({ ...f, customer_name: e.target.value }))}
+                                            className="text-lg font-black text-slate-900 dark:text-white tracking-tighter truncate leading-tight bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-300 dark:border-indigo-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-500/30 w-full"
+                                        />
+                                    ) : (
+                                        <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter truncate leading-tight">
+                                            {lead.customerName || 'Lead'}
+                                        </h2>
+                                    )}
                                     <div className="flex items-center gap-2 mt-1">
                                         <Phone size={12} className="text-slate-400" />
-                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                                            {lead.phone || '—'}
-                                        </span>
+                                        {isEditing ? (
+                                            <input
+                                                value={editForm.customer_phone}
+                                                onChange={e =>
+                                                    setEditForm(f => ({ ...f, customer_phone: e.target.value }))
+                                                }
+                                                className="text-[10px] font-black text-slate-600 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-300 dark:border-indigo-700 rounded px-1.5 py-0.5 outline-none w-28"
+                                            />
+                                        ) : (
+                                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
+                                                {lead.phone || '—'}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
                                         <MapPin size={12} className="text-slate-400" />
-                                        <span className="text-[10px] font-bold text-slate-500">
-                                            {lead.pincode || '—'}
-                                        </span>
+                                        {isEditing ? (
+                                            <input
+                                                value={editForm.customer_pincode}
+                                                onChange={e =>
+                                                    setEditForm(f => ({ ...f, customer_pincode: e.target.value }))
+                                                }
+                                                className="text-[10px] font-bold text-slate-500 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-300 dark:border-indigo-700 rounded px-1.5 py-0.5 outline-none w-20"
+                                                maxLength={6}
+                                            />
+                                        ) : (
+                                            <span className="text-[10px] font-bold text-slate-500">
+                                                {lead.pincode || '—'}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1163,9 +1310,20 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                             DOB
                                         </span>
-                                        <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300">
-                                            {formatDate(lead.dob)}
-                                        </span>
+                                        {isEditing ? (
+                                            <input
+                                                type="date"
+                                                value={editForm.customer_dob || ''}
+                                                onChange={e =>
+                                                    setEditForm(f => ({ ...f, customer_dob: e.target.value }))
+                                                }
+                                                className="text-[12px] font-bold text-slate-600 dark:text-slate-300 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-300 dark:border-indigo-700 rounded px-1.5 py-0.5 outline-none"
+                                            />
+                                        ) : (
+                                            <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                                                {formatDate(lead.dob)}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-start justify-between gap-3">
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -1219,9 +1377,23 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                             Score
                                         </span>
-                                        <span className="text-[12px] font-black text-slate-900 dark:text-white">
-                                            {lead.intentScore || 'COLD'}
-                                        </span>
+                                        <div className="flex items-center gap-1">
+                                            {(['HOT', 'WARM', 'COLD', 'JUNK'] as const).map(s => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => handleScoreChange(s)}
+                                                    disabled={updatingScore}
+                                                    className={cn(
+                                                        'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all cursor-pointer',
+                                                        localIntentScore === s
+                                                            ? getScoreBadgeClass(s)
+                                                            : 'bg-transparent text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-400'
+                                                    )}
+                                                >
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                     <div className="flex items-start justify-between gap-3">
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -1346,10 +1518,23 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                 {activeTab === 'MEMBER' && (
                     <div className="p-6">
                         <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-[2rem] p-6">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
-                                Member Profile
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    Member Profile
+                                </div>
+                                {lead.customerId && (
+                                    <a
+                                        href={`/app/${slug}/members/${lead.customerId}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:underline"
+                                    >
+                                        Open Full Profile →
+                                    </a>
+                                )}
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Basic Info (always available from lead) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 rounded-xl p-4">
                                     <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
                                         Name
@@ -1366,34 +1551,116 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                         {lead.phone || '—'}
                                     </div>
                                 </div>
-                                <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 rounded-xl p-4">
-                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                                        Pincode
-                                    </div>
-                                    <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                                        {lead.pincode || '—'}
-                                    </div>
+                            </div>
+
+                            {/* Extended Member Data */}
+                            {lead.customerId && !memberProfile && !memberProfileLoading && (
+                                <button
+                                    onClick={async () => {
+                                        setMemberProfileLoading(true);
+                                        try {
+                                            const data = await getMemberFullProfile(lead.customerId!);
+                                            setMemberProfile(data);
+                                        } catch {
+                                            toast.error('Failed to load member details');
+                                        } finally {
+                                            setMemberProfileLoading(false);
+                                        }
+                                    }}
+                                    className="w-full py-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors mb-4"
+                                >
+                                    Load Full Member Details
+                                </button>
+                            )}
+                            {memberProfileLoading && (
+                                <div className="text-xs text-slate-400 mb-4 animate-pulse">
+                                    Loading member details...
                                 </div>
-                                <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 rounded-xl p-4">
-                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                                        Member ID
+                            )}
+
+                            {memberProfile?.member && (
+                                <div className="space-y-4">
+                                    {/* Identity */}
+                                    <div className="bg-slate-50/50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-xl p-4">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                                            Identity Information
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                {
+                                                    l: 'Email',
+                                                    v: memberProfile.member.primary_email || memberProfile.member.email,
+                                                },
+                                                { l: 'PAN', v: memberProfile.member.pan_number, mono: true },
+                                                { l: 'Aadhaar', v: memberProfile.member.aadhaar_number, mono: true },
+                                                {
+                                                    l: 'DOB',
+                                                    v: memberProfile.member.date_of_birth
+                                                        ? new Date(
+                                                              memberProfile.member.date_of_birth
+                                                          ).toLocaleDateString('en-IN')
+                                                        : null,
+                                                },
+                                            ].map(f => (
+                                                <div key={f.l}>
+                                                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                                        {f.l}
+                                                    </div>
+                                                    <div
+                                                        className={`text-xs font-bold text-slate-700 dark:text-slate-200 mt-0.5 ${f.mono ? 'font-mono' : ''}`}
+                                                    >
+                                                        {f.v || '—'}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                    {lead.customerId ? (
+                                    {/* Work & Location */}
+                                    <div className="bg-slate-50/50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-xl p-4">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                                            Work & Location
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { l: 'Company', v: memberProfile.member.work_company },
+                                                { l: 'Designation', v: memberProfile.member.work_designation },
+                                                { l: 'Pincode', v: memberProfile.member.pincode },
+                                                { l: 'State', v: memberProfile.member.state },
+                                                { l: 'District', v: memberProfile.member.district },
+                                                { l: 'Taluka', v: memberProfile.member.taluka },
+                                                { l: 'RTO', v: memberProfile.member.rto },
+                                            ].map(f => (
+                                                <div key={f.l}>
+                                                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                                        {f.l}
+                                                    </div>
+                                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-0.5">
+                                                        {f.v || '—'}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {/* Member ID */}
+                                    <div className="bg-slate-50/50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-xl p-4">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                            Member ID
+                                        </div>
                                         <a
                                             href={`/app/${slug}/members/${lead.customerId}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400 hover:underline underline-offset-4 transition-colors"
+                                            className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                                         >
-                                            {lead.customerId}
+                                            {memberProfile.member.display_id || lead.customerId}
                                         </a>
-                                    ) : (
-                                        <div className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">
-                                            Not linked
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {!lead.customerId && (
+                                <div className="text-xs text-slate-400">No linked member profile.</div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1635,7 +1902,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                 {tasks.filter(task => !task.completed).length} Open
                             </span>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-2 mb-4">
                             <input
                                 value={taskDraft}
                                 onChange={e => setTaskDraft(e.target.value)}
@@ -1648,6 +1915,16 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                 onChange={e => setTaskDueDate(e.target.value)}
                                 className="h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 text-xs font-bold"
                             />
+                            <select
+                                value={taskPriority}
+                                onChange={e => setTaskPriority(e.target.value as any)}
+                                className="h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 text-xs font-black uppercase"
+                            >
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="HIGH">High</option>
+                                <option value="URGENT">Urgent</option>
+                            </select>
                             <button
                                 onClick={handleAddTask}
                                 disabled={savingTask}
@@ -1667,7 +1944,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                         className="w-full text-left bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/10 rounded-xl p-3"
                                     >
                                         <div className="flex items-center justify-between gap-2">
-                                            <div>
+                                            <div className="flex-1 min-w-0">
                                                 <div
                                                     className={cn(
                                                         'text-sm font-black tracking-tight',
@@ -1678,20 +1955,44 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                                 >
                                                     {task.title}
                                                 </div>
-                                                <div className="text-[10px] text-slate-400 mt-1">
-                                                    Due: {task.due_date ? formatDate(task.due_date) : 'Not set'}
+                                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                    <span className="text-[10px] text-slate-400">
+                                                        Due: {task.due_date ? formatDate(task.due_date) : 'Not set'}
+                                                    </span>
+                                                    {task.assigned_to_name && (
+                                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded">
+                                                            → {task.assigned_to_name}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <span
-                                                className={cn(
-                                                    'px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest',
-                                                    task.completed
-                                                        ? 'bg-emerald-500/10 text-emerald-600'
-                                                        : 'bg-amber-500/10 text-amber-600'
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                {task.priority && task.priority !== 'MEDIUM' && (
+                                                    <span
+                                                        className={cn(
+                                                            'px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest',
+                                                            task.priority === 'URGENT' &&
+                                                                'bg-rose-500/10 text-rose-600',
+                                                            task.priority === 'HIGH' &&
+                                                                'bg-amber-500/10 text-amber-600',
+                                                            task.priority === 'LOW' &&
+                                                                'bg-emerald-500/10 text-emerald-600'
+                                                        )}
+                                                    >
+                                                        {task.priority}
+                                                    </span>
                                                 )}
-                                            >
-                                                {task.completed ? 'Done' : 'Open'}
-                                            </span>
+                                                <span
+                                                    className={cn(
+                                                        'px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest',
+                                                        task.completed
+                                                            ? 'bg-emerald-500/10 text-emerald-600'
+                                                            : 'bg-amber-500/10 text-amber-600'
+                                                    )}
+                                                >
+                                                    {task.completed ? 'Done' : 'Open'}
+                                                </span>
+                                            </div>
                                         </div>
                                     </button>
                                 ))}

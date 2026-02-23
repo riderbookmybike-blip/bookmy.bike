@@ -672,7 +672,7 @@ function applyLeadBaseFilters(
     let next = query.eq('is_deleted', false);
 
     if (input.tenantId && input.tenantId !== 'undefined') {
-        next = next.eq('owner_tenant_id', input.tenantId);
+        next = next.or(`owner_tenant_id.eq.${input.tenantId},selected_dealer_tenant_id.eq.${input.tenantId}`);
     }
 
     const status = (input.status || '').trim().toUpperCase();
@@ -704,7 +704,7 @@ function applyLeadBaseFilters(
 
 function applyLeadTenantScope(query: any, tenantId?: string) {
     if (tenantId && tenantId !== 'undefined') {
-        return query.eq('owner_tenant_id', tenantId);
+        return query.or(`owner_tenant_id.eq.${tenantId},selected_dealer_tenant_id.eq.${tenantId}`);
     }
     return query;
 }
@@ -1029,6 +1029,8 @@ type LeadModuleTask = {
     created_at: string;
     created_by: string | null;
     crm_task_id?: string | null;
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    assigned_to_name?: string | null;
 };
 
 function readLeadModuleData(utmData: any): { notes: LeadModuleNote[]; tasks: LeadModuleTask[] } {
@@ -1106,6 +1108,139 @@ async function updateCrmLeadCompat(
         return { success: false, message: fallbackAttempt.error.message };
     }
 
+    return { success: true };
+}
+
+export async function updateLeadAction(input: {
+    leadId: string;
+    customer_name?: string;
+    customer_phone?: string;
+    customer_pincode?: string;
+    customer_dob?: string;
+    customer_taluka?: string;
+    interest_model?: string;
+    interest_text?: string;
+}) {
+    const user = await getAuthUser();
+    if (!user?.id) {
+        return { success: false, message: 'Authentication required' };
+    }
+
+    const { leadId, ...fields } = input;
+    // Remove undefined fields
+    const payload: Record<string, any> = {};
+    for (const [k, v] of Object.entries(fields)) {
+        if (v !== undefined) payload[k] = v;
+    }
+
+    if (Object.keys(payload).length === 0) {
+        return { success: false, message: 'No fields to update' };
+    }
+
+    // Sanitize phone if provided
+    if (payload.customer_phone) {
+        const sanitized = toAppStorageFormat(payload.customer_phone);
+        if (!sanitized || sanitized.length !== 10) {
+            return { success: false, message: 'Invalid phone number' };
+        }
+        payload.customer_phone = sanitized;
+    }
+
+    const { data: existing, error: fetchError } = await adminClient
+        .from('crm_leads')
+        .select('events_log')
+        .eq('id', leadId)
+        .maybeSingle();
+
+    if (fetchError || !existing) {
+        return { success: false, message: fetchError?.message || 'Lead not found' };
+    }
+
+    const now = new Date().toISOString();
+    const existingEvents = Array.isArray((existing as any).events_log) ? ((existing as any).events_log as any[]) : [];
+
+    const editEvent = buildLeadModuleEvent({
+        type: 'LEAD_EDITED',
+        title: 'Lead Details Updated',
+        description: `Fields updated: ${Object.keys(payload).join(', ')}`,
+        actorId: user.id,
+        metadata: { updated_fields: Object.keys(payload) },
+    });
+
+    const updateResult = await updateCrmLeadCompat(
+        leadId,
+        { ...payload, events_log: [editEvent, ...existingEvents] },
+        now
+    );
+
+    if (!updateResult.success) {
+        return { success: false, message: updateResult.message || 'Failed to update lead' };
+    }
+
+    await logLeadEvent({
+        leadId,
+        eventType: 'LEAD_EDITED',
+        notes: `Updated: ${Object.keys(payload).join(', ')}`,
+        changedValue: JSON.stringify(payload),
+        actorUserId: user.id,
+    });
+
+    return { success: true };
+}
+
+export async function updateLeadIntentScoreAction(input: {
+    leadId: string;
+    intentScore: 'HOT' | 'WARM' | 'COLD' | 'JUNK';
+}) {
+    const user = await getAuthUser();
+    if (!user?.id) {
+        return { success: false, message: 'Authentication required' };
+    }
+
+    const validScores = ['HOT', 'WARM', 'COLD', 'JUNK'];
+    if (!validScores.includes(input.intentScore)) {
+        return { success: false, message: 'Invalid intent score' };
+    }
+
+    const { data: leadData, error: fetchError } = await adminClient
+        .from('crm_leads')
+        .select('intent_score, events_log')
+        .eq('id', input.leadId)
+        .maybeSingle();
+
+    if (fetchError || !leadData) {
+        return { success: false, message: fetchError?.message || 'Lead not found' };
+    }
+
+    const previousScore = (leadData as any).intent_score || 'COLD';
+    if (previousScore === input.intentScore) {
+        return { success: true, message: 'Score unchanged' };
+    }
+
+    const now = new Date().toISOString();
+    const existingEvents = Array.isArray((leadData as any).events_log) ? ((leadData as any).events_log as any[]) : [];
+    const scoreEvent = buildLeadModuleEvent({
+        type: 'INTENT_SCORE_CHANGED',
+        title: 'Intent Score Updated',
+        description: `Score changed from ${previousScore} to ${input.intentScore}`,
+        actorId: user.id,
+        metadata: { previous: previousScore, current: input.intentScore },
+    });
+
+    const updateResult = await updateCrmLeadCompat(
+        input.leadId,
+        {
+            intent_score: input.intentScore,
+            events_log: [scoreEvent, ...existingEvents],
+        },
+        now
+    );
+
+    if (!updateResult.success) {
+        return { success: false, message: updateResult.message || 'Failed to update score' };
+    }
+
+    revalidatePath('/app/[slug]/leads');
     return { success: true };
 }
 
@@ -1230,7 +1365,12 @@ export async function addLeadNoteAction(input: { leadId: string; body: string; a
     return { success: true, note };
 }
 
-export async function addLeadTaskAction(input: { leadId: string; title: string; dueDate?: string | null }) {
+export async function addLeadTaskAction(input: {
+    leadId: string;
+    title: string;
+    dueDate?: string | null;
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+}) {
     const user = await getAuthUser();
     if (!user?.id) {
         return { success: false, message: 'Authentication required' };
@@ -1286,6 +1426,8 @@ export async function addLeadTaskAction(input: { leadId: string; title: string; 
         created_at: now,
         created_by: user.id,
         crm_task_id: (crmTask as any)?.id || null,
+        priority: input.priority || 'MEDIUM',
+        assigned_to_name: (user as any).user_metadata?.full_name || user.email || null,
     };
 
     const { tasks } = readLeadModuleData((data as any).utm_data);
@@ -1485,6 +1627,7 @@ export async function createLeadAction(data: {
     referred_by_code?: string;
     referred_by_phone?: string;
     referred_by_name?: string;
+    organisation?: string;
 }) {
     const normalizedSource = normalizeLeadSource(data.source);
     const interestModel = data.interest_model || data.model || 'GENERAL_ENQUIRY';
@@ -1526,6 +1669,24 @@ export async function createLeadAction(data: {
         if (!effectiveOwnerId) {
             console.error('[DEBUG] No owner tenant identified');
             return { success: false, message: 'No owner tenant identified for lead creation' };
+        }
+
+        // Finance Partner Ownership Swap:
+        // When a BANK tenant creates a lead and selects a dealer,
+        // the DEALER becomes the owner and the BANK gets shared access.
+        let financeTenantId: string | null = null;
+        if (data.selected_dealer_id && effectiveOwnerId !== data.selected_dealer_id) {
+            const { data: creatorTenant } = await adminClient
+                .from('id_tenants')
+                .select('type')
+                .eq('id', effectiveOwnerId)
+                .single();
+
+            if (creatorTenant?.type === 'BANK') {
+                console.log('[DEBUG] Finance partner lead swap: dealer becomes owner, bank gets shared access');
+                financeTenantId = effectiveOwnerId; // store bank as shared partner
+                effectiveOwnerId = data.selected_dealer_id; // dealer becomes owner
+            }
         }
 
         // Hardening: Enforce dealer selection for finance simulation
@@ -1632,6 +1793,7 @@ export async function createLeadAction(data: {
         if (locationProfile?.district) memberUpdate.district = locationProfile.district;
         if (locationProfile?.state) memberUpdate.state = locationProfile.state;
         if (data.customer_name) memberUpdate.full_name = data.customer_name;
+        if (data.organisation) memberUpdate.work_company = data.organisation;
 
         if (Object.keys(memberUpdate).length > 0) {
             await adminClient.from('id_members').update(memberUpdate).eq('id', customerId);
@@ -1833,7 +1995,7 @@ export async function createLeadAction(data: {
                 interest_text: interestText || interestModel,
                 interest_variant: data.model === 'GENERAL_ENQUIRY' ? null : null,
                 owner_tenant_id: effectiveOwnerId,
-                selected_dealer_tenant_id: data.selected_dealer_id || null,
+                selected_dealer_tenant_id: financeTenantId || data.selected_dealer_id || null,
                 referred_by_id: resolvedReferrer?.memberId || null,
                 referred_by_name: resolvedReferrer?.name || referredByNameInput || null,
                 status: status,

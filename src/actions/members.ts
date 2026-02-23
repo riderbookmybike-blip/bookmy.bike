@@ -257,12 +257,11 @@ export async function createOrLinkMember(input: MemberCreateInput) {
         },
     });
 
-    if (createdNewMember) {
-        try {
-            await adminClient.rpc('oclub_credit_signup' as any, { p_member_id: memberId } as any);
-        } catch (err) {
-            console.error('[createOrLinkMember] O-Club signup bonus error:', err);
-        }
+    // Always attempt signup bonus — DB function is idempotent (checks for existing SIGNUP entry)
+    try {
+        await adminClient.rpc('oclub_credit_signup' as any, { p_member_id: memberId } as any);
+    } catch (err) {
+        console.error('[createOrLinkMember] O-Club signup bonus error:', err);
     }
 
     const { data: member, error: memberError } = await adminClient
@@ -547,7 +546,7 @@ export async function getMemberFullProfile(memberId: string) {
     const { data: member, error } = await adminClient
         .from('id_members')
         .select(
-            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, created_at, updated_at'
+            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, member_status, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, created_at, updated_at'
         )
         .eq('id', memberId)
         .maybeSingle();
@@ -560,7 +559,7 @@ export async function getMemberFullProfile(memberId: string) {
         const { data: memberByDisplay, error: displayError } = await adminClient
             .from('id_members')
             .select(
-                'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, created_at, updated_at'
+                'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, member_status, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, created_at, updated_at'
             )
             .eq('display_id', memberId)
             .maybeSingle();

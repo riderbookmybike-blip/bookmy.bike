@@ -92,6 +92,7 @@ export default function InsuranceDetailPage() {
     const router = useRouter();
     const { can } = usePermission();
     const id = params?.id ? decodeURIComponent(params.id as string) : null;
+    const tenantSlug = params?.slug as string | undefined;
 
     // Permission Logic
     // Permission Logic
@@ -108,7 +109,20 @@ export default function InsuranceDetailPage() {
     const [isCalcValid, setIsCalcValid] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
-    const knownAddonSlugs = new Set(['zerodepreciation', 'pa']);
+    const knownAddonSlugs = new Set([
+        'zerodepreciation',
+        'personal_accident_cover',
+        'personalaccidentpacover',
+        'pa',
+        'returntoinvoicerti',
+        'return_to_invoice',
+        'consumablescover',
+        'consumables',
+        'engineprotection',
+        'engine_protection',
+        'roadsideassistancersa',
+        'roadside_assistance',
+    ]);
 
     useEffect(() => {
         setIsMounted(true);
@@ -205,7 +219,7 @@ export default function InsuranceDetailPage() {
             alert('Insurance Rule Saved Successfully to Database!');
             setIsEditing(false);
             setIsDirty(false);
-            router.push('/catalog/insurance');
+            router.push(tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/insurance` : '/dashboard/catalog/insurance');
         } else {
             console.error('Save error', error);
             alert(`Failed to save: ${error.message}`);
@@ -214,7 +228,7 @@ export default function InsuranceDetailPage() {
 
     const handleBack = () => {
         if (isDirty && !window.confirm('You have unsaved changes. Leave without saving?')) return;
-        router.push('/catalog/insurance');
+        router.push(tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/insurance` : '/dashboard/catalog/insurance');
     };
 
     if (!isMounted || loading) {

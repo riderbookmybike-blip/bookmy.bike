@@ -616,7 +616,7 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                     addon_personal_accident_cover_amount: paBaseAmount,
                     addon_personal_accident_cover_gst_amount: paGstAmount,
                     addon_personal_accident_cover_total_amount: paTotalAmount,
-                    addon_personal_accident_cover_default: true,
+                    addon_personal_accident_cover_default: false,
                     // Status & Audit
                     publish_stage: 'PUBLISHED',
                     is_popular: priceRow?.is_popular ?? false,
