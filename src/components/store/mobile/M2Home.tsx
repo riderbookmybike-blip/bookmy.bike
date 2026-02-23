@@ -110,7 +110,7 @@ const DEFAULT_SERVICE_CITIES = [
 /* ═══════════════════════════════════════════════════════════
    M2 HOME — Phone-First Premium Homepage
    ═══════════════════════════════════════════════════════════ */
-export function M2Home({ heroImage }: { heroImage?: string }) {
+export function M2Home({ heroImage, initialItems }: { heroImage?: string; initialItems?: any[] }) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
     const { items, skuCount } = useSystemCatalogLogic(leadId || undefined);
@@ -119,7 +119,7 @@ export function M2Home({ heroImage }: { heroImage?: string }) {
     const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
     const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
     const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
-    const trendingItems = React.useMemo(() => selectTrendingModels(items || [], 3), [items]);
+    const trendingItems = React.useMemo(() => selectTrendingModels((items && items.length > 0 ? items : initialItems) || [], 3), [items, initialItems]);
     const withLead = React.useCallback(
         (href: string) => {
             if (!leadId) return href;
