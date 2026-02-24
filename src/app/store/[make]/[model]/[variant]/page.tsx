@@ -323,28 +323,28 @@ export default async function Page({ params, searchParams }: Props) {
     let resolvedVariant =
         variantSeed || matchedVariantRow
             ? ({
-                  id: variantSeed?.variant_id || matchedVariantRow?.id,
-                  name: variantSeed?.variant_name || matchedVariantRow?.name,
-                  slug:
-                      variantSeed?.variant_slug ||
-                      matchedVariantRow?.slug ||
-                      slugify(String(matchedVariantRow?.name || '')),
-                  price_base: Number(variantSeed?.price_base || 0),
-                  specs: {
-                      fuel_type: modelRow?.fuel_type,
-                      // NOTE: engine_cc removed — displacement from cat_variants_vehicle is the SOT
-                      // Flatten variant-level spec columns for TechSpecsSection
-                      ...(variantSeed?.vehicle_variant ? flattenVariantSpecs(variantSeed.vehicle_variant) : {}),
-                  },
-                  brand: {
-                      name: modelRow?.brand?.name || resolvedParams.make,
-                      slug: modelRow?.brand?.slug || slugify(resolvedParams.make),
-                  },
-                  parent: {
-                      name: modelRow?.name || resolvedParams.model,
-                      slug: modelRow?.slug || resolvedParams.model,
-                  },
-              } as CatalogItem)
+                id: variantSeed?.variant_id || matchedVariantRow?.id,
+                name: variantSeed?.variant_name || matchedVariantRow?.name,
+                slug:
+                    variantSeed?.variant_slug ||
+                    matchedVariantRow?.slug ||
+                    slugify(String(matchedVariantRow?.name || '')),
+                price_base: Number(variantSeed?.price_base || 0),
+                specs: {
+                    fuel_type: modelRow?.fuel_type,
+                    // NOTE: engine_cc removed — displacement from cat_variants_vehicle is the SOT
+                    // Flatten variant-level spec columns for TechSpecsSection
+                    ...(variantSeed?.vehicle_variant ? flattenVariantSpecs(variantSeed.vehicle_variant) : {}),
+                },
+                brand: {
+                    name: modelRow?.brand?.name || resolvedParams.make,
+                    slug: modelRow?.brand?.slug || slugify(resolvedParams.make),
+                },
+                parent: {
+                    name: modelRow?.name || resolvedParams.model,
+                    slug: modelRow?.slug || resolvedParams.model,
+                },
+            } as CatalogItem)
             : null;
 
     let fetchError: any = skuError || modelError;
@@ -436,8 +436,8 @@ export default async function Page({ params, searchParams }: Props) {
     const cleanVariantSlug = rawVariantSlug.startsWith(`${rawModelSlug}-`)
         ? rawVariantSlug.slice(rawModelSlug.length + 1)
         : rawVariantSlug.startsWith(`${modelSlug}-`)
-          ? rawVariantSlug.slice(modelSlug.length + 1)
-          : rawVariantSlug;
+            ? rawVariantSlug.slice(modelSlug.length + 1)
+            : rawVariantSlug;
 
     const canonicalPath = `/store/${makeSlug}/${modelSlug}/${cleanVariantSlug}`;
     const currentPath = `/store/${resolvedParams.make}/${resolvedParams.model}/${resolvedParams.variant}`;
@@ -480,6 +480,10 @@ export default async function Page({ params, searchParams }: Props) {
             image_url: sku.primary_image || null,
             assets,
             parent_id: sku.id,
+            zoom_factor: sku.zoom_factor ?? null,
+            is_flipped: sku.is_flipped ?? false,
+            offset_x: sku.offset_x ?? 0,
+            offset_y: sku.offset_y ?? 0,
             specs: {
                 Color: sku.colour?.name ?? sku.color_name ?? sku.name,
                 color: sku.colour?.name ?? sku.color_name ?? sku.name,
@@ -564,17 +568,17 @@ export default async function Page({ params, searchParams }: Props) {
     const [compatResult, accPricingResult] = await Promise.all([
         accessoryVariantIds.length > 0
             ? (supabase as any)
-                  .from('cat_accessory_suitable_for')
-                  .select('variant_id, is_universal, target_brand_id, target_model_id, target_variant_id')
-                  .in('variant_id', accessoryVariantIds)
+                .from('cat_accessory_suitable_for')
+                .select('variant_id, is_universal, target_brand_id, target_model_id, target_variant_id')
+                .in('variant_id', accessoryVariantIds)
             : Promise.resolve({ data: [] }),
         accessoryIds.length > 0
             ? (supabase as any)
-                  .from('cat_price_state_mh')
-                  .select('sku_id, ex_showroom')
-                  .in('sku_id', accessoryIds)
-                  .eq('state_code', stateCode)
-                  .eq('publish_stage', 'PUBLISHED')
+                .from('cat_price_state_mh')
+                .select('sku_id, ex_showroom')
+                .in('sku_id', accessoryIds)
+                .eq('state_code', stateCode)
+                .eq('publish_stage', 'PUBLISHED')
             : Promise.resolve({ data: [] }),
     ]);
     const compatRows = compatResult.data || [];
@@ -696,57 +700,57 @@ export default async function Page({ params, searchParams }: Props) {
         // Build RTO breakdown from JSON or legacy
         const rtoData = rtoJsonData
             ? (() => {
-                  const selectedType = String(rtoJsonData.default || 'STATE').toUpperCase();
-                  const selectedRto = rtoJsonData[selectedType] || rtoJsonData.STATE || {};
-                  const fees = selectedRto?.fees || {};
-                  const tax = selectedRto?.tax || {};
-                  const dynamicBreakdown = [
-                      ...Object.entries(fees).map(([key, amount]) => ({
-                          label: key
-                              .replace(/([A-Z])/g, ' $1')
-                              .replace(/^./, s => s.toUpperCase())
-                              .trim(),
-                          amount: asNumber(amount),
-                      })),
-                      ...Object.entries(tax).map(([key, amount]) => ({
-                          label: key
-                              .replace(/([A-Z])/g, ' $1')
-                              .replace(/^./, s => s.toUpperCase())
-                              .trim(),
-                          amount: asNumber(amount),
-                      })),
-                  ].filter(entry => entry.amount > 0);
+                const selectedType = String(rtoJsonData.default || 'STATE').toUpperCase();
+                const selectedRto = rtoJsonData[selectedType] || rtoJsonData.STATE || {};
+                const fees = selectedRto?.fees || {};
+                const tax = selectedRto?.tax || {};
+                const dynamicBreakdown = [
+                    ...Object.entries(fees).map(([key, amount]) => ({
+                        label: key
+                            .replace(/([A-Z])/g, ' $1')
+                            .replace(/^./, s => s.toUpperCase())
+                            .trim(),
+                        amount: asNumber(amount),
+                    })),
+                    ...Object.entries(tax).map(([key, amount]) => ({
+                        label: key
+                            .replace(/([A-Z])/g, ' $1')
+                            .replace(/^./, s => s.toUpperCase())
+                            .trim(),
+                        amount: asNumber(amount),
+                    })),
+                ].filter(entry => entry.amount > 0);
 
-                  if (dynamicBreakdown.length > 0) return dynamicBreakdown;
+                if (dynamicBreakdown.length > 0) return dynamicBreakdown;
 
-                  return [
-                      { label: 'Road Tax', amount: asNumber(selectedRto?.roadTax) },
-                      { label: 'Reg. Charges', amount: asNumber(selectedRto?.registrationCharges) },
-                      { label: 'Smart Card', amount: asNumber(selectedRto?.smartCardCharges) },
-                      { label: 'Hypothecation', amount: asNumber(selectedRto?.hypothecationCharges) },
-                      { label: 'Postal Charges', amount: asNumber(selectedRto?.postalCharges) },
-                      { label: 'Cess', amount: asNumber(selectedRto?.cessAmount) },
-                  ].filter(entry => entry.amount > 0);
-              })()
+                return [
+                    { label: 'Road Tax', amount: asNumber(selectedRto?.roadTax) },
+                    { label: 'Reg. Charges', amount: asNumber(selectedRto?.registrationCharges) },
+                    { label: 'Smart Card', amount: asNumber(selectedRto?.smartCardCharges) },
+                    { label: 'Hypothecation', amount: asNumber(selectedRto?.hypothecationCharges) },
+                    { label: 'Postal Charges', amount: asNumber(selectedRto?.postalCharges) },
+                    { label: 'Cess', amount: asNumber(selectedRto?.cessAmount) },
+                ].filter(entry => entry.amount > 0);
+            })()
             : typeof rec.rto_breakdown === 'object' && rec.rto_breakdown
-              ? Object.entries(rec.rto_breakdown).map(([label, amount]) => ({ label, amount: Number(amount) }))
-              : [];
+                ? Object.entries(rec.rto_breakdown).map(([label, amount]) => ({ label, amount: Number(amount) }))
+                : [];
 
         // Build Insurance breakdown from JSON or legacy
         const insData = insJsonData
             ? [
-                  { label: 'OD Premium', amount: readTotal(insJsonData.od), componentId: 'od' },
-                  { label: 'TP Premium', amount: readTotal(insJsonData.tp), componentId: 'tp' },
-                  {
-                      label: 'GST',
-                      amount: Math.round(
-                          asNumber(insJsonData.base_total || 0) - readTotal(insJsonData.od) - readTotal(insJsonData.tp)
-                      ),
-                      componentId: 'gst',
-                  },
-              ].filter(i => i.amount > 0)
+                { label: 'OD Premium', amount: readTotal(insJsonData.od), componentId: 'od' },
+                { label: 'TP Premium', amount: readTotal(insJsonData.tp), componentId: 'tp' },
+                {
+                    label: 'GST',
+                    amount: Math.round(
+                        asNumber(insJsonData.base_total || 0) - readTotal(insJsonData.od) - readTotal(insJsonData.tp)
+                    ),
+                    componentId: 'gst',
+                },
+            ].filter(i => i.amount > 0)
             : typeof rec.insurance_breakdown === 'object' && rec.insurance_breakdown
-              ? [
+                ? [
                     {
                         label: 'OD Premium',
                         amount: Number((rec.insurance_breakdown as any).odPremium || 0),
@@ -761,14 +765,14 @@ export default async function Page({ params, searchParams }: Props) {
                         label: 'Zero Depreciation',
                         amount: Number(
                             (rec.insurance_breakdown as any).addons?.zeroDep ||
-                                (rec.insurance_breakdown as any).zeroDep ||
-                                0
+                            (rec.insurance_breakdown as any).zeroDep ||
+                            0
                         ),
                         componentId: 'zeroDep',
                     },
                     { label: 'GST', amount: Number((rec.insurance_breakdown as any).gst || 0), componentId: 'gst' },
                 ].filter(i => i.amount > 0)
-              : [];
+                : [];
 
         serverPricing = {
             success: true,
@@ -821,19 +825,19 @@ export default async function Page({ params, searchParams }: Props) {
 
     let initialPricingSnapshot = serverPricing
         ? {
-              exShowroom: serverPricing.ex_showroom ?? baseExShowroom,
-              rto: getRtoFromServerPricing(serverPricing),
-              insurance: getInsuranceFromServerPricing(serverPricing),
-              total: serverPricing?.final_on_road ?? baseExShowroom,
-              breakdown: serverPricing,
-          }
+            exShowroom: serverPricing.ex_showroom ?? baseExShowroom,
+            rto: getRtoFromServerPricing(serverPricing),
+            insurance: getInsuranceFromServerPricing(serverPricing),
+            total: serverPricing?.final_on_road ?? baseExShowroom,
+            breakdown: serverPricing,
+        }
         : {
-              exShowroom: baseExShowroom,
-              rto: 0,
-              insurance: 0,
-              total: baseExShowroom,
-              breakdown: null,
-          };
+            exShowroom: baseExShowroom,
+            rto: 0,
+            insurance: 0,
+            total: baseExShowroom,
+            breakdown: null,
+        };
 
     // 4.5 Resolve Dealer Offers (Primary Dealer Only)
     let marketOffers: Record<string, number> = {};
@@ -923,99 +927,107 @@ export default async function Page({ params, searchParams }: Props) {
     const colors =
         colorDefs && colorDefs.length > 0
             ? colorDefs
-                  .map((color: any) => {
-                      const linkedSkus = colorSkuMap.get(color.id) || [];
-                      const sku = linkedSkus[0] || null;
-                      const assetImage = pickImageFromAssets(sku?.assets);
-                      let cleanName = color.specs?.color || color.name;
-                      if (!color.specs?.color) {
-                          const brandName = item.brand?.name || '';
-                          const modelName = item.parent?.name || '';
-                          const variantName = item.name || '';
+                .map((color: any) => {
+                    const linkedSkus = colorSkuMap.get(color.id) || [];
+                    const sku = linkedSkus[0] || null;
+                    const assetImage = pickImageFromAssets(sku?.assets);
+                    let cleanName = color.specs?.color || color.name;
+                    if (!color.specs?.color) {
+                        const brandName = item.brand?.name || '';
+                        const modelName = item.parent?.name || '';
+                        const variantName = item.name || '';
 
-                          const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                          const regex = new RegExp(
-                              `^\\s*(${[brandName, modelName, variantName]
-                                  .filter(Boolean)
-                                  .map(escapeRegExp)
-                                  .join('|')})\\s+`,
-                              'gi'
-                          );
+                        const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const regex = new RegExp(
+                            `^\\s*(${[brandName, modelName, variantName]
+                                .filter(Boolean)
+                                .map(escapeRegExp)
+                                .join('|')})\\s+`,
+                            'gi'
+                        );
 
-                          cleanName = color.name.replace(regex, '').trim();
-                      }
-                      const cleanId = slugify(cleanName);
-                      const rawOffer = sku?.id ? marketOffers[sku.id] || 0 : 0;
+                        cleanName = color.name.replace(regex, '').trim();
+                    }
+                    const cleanId = slugify(cleanName);
+                    const rawOffer = sku?.id ? marketOffers[sku.id] || 0 : 0;
 
-                      return {
-                          id: cleanId,
-                          skuId: sku?.id,
-                          name: cleanName,
-                          hex:
-                              color.specs?.hex_primary ||
-                              color.specs?.hex_code ||
-                              sku?.specs?.hex_primary ||
-                              sku?.specs?.hex_code ||
-                              '#000000',
-                          image:
-                              assetImage ||
-                              sku?.image_url ||
-                              sku?.specs?.primary_image ||
-                              sku?.specs?.gallery?.[0] ||
-                              color?.image_url ||
-                              color?.specs?.image_url ||
-                              null,
-                          assets: sku?.assets || [], // PASS ASSETS FOR GALLERY
-                          video: sku?.video_url || sku?.specs?.video_urls?.[0] || sku?.specs?.video_url || null,
-                          pricingOverride: undefined,
-                          dealerOffer: rawOffer,
-                          isPrimary: Boolean(sku?.is_primary || color?.is_primary),
-                      };
-                  })
-                  .sort((a: any, b: any) => Number(b.isPrimary) - Number(a.isPrimary))
+                    return {
+                        id: cleanId,
+                        skuId: sku?.id,
+                        name: cleanName,
+                        hex:
+                            color.specs?.hex_primary ||
+                            color.specs?.hex_code ||
+                            sku?.specs?.hex_primary ||
+                            sku?.specs?.hex_code ||
+                            '#000000',
+                        image:
+                            assetImage ||
+                            sku?.image_url ||
+                            sku?.specs?.primary_image ||
+                            sku?.specs?.gallery?.[0] ||
+                            color?.image_url ||
+                            color?.specs?.image_url ||
+                            null,
+                        assets: sku?.assets || [], // PASS ASSETS FOR GALLERY
+                        video: sku?.video_url || sku?.specs?.video_urls?.[0] || sku?.specs?.video_url || null,
+                        pricingOverride: undefined,
+                        dealerOffer: rawOffer,
+                        isPrimary: Boolean(sku?.is_primary || color?.is_primary),
+                        zoomFactor: sku?.zoom_factor ?? null,
+                        isFlipped: sku?.is_flipped ?? false,
+                        offsetX: sku?.offset_x ?? 0,
+                        offsetY: sku?.offset_y ?? 0,
+                    };
+                })
+                .sort((a: any, b: any) => Number(b.isPrimary) - Number(a.isPrimary))
             : (skus || [])
-                  .map((sku: any) => {
-                      let cleanName = sku.specs?.color || sku.name;
-                      if (!sku.specs?.color) {
-                          const brandName = item.brand?.name || '';
-                          const modelName = item.parent?.name || '';
-                          const variantName = item.name || '';
+                .map((sku: any) => {
+                    let cleanName = sku.specs?.color || sku.name;
+                    if (!sku.specs?.color) {
+                        const brandName = item.brand?.name || '';
+                        const modelName = item.parent?.name || '';
+                        const variantName = item.name || '';
 
-                          const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                          const regex = new RegExp(
-                              `^\\s*(${[brandName, modelName, variantName]
-                                  .filter(Boolean)
-                                  .map(escapeRegExp)
-                                  .join('|')})\\s+`,
-                              'gi'
-                          );
+                        const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const regex = new RegExp(
+                            `^\\s*(${[brandName, modelName, variantName]
+                                .filter(Boolean)
+                                .map(escapeRegExp)
+                                .join('|')})\\s+`,
+                            'gi'
+                        );
 
-                          cleanName = sku.name.replace(regex, '').trim();
-                      }
+                        cleanName = sku.name.replace(regex, '').trim();
+                    }
 
-                      const cleanId = slugify(cleanName);
-                      const rawOffer = marketOffers[sku.id] || 0;
-                      const assetImage = pickImageFromAssets(sku?.assets);
+                    const cleanId = slugify(cleanName);
+                    const rawOffer = marketOffers[sku.id] || 0;
+                    const assetImage = pickImageFromAssets(sku?.assets);
 
-                      return {
-                          id: cleanId,
-                          skuId: sku.id,
-                          name: cleanName,
-                          hex: sku.specs?.hex_primary || sku.specs?.hex_code || '#000000',
-                          image:
-                              assetImage ||
-                              sku.image_url ||
-                              sku.specs?.primary_image ||
-                              sku.specs?.gallery?.[0] ||
-                              null,
-                          assets: sku.assets || [], // PASS ASSETS FOR GALLERY
-                          video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
-                          pricingOverride: undefined,
-                          dealerOffer: rawOffer,
-                          isPrimary: Boolean(sku?.is_primary),
-                      };
-                  })
-                  .sort((a: any, b: any) => Number(b.isPrimary) - Number(a.isPrimary));
+                    return {
+                        id: cleanId,
+                        skuId: sku.id,
+                        name: cleanName,
+                        hex: sku.specs?.hex_primary || sku.specs?.hex_code || '#000000',
+                        image:
+                            assetImage ||
+                            sku.image_url ||
+                            sku.specs?.primary_image ||
+                            sku.specs?.gallery?.[0] ||
+                            null,
+                        assets: sku.assets || [], // PASS ASSETS FOR GALLERY
+                        video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
+                        pricingOverride: undefined,
+                        dealerOffer: rawOffer,
+                        isPrimary: Boolean(sku?.is_primary),
+                        zoomFactor: sku?.zoom_factor ?? null,
+                        isFlipped: sku?.is_flipped ?? false,
+                        offsetX: sku?.offset_x ?? 0,
+                        offsetY: sku?.offset_y ?? 0,
+                    };
+                })
+                .sort((a: any, b: any) => Number(b.isPrimary) - Number(a.isPrimary));
 
     // SOT Rule §4.3: Do NOT fabricate id:'default'/skuId:'default' for active variant flow.
     // If no SKUs exist, colors stays empty — SystemPDPLogic will show unavailable state.
@@ -1225,15 +1237,15 @@ export default async function Page({ params, searchParams }: Props) {
                 initialFinance={
                     resolvedFinance
                         ? {
-                              bank: {
-                                  id: resolvedFinance.bank.id,
-                                  name: resolvedFinance.bank.name,
-                                  identity: resolvedFinance.bank.config?.identity,
-                                  overview: resolvedFinance.bank.config?.overview,
-                              },
-                              scheme: resolvedFinance.scheme,
-                              logic: resolvedFinance.logic, // Trace logic
-                          }
+                            bank: {
+                                id: resolvedFinance.bank.id,
+                                name: resolvedFinance.bank.name,
+                                identity: resolvedFinance.bank.config?.identity,
+                                overview: resolvedFinance.bank.config?.overview,
+                            },
+                            scheme: resolvedFinance.scheme,
+                            logic: resolvedFinance.logic, // Trace logic
+                        }
                         : undefined
                 }
                 initialDealerId={winningDealerId}

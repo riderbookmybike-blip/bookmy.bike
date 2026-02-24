@@ -308,10 +308,10 @@ export function DesktopPDP({
     const totalSavingsBase =
         computedTotalSavings ??
         colorDiscount +
-            (offersDiscount < 0 ? Math.abs(offersDiscount) : 0) +
-            accessoriesDiscount +
-            servicesDiscount +
-            insuranceAddonsDiscount;
+        (offersDiscount < 0 ? Math.abs(offersDiscount) : 0) +
+        accessoriesDiscount +
+        servicesDiscount +
+        insuranceAddonsDiscount;
     const totalSavings = totalSavingsBase + (isReferralActive ? REFERRAL_BONUS : 0);
     const totalSurge = computedTotalSurge ?? 0;
     const savingsHelpLines = [
@@ -362,21 +362,21 @@ export function DesktopPDP({
         { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
         ...(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)
             ? [
-                  {
-                      label: "O' Circle Privileged",
-                      value: totalSavings + (coinPricing?.discount || 0),
-                      isDeduction: true,
-                      helpText: [
-                          ...savingsHelpLines.slice(0, -1),
-                          ...(coinPricing
-                              ? [
-                                    `Coins: ₹${coinPricing.discount.toLocaleString('en-IN')} (${coinPricing.coinsUsed} coins)`,
-                                ]
-                              : []),
-                          `Total: ₹${(totalSavings + (coinPricing?.discount || 0)).toLocaleString('en-IN')}`,
-                      ],
-                  },
-              ]
+                {
+                    label: "O' Circle Privileged",
+                    value: totalSavings + (coinPricing?.discount || 0),
+                    isDeduction: true,
+                    helpText: [
+                        ...savingsHelpLines.slice(0, -1),
+                        ...(coinPricing
+                            ? [
+                                `Coins: ₹${coinPricing.discount.toLocaleString('en-IN')} (${coinPricing.coinsUsed} coins)`,
+                            ]
+                            : []),
+                        `Total: ₹${(totalSavings + (coinPricing?.discount || 0)).toLocaleString('en-IN')}`,
+                    ],
+                },
+            ]
             : []),
         ...(totalSurge > 0 ? [{ label: 'Surge Charges', value: totalSurge, helpText: surgeHelpLines }] : []),
     ];
@@ -437,7 +437,7 @@ export function DesktopPDP({
                     />
                 );
             case 'WARRANTY':
-                return <FlatItemList items={warrantyItems} getSelected={() => true} onToggle={() => {}} isMandatory />;
+                return <FlatItemList items={warrantyItems} getSelected={() => true} onToggle={() => { }} isMandatory />;
             default:
                 return null;
         }
@@ -591,10 +591,9 @@ export function DesktopPDP({
                                 animate="visible"
                                 onClick={() => setHeroActiveTab(card.id)}
                                 className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
-                                    ${
-                                        isActive
-                                            ? 'flex-[3] bg-white border-slate-200 shadow-2xl,0,0,0.5)]'
-                                            : 'flex-[0.5] bg-white/40 backdrop-blur-xl border-white/60 hover:bg-white/60 shadow-lg shadow-black/[0.03]'
+                                    ${isActive
+                                        ? 'flex-[3] bg-white border-slate-200 shadow-2xl,0,0,0.5)]'
+                                        : 'flex-[0.5] bg-white/40 backdrop-blur-xl border-white/60 hover:bg-white/60 shadow-lg shadow-black/[0.03]'
                                     }`}
                             >
                                 {/* Header */}
@@ -706,6 +705,10 @@ export function DesktopPDP({
                                                         videoSource={activeColorConfig?.video || ''}
                                                         isVideoOpen={isVideoOpen}
                                                         onCloseVideo={() => setIsVideoOpen(false)}
+                                                        isFlipped={activeColorConfig?.isFlipped ?? false}
+                                                        zoomFactor={activeColorConfig?.zoomFactor ?? null}
+                                                        offsetX={activeColorConfig?.offsetX ?? 0}
+                                                        offsetY={activeColorConfig?.offsetY ?? 0}
                                                     />
                                                 ) : (
                                                     <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col pl-[76px] pr-[76px] pt-2 pb-4">
@@ -965,10 +968,9 @@ export function DesktopPDP({
                                 animate="visible"
                                 onClick={() => setActiveConfigTab(category.id)}
                                 className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
-                                    ${
-                                        isActive
-                                            ? 'flex-[3] bg-white border-slate-200 shadow-2xl,0,0,0.5)]'
-                                            : 'flex-[0.5] bg-white/40 backdrop-blur-xl border-white/60 hover:bg-white/60 shadow-lg shadow-black/[0.03]'
+                                    ${isActive
+                                        ? 'flex-[3] bg-white border-slate-200 shadow-2xl,0,0,0.5)]'
+                                        : 'flex-[0.5] bg-white/40 backdrop-blur-xl border-white/60 hover:bg-white/60 shadow-lg shadow-black/[0.03]'
                                     }`}
                             >
                                 {/* Header / Category Label (Always visible) */}
