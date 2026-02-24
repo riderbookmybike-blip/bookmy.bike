@@ -5,6 +5,7 @@ import { X, ChevronRight, Plus, Loader2, AlertCircle, CheckCircle2, Users, Packa
 import { createClient } from '@/lib/supabase/client';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { resolveSkuPricingBaseline, toPositiveAmount, type AumsPriceBaselineRow } from '@/lib/aums/taxEngine';
 
 interface ModalProps {
     isOpen: boolean;
@@ -25,12 +26,6 @@ type AccessoryOption = {
     id: string;
     name: string;
     amount: number;
-};
-
-const toPositiveAmount = (value: unknown): number => {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed <= 0) return 0;
-    return Math.round(parsed * 100) / 100;
 };
 
 const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
@@ -152,44 +147,21 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                 )
                 .eq('sku_id', skuId);
 
-            const activeRows = (priceRows || []).filter(
-                (row: any) => String(row.publish_stage || '').toUpperCase() === 'PUBLISHED'
-            );
-            const candidateRows = activeRows.length > 0 ? activeRows : priceRows || [];
-            const preferredRow =
-                candidateRows.find(
-                    (row: any) =>
-                        String(row.state_code || '').toUpperCase() === 'MH' && toPositiveAmount(row.rto_total_state) > 0
-                ) ||
-                candidateRows.find((row: any) => String(row.state_code || '').toUpperCase() === 'MH') ||
-                candidateRows.find((row: any) => toPositiveAmount(row.rto_total_state) > 0) ||
-                candidateRows[0];
+            const baseline = resolveSkuPricingBaseline((priceRows || []) as AumsPriceBaselineRow[], 'MH');
 
-            if (!preferredRow) {
+            if (!baseline) {
                 setPricingPrefill(null);
                 setAccessoryOptions([]);
                 setSelectedAccessoryIds([]);
                 return;
             }
 
-            const exShowroom = toPositiveAmount(preferredRow.ex_showroom);
-            const rto =
-                toPositiveAmount(preferredRow.rto_total_state) ||
-                toPositiveAmount(preferredRow.rto_total_bh) ||
-                toPositiveAmount(preferredRow.rto_total_company);
-
-            const mandatoryInsurance =
-                toPositiveAmount(preferredRow.ins_sum_mandatory_insurance) +
-                toPositiveAmount(preferredRow.ins_sum_mandatory_insurance_gst_amount);
-            const insuranceTp =
-                mandatoryInsurance > 0 ? mandatoryInsurance : toPositiveAmount(preferredRow.ins_gross_premium);
-
             setPricingPrefill({
-                exShowroom,
-                rto,
-                insuranceTp,
-                zeroDep: toPositiveAmount(preferredRow.addon_zero_depreciation_total_amount),
-                rti: toPositiveAmount(preferredRow.addon_return_to_invoice_total_amount),
+                exShowroom: baseline.exShowroom,
+                rto: baseline.rto,
+                insuranceTp: baseline.insuranceTp,
+                zeroDep: baseline.zeroDep,
+                rti: baseline.rti,
             });
 
             if (!modelId) {

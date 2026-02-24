@@ -141,6 +141,7 @@ export default function RequisitionDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectingQuoteId, setSelectingQuoteId] = useState<string | null>(null);
+    const [isCancelling, setIsCancelling] = useState(false);
 
     const fetchRequestDetail = useCallback(async () => {
         if (!requestId) {
@@ -233,6 +234,27 @@ export default function RequisitionDetailPage() {
         [fetchRequestDetail]
     );
 
+    const handleCancelRequest = useCallback(async () => {
+        if (!request) return;
+        if (!confirm('Are you sure you want to cancel this requisition? This action cannot be undone.')) return;
+
+        setIsCancelling(true);
+        try {
+            const { cancelRequest } = await import('@/actions/inventory');
+            const result = await cancelRequest(request.id);
+            if (!result.success) {
+                toast.error(result.message || 'Failed to cancel requisition');
+                return;
+            }
+            toast.success(result.message || 'Requisition cancelled');
+            await fetchRequestDetail();
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to cancel requisition');
+        } finally {
+            setIsCancelling(false);
+        }
+    }, [request, fetchRequestDetail]);
+
     const handleNextStage = useCallback(async () => {
         if (!request) return;
 
@@ -310,18 +332,29 @@ export default function RequisitionDetailPage() {
                         Created {format(new Date(request.created_at), 'dd MMM yyyy, hh:mm a')}
                     </p>
                 </div>
-                <button
-                    onClick={handleNextStage}
-                    disabled={
-                        selectingQuoteId !== null ||
-                        request.status === 'RECEIVED' ||
-                        request.status === 'CANCELLED' ||
-                        (request.status === 'QUOTING' && !canAdvanceToOrdered)
-                    }
-                    className="px-5 py-3 rounded-2xl bg-indigo-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white text-xs font-black uppercase tracking-wider transition-all disabled:cursor-not-allowed"
-                >
-                    {selectingQuoteId ? 'Processing...' : nextActionLabel}
-                </button>
+                <div className="flex items-center gap-3">
+                    {request.status !== 'RECEIVED' && request.status !== 'CANCELLED' && (
+                        <button
+                            onClick={handleCancelRequest}
+                            disabled={isCancelling || selectingQuoteId !== null}
+                            className="px-5 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-200 dark:hover:border-rose-500/30 disabled:opacity-50 text-xs font-black uppercase tracking-wider transition-all"
+                        >
+                            {isCancelling ? 'Cancelling...' : 'Cancel Requisition'}
+                        </button>
+                    )}
+                    <button
+                        onClick={handleNextStage}
+                        disabled={
+                            selectingQuoteId !== null ||
+                            request.status === 'RECEIVED' ||
+                            request.status === 'CANCELLED' ||
+                            (request.status === 'QUOTING' && !canAdvanceToOrdered)
+                        }
+                        className="px-5 py-3 rounded-2xl bg-indigo-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white text-xs font-black uppercase tracking-wider transition-all disabled:cursor-not-allowed"
+                    >
+                        {selectingQuoteId ? 'Processing...' : nextActionLabel}
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl p-6">

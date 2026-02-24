@@ -4,6 +4,7 @@ import { adminClient } from '@/lib/supabase/admin';
 import { getAuthUser } from '@/lib/auth/resolver';
 import { revalidatePath } from 'next/cache';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { buildRequestBaselineItemsFromPricing, type AumsPriceBaselineRow } from '@/lib/aums/taxEngine';
 import type {
     CreateRequestInput,
     AddDealerQuoteInput,
@@ -171,48 +172,7 @@ async function resolveSkuBaselineItems(skuId: string): Promise<RequestCostItemPa
         return [];
     }
 
-    const activeRows = priceRows.filter((row: any) => String(row.publish_stage || '').toUpperCase() === 'PUBLISHED');
-    const candidateRows = activeRows.length > 0 ? activeRows : priceRows;
-
-    const preferredRow =
-        candidateRows.find(
-            (row: any) =>
-                String(row.state_code || '').toUpperCase() === 'MH' && toPositiveAmount(row.rto_total_state) > 0
-        ) ||
-        candidateRows.find((row: any) => String(row.state_code || '').toUpperCase() === 'MH') ||
-        candidateRows.find((row: any) => toPositiveAmount(row.rto_total_state) > 0) ||
-        candidateRows[0];
-
-    if (!preferredRow) return [];
-
-    const exShowroom = toPositiveAmount((preferredRow as any).ex_showroom);
-    const rtoAmount =
-        toPositiveAmount((preferredRow as any).rto_total_state) ||
-        toPositiveAmount((preferredRow as any).rto_total_bh) ||
-        toPositiveAmount((preferredRow as any).rto_total_company);
-
-    const mandatoryInsurance =
-        toPositiveAmount((preferredRow as any).ins_sum_mandatory_insurance) +
-        toPositiveAmount((preferredRow as any).ins_sum_mandatory_insurance_gst_amount);
-    const insuranceAmount =
-        mandatoryInsurance > 0 ? mandatoryInsurance : toPositiveAmount((preferredRow as any).ins_gross_premium);
-
-    const items: RequestCostItemPayload[] = [];
-    if (exShowroom > 0) {
-        items.push({ cost_type: 'EX_SHOWROOM', expected_amount: exShowroom, description: 'Auto from SKU pricing' });
-    }
-    if (rtoAmount > 0) {
-        items.push({ cost_type: 'RTO_REGISTRATION', expected_amount: rtoAmount, description: 'Auto from SKU pricing' });
-    }
-    if (insuranceAmount > 0) {
-        items.push({
-            cost_type: 'INSURANCE_TP',
-            expected_amount: insuranceAmount,
-            description: 'Mandatory insurance from SKU pricing',
-        });
-    }
-
-    return items;
+    return buildRequestBaselineItemsFromPricing(priceRows as AumsPriceBaselineRow[], 'MH');
 }
 
 async function resolveBookingOptionalItems(bookingId: string): Promise<RequestCostItemPayload[]> {
