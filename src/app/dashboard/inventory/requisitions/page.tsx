@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { format } from 'date-fns';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import NewRequisitionModal from './components/NewRequisitionModal';
 
 interface Requisition {
@@ -37,6 +37,8 @@ interface Requisition {
         expected_amount: number;
         description: string | null;
     }>;
+    quotes: Array<{ id: string; status: string }>;
+    orders: Array<{ id: string }>;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -59,7 +61,8 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 
 export default function RequisitionsPage() {
     const supabase = createClient();
-    const { tenantId, slug } = useTenant();
+    const { tenantId, tenantSlug } = useTenant();
+    const params = useParams<{ slug?: string }>();
     const router = useRouter();
     const [requisitions, setRequisitions] = useState<Requisition[]>([]);
     const [loading, setLoading] = useState(true);
@@ -78,6 +81,12 @@ export default function RequisitionsPage() {
                     *,
                     items:inv_request_items (
                         id, cost_type, expected_amount, description
+                    ),
+                    quotes:inv_dealer_quotes(
+                        id, status
+                    ),
+                    orders:inv_purchase_orders(
+                        id
                     )
                 `
                 )
@@ -115,6 +124,8 @@ export default function RequisitionsPage() {
         received: requisitions.filter(r => r.status === 'RECEIVED').length,
         booking: requisitions.filter(r => r.source_type === 'BOOKING').length,
     };
+
+    const resolvedSlug = tenantSlug || (typeof params?.slug === 'string' ? params.slug : undefined);
 
     return (
         <div className="space-y-8 pb-20">
@@ -233,6 +244,12 @@ export default function RequisitionsPage() {
                                     <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Cost Lines
                                     </th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Quotes
+                                    </th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        PO
+                                    </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Status
                                     </th>
@@ -250,8 +267,8 @@ export default function RequisitionsPage() {
                                         key={req.id}
                                         onClick={() =>
                                             router.push(
-                                                slug
-                                                    ? `/app/${slug}/dashboard/inventory/requisitions/${req.id}`
+                                                resolvedSlug
+                                                    ? `/app/${resolvedSlug}/dashboard/inventory/requisitions/${req.id}`
                                                     : `/dashboard/inventory/requisitions/${req.id}`
                                             )
                                         }
@@ -281,6 +298,22 @@ export default function RequisitionsPage() {
                                         <td className="px-6 py-4 text-center">
                                             <span className="text-sm font-black text-slate-900 dark:text-white">
                                                 {req.items?.length || 0}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-300">
+                                                {req.quotes?.length || 0}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span
+                                                className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
+                                                    (req.orders?.length || 0) > 0
+                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
+                                                        : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10'
+                                                }`}
+                                            >
+                                                {(req.orders?.length || 0) > 0 ? 'Linked' : 'Pending'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">

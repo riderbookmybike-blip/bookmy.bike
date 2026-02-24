@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     ArrowLeft,
+    BarChart3,
     CheckCircle2,
     ChevronRight,
     Clock,
@@ -35,6 +36,7 @@ type QuoteTenantRef = {
 type DealerQuote = {
     id: string;
     dealer_tenant_id: string;
+    bundled_item_ids?: string[] | null;
     bundled_amount: number;
     transport_amount: number;
     expected_total: number;
@@ -101,6 +103,7 @@ const PO_STATUS_STYLES: Record<PurchaseOrder['po_status'], string> = {
 };
 
 const formatCurrency = (amount: number | null | undefined) => `₹${Number(amount || 0).toLocaleString('en-IN')}`;
+const getQuoteTotal = (quote: DealerQuote) => Number(quote.bundled_amount || 0) + Number(quote.transport_amount || 0);
 
 const parseTenantRef = (value: DealerQuote['id_tenants']) => {
     if (!value) return null;
@@ -169,13 +172,21 @@ export default function RequisitionDetailPage() {
 
     const selectedQuote = useMemo(() => quotes.find(q => q.status === 'SELECTED') || null, [quotes]);
     const submittedQuotes = useMemo(() => quotes.filter(q => q.status === 'SUBMITTED'), [quotes]);
+    const activeQuotes = useMemo(() => quotes.filter(q => q.status !== 'REJECTED'), [quotes]);
     const defaultNextQuote = useMemo(
-        () =>
-            submittedQuotes.slice().sort((a, b) => Number(a.bundled_amount || 0) - Number(b.bundled_amount || 0))[0] ||
-            null,
+        () => submittedQuotes.slice().sort((a, b) => getQuoteTotal(a) - getQuoteTotal(b))[0] || null,
         [submittedQuotes]
     );
     const primaryPo = useMemo(() => purchaseOrders[0] || null, [purchaseOrders]);
+    const bestQuote = useMemo(() => {
+        if (!activeQuotes.length) return null;
+        return activeQuotes.slice().sort((a, b) => getQuoteTotal(a) - getQuoteTotal(b))[0];
+    }, [activeQuotes]);
+    const quoteSpread = useMemo(() => {
+        if (activeQuotes.length < 2) return 0;
+        const totals = activeQuotes.map(getQuoteTotal);
+        return Math.max(...totals) - Math.min(...totals);
+    }, [activeQuotes]);
 
     const stageIndex = request ? REQUEST_STAGE_FLOW.indexOf(request.status) : -1;
     const canAdvanceToOrdered = !!request && request.status === 'QUOTING' && !!(selectedQuote || defaultNextQuote);
@@ -406,9 +417,63 @@ export default function RequisitionDetailPage() {
                         requestId={request.id}
                         requestStatus={request.status}
                         requestItems={requestItems}
+                        existingQuotes={quotes}
                         tenantId={tenantId}
                         onRefresh={fetchRequestDetail}
                     />
+                )}
+
+                {activeQuotes.length > 0 && (
+                    <div className="px-6 pb-6">
+                        <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4">
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest inline-flex items-center gap-2">
+                                    <BarChart3 size={12} />
+                                    Comparison Snapshot
+                                </p>
+                                {bestQuote && (
+                                    <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-300 uppercase tracking-wider">
+                                        Best: {parseTenantRef(bestQuote.id_tenants)?.name || 'Dealer'} •{' '}
+                                        {formatCurrency(getQuoteTotal(bestQuote))}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        Quotes
+                                    </p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white">
+                                        {activeQuotes.length}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        Lowest Total
+                                    </p>
+                                    <p className="text-sm font-black text-emerald-600 dark:text-emerald-300">
+                                        {bestQuote ? formatCurrency(getQuoteTotal(bestQuote)) : '—'}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        Spread
+                                    </p>
+                                    <p className="text-sm font-black text-amber-600 dark:text-amber-300">
+                                        {formatCurrency(quoteSpread)}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        Selected
+                                    </p>
+                                    <p className="text-sm font-black text-indigo-600 dark:text-indigo-300">
+                                        {selectedQuote ? formatCurrency(getQuoteTotal(selectedQuote)) : 'Pending'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {quotes.length === 0 ? (
@@ -421,12 +486,13 @@ export default function RequisitionDetailPage() {
                     <div className="divide-y divide-slate-100 dark:divide-white/10">
                         {quotes
                             .slice()
-                            .sort((a, b) => Number(a.bundled_amount || 0) - Number(b.bundled_amount || 0))
+                            .sort((a, b) => getQuoteTotal(a) - getQuoteTotal(b))
                             .map(quote => {
                                 const dealer = parseTenantRef(quote.id_tenants);
-                                const total = Number(quote.bundled_amount || 0) + Number(quote.transport_amount || 0);
+                                const total = getQuoteTotal(quote);
                                 const canSelect = request.status === 'QUOTING' && quote.status === 'SUBMITTED';
                                 const isSelecting = selectingQuoteId === quote.id;
+                                const isBest = !!bestQuote && bestQuote.id === quote.id;
 
                                 return (
                                     <div
@@ -443,6 +509,11 @@ export default function RequisitionDetailPage() {
                                                 >
                                                     {quote.status}
                                                 </span>
+                                                {isBest && (
+                                                    <span className="inline-flex px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30">
+                                                        Lowest Total
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="mt-1 flex items-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                                                 <span>Bundled: {formatCurrency(quote.bundled_amount)}</span>
@@ -480,6 +551,89 @@ export default function RequisitionDetailPage() {
                                     </div>
                                 );
                             })}
+                    </div>
+                )}
+
+                {requestItems.length > 0 && activeQuotes.length > 0 && (
+                    <div className="px-6 pb-6">
+                        <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
+                            <div className="px-4 py-3 bg-slate-100 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                    Cost Line Coverage Matrix
+                                </p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-white/10 bg-white dark:bg-slate-900/40">
+                                            <th className="px-4 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                Cost Line
+                                            </th>
+                                            <th className="px-4 py-3 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                Expected
+                                            </th>
+                                            {activeQuotes.map(quote => (
+                                                <th
+                                                    key={quote.id}
+                                                    className="px-4 py-3 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest"
+                                                >
+                                                    {parseTenantRef(quote.id_tenants)?.name || 'Dealer'}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {requestItems.map(item => (
+                                            <tr
+                                                key={item.id}
+                                                className="border-b border-slate-100 dark:border-white/10"
+                                            >
+                                                <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase">
+                                                    {item.cost_type.replace(/_/g, ' ')}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-[10px] font-black text-slate-900 dark:text-white">
+                                                    {formatCurrency(item.expected_amount)}
+                                                </td>
+                                                {activeQuotes.map(quote => {
+                                                    const included = (quote.bundled_item_ids || []).includes(item.id);
+                                                    return (
+                                                        <td
+                                                            key={`${quote.id}-${item.id}`}
+                                                            className="px-4 py-3 text-center text-[10px] font-black uppercase"
+                                                        >
+                                                            <span
+                                                                className={`inline-flex px-2 py-1 rounded-lg border ${
+                                                                    included
+                                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
+                                                                        : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10'
+                                                                }`}
+                                                            >
+                                                                {included ? 'Included' : 'Excluded'}
+                                                            </span>
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                        <tr className="bg-slate-50 dark:bg-white/5">
+                                            <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase">
+                                                Total Offer
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-[10px] font-black text-slate-400">
+                                                —
+                                            </td>
+                                            {activeQuotes.map(quote => (
+                                                <td key={`${quote.id}-total`} className="px-4 py-3 text-center">
+                                                    <span className="text-[11px] font-black text-slate-900 dark:text-white">
+                                                        {formatCurrency(getQuoteTotal(quote))}
+                                                    </span>
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
