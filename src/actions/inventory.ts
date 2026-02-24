@@ -373,6 +373,212 @@ async function resolveQuoteItemsForRequest(
     return { success: true, resolvedItemIds, expectedTotal };
 }
 
+type QuoteLineItemInput = {
+    request_item_id: string;
+    offered_amount: number;
+    notes?: string | null;
+};
+
+type QuoteTermsInput = NonNullable<AddDealerQuoteInput['payment_terms']>;
+
+const QUOTE_PAYMENT_MODES = new Set(['ADVANCE', 'PARTIAL', 'CREDIT', 'OTHER']);
+
+function isRelationMissingError(error: any): boolean {
+    const message = String(error?.message || '');
+    const code = String(error?.code || '');
+    return (
+        message.toLowerCase().includes('does not exist') ||
+        message.toLowerCase().includes('could not find the table') ||
+        code === '42P01' ||
+        code === 'PGRST205'
+    );
+}
+
+function normalizeQuoteTerms(input?: QuoteTermsInput | null): QuoteTermsInput | null {
+    if (!input) return null;
+
+    const modeRaw = String(input.payment_mode || '')
+        .trim()
+        .toUpperCase();
+    const paymentMode = QUOTE_PAYMENT_MODES.has(modeRaw) ? (modeRaw as QuoteTermsInput['payment_mode']) : null;
+
+    const toIntegerOrNull = (value: unknown) => {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed) || parsed < 0) return null;
+        return Math.round(parsed);
+    };
+
+    const creditDays = toIntegerOrNull(input.credit_days);
+    const advancePercentRaw = Number(input.advance_percent);
+    const advancePercent =
+        Number.isFinite(advancePercentRaw) && advancePercentRaw >= 0 && advancePercentRaw <= 100
+            ? Math.round(advancePercentRaw * 100) / 100
+            : null;
+    const expectedDispatchDays = toIntegerOrNull(input.expected_dispatch_days);
+    const notes = normalizeDescription(input.notes);
+
+    if (!paymentMode && creditDays === null && advancePercent === null && expectedDispatchDays === null && !notes) {
+        return null;
+    }
+
+    return {
+        payment_mode: paymentMode,
+        credit_days: creditDays,
+        advance_percent: advancePercent,
+        expected_dispatch_days: expectedDispatchDays,
+        notes,
+    };
+}
+
+async function resolveQuoteLineItemsForRequest(input: {
+    requestId: string;
+    bundledItemIds?: string[];
+    lineItems?: QuoteLineItemInput[];
+}): Promise<{
+    success: boolean;
+    message?: string;
+    lineItems?: Array<{ request_item_id: string; offered_amount: number; notes: string | null }>;
+    inferredBundledItemIds?: string[];
+    bundledAmount?: number;
+}> {
+    const { data: requestItems, error: requestItemsErr } = await adminClient
+        .from('inv_request_items')
+        .select('id, expected_amount')
+        .eq('request_id', input.requestId);
+
+    if (requestItemsErr || !requestItems) {
+        return { success: false, message: 'Failed to fetch requisition cost lines' };
+    }
+
+    const requestItemsMap = new Map<string, { expected_amount: number }>(
+        requestItems.map(item => [item.id, { expected_amount: Number(item.expected_amount || 0) }])
+    );
+
+    const normalizedBundledIds = Array.from(new Set((input.bundledItemIds || []).filter(Boolean)));
+    const normalizedLineItems = Array.isArray(input.lineItems) ? input.lineItems : [];
+    const resolvedLineItems: Array<{ request_item_id: string; offered_amount: number; notes: string | null }> = [];
+    const visitedItemIds = new Set<string>();
+
+    if (normalizedLineItems.length > 0) {
+        for (const lineItem of normalizedLineItems) {
+            const itemId = String(lineItem.request_item_id || '').trim();
+            if (!itemId || visitedItemIds.has(itemId)) continue;
+            if (!requestItemsMap.has(itemId)) continue;
+            visitedItemIds.add(itemId);
+
+            const offeredAmount = toPositiveAmount(lineItem.offered_amount);
+            const notes = normalizeDescription(lineItem.notes);
+            resolvedLineItems.push({
+                request_item_id: itemId,
+                offered_amount: offeredAmount,
+                notes,
+            });
+        }
+    } else if (normalizedBundledIds.length > 0) {
+        for (const itemId of normalizedBundledIds) {
+            const item = requestItemsMap.get(itemId);
+            if (!item) continue;
+            resolvedLineItems.push({
+                request_item_id: itemId,
+                offered_amount: toPositiveAmount(item.expected_amount),
+                notes: null,
+            });
+        }
+    } else {
+        for (const item of requestItems) {
+            resolvedLineItems.push({
+                request_item_id: item.id,
+                offered_amount: toPositiveAmount(item.expected_amount),
+                notes: null,
+            });
+        }
+    }
+
+    const inferredBundledItemIds = resolvedLineItems
+        .filter(item => item.offered_amount > 0)
+        .map(item => item.request_item_id);
+    const bundledAmount =
+        Math.round(resolvedLineItems.reduce((sum, item) => sum + Number(item.offered_amount || 0), 0) * 100) / 100;
+
+    return {
+        success: true,
+        lineItems: resolvedLineItems,
+        inferredBundledItemIds,
+        bundledAmount,
+    };
+}
+
+async function persistQuoteBreakdown(input: {
+    quoteId: string;
+    lineItems?: Array<{ request_item_id: string; offered_amount: number; notes: string | null }>;
+    paymentTerms?: QuoteTermsInput | null;
+    replaceExisting?: boolean;
+}): Promise<{ success: boolean; message?: string }> {
+    const lineItems = input.lineItems || [];
+    const paymentTerms = normalizeQuoteTerms(input.paymentTerms);
+    const replaceExisting = Boolean(input.replaceExisting);
+
+    if (replaceExisting) {
+        const { error: deleteLinesErr } = await (adminClient as any)
+            .from('inv_quote_line_items')
+            .delete()
+            .eq('quote_id', input.quoteId);
+        if (deleteLinesErr && !isRelationMissingError(deleteLinesErr)) {
+            return { success: false, message: deleteLinesErr.message || 'Failed to reset quote line items' };
+        }
+    }
+
+    if (lineItems.length > 0) {
+        const rows = lineItems.map(item => ({
+            quote_id: input.quoteId,
+            request_item_id: item.request_item_id,
+            offered_amount: item.offered_amount,
+            notes: item.notes || null,
+        }));
+
+        const { error: lineItemsErr } = await (adminClient as any).from('inv_quote_line_items').upsert(rows, {
+            onConflict: 'quote_id,request_item_id',
+        });
+
+        if (lineItemsErr && !isRelationMissingError(lineItemsErr)) {
+            return { success: false, message: lineItemsErr.message || 'Failed to save quote line items' };
+        }
+    }
+
+    if (paymentTerms || replaceExisting) {
+        if (paymentTerms) {
+            const { error: termsErr } = await (adminClient as any).from('inv_quote_terms').upsert(
+                {
+                    quote_id: input.quoteId,
+                    payment_mode: paymentTerms.payment_mode || null,
+                    credit_days: paymentTerms.credit_days ?? null,
+                    advance_percent: paymentTerms.advance_percent ?? null,
+                    expected_dispatch_days: paymentTerms.expected_dispatch_days ?? null,
+                    notes: paymentTerms.notes || null,
+                    updated_at: new Date().toISOString(),
+                },
+                {
+                    onConflict: 'quote_id',
+                }
+            );
+
+            if (termsErr && !isRelationMissingError(termsErr)) {
+                return { success: false, message: termsErr.message || 'Failed to save quote payment terms' };
+            }
+        } else if (replaceExisting) {
+            const { error: deleteTermsErr } = await (adminClient as any)
+                .from('inv_quote_terms')
+                .delete()
+                .eq('quote_id', input.quoteId);
+            if (deleteTermsErr && !isRelationMissingError(deleteTermsErr)) {
+                return { success: false, message: deleteTermsErr.message || 'Failed to reset quote payment terms' };
+            }
+        }
+    }
+
+    return { success: true };
+}
+
 // =============================================================================
 // 1. CREATE REQUEST — Auto-fills request items from catalog baseline
 // =============================================================================
@@ -466,9 +672,30 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
             };
         }
 
-        const resolved = await resolveQuoteItemsForRequest(input.request_id, input.bundled_item_ids || []);
+        const lineResolution = await resolveQuoteLineItemsForRequest({
+            requestId: input.request_id,
+            bundledItemIds: input.bundled_item_ids || [],
+            lineItems: input.line_items || [],
+        });
+        if (!lineResolution.success || !lineResolution.inferredBundledItemIds) {
+            return { success: false, message: lineResolution.message || 'Failed to resolve quote line items' };
+        }
+
+        const bundledItemIds =
+            lineResolution.inferredBundledItemIds.length > 0
+                ? lineResolution.inferredBundledItemIds
+                : Array.from(new Set((input.bundled_item_ids || []).filter(Boolean)));
+
+        const resolved = await resolveQuoteItemsForRequest(input.request_id, bundledItemIds);
         if (!resolved.success || !resolved.resolvedItemIds) {
             return { success: false, message: resolved.message || 'Failed to resolve quote cost lines' };
+        }
+
+        const bundledAmountFromLines = Number(lineResolution.bundledAmount || 0);
+        const effectiveBundledAmount =
+            bundledAmountFromLines > 0 ? bundledAmountFromLines : toPositiveAmount(input.bundled_amount);
+        if (effectiveBundledAmount <= 0) {
+            return { success: false, message: 'Bundled amount must be greater than zero' };
         }
 
         const { data: quote, error: quoteErr } = await adminClient
@@ -478,7 +705,7 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
                 dealer_tenant_id: input.dealer_tenant_id,
                 quoted_by_user_id: user.id,
                 bundled_item_ids: resolved.resolvedItemIds,
-                bundled_amount: input.bundled_amount,
+                bundled_amount: effectiveBundledAmount,
                 expected_total: resolved.expectedTotal || 0,
                 transport_amount: input.transport_amount || 0,
                 freebie_description: input.freebie_description || null,
@@ -490,6 +717,16 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
 
         if (quoteErr || !quote) {
             return { success: false, message: quoteErr?.message || 'Failed to create quote' };
+        }
+
+        const breakdownPersistResult = await persistQuoteBreakdown({
+            quoteId: quote.id,
+            lineItems: lineResolution.lineItems || [],
+            paymentTerms: input.payment_terms || null,
+        });
+        if (!breakdownPersistResult.success) {
+            await adminClient.from('inv_dealer_quotes').delete().eq('id', quote.id);
+            return { success: false, message: breakdownPersistResult.message || 'Failed to save quote breakdown' };
         }
 
         revalidatePath('/dashboard/inventory');
@@ -509,6 +746,8 @@ export async function updateDealerQuote(input: {
     bundled_amount: number;
     transport_amount?: number;
     freebie_description?: string | null;
+    line_items?: AddDealerQuoteInput['line_items'];
+    payment_terms?: AddDealerQuoteInput['payment_terms'];
 }): Promise<ActionResult> {
     try {
         const user = await getAuthUser();
@@ -542,16 +781,37 @@ export async function updateDealerQuote(input: {
             return { success: false, message: `Cannot edit quote: requisition is ${request.status}` };
         }
 
-        const resolved = await resolveQuoteItemsForRequest(quote.request_id, input.bundled_item_ids || []);
+        const lineResolution = await resolveQuoteLineItemsForRequest({
+            requestId: quote.request_id,
+            bundledItemIds: input.bundled_item_ids || [],
+            lineItems: input.line_items || [],
+        });
+        if (!lineResolution.success || !lineResolution.inferredBundledItemIds) {
+            return { success: false, message: lineResolution.message || 'Failed to resolve quote line items' };
+        }
+
+        const bundledItemIds =
+            lineResolution.inferredBundledItemIds.length > 0
+                ? lineResolution.inferredBundledItemIds
+                : Array.from(new Set((input.bundled_item_ids || []).filter(Boolean)));
+
+        const resolved = await resolveQuoteItemsForRequest(quote.request_id, bundledItemIds);
         if (!resolved.success || !resolved.resolvedItemIds) {
             return { success: false, message: resolved.message || 'Failed to resolve quote cost lines' };
+        }
+
+        const bundledAmountFromLines = Number(lineResolution.bundledAmount || 0);
+        const effectiveBundledAmount =
+            bundledAmountFromLines > 0 ? bundledAmountFromLines : toPositiveAmount(input.bundled_amount);
+        if (effectiveBundledAmount <= 0) {
+            return { success: false, message: 'Bundled amount must be greater than zero' };
         }
 
         const { data: updatedQuote, error: updateErr } = await adminClient
             .from('inv_dealer_quotes')
             .update({
                 bundled_item_ids: resolved.resolvedItemIds,
-                bundled_amount: input.bundled_amount,
+                bundled_amount: effectiveBundledAmount,
                 expected_total: resolved.expectedTotal || 0,
                 transport_amount: input.transport_amount || 0,
                 freebie_description: input.freebie_description || null,
@@ -563,6 +823,16 @@ export async function updateDealerQuote(input: {
 
         if (updateErr || !updatedQuote) {
             return { success: false, message: updateErr?.message || 'Failed to update quote' };
+        }
+
+        const breakdownPersistResult = await persistQuoteBreakdown({
+            quoteId: updatedQuote.id,
+            lineItems: lineResolution.lineItems || [],
+            paymentTerms: input.payment_terms || null,
+            replaceExisting: true,
+        });
+        if (!breakdownPersistResult.success) {
+            return { success: false, message: breakdownPersistResult.message || 'Failed to update quote breakdown' };
         }
 
         revalidatePath('/dashboard/inventory');
@@ -1142,7 +1412,69 @@ export async function getRequestById(requestId: string): Promise<ActionResult> {
             .single();
 
         if (error) return { success: false, message: error.message };
-        return { success: true, data };
+
+        const requestData = (data || {}) as any;
+        const quoteIds = Array.isArray(requestData.inv_dealer_quotes)
+            ? requestData.inv_dealer_quotes.map((quote: any) => quote.id).filter(Boolean)
+            : [];
+
+        let lineItemsByQuote = new Map<string, any[]>();
+        let termsByQuote = new Map<string, any>();
+
+        if (quoteIds.length > 0) {
+            try {
+                const { data: lineItems, error: lineItemsErr } = await (adminClient as any)
+                    .from('inv_quote_line_items')
+                    .select('*')
+                    .in('quote_id', quoteIds);
+
+                if (!lineItemsErr && Array.isArray(lineItems)) {
+                    lineItemsByQuote = lineItems.reduce((acc: Map<string, any[]>, item: any) => {
+                        const key = item.quote_id;
+                        if (!acc.has(key)) acc.set(key, []);
+                        acc.get(key)?.push(item);
+                        return acc;
+                    }, new Map<string, any[]>());
+                } else if (lineItemsErr && !isRelationMissingError(lineItemsErr)) {
+                    return { success: false, message: lineItemsErr.message || 'Failed to load quote line items' };
+                }
+            } catch (lineItemsFetchErr: any) {
+                if (!isRelationMissingError(lineItemsFetchErr)) {
+                    return {
+                        success: false,
+                        message: lineItemsFetchErr?.message || 'Failed to load quote line items',
+                    };
+                }
+            }
+
+            try {
+                const { data: terms, error: termsErr } = await (adminClient as any)
+                    .from('inv_quote_terms')
+                    .select('*')
+                    .in('quote_id', quoteIds);
+
+                if (!termsErr && Array.isArray(terms)) {
+                    termsByQuote = terms.reduce((acc: Map<string, any>, item: any) => {
+                        acc.set(item.quote_id, item);
+                        return acc;
+                    }, new Map<string, any>());
+                } else if (termsErr && !isRelationMissingError(termsErr)) {
+                    return { success: false, message: termsErr.message || 'Failed to load quote payment terms' };
+                }
+            } catch (termsFetchErr: any) {
+                if (!isRelationMissingError(termsFetchErr)) {
+                    return { success: false, message: termsFetchErr?.message || 'Failed to load quote payment terms' };
+                }
+            }
+        }
+
+        requestData.inv_dealer_quotes = (requestData.inv_dealer_quotes || []).map((quote: any) => ({
+            ...quote,
+            inv_quote_line_items: lineItemsByQuote.get(quote.id) || [],
+            inv_quote_terms: termsByQuote.get(quote.id) || null,
+        }));
+
+        return { success: true, data: requestData };
     } catch (err: unknown) {
         return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }

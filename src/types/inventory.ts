@@ -71,6 +71,26 @@ export interface InvDealerQuote {
     created_at: string;
 }
 
+export interface InvQuoteLineItem {
+    id: string;
+    quote_id: string;
+    request_item_id: string;
+    offered_amount: number;
+    notes: string | null;
+    created_at: string;
+}
+
+export interface InvQuoteTerms {
+    quote_id: string;
+    payment_mode: 'ADVANCE' | 'PARTIAL' | 'CREDIT' | 'OTHER' | null;
+    credit_days: number | null;
+    advance_percent: number | null;
+    expected_dispatch_days: number | null;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface InvPurchaseOrder {
     id: string;
     request_id: string;
@@ -155,6 +175,18 @@ export interface AddDealerQuoteInput {
     transport_amount?: number;
     freebie_description?: string;
     freebie_sku_id?: string;
+    line_items?: Array<{
+        request_item_id: string;
+        offered_amount: number;
+        notes?: string | null;
+    }>;
+    payment_terms?: {
+        payment_mode?: 'ADVANCE' | 'PARTIAL' | 'CREDIT' | 'OTHER' | null;
+        credit_days?: number | null;
+        advance_percent?: number | null;
+        expected_dispatch_days?: number | null;
+        notes?: string | null;
+    } | null;
 }
 
 export interface ReceiveStockInput {

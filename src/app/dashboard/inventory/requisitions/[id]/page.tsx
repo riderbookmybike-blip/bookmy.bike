@@ -43,6 +43,18 @@ type DealerQuote = {
     variance_amount: number | null;
     status: 'SUBMITTED' | 'SELECTED' | 'REJECTED';
     freebie_description: string | null;
+    inv_quote_line_items?: Array<{
+        request_item_id: string;
+        offered_amount: number;
+        notes: string | null;
+    }> | null;
+    inv_quote_terms?: {
+        payment_mode: 'ADVANCE' | 'PARTIAL' | 'CREDIT' | 'OTHER' | null;
+        credit_days: number | null;
+        advance_percent: number | null;
+        expected_dispatch_days: number | null;
+        notes: string | null;
+    } | null;
     created_at?: string;
     id_tenants?: QuoteTenantRef | QuoteTenantRef[] | null;
 };
@@ -519,6 +531,7 @@ export default function RequisitionDetailPage() {
                                                 <span>Bundled: {formatCurrency(quote.bundled_amount)}</span>
                                                 <span>Transport: {formatCurrency(quote.transport_amount)}</span>
                                                 <span>Total: {formatCurrency(total)}</span>
+                                                <span>Lines: {quote.inv_quote_line_items?.length || 0}</span>
                                                 <span
                                                     className={
                                                         Number(quote.variance_amount || 0) <= 0
@@ -529,6 +542,17 @@ export default function RequisitionDetailPage() {
                                                     Variance: {formatCurrency(quote.variance_amount)}
                                                 </span>
                                             </div>
+                                            {quote.inv_quote_terms && (
+                                                <div className="mt-1 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                                                    Terms: {quote.inv_quote_terms.payment_mode || 'NA'}
+                                                    {quote.inv_quote_terms.credit_days !== null &&
+                                                        ` • Credit ${quote.inv_quote_terms.credit_days}d`}
+                                                    {quote.inv_quote_terms.advance_percent !== null &&
+                                                        ` • Advance ${quote.inv_quote_terms.advance_percent}%`}
+                                                    {quote.inv_quote_terms.expected_dispatch_days !== null &&
+                                                        ` • Dispatch ${quote.inv_quote_terms.expected_dispatch_days}d`}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="flex items-center gap-2">
