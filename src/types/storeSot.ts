@@ -15,6 +15,8 @@ export interface SotModel {
     engine_cc: number | null;
     status: string;
     brand: { name: string; slug: string } | null;
+    primary_image: string | null;
+    media_shared: boolean | null;
 }
 
 // ─── Vehicle Variant ─────────────────────────────────────────

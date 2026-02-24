@@ -354,7 +354,9 @@ const buildInsuranceAddons = (row: Record<string, any>) => {
 export async function resolveModel(makeSlug: string, modelSlug: string): Promise<SotModel | null> {
     const { data: modelRows } = await (adminClient as any)
         .from('cat_models')
-        .select('id, brand_id, name, slug, brand:cat_brands!brand_id(name, slug), fuel_type, engine_cc, status')
+        .select(
+            'id, brand_id, name, slug, brand:cat_brands!brand_id(name, slug), fuel_type, engine_cc, status, primary_image, media_shared'
+        )
         .eq('status', 'ACTIVE');
 
     const candidates = (modelRows || []).filter((m: any) => {

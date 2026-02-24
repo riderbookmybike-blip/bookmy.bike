@@ -24,6 +24,7 @@ import {
     SKU_SELECT,
     getPdpSnapshot,
     flattenVariantSpecs,
+    buildGalleryAssets,
 } from '@/lib/server/storeSot';
 
 type Props = {
@@ -453,23 +454,19 @@ export default async function Page({ params, searchParams }: Props) {
 
     // 2.5 Fetch SKUs EARLY (Needed for Market Offer Filtering)
     const colorSkus: any[] = activeVariantSkus.map((sku: any) => {
-        // Build assets array from gallery_img_* columns (same SOT as Catalog)
-        const galleryUrls = [
-            sku.primary_image,
-            sku.gallery_img_1,
-            sku.gallery_img_2,
-            sku.gallery_img_3,
-            sku.gallery_img_4,
-            sku.gallery_img_5,
-            sku.gallery_img_6,
-        ].filter(Boolean);
-        const assets = galleryUrls.map((url: string, i: number) => ({
-            id: `${sku.id}-img-${i}`,
-            type: 'IMAGE',
-            url,
-            is_primary: i === 0,
-            position: i,
-        }));
+        // Build assets via SOT hierarchy: SKU → Colour → Variant → Model (if media_shared)
+        const skuWithModel = { ...sku, model: modelRow };
+        const assets = buildGalleryAssets(skuWithModel);
+
+        // Resolve primary image through inheritance chain
+        const resolvedImage =
+            sku.primary_image ||
+            (sku.colour?.primary_image && sku.colour?.media_shared ? sku.colour.primary_image : null) ||
+            (sku.vehicle_variant?.primary_image && sku.vehicle_variant?.media_shared
+                ? sku.vehicle_variant.primary_image
+                : null) ||
+            (modelRow?.primary_image && modelRow?.media_shared ? modelRow.primary_image : null) ||
+            null;
 
         return {
             id: sku.id,
@@ -477,7 +474,7 @@ export default async function Page({ params, searchParams }: Props) {
             slug: sku.slug,
             price_base: Number(sku.price_base || 0),
             is_primary: Boolean(sku.is_primary),
-            image_url: sku.primary_image || sku.colour?.primary_image || null,
+            image_url: resolvedImage,
             assets,
             parent_id: sku.id,
             zoom_factor: sku.zoom_factor ?? null,
