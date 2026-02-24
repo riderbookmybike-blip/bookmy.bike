@@ -98,6 +98,7 @@ export default function SKUMediaManager({
 
     // Remove BG State
     const [isRemovingBg, setIsRemovingBg] = useState(false);
+    const [isMirroring, setIsMirroring] = useState(false);
     const [activeTab, setActiveTab] = useState<'alignment' | 'media'>('alignment');
 
     // Delete/Replace Confirmation State
@@ -275,6 +276,62 @@ export default function SKUMediaManager({
             toast.error('Crop failed. Please try again.');
         } finally {
             setIsCropping(false);
+        }
+    };
+
+    // ── Mirror: actually flip the image file and re-upload ──
+    const handleMirror = async () => {
+        if (!primaryImage || isMirroring) return;
+        setIsMirroring(true);
+        try {
+            // Load image via CORS proxy
+            const img = new window.Image();
+            img.crossOrigin = 'anonymous';
+            await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = reject;
+                img.src = getProxiedUrl(primaryImage);
+            });
+
+            // Draw flipped onto canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d')!;
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0);
+
+            // Convert to WebP blob
+            const blob = await new Promise<Blob>(resolve => {
+                canvas.toBlob(b => resolve(b!), 'image/webp', 0.92);
+            });
+
+            // Upload to Supabase storage
+            const supabase = createClient();
+            const fileName = `catalog/mirrored_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.webp`;
+            const { error: uploadError } = await supabase.storage.from('vehicles').upload(fileName, blob, {
+                contentType: 'image/webp',
+                upsert: false,
+            });
+            if (uploadError) throw uploadError;
+
+            const {
+                data: { publicUrl },
+            } = supabase.storage.from('vehicles').getPublicUrl(fileName);
+
+            // Replace primary image with the mirrored one
+            const newImages = images.map(img => (img === primaryImage ? publicUrl : img));
+            setImages(newImages);
+            setPrimaryImage(publicUrl);
+            // Reset the CSS flip flag — the actual file is now mirrored
+            setIsFlipped(false);
+            toast.success('Image mirrored successfully');
+        } catch (err) {
+            console.error('[Mirror] Error:', err);
+            toast.error('Mirror failed. Please try again.');
+        } finally {
+            setIsMirroring(false);
         }
     };
 
@@ -728,11 +785,14 @@ export default function SKUMediaManager({
                                 {/* Action Buttons — 2×3 grid */}
                                 <div className="grid grid-cols-3 gap-2">
                                     <button
-                                        onClick={() => setIsFlipped(!isFlipped)}
-                                        className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border transition-all ${isFlipped ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600' : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-slate-200 hover:text-slate-600'}`}
+                                        onClick={handleMirror}
+                                        disabled={isMirroring || !primaryImage}
+                                        className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border transition-all ${isMirroring ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 animate-pulse' : 'border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-slate-200 hover:text-slate-600'}`}
                                     >
-                                        <RefreshCw size={16} className="mb-1" />
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Mirror</span>
+                                        <RefreshCw size={16} className={`mb-1 ${isMirroring ? 'animate-spin' : ''}`} />
+                                        <span className="text-[8px] font-black uppercase tracking-widest">
+                                            {isMirroring ? 'Flipping...' : 'Mirror'}
+                                        </span>
                                     </button>
 
                                     <label className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.03] text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all cursor-pointer">
