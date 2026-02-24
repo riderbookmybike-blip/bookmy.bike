@@ -18,13 +18,12 @@ import {
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { format } from 'date-fns';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import CreatePOModal from './components/CreatePOModal';
 
 interface PurchaseOrder {
     id: string;
     display_id: string | null;
-    status: string;
     po_status: string;
     total_po_value: number;
     payment_status: string;
@@ -32,6 +31,11 @@ interface PurchaseOrder {
     docket_number: string | null;
     expected_delivery_date: string | null;
     created_at: string;
+    request: {
+        tenant_id: string;
+        display_id: string | null;
+        sku_id: string;
+    };
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -52,7 +56,8 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 
 export default function OrdersPage() {
     const supabase = createClient();
-    const { tenantId } = useTenant();
+    const { tenantId, tenantSlug } = useTenant();
+    const params = useParams<{ slug?: string }>();
     const router = useRouter();
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
@@ -66,8 +71,15 @@ export default function OrdersPage() {
         try {
             let query = supabase
                 .from('inv_purchase_orders')
-                .select('*')
-                .eq('tenant_id', tenantId)
+                .select(
+                    `
+                    *,
+                    request:inv_requests!inner(
+                        tenant_id, display_id, sku_id
+                    )
+                    `
+                )
+                .eq('request.tenant_id', tenantId)
                 .order('created_at', { ascending: false });
 
             if (statusFilter !== 'ALL') {
@@ -100,6 +112,11 @@ export default function OrdersPage() {
         received: orders.filter(o => o.po_status === 'RECEIVED').length,
         total: orders.length,
     };
+
+    const resolvedSlug = tenantSlug || (typeof params?.slug === 'string' ? params.slug : undefined);
+    const ordersBasePath = resolvedSlug
+        ? `/app/${resolvedSlug}/dashboard/inventory/orders`
+        : '/dashboard/inventory/orders';
 
     return (
         <div className="space-y-8 pb-20">
@@ -229,7 +246,7 @@ export default function OrdersPage() {
                                     return (
                                         <tr
                                             key={po.id}
-                                            onClick={() => router.push(`/dashboard/inventory/orders/${po.id}`)}
+                                            onClick={() => router.push(`${ordersBasePath}/${po.id}`)}
                                             className="group border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors cursor-pointer"
                                         >
                                             <td className="px-6 py-4">

@@ -9,6 +9,7 @@ import type {
     AddDealerQuoteInput,
     ReceiveStockInput,
     InvRequestStatus,
+    InvPoStatus,
     InvStockStatus,
 } from '@/types/inventory';
 
@@ -20,6 +21,13 @@ type ActionResult<T = unknown> = {
     success: boolean;
     data?: T;
     message?: string;
+};
+
+const PO_STATUS_TRANSITIONS: Record<InvPoStatus, InvPoStatus[]> = {
+    DRAFT: ['SENT'],
+    SENT: ['SHIPPED'],
+    SHIPPED: ['RECEIVED'],
+    RECEIVED: [],
 };
 
 // =============================================================================
@@ -82,17 +90,53 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
         const user = await getAuthUser();
         if (!user) return { success: false, message: 'Unauthorized' };
 
-        // Calculate expected_total from the selected bundled_item_ids
-        const { data: items, error: itemsErr } = await adminClient
-            .from('inv_request_items')
-            .select('id, expected_amount')
-            .in('id', input.bundled_item_ids);
+        const { data: request, error: requestErr } = await adminClient
+            .from('inv_requests')
+            .select('id, status')
+            .eq('id', input.request_id)
+            .single();
 
-        if (itemsErr || !items) {
-            return { success: false, message: 'Failed to fetch request items' };
+        if (requestErr || !request) {
+            return { success: false, message: 'Requisition not found' };
         }
 
-        const expectedTotal = items.reduce((sum, item) => sum + Number(item.expected_amount), 0);
+        if (request.status !== 'QUOTING') {
+            return { success: false, message: `Cannot add quote: requisition is ${request.status}` };
+        }
+
+        const normalizedItemIds = Array.from(new Set((input.bundled_item_ids || []).filter(Boolean)));
+        let resolvedItemIds: string[] = normalizedItemIds;
+        let expectedTotal = 0;
+
+        if (normalizedItemIds.length > 0) {
+            const { data: items, error: itemsErr } = await adminClient
+                .from('inv_request_items')
+                .select('id, expected_amount')
+                .eq('request_id', input.request_id)
+                .in('id', normalizedItemIds);
+
+            if (itemsErr || !items) {
+                return { success: false, message: 'Failed to fetch selected cost lines' };
+            }
+
+            if (items.length !== normalizedItemIds.length) {
+                return { success: false, message: 'Some selected cost lines are invalid for this requisition' };
+            }
+
+            expectedTotal = items.reduce((sum, item) => sum + Number(item.expected_amount), 0);
+        } else {
+            const { data: allItems, error: allItemsErr } = await adminClient
+                .from('inv_request_items')
+                .select('id, expected_amount')
+                .eq('request_id', input.request_id);
+
+            if (allItemsErr || !allItems) {
+                return { success: false, message: 'Failed to fetch requisition cost lines' };
+            }
+
+            resolvedItemIds = allItems.map(item => item.id);
+            expectedTotal = allItems.reduce((sum, item) => sum + Number(item.expected_amount), 0);
+        }
 
         const { data: quote, error: quoteErr } = await adminClient
             .from('inv_dealer_quotes')
@@ -100,7 +144,7 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
                 request_id: input.request_id,
                 dealer_tenant_id: input.dealer_tenant_id,
                 quoted_by_user_id: user.id,
-                bundled_item_ids: input.bundled_item_ids,
+                bundled_item_ids: resolvedItemIds,
                 bundled_amount: input.bundled_amount,
                 expected_total: expectedTotal,
                 transport_amount: input.transport_amount || 0,
@@ -116,7 +160,7 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
         }
 
         revalidatePath('/dashboard/inventory');
-        return { success: true, data: quote };
+        return { success: true, data: quote, message: 'Dealer quote added' };
     } catch (err: unknown) {
         return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
@@ -134,12 +178,52 @@ export async function selectQuote(quoteId: string): Promise<ActionResult> {
         // Fetch the winning quote
         const { data: quote, error: fetchErr } = await adminClient
             .from('inv_dealer_quotes')
-            .select('id, request_id, dealer_tenant_id, bundled_amount, transport_amount')
+            .select('id, request_id, dealer_tenant_id, bundled_amount, transport_amount, status')
             .eq('id', quoteId)
             .single();
 
         if (fetchErr || !quote) {
             return { success: false, message: 'Quote not found' };
+        }
+
+        if (quote.status === 'REJECTED') {
+            return { success: false, message: 'Rejected quote cannot be selected' };
+        }
+
+        const { data: existingPO } = await adminClient
+            .from('inv_purchase_orders')
+            .select('id, display_id, quote_id')
+            .eq('request_id', quote.request_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (existingPO && existingPO.quote_id !== quoteId) {
+            return {
+                success: false,
+                message: `PO ${existingPO.display_id || existingPO.id} already exists for another selected quote`,
+            };
+        }
+
+        if (existingPO && existingPO.quote_id === quoteId) {
+            await adminClient.from('inv_dealer_quotes').update({ status: 'SELECTED' }).eq('id', quoteId);
+            await adminClient
+                .from('inv_dealer_quotes')
+                .update({ status: 'REJECTED' })
+                .eq('request_id', quote.request_id)
+                .neq('id', quoteId)
+                .eq('status', 'SUBMITTED');
+            await adminClient
+                .from('inv_requests')
+                .update({ status: 'ORDERED', updated_at: new Date().toISOString() })
+                .eq('id', quote.request_id);
+
+            revalidatePath('/dashboard/inventory');
+            return {
+                success: true,
+                data: existingPO,
+                message: `PO ${existingPO.display_id || existingPO.id} already exists`,
+            };
         }
 
         const totalPoValue = Number(quote.bundled_amount) + Number(quote.transport_amount);
@@ -188,7 +272,149 @@ export async function selectQuote(quoteId: string): Promise<ActionResult> {
 }
 
 // =============================================================================
-// 4. RECORD PAYMENT — Links advance/full payment to a PO
+// 4. CREATE PO FROM QUOTE — Used by Orders modal / manual PO conversion
+// =============================================================================
+
+export async function createPurchaseOrderFromQuote(input: {
+    quote_id: string;
+    request_id?: string;
+    expected_delivery_date?: string | null;
+    transporter_name?: string | null;
+    docket_number?: string | null;
+}): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        const { data: quote, error: quoteErr } = await adminClient
+            .from('inv_dealer_quotes')
+            .select('id, request_id')
+            .eq('id', input.quote_id)
+            .single();
+
+        if (quoteErr || !quote) return { success: false, message: 'Quote not found' };
+
+        if (input.request_id && input.request_id !== quote.request_id) {
+            return { success: false, message: 'Quote does not belong to selected requisition' };
+        }
+
+        const selectionResult = await selectQuote(input.quote_id);
+        if (!selectionResult.success || !selectionResult.data) {
+            return selectionResult;
+        }
+
+        const poId = (selectionResult.data as { id: string }).id;
+        const updates: {
+            expected_delivery_date?: string | null;
+            transporter_name?: string | null;
+            docket_number?: string | null;
+            updated_at: string;
+            updated_by: string;
+        } = {
+            updated_at: new Date().toISOString(),
+            updated_by: user.id,
+        };
+
+        if (input.expected_delivery_date !== undefined) updates.expected_delivery_date = input.expected_delivery_date;
+        if (input.transporter_name !== undefined) updates.transporter_name = input.transporter_name || null;
+        if (input.docket_number !== undefined) updates.docket_number = input.docket_number || null;
+
+        if (
+            input.expected_delivery_date !== undefined ||
+            input.transporter_name !== undefined ||
+            input.docket_number !== undefined
+        ) {
+            const { error: updateErr } = await adminClient.from('inv_purchase_orders').update(updates).eq('id', poId);
+            if (updateErr) {
+                return { success: false, message: updateErr.message };
+            }
+        }
+
+        revalidatePath('/dashboard/inventory');
+        return {
+            success: true,
+            data: selectionResult.data,
+            message: selectionResult.message || 'Purchase order created',
+        };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 5. UPDATE PO — lifecycle + logistics updates
+// =============================================================================
+
+export async function updatePurchaseOrder(input: {
+    po_id: string;
+    po_status?: InvPoStatus;
+    transporter_name?: string | null;
+    docket_number?: string | null;
+    expected_delivery_date?: string | null;
+}): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        const { data: currentPO, error: currentErr } = await adminClient
+            .from('inv_purchase_orders')
+            .select('id, po_status')
+            .eq('id', input.po_id)
+            .single();
+
+        if (currentErr || !currentPO) {
+            return { success: false, message: 'PO not found' };
+        }
+
+        const updates: {
+            updated_at: string;
+            updated_by: string;
+            po_status?: InvPoStatus;
+            transporter_name?: string | null;
+            docket_number?: string | null;
+            expected_delivery_date?: string | null;
+        } = {
+            updated_at: new Date().toISOString(),
+            updated_by: user.id,
+        };
+
+        if (input.po_status && input.po_status !== currentPO.po_status) {
+            const allowedNext = PO_STATUS_TRANSITIONS[currentPO.po_status as InvPoStatus] || [];
+            if (!allowedNext.includes(input.po_status)) {
+                return {
+                    success: false,
+                    message: `Invalid status transition: ${currentPO.po_status} -> ${input.po_status}`,
+                };
+            }
+            updates.po_status = input.po_status;
+        }
+
+        if (input.transporter_name !== undefined) updates.transporter_name = input.transporter_name || null;
+        if (input.docket_number !== undefined) updates.docket_number = input.docket_number || null;
+        if (input.expected_delivery_date !== undefined) updates.expected_delivery_date = input.expected_delivery_date;
+
+        const { data: updatedPO, error: updateErr } = await adminClient
+            .from('inv_purchase_orders')
+            .update(updates)
+            .eq('id', input.po_id)
+            .select(
+                'id, display_id, po_status, payment_status, expected_delivery_date, transporter_name, docket_number'
+            )
+            .single();
+
+        if (updateErr || !updatedPO) {
+            return { success: false, message: updateErr?.message || 'Failed to update PO' };
+        }
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, data: updatedPO, message: `PO updated to ${updatedPO.po_status}` };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 6. RECORD PAYMENT — Links advance/full payment to a PO
 // =============================================================================
 
 export async function recordPoPayment(poId: string, amountPaid: number, transactionId?: string): Promise<ActionResult> {
@@ -243,7 +469,7 @@ export async function recordPoPayment(poId: string, amountPaid: number, transact
 }
 
 // =============================================================================
-// 5. RECEIVE STOCK — Creates physical stock unit with mandatory QC media
+// 7. RECEIVE STOCK — Creates physical stock unit with mandatory QC media
 // =============================================================================
 
 export async function receiveStock(input: ReceiveStockInput): Promise<ActionResult> {
@@ -323,21 +549,33 @@ export async function receiveStock(input: ReceiveStockInput): Promise<ActionResu
 }
 
 // =============================================================================
-// 6. STOCK VISIBILITY — Cross-tenant stock query
+// 8. STOCK VISIBILITY — Cross-tenant stock query
 // =============================================================================
 
 export async function getAvailableStock(
     tenantId: string,
-    filters?: { sku_id?: string; include_shared?: boolean }
+    filters?: { sku_id?: string; include_shared?: boolean; available_only?: boolean }
 ): Promise<ActionResult> {
     try {
-        let query = adminClient.from('inv_stock').select('*').in('status', ['AVAILABLE', 'SOFT_LOCKED']);
+        let query = adminClient.from('inv_stock').select(
+            `
+                id, tenant_id, po_id, sku_id, branch_id, chassis_number, engine_number, battery_make,
+                media_chassis_url, media_engine_url, media_sticker_url, media_qc_video_url,
+                qc_status, status, is_shared, locked_by_tenant_id, locked_at, created_at, updated_at,
+                sku:cat_skus(name),
+                po:inv_purchase_orders(total_po_value)
+                `
+        );
 
         if (filters?.include_shared) {
             // Cross-tenant: own stock + shared stock from other tenants
             query = query.or(`tenant_id.eq.${tenantId},is_shared.eq.true`);
         } else {
             query = query.eq('tenant_id', tenantId);
+        }
+
+        if (filters?.available_only) {
+            query = query.in('status', ['AVAILABLE', 'SOFT_LOCKED']);
         }
 
         if (filters?.sku_id) {
@@ -354,7 +592,7 @@ export async function getAvailableStock(
 }
 
 // =============================================================================
-// 7. TOGGLE STOCK SHARING — Make stock visible to other tenants
+// 9. TOGGLE STOCK SHARING — Make stock visible to other tenants
 // =============================================================================
 
 export async function toggleStockSharing(stockId: string, isShared: boolean): Promise<ActionResult> {
@@ -377,7 +615,7 @@ export async function toggleStockSharing(stockId: string, isShared: boolean): Pr
 }
 
 // =============================================================================
-// 8. SOFT LOCK — Another tenant locks a shared stock unit
+// 10. SOFT LOCK — Another tenant locks a shared stock unit
 // =============================================================================
 
 export async function softLockStock(stockId: string, lockingTenantId: string): Promise<ActionResult> {
@@ -426,7 +664,7 @@ export async function softLockStock(stockId: string, lockingTenantId: string): P
 }
 
 // =============================================================================
-// 9. UNLOCK STOCK — Release a soft/hard lock
+// 11. UNLOCK STOCK — Release a soft/hard lock
 // =============================================================================
 
 export async function unlockStock(stockId: string): Promise<ActionResult> {
@@ -460,7 +698,7 @@ export async function unlockStock(stockId: string): Promise<ActionResult> {
 }
 
 // =============================================================================
-// 10. DATA FETCHING — Requests Pipeline
+// 12. DATA FETCHING — Requests Pipeline
 // =============================================================================
 
 export async function getRequests(tenantId: string): Promise<ActionResult> {
@@ -479,7 +717,7 @@ export async function getRequests(tenantId: string): Promise<ActionResult> {
 }
 
 // =============================================================================
-// 11. DATA FETCHING — Request Detail
+// 13. DATA FETCHING — Request Detail
 // =============================================================================
 
 export async function getRequestById(requestId: string): Promise<ActionResult> {
@@ -505,14 +743,24 @@ export async function getRequestById(requestId: string): Promise<ActionResult> {
 }
 
 // =============================================================================
-// 12. DATA FETCHING — Stock with Ledger
+// 14. DATA FETCHING — Stock with Ledger
 // =============================================================================
 
 export async function getStockById(stockId: string): Promise<ActionResult> {
     try {
         const { data, error } = await adminClient
             .from('inv_stock')
-            .select('*, inv_stock_ledger(*)')
+            .select(
+                `
+                *,
+                sku:cat_skus(name),
+                branch:id_locations(name, city),
+                po:inv_purchase_orders(id, display_id, request_id, total_po_value, po_status, payment_status, created_at),
+                owner:id_tenants!inv_stock_tenant_id_fkey(name, slug),
+                locker:id_tenants!inv_stock_locked_by_tenant_id_fkey(name, slug),
+                inv_stock_ledger(*)
+                `
+            )
             .eq('id', stockId)
             .single();
 
@@ -524,7 +772,7 @@ export async function getStockById(stockId: string): Promise<ActionResult> {
 }
 
 // =============================================================================
-// 13. DATA FETCHING — Supplier Tenants
+// 15. DATA FETCHING — Supplier Tenants
 // =============================================================================
 
 export async function getSupplierTenants(): Promise<ActionResult> {
@@ -543,7 +791,7 @@ export async function getSupplierTenants(): Promise<ActionResult> {
 }
 
 // =============================================================================
-// 14. STOCK CHECK — For booking shortage gate
+// 16. STOCK CHECK — For booking shortage gate
 // =============================================================================
 
 export async function checkStockAvailability(

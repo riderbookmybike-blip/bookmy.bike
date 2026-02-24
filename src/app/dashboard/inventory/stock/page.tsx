@@ -18,43 +18,60 @@ import {
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { format } from 'date-fns';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { getAvailableStock } from '@/actions/inventory';
 
 interface StockItem {
     id: string;
     sku_id: string;
-    sku_name: string;
+    tenant_id: string;
+    branch_id: string;
+    is_shared: boolean;
+    locked_by_tenant_id: string | null;
     chassis_number: string;
     engine_number: string;
     status: string;
-    dealer_price: number | null;
-    offer_price: number | null;
-    invoice_date: string | null;
+    qc_status: string;
     created_at: string;
+    sku: { name: string | null } | { name: string | null }[] | null;
+    po: { total_po_value: number } | { total_po_value: number }[] | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
     AVAILABLE:
         'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
-    RESERVED:
+    SOFT_LOCKED:
         'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
+    HARD_LOCKED:
+        'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20',
     SOLD: 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10',
-    DAMAGED: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20',
     IN_TRANSIT:
         'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
 };
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
     AVAILABLE: <CheckCircle2 size={14} />,
-    RESERVED: <Tag size={14} />,
+    SOFT_LOCKED: <Tag size={14} />,
+    HARD_LOCKED: <AlertTriangle size={14} />,
     SOLD: <Package size={14} />,
-    DAMAGED: <AlertTriangle size={14} />,
     IN_TRANSIT: <Truck size={14} />,
 };
 
+const parseSkuName = (value: StockItem['sku']) => {
+    if (!value) return '';
+    if (Array.isArray(value)) return value[0]?.name || '';
+    return value.name || '';
+};
+
+const parsePoValue = (value: StockItem['po']) => {
+    if (!value) return null;
+    if (Array.isArray(value)) return value[0]?.total_po_value || null;
+    return value.total_po_value || null;
+};
+
 export default function StockPage() {
-    const { tenantId } = useTenant();
+    const { tenantId, tenantSlug } = useTenant();
+    const params = useParams<{ slug?: string }>();
     const router = useRouter();
     const [stock, setStock] = useState<StockItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -88,16 +105,26 @@ export default function StockPage() {
         return (
             item.chassis_number?.toLowerCase().includes(q) ||
             item.engine_number?.toLowerCase().includes(q) ||
-            item.sku_name?.toLowerCase().includes(q)
+            parseSkuName(item.sku).toLowerCase().includes(q)
         );
     });
 
+    const filteredByStatus = statusFilter === 'ALL' ? filtered : filtered.filter(item => item.status === statusFilter);
+
     const stats = {
         available: stock.filter(s => s.status === 'AVAILABLE').length,
-        reserved: stock.filter(s => s.status === 'RESERVED').length,
+        reserved: stock.filter(s => s.status === 'SOFT_LOCKED' || s.status === 'HARD_LOCKED').length,
         inTransit: stock.filter(s => s.status === 'IN_TRANSIT').length,
         total: stock.length,
     };
+
+    const resolvedSlug = tenantSlug || (typeof params?.slug === 'string' ? params.slug : undefined);
+    const ordersBasePath = resolvedSlug
+        ? `/app/${resolvedSlug}/dashboard/inventory/orders`
+        : '/dashboard/inventory/orders';
+    const stockBasePath = resolvedSlug
+        ? `/app/${resolvedSlug}/dashboard/inventory/stock`
+        : '/dashboard/inventory/stock';
 
     return (
         <div className="space-y-8 pb-20">
@@ -113,7 +140,7 @@ export default function StockPage() {
                     </p>
                 </div>
                 <button
-                    onClick={() => router.push('/dashboard/inventory/orders')}
+                    onClick={() => router.push(ordersBasePath)}
                     className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-black text-sm transition-all shadow-lg shadow-emerald-500/25 active:scale-95 uppercase tracking-wide shrink-0"
                 >
                     <ArrowRight size={18} strokeWidth={3} />
@@ -158,7 +185,7 @@ export default function StockPage() {
                     />
                 </div>
                 <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-none">
-                    {['ALL', 'AVAILABLE', 'RESERVED', 'IN_TRANSIT', 'SOLD', 'DAMAGED'].map(status => (
+                    {['ALL', 'AVAILABLE', 'SOFT_LOCKED', 'HARD_LOCKED', 'IN_TRANSIT', 'SOLD'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
@@ -183,7 +210,7 @@ export default function StockPage() {
                             Auditing Physical Assets...
                         </span>
                     </div>
-                ) : filtered.length === 0 ? (
+                ) : filteredByStatus.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-6 text-center px-6">
                         <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-300 dark:text-slate-700">
                             <Package size={40} />
@@ -223,10 +250,10 @@ export default function StockPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map(item => (
+                                {filteredByStatus.map(item => (
                                     <tr
                                         key={item.id}
-                                        onClick={() => router.push(`/dashboard/inventory/stock/${item.id}`)}
+                                        onClick={() => router.push(`${stockBasePath}/${item.id}`)}
                                         className="group border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors cursor-pointer"
                                     >
                                         <td className="px-6 py-4">
@@ -247,13 +274,13 @@ export default function StockPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase truncate max-w-[180px] block">
-                                                {item.sku_name}
+                                                {parseSkuName(item.sku) || item.sku_id}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <span className="text-sm font-black text-slate-900 dark:text-white">
-                                                {item.dealer_price
-                                                    ? `₹${Number(item.dealer_price).toLocaleString()}`
+                                                {parsePoValue(item.po)
+                                                    ? `₹${Number(parsePoValue(item.po)).toLocaleString()}`
                                                     : '—'}
                                             </span>
                                         </td>

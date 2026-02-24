@@ -3,23 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import {
-    ArrowLeft,
-    Truck,
-    Package,
-    Clock,
-    CheckCircle2,
-    XCircle,
-    Loader2,
-    ExternalLink,
-    Calendar,
-    Building2,
-    FileText,
-    Plus,
-} from 'lucide-react';
+import { ArrowLeft, Truck, Package, CheckCircle2, Loader2, Plus, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { useTenant } from '@/lib/tenant/tenantContext';
+import { recordPoPayment, updatePurchaseOrder } from '@/actions/inventory';
 
 interface PODetail {
     id: string;
@@ -44,6 +31,12 @@ interface PODetail {
         qc_status: string;
         status: string;
     }>;
+    inv_po_payments?: Array<{
+        id: string;
+        amount_paid: number;
+        payment_date: string;
+        transaction_id: string | null;
+    }>;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -56,14 +49,23 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function PODetailPage() {
-    const params = useParams();
+    const params = useParams<{ id?: string; slug?: string }>();
     const router = useRouter();
-    const { tenantId } = useTenant();
     const poId = params.id as string;
+    const slug = typeof params?.slug === 'string' ? params.slug : undefined;
+    const ordersBasePath = slug ? `/app/${slug}/dashboard/inventory/orders` : '/dashboard/inventory/orders';
 
     const [po, setPO] = useState<PODetail | null>(null);
     const [skuName, setSkuName] = useState<string>('');
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [logisticsSaving, setLogisticsSaving] = useState(false);
+    const [paymentSaving, setPaymentSaving] = useState(false);
+    const [expectedDate, setExpectedDate] = useState('');
+    const [transporterName, setTransporterName] = useState('');
+    const [docketNumber, setDocketNumber] = useState('');
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [transactionId, setTransactionId] = useState('');
 
     const fetchPO = useCallback(async () => {
         const supabase = createClient();
@@ -77,6 +79,9 @@ export default function PODetailPage() {
                 ),
                 stock:inv_stock (
                     id, chassis_number, engine_number, qc_status, status
+                ),
+                inv_po_payments (
+                    id, amount_paid, payment_date, transaction_id
                 )
             `
             )
@@ -91,6 +96,9 @@ export default function PODetailPage() {
 
         const poData = data as any;
         setPO(poData);
+        setExpectedDate(poData.expected_delivery_date || '');
+        setTransporterName(poData.transporter_name || '');
+        setDocketNumber(poData.docket_number || '');
 
         // Resolve SKU names
         if (poData?.request?.sku_id) {
@@ -123,7 +131,7 @@ export default function PODetailPage() {
                 <Package size={48} className="text-amber-500" />
                 <p className="text-lg font-black text-slate-900 dark:text-white uppercase">PO Not Found</p>
                 <button
-                    onClick={() => router.push('/dashboard/inventory/orders')}
+                    onClick={() => router.push(ordersBasePath)}
                     className="text-sm font-bold text-indigo-500 hover:underline"
                 >
                     Back to List
@@ -133,13 +141,79 @@ export default function PODetailPage() {
     }
 
     const canCreateGRN = po.po_status === 'SHIPPED'; // Simplified GRN logic for new schema
+    const totalPaid = (po.inv_po_payments || []).reduce((sum, payment) => sum + Number(payment.amount_paid || 0), 0);
+    const dueAmount = Math.max(0, Number(po.total_po_value || 0) - totalPaid);
+
+    const handleAdvanceStatus = async (nextStatus: 'SENT' | 'SHIPPED') => {
+        setActionLoading(true);
+        try {
+            const result = await updatePurchaseOrder({ po_id: po.id, po_status: nextStatus });
+            if (!result.success) {
+                toast.error(result.message || 'Failed to update PO status');
+                return;
+            }
+            toast.success(result.message || `PO moved to ${nextStatus}`);
+            await fetchPO();
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to update PO status');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleSaveLogistics = async () => {
+        setLogisticsSaving(true);
+        try {
+            const result = await updatePurchaseOrder({
+                po_id: po.id,
+                expected_delivery_date: expectedDate || null,
+                transporter_name: transporterName || null,
+                docket_number: docketNumber || null,
+            });
+            if (!result.success) {
+                toast.error(result.message || 'Failed to save logistics');
+                return;
+            }
+            toast.success('Logistics updated');
+            await fetchPO();
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to save logistics');
+        } finally {
+            setLogisticsSaving(false);
+        }
+    };
+
+    const handleRecordPayment = async () => {
+        const amount = Number(paymentAmount);
+        if (!amount || Number.isNaN(amount) || amount <= 0) {
+            toast.error('Enter valid payment amount');
+            return;
+        }
+
+        setPaymentSaving(true);
+        try {
+            const result = await recordPoPayment(po.id, amount, transactionId.trim() || undefined);
+            if (!result.success) {
+                toast.error(result.message || 'Failed to record payment');
+                return;
+            }
+            toast.success(result.message || 'Payment recorded');
+            setPaymentAmount('');
+            setTransactionId('');
+            await fetchPO();
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to record payment');
+        } finally {
+            setPaymentSaving(false);
+        }
+    };
 
     return (
         <div className="space-y-8 pb-20 max-w-6xl mx-auto">
             {/* Back + Header */}
             <div className="flex items-center gap-4">
                 <button
-                    onClick={() => router.push('/dashboard/inventory/orders')}
+                    onClick={() => router.push(ordersBasePath)}
                     className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
                 >
                     <ArrowLeft size={20} className="text-slate-500" />
@@ -154,7 +228,7 @@ export default function PODetailPage() {
                 </div>
                 {canCreateGRN && (
                     <button
-                        onClick={() => router.push(`/dashboard/inventory/orders/${po.id}/grn`)}
+                        onClick={() => router.push(`${ordersBasePath}/${po.id}/grn`)}
                         className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-2xl font-black text-sm transition-all shadow-lg shadow-emerald-500/25 active:scale-95 uppercase tracking-wide"
                     >
                         <Plus size={16} strokeWidth={3} />
@@ -162,6 +236,29 @@ export default function PODetailPage() {
                     </button>
                 )}
             </div>
+
+            {(po.po_status === 'DRAFT' || po.po_status === 'SENT') && (
+                <div className="flex flex-wrap gap-3">
+                    {po.po_status === 'DRAFT' && (
+                        <button
+                            onClick={() => handleAdvanceStatus('SENT')}
+                            disabled={actionLoading}
+                            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider disabled:cursor-not-allowed"
+                        >
+                            {actionLoading ? 'Updating...' : 'Mark As Sent'}
+                        </button>
+                    )}
+                    {po.po_status === 'SENT' && (
+                        <button
+                            onClick={() => handleAdvanceStatus('SHIPPED')}
+                            disabled={actionLoading}
+                            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider disabled:cursor-not-allowed"
+                        >
+                            {actionLoading ? 'Updating...' : 'Mark As Shipped'}
+                        </button>
+                    )}
+                </div>
+            )}
 
             {/* Info Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -194,31 +291,44 @@ export default function PODetailPage() {
             </div>
 
             {/* Logistics */}
-            {(po.transporter_name || po.docket_number) && (
-                <div className="bg-white dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-white/5 flex items-center gap-8">
-                    <Truck size={24} className="text-indigo-500 shrink-0" />
-                    <div className="flex gap-8">
-                        {po.transporter_name && (
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    Transporter
-                                </p>
-                                <p className="text-xs font-black text-slate-900 dark:text-white uppercase">
-                                    {po.transporter_name}
-                                </p>
-                            </div>
-                        )}
-                        {po.docket_number && (
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    LR / Docket
-                                </p>
-                                <p className="text-xs font-black text-slate-900 dark:text-white">{po.docket_number}</p>
-                            </div>
-                        )}
-                    </div>
+            <div className="bg-white dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4">
+                <div className="flex items-center gap-2">
+                    <Truck size={18} className="text-indigo-500" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logistics</p>
                 </div>
-            )}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input
+                        type="text"
+                        value={transporterName}
+                        onChange={e => setTransporterName(e.target.value)}
+                        placeholder="Transporter name"
+                        className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-3 py-2 text-xs font-black text-slate-900 dark:text-white placeholder:text-slate-400"
+                    />
+                    <input
+                        type="text"
+                        value={docketNumber}
+                        onChange={e => setDocketNumber(e.target.value)}
+                        placeholder="Docket / LR number"
+                        className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-3 py-2 text-xs font-black text-slate-900 dark:text-white placeholder:text-slate-400"
+                    />
+                    <input
+                        type="date"
+                        value={expectedDate || ''}
+                        onChange={e => setExpectedDate(e.target.value)}
+                        className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-3 py-2 text-xs font-black text-slate-900 dark:text-white"
+                    />
+                </div>
+                <div className="flex justify-end">
+                    <button
+                        onClick={handleSaveLogistics}
+                        disabled={logisticsSaving}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-wider disabled:opacity-70"
+                    >
+                        <Save size={12} />
+                        {logisticsSaving ? 'Saving...' : 'Save Logistics'}
+                    </button>
+                </div>
+            </div>
 
             {/* Items Summary (Single SKU per PO in strict relational) */}
             <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden p-8">
@@ -276,6 +386,88 @@ export default function PODetailPage() {
                             <p className="text-xs font-bold text-slate-400 uppercase">
                                 No units logged yet. Log receipt once vehicle arrives.
                             </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5">
+                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                        Payment Ledger
+                    </h2>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">PO Value</p>
+                            <p className="text-xs font-black text-slate-900 dark:text-white">
+                                ₹{Number(po.total_po_value || 0).toLocaleString('en-IN')}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Paid</p>
+                            <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                                ₹{totalPaid.toLocaleString('en-IN')}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Due</p>
+                            <p className="text-xs font-black text-amber-600 dark:text-amber-400">
+                                ₹{dueAmount.toLocaleString('en-IN')}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</p>
+                            <p className="text-xs font-black text-slate-900 dark:text-white">
+                                {po.payment_status.replace(/_/g, ' ')}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <input
+                            type="number"
+                            min={0}
+                            value={paymentAmount}
+                            onChange={e => setPaymentAmount(e.target.value)}
+                            placeholder="Payment amount"
+                            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-3 py-2 text-xs font-black text-slate-900 dark:text-white placeholder:text-slate-400"
+                        />
+                        <input
+                            type="text"
+                            value={transactionId}
+                            onChange={e => setTransactionId(e.target.value)}
+                            placeholder="Transaction ID (optional)"
+                            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-3 py-2 text-xs font-black text-slate-900 dark:text-white placeholder:text-slate-400"
+                        />
+                        <button
+                            onClick={handleRecordPayment}
+                            disabled={paymentSaving}
+                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider disabled:cursor-not-allowed"
+                        >
+                            {paymentSaving ? 'Saving...' : 'Record Payment'}
+                        </button>
+                    </div>
+
+                    {(po.inv_po_payments || []).length > 0 && (
+                        <div className="divide-y divide-slate-100 dark:divide-white/10 rounded-2xl border border-slate-100 dark:border-white/10">
+                            {(po.inv_po_payments || []).map(payment => (
+                                <div
+                                    key={payment.id}
+                                    className="px-4 py-3 flex items-center justify-between text-[10px] uppercase"
+                                >
+                                    <span className="font-black text-slate-900 dark:text-white">
+                                        ₹{Number(payment.amount_paid || 0).toLocaleString('en-IN')}
+                                    </span>
+                                    <span className="font-bold text-slate-500">
+                                        {format(new Date(payment.payment_date), 'dd MMM yyyy, hh:mm a')}
+                                    </span>
+                                    <span className="font-bold text-slate-400">
+                                        {payment.transaction_id || 'No Ref'}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
