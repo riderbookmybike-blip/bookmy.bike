@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
     FileOutput,
@@ -17,9 +17,12 @@ import {
     ShieldAlert,
     Bookmark,
     Zap,
+    User2,
+    CalendarClock,
+    Flag,
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
-import { format } from 'date-fns';
+import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns';
 import { useParams, useRouter } from 'next/navigation';
 import NewRequisitionModal from './components/NewRequisitionModal';
 
@@ -30,7 +33,20 @@ interface Requisition {
     source_type: string;
     booking_id: string | null;
     delivery_branch_id: string | null;
+    created_by: string | null;
     created_at: string;
+    booking?: {
+        id: string;
+        display_id: string | null;
+        delivery_date: string | null;
+        qty: number | null;
+        status: string | null;
+    } | null;
+    delivery_branch?: {
+        id: string;
+        name: string | null;
+        city: string | null;
+    } | null;
     items: Array<{
         id: string;
         cost_type: string;
@@ -38,7 +54,7 @@ interface Requisition {
         description: string | null;
     }>;
     quotes: Array<{ id: string; status: string }>;
-    orders: Array<{ id: string }>;
+    orders: Array<{ id: string; display_id: string | null; po_status: string; expected_delivery_date: string | null }>;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -59,6 +75,52 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
     CANCELLED: <XCircle size={14} />,
 };
 
+type RequestPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' | 'CLOSED' | 'CANCELLED';
+
+const PRIORITY_BADGES: Record<RequestPriority, string> = {
+    LOW: 'bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300 border-slate-200 dark:border-white/10',
+    MEDIUM: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/20',
+    HIGH: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border-amber-200 dark:border-amber-500/20',
+    URGENT: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 border-rose-200 dark:border-rose-500/20',
+    CLOSED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20',
+    CANCELLED:
+        'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 border-rose-200 dark:border-rose-500/20',
+};
+
+function parseDate(value?: string | null): Date | null {
+    if (!value) return null;
+    const parsedIso = parseISO(value);
+    if (isValid(parsedIso)) return parsedIso;
+    const parsed = new Date(value);
+    return isValid(parsed) ? parsed : null;
+}
+
+function formatDateValue(value?: string | null, fallback = 'Not Scheduled'): string {
+    const parsed = parseDate(value);
+    if (!parsed) return fallback;
+    return format(parsed, 'dd MMM yyyy');
+}
+
+function resolvePriority(req: Requisition): RequestPriority {
+    if (req.status === 'CANCELLED') return 'CANCELLED';
+    if (req.status === 'RECEIVED') return 'CLOSED';
+
+    const poSchedule = req.orders?.find(order => !!order.expected_delivery_date)?.expected_delivery_date || null;
+    const scheduledDate = poSchedule || req.booking?.delivery_date || null;
+    const parsedSchedule = parseDate(scheduledDate);
+
+    if (parsedSchedule) {
+        const dayDelta = differenceInCalendarDays(parsedSchedule, new Date());
+        if (dayDelta <= 2) return 'URGENT';
+        if (dayDelta <= 7) return 'HIGH';
+        if (dayDelta <= 15) return 'MEDIUM';
+        return 'LOW';
+    }
+
+    if (req.source_type === 'BOOKING') return 'HIGH';
+    return 'MEDIUM';
+}
+
 export default function RequisitionsPage() {
     const supabase = createClient();
     const { tenantId, tenantSlug } = useTenant();
@@ -69,6 +131,7 @@ export default function RequisitionsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [creatorNameMap, setCreatorNameMap] = useState<Record<string, string>>({});
 
     const fetchRequisitions = useCallback(async () => {
         if (!tenantId) return;
@@ -78,7 +141,7 @@ export default function RequisitionsPage() {
                 .from('inv_requests')
                 .select(
                     `
-                    *,
+                    id, display_id, status, source_type, booking_id, delivery_branch_id, created_by, created_at,
                     items:inv_request_items (
                         id, cost_type, expected_amount, description
                     ),
@@ -86,7 +149,13 @@ export default function RequisitionsPage() {
                         id, status
                     ),
                     orders:inv_purchase_orders(
-                        id
+                        id, display_id, po_status, expected_delivery_date
+                    ),
+                    booking:crm_bookings(
+                        id, display_id, delivery_date, qty, status
+                    ),
+                    delivery_branch:id_locations!inv_requests_delivery_branch_id_fkey(
+                        id, name, city
                     )
                 `
                 )
@@ -99,7 +168,29 @@ export default function RequisitionsPage() {
 
             const { data, error } = await query;
             if (error) throw error;
-            setRequisitions((data as any[]) || []);
+
+            const rows = (data as Requisition[]) || [];
+            setRequisitions(rows);
+
+            const creatorIds = Array.from(new Set(rows.map(row => row.created_by).filter(Boolean))) as string[];
+            if (creatorIds.length > 0) {
+                const { data: membersData, error: membersError } = await supabase
+                    .from('id_members')
+                    .select('id, full_name')
+                    .in('id', creatorIds);
+
+                if (!membersError && Array.isArray(membersData)) {
+                    const nextMap: Record<string, string> = {};
+                    for (const member of membersData as Array<{ id: string; full_name: string | null }>) {
+                        if (member.id && member.full_name) nextMap[member.id] = member.full_name;
+                    }
+                    setCreatorNameMap(nextMap);
+                } else {
+                    setCreatorNameMap({});
+                }
+            } else {
+                setCreatorNameMap({});
+            }
         } catch (err) {
             console.error('Error fetching requisitions:', err);
         } finally {
@@ -111,11 +202,48 @@ export default function RequisitionsPage() {
         fetchRequisitions();
     }, [fetchRequisitions]);
 
-    const filteredRequisitions = requisitions.filter(req => {
+    const requisitionsWithContext = useMemo(() => {
+        return requisitions.map(req => {
+            const poSchedule =
+                req.orders?.find(order => !!order.expected_delivery_date)?.expected_delivery_date || null;
+            const scheduleDate = poSchedule || req.booking?.delivery_date || null;
+            const scheduleSource = poSchedule ? 'PO ETA' : req.booking?.delivery_date ? 'Booking' : 'Not Set';
+            const createdByName =
+                (req.created_by && creatorNameMap[req.created_by]) ||
+                (req.created_by ? `User ${req.created_by.slice(0, 6).toUpperCase()}` : 'System');
+            const bookingLabel =
+                req.booking?.display_id ||
+                (req.booking_id ? `BK-${req.booking_id.slice(0, 8).toUpperCase()}` : 'Direct');
+            const deliveryBranchLabel = req.delivery_branch?.name || 'Branch Not Set';
+            const priority = resolvePriority(req);
+
+            return {
+                ...req,
+                createdByName,
+                bookingLabel,
+                deliveryBranchLabel,
+                scheduleDate,
+                scheduleSource,
+                priority,
+            };
+        });
+    }, [requisitions, creatorNameMap]);
+
+    const filteredRequisitions = requisitionsWithContext.filter(req => {
         const query = searchQuery.toLowerCase().trim();
         if (!query) return true;
-        const idMatch = (req.display_id || req.id).toLowerCase().includes(query);
-        return idMatch;
+        const searchableText = [
+            req.display_id || req.id,
+            req.bookingLabel,
+            req.createdByName,
+            req.deliveryBranchLabel,
+            req.priority,
+            req.source_type,
+            req.status,
+        ]
+            .join(' ')
+            .toLowerCase();
+        return searchableText.includes(query);
     });
 
     const stats = {
@@ -185,7 +313,7 @@ export default function RequisitionsPage() {
                     />
                     <input
                         type="text"
-                        placeholder="SEARCH BY ID..."
+                        placeholder="SEARCH ID / BOOKING / REQUESTER / BRANCH..."
                         className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl py-3 pl-12 pr-4 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all uppercase tracking-widest placeholder:text-slate-400/50"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
@@ -242,6 +370,18 @@ export default function RequisitionsPage() {
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Source
                                     </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Booking
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Raised By
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Delivery Plan
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Priority
+                                    </th>
                                     <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Cost Lines
                                     </th>
@@ -294,6 +434,51 @@ export default function RequisitionsPage() {
                                                     <Zap size={10} />
                                                 )}
                                                 {req.source_type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                                    {req.bookingLabel}
+                                                </span>
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    {req.source_type === 'BOOKING'
+                                                        ? `Qty ${req.booking?.qty || 1}`
+                                                        : 'NO BOOKING LINK'}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="inline-flex items-center gap-2">
+                                                <span className="p-1.5 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-400">
+                                                    <User2 size={12} />
+                                                </span>
+                                                <span className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                                                    {req.createdByName}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-300">
+                                                    <CalendarClock size={12} />
+                                                    <span className="text-[10px] font-black uppercase tracking-wider">
+                                                        {formatDateValue(req.scheduleDate)}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    {req.deliveryBranchLabel} • {req.scheduleSource}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span
+                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest ${
+                                                    PRIORITY_BADGES[req.priority]
+                                                }`}
+                                            >
+                                                <Flag size={10} />
+                                                {req.priority}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-center">
