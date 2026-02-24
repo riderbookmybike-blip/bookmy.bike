@@ -24,6 +24,22 @@ export interface CatalogModel {
     item_tax_rate: number | null;
     position: number;
     status: ItemStatus;
+    // Media
+    primary_image?: string | null;
+    gallery_img_1?: string | null;
+    gallery_img_2?: string | null;
+    gallery_img_3?: string | null;
+    gallery_img_4?: string | null;
+    gallery_img_5?: string | null;
+    gallery_img_6?: string | null;
+    video_url_1?: string | null;
+    video_url_2?: string | null;
+    pdf_url_1?: string | null;
+    zoom_factor?: number | null;
+    is_flipped?: boolean;
+    offset_x?: number | null;
+    offset_y?: number | null;
+    media_shared?: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -78,6 +94,22 @@ export interface CatalogVariantVehicle {
     // Timestamps
     created_at: string;
     updated_at: string;
+    // Media
+    primary_image?: string | null;
+    gallery_img_1?: string | null;
+    gallery_img_2?: string | null;
+    gallery_img_3?: string | null;
+    gallery_img_4?: string | null;
+    gallery_img_5?: string | null;
+    gallery_img_6?: string | null;
+    video_url_1?: string | null;
+    video_url_2?: string | null;
+    pdf_url_1?: string | null;
+    zoom_factor?: number | null;
+    is_flipped?: boolean;
+    offset_x?: number | null;
+    offset_y?: number | null;
+    media_shared?: boolean;
 }
 
 export interface CatalogVariantAccessory {
@@ -133,6 +165,7 @@ export interface CatalogColour {
     offset_x?: number | null;
     offset_y?: number | null;
     is_popular?: boolean;
+    media_shared?: boolean;
     position: number;
     created_at: string;
     updated_at: string;

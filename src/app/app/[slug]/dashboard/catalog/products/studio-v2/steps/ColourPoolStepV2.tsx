@@ -12,6 +12,7 @@ import {
     Layers,
     Image as ImageIcon,
     Upload,
+    Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createColour, updateColour, deleteColour, reorderColours } from '@/actions/catalog/catalogV2Actions';
@@ -208,6 +209,18 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
         } catch (err: unknown) {
             console.error('Colour media save failed:', err);
             toast.error('Failed to save media: ' + getErrorMessage(err));
+        }
+    };
+
+    const toggleColourMediaShared = async (colour: CatalogColour) => {
+        try {
+            const updated = await updateColour(colour.id, { media_shared: !colour.media_shared } as any);
+            if (updated) {
+                onUpdate(colours.map(c => (c.id === updated.id ? updated : c)));
+                toast.success(updated.media_shared ? 'Media shared with SKUs' : 'Media sharing disabled');
+            }
+        } catch (err: unknown) {
+            toast.error('Failed to toggle sharing: ' + getErrorMessage(err));
         }
     };
 
@@ -542,6 +555,24 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                                 >
                                                     <Trash2 size={14} />
                                                 </button>
+                                                {/* Shareable toggle */}
+                                                {colour.primary_image && (
+                                                    <button
+                                                        onClick={() => toggleColourMediaShared(colour)}
+                                                        className={`p-2 rounded-xl transition-colors ${
+                                                            colour.media_shared
+                                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600'
+                                                                : 'bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-600'
+                                                        }`}
+                                                        title={
+                                                            colour.media_shared
+                                                                ? 'Shared ✓ (click to unshare)'
+                                                                : 'Share media with SKUs'
+                                                        }
+                                                    >
+                                                        <Share2 size={14} />
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>

@@ -1,13 +1,36 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, Plus, Edit2, Box, Trash2, CheckCircle2 } from 'lucide-react';
+import { Loader2, Plus, Edit2, Box, Trash2, CheckCircle2, Image as ImageIcon, Upload, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import { listModels, createModel, updateModel, deleteModel } from '@/actions/catalog/catalogV2Actions';
 import type { CatalogModel, ProductType } from '@/actions/catalog/catalogV2Actions';
 import CopyableId from '@/components/ui/CopyableId';
 import Modal from '@/components/ui/Modal';
+import SKUMediaManager from '@/components/catalog/SKUMediaManager';
+import { getProxiedUrl } from '@/lib/utils/urlHelper';
+import { getErrorMessage } from '@/lib/utils/errorMessage';
+
+// ── Helpers — convert between flat columns and SKUMediaManager arrays ──
+function modelToGalleryArray(m: CatalogModel): string[] {
+    const imgs: string[] = [];
+    if (m.primary_image) imgs.push(m.primary_image);
+    for (let i = 1; i <= 6; i++) {
+        const url = (m as any)[`gallery_img_${i}`] as string | null;
+        if (url && !imgs.includes(url)) imgs.push(url);
+    }
+    return imgs;
+}
+function modelToVideoArray(m: CatalogModel): string[] {
+    const vids: string[] = [];
+    if (m.video_url_1) vids.push(m.video_url_1);
+    if (m.video_url_2) vids.push(m.video_url_2);
+    return vids;
+}
+function modelToPdfArray(m: CatalogModel): string[] {
+    return m.pdf_url_1 ? [m.pdf_url_1] : [];
+}
 
 function slugify(name: string): string {
     return name
@@ -32,6 +55,7 @@ export default function ModelStepV2({ brand, category, modelData, onSave }: Mode
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingModel, setEditingModel] = useState<CatalogModel | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [activeMediaModel, setActiveMediaModel] = useState<CatalogModel | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -154,6 +178,61 @@ export default function ModelStepV2({ brand, category, modelData, onSave }: Mode
         }
     };
 
+    // ── Media save handler ──
+    const handleModelMediaSave = async (
+        images: string[],
+        videos: string[],
+        pdfs: string[],
+        primary: string | null,
+        _applyVideosToAll?: boolean,
+        zoomFactor?: number,
+        isFlipped?: boolean,
+        offsetX?: number,
+        offsetY?: number
+    ) => {
+        if (!activeMediaModel) return;
+        try {
+            const mediaUpdate: Partial<CatalogModel> = {
+                primary_image: primary || images[0] || null,
+                gallery_img_1: images[0] || null,
+                gallery_img_2: images[1] || null,
+                gallery_img_3: images[2] || null,
+                gallery_img_4: images[3] || null,
+                gallery_img_5: images[4] || null,
+                gallery_img_6: images[5] || null,
+                video_url_1: videos[0] || null,
+                video_url_2: videos[1] || null,
+                pdf_url_1: pdfs[0] || null,
+                zoom_factor: zoomFactor ?? 1.0,
+                is_flipped: isFlipped ?? false,
+                offset_x: offsetX ?? 0,
+                offset_y: offsetY ?? 0,
+            };
+            const updated = await updateModel(activeMediaModel.id, mediaUpdate as any);
+            if (updated) {
+                setModels(prev => prev.map(m => (m.id === activeMediaModel.id ? updated : m)));
+                if (modelData?.id === updated.id) onSave(updated);
+                toast.success('Model media saved');
+            }
+        } catch (err: unknown) {
+            console.error('Model media save failed:', err);
+            toast.error('Failed to save media: ' + getErrorMessage(err));
+        }
+    };
+
+    const toggleMediaShared = async (model: CatalogModel) => {
+        try {
+            const updated = await updateModel(model.id, { media_shared: !model.media_shared } as any);
+            if (updated) {
+                setModels(prev => prev.map(m => (m.id === updated.id ? updated : m)));
+                if (modelData?.id === updated.id) onSave(updated);
+                toast.success(updated.media_shared ? 'Media shared with all below' : 'Media sharing disabled');
+            }
+        } catch (err: unknown) {
+            toast.error('Failed to toggle sharing: ' + getErrorMessage(err));
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -204,9 +283,34 @@ export default function ModelStepV2({ brand, category, modelData, onSave }: Mode
                                 }`}
                             >
                                 <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center border border-slate-100 dark:border-white/10">
-                                        <Box size={20} className={isSelected ? 'text-indigo-500' : 'text-slate-400'} />
-                                    </div>
+                                    {/* Media thumbnail or Box icon */}
+                                    <button
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            setActiveMediaModel(model);
+                                        }}
+                                        className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all overflow-hidden group/media relative ${
+                                            model.primary_image
+                                                ? 'border-indigo-500/30 hover:border-indigo-500 bg-white dark:bg-white/5'
+                                                : 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10 text-slate-400 hover:text-indigo-500 hover:border-indigo-400'
+                                        }`}
+                                        title="Manage Media"
+                                    >
+                                        {model.primary_image ? (
+                                            <>
+                                                <img
+                                                    src={getProxiedUrl(model.primary_image)}
+                                                    className="w-full h-full object-contain p-0.5 group-hover/media:scale-110 transition-transform duration-300"
+                                                    alt={model.name}
+                                                />
+                                                <div className="absolute inset-0 bg-indigo-600/60 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                                    <Upload size={12} strokeWidth={3} />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <ImageIcon size={18} strokeWidth={1.5} />
+                                        )}
+                                    </button>
                                     <div className="text-center">
                                         <h4 className="font-black text-sm text-slate-900 dark:text-white uppercase italic leading-tight">
                                             {model.name}
@@ -248,6 +352,27 @@ export default function ModelStepV2({ brand, category, modelData, onSave }: Mode
 
                                 {/* Action buttons */}
                                 <div className="absolute bottom-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                    {/* Shareable toggle */}
+                                    {model.primary_image && (
+                                        <button
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                toggleMediaShared(model);
+                                            }}
+                                            className={`p-2 rounded-xl border border-transparent transition-colors ${
+                                                model.media_shared
+                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:text-emerald-700'
+                                                    : 'bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-600'
+                                            }`}
+                                            title={
+                                                model.media_shared
+                                                    ? 'Shared ✓ (click to unshare)'
+                                                    : 'Share media with all below'
+                                            }
+                                        >
+                                            <Share2 size={14} />
+                                        </button>
+                                    )}
                                     <button
                                         onClick={e => {
                                             e.stopPropagation();
@@ -431,6 +556,23 @@ export default function ModelStepV2({ brand, category, modelData, onSave }: Mode
                         </div>
                     </div>
                 </Modal>
+            )}
+
+            {/* Model Media Manager (Full-Screen Overlay) */}
+            {activeMediaModel && (
+                <SKUMediaManager
+                    skuName={`${activeMediaModel.name} (Model)`}
+                    initialImages={modelToGalleryArray(activeMediaModel)}
+                    initialVideos={modelToVideoArray(activeMediaModel)}
+                    initialPdfs={modelToPdfArray(activeMediaModel)}
+                    initialPrimary={activeMediaModel.primary_image || null}
+                    initialZoomFactor={activeMediaModel.zoom_factor || 1.0}
+                    initialIsFlipped={activeMediaModel.is_flipped || false}
+                    initialOffsetX={activeMediaModel.offset_x || 0}
+                    initialOffsetY={activeMediaModel.offset_y || 0}
+                    onSave={handleModelMediaSave}
+                    onClose={() => setActiveMediaModel(null)}
+                />
             )}
         </div>
     );
