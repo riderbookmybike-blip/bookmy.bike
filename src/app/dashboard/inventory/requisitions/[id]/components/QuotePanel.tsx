@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, PlusCircle } from 'lucide-react';
+import { Loader2, PencilLine, PlusCircle, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { addDealerQuote, getSupplierTenants } from '@/actions/inventory';
+import { addDealerQuote, getSupplierTenants, updateDealerQuote } from '@/actions/inventory';
 
 type RequestItem = {
     id: string;
@@ -61,6 +61,7 @@ export default function QuotePanel({
     const [transportAmount, setTransportAmount] = useState('');
     const [freebieDescription, setFreebieDescription] = useState('');
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+    const [editingQuoteId, setEditingQuoteId] = useState('');
     const [cloneSourceQuoteId, setCloneSourceQuoteId] = useState('');
     const [cloneTargetDealerIds, setCloneTargetDealerIds] = useState<string[]>([]);
     const [cloning, setCloning] = useState(false);
@@ -105,6 +106,14 @@ export default function QuotePanel({
         () => existingQuotes.find(quote => quote.id === cloneSourceQuoteId) || null,
         [cloneSourceQuoteId, existingQuotes]
     );
+    const editableQuotes = useMemo(
+        () => existingQuotes.filter(quote => quote.status === 'SUBMITTED'),
+        [existingQuotes]
+    );
+    const editingQuote = useMemo(
+        () => editableQuotes.find(quote => quote.id === editingQuoteId) || null,
+        [editableQuotes, editingQuoteId]
+    );
 
     const cloneTargets = useMemo(() => {
         if (!cloneSourceQuote) return [];
@@ -115,6 +124,7 @@ export default function QuotePanel({
     }, [activeQuoteDealerIds, cloneSourceQuote, suppliers]);
 
     useEffect(() => {
+        if (editingQuoteId) return;
         if (!cloneSourceQuote) return;
 
         setBundledAmount(String(cloneSourceQuote.bundled_amount || ''));
@@ -137,7 +147,29 @@ export default function QuotePanel({
                 targetId => targetId !== cloneSourceQuote.dealer_tenant_id && !activeQuoteDealerIds.has(targetId)
             )
         );
-    }, [activeQuoteDealerIds, cloneSourceQuote, dealerTenantId, requestItems]);
+    }, [activeQuoteDealerIds, cloneSourceQuote, dealerTenantId, editingQuoteId, requestItems]);
+
+    useEffect(() => {
+        if (!editingQuote) return;
+        setDealerTenantId(editingQuote.dealer_tenant_id);
+        setBundledAmount(String(editingQuote.bundled_amount || 0));
+        setTransportAmount(String(editingQuote.transport_amount || 0));
+        setFreebieDescription(editingQuote.freebie_description || '');
+
+        const validItemIds = (editingQuote.bundled_item_ids || []).filter(itemId =>
+            requestItems.some(item => item.id === itemId)
+        );
+        setSelectedItemIds(validItemIds.length > 0 ? validItemIds : requestItems.map(item => item.id));
+    }, [editingQuote, requestItems]);
+
+    const resetQuoteForm = () => {
+        setEditingQuoteId('');
+        setDealerTenantId('');
+        setBundledAmount('');
+        setTransportAmount('');
+        setFreebieDescription('');
+        setSelectedItemIds(requestItems.map(item => item.id));
+    };
 
     const toggleItem = (itemId: string) => {
         setSelectedItemIds(prev => (prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]));
@@ -153,7 +185,7 @@ export default function QuotePanel({
         const bundleValue = Number(bundledAmount);
         const transportValue = Number(transportAmount || 0);
 
-        if (!dealerTenantId) {
+        if (!editingQuote && !dealerTenantId) {
             toast.error('Select supplier dealership');
             return;
         }
@@ -164,27 +196,41 @@ export default function QuotePanel({
 
         setSubmitting(true);
         try {
-            const result = await addDealerQuote({
-                request_id: requestId,
-                dealer_tenant_id: dealerTenantId,
-                bundled_item_ids: selectedItemIds,
-                bundled_amount: bundleValue,
-                transport_amount: transportValue,
-                freebie_description: freebieDescription.trim() || undefined,
-            });
+            const result = editingQuote
+                ? await updateDealerQuote({
+                      quote_id: editingQuote.id,
+                      bundled_item_ids: selectedItemIds,
+                      bundled_amount: bundleValue,
+                      transport_amount: transportValue,
+                      freebie_description: freebieDescription.trim() || null,
+                  })
+                : await addDealerQuote({
+                      request_id: requestId,
+                      dealer_tenant_id: dealerTenantId,
+                      bundled_item_ids: selectedItemIds,
+                      bundled_amount: bundleValue,
+                      transport_amount: transportValue,
+                      freebie_description: freebieDescription.trim() || undefined,
+                  });
 
             if (!result.success) {
-                toast.error(result.message || 'Failed to add dealer quote');
+                toast.error(
+                    result.message || (editingQuote ? 'Failed to update dealer quote' : 'Failed to add dealer quote')
+                );
                 return;
             }
 
-            toast.success(result.message || 'Dealer quote added');
-            setBundledAmount('');
-            setTransportAmount('');
-            setFreebieDescription('');
+            toast.success(result.message || (editingQuote ? 'Dealer quote updated' : 'Dealer quote added'));
+            resetQuoteForm();
             onRefresh();
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Failed to add dealer quote');
+            toast.error(
+                err instanceof Error
+                    ? err.message
+                    : editingQuote
+                      ? 'Failed to update dealer quote'
+                      : 'Failed to add dealer quote'
+            );
         } finally {
             setSubmitting(false);
         }
@@ -250,6 +296,40 @@ export default function QuotePanel({
             ) : (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {editableQuotes.length > 0 && (
+                            <div className="md:col-span-3">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                    Edit Existing Quote (optional)
+                                </label>
+                                <div className="mt-2 flex flex-col md:flex-row gap-2">
+                                    <select
+                                        value={editingQuoteId}
+                                        onChange={e => setEditingQuoteId(e.target.value)}
+                                        className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-3 py-2 text-xs font-black text-slate-900 dark:text-white"
+                                    >
+                                        <option value="">Create new quote</option>
+                                        {editableQuotes.map(quote => (
+                                            <option key={quote.id} value={quote.id}>
+                                                {`${parseDealerName(quote)} • ${formatCurrency(
+                                                    Number(quote.bundled_amount || 0) +
+                                                        Number(quote.transport_amount || 0)
+                                                )}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {editingQuoteId && (
+                                        <button
+                                            onClick={resetQuoteForm}
+                                            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-100 text-[10px] font-black uppercase tracking-wider"
+                                        >
+                                            <RotateCcw size={12} />
+                                            Reset
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="md:col-span-1">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                 Supplier
@@ -257,8 +337,8 @@ export default function QuotePanel({
                             <select
                                 value={dealerTenantId}
                                 onChange={e => setDealerTenantId(e.target.value)}
-                                disabled={loadingSuppliers}
-                                className="mt-2 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-3 py-2 text-xs font-black text-slate-900 dark:text-white disabled:opacity-60"
+                                disabled={loadingSuppliers || !!editingQuoteId}
+                                className="mt-2 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-3 py-2 text-xs font-black text-slate-900 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                             >
                                 <option value="">Select dealer</option>
                                 {suppliers.map(supplier => (
@@ -296,7 +376,7 @@ export default function QuotePanel({
                         </div>
                     </div>
 
-                    {existingQuotes.length > 0 && (
+                    {existingQuotes.length > 0 && !editingQuoteId && (
                         <div className="mt-4 rounded-xl border border-slate-200 dark:border-white/10 p-3 bg-white dark:bg-slate-900/40">
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
                                 Clone Existing Quote
@@ -417,8 +497,14 @@ export default function QuotePanel({
                             disabled={submitting || loadingSuppliers}
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider disabled:cursor-not-allowed"
                         >
-                            {submitting ? <Loader2 size={12} className="animate-spin" /> : <PlusCircle size={12} />}
-                            {submitting ? 'Saving...' : 'Add Quote'}
+                            {submitting ? (
+                                <Loader2 size={12} className="animate-spin" />
+                            ) : editingQuoteId ? (
+                                <PencilLine size={12} />
+                            ) : (
+                                <PlusCircle size={12} />
+                            )}
+                            {submitting ? 'Saving...' : editingQuoteId ? 'Save Quote' : 'Add Quote'}
                         </button>
                     </div>
                 </>

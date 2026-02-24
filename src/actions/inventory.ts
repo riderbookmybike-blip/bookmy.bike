@@ -30,6 +30,47 @@ const PO_STATUS_TRANSITIONS: Record<InvPoStatus, InvPoStatus[]> = {
     RECEIVED: [],
 };
 
+async function resolveQuoteItemsForRequest(
+    requestId: string,
+    bundledItemIds: string[]
+): Promise<{ success: boolean; message?: string; resolvedItemIds?: string[]; expectedTotal?: number }> {
+    const normalizedItemIds = Array.from(new Set((bundledItemIds || []).filter(Boolean)));
+    let resolvedItemIds: string[] = normalizedItemIds;
+    let expectedTotal = 0;
+
+    if (normalizedItemIds.length > 0) {
+        const { data: items, error: itemsErr } = await adminClient
+            .from('inv_request_items')
+            .select('id, expected_amount')
+            .eq('request_id', requestId)
+            .in('id', normalizedItemIds);
+
+        if (itemsErr || !items) {
+            return { success: false, message: 'Failed to fetch selected cost lines' };
+        }
+
+        if (items.length !== normalizedItemIds.length) {
+            return { success: false, message: 'Some selected cost lines are invalid for this requisition' };
+        }
+
+        expectedTotal = items.reduce((sum, item) => sum + Number(item.expected_amount), 0);
+    } else {
+        const { data: allItems, error: allItemsErr } = await adminClient
+            .from('inv_request_items')
+            .select('id, expected_amount')
+            .eq('request_id', requestId);
+
+        if (allItemsErr || !allItems) {
+            return { success: false, message: 'Failed to fetch requisition cost lines' };
+        }
+
+        resolvedItemIds = allItems.map(item => item.id);
+        expectedTotal = allItems.reduce((sum, item) => sum + Number(item.expected_amount), 0);
+    }
+
+    return { success: true, resolvedItemIds, expectedTotal };
+}
+
 // =============================================================================
 // 1. CREATE REQUEST — Auto-fills request items from catalog baseline
 // =============================================================================
@@ -104,38 +145,26 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
             return { success: false, message: `Cannot add quote: requisition is ${request.status}` };
         }
 
-        const normalizedItemIds = Array.from(new Set((input.bundled_item_ids || []).filter(Boolean)));
-        let resolvedItemIds: string[] = normalizedItemIds;
-        let expectedTotal = 0;
+        const { data: existingDealerQuote } = await adminClient
+            .from('inv_dealer_quotes')
+            .select('id, status')
+            .eq('request_id', input.request_id)
+            .eq('dealer_tenant_id', input.dealer_tenant_id)
+            .in('status', ['SUBMITTED', 'SELECTED'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-        if (normalizedItemIds.length > 0) {
-            const { data: items, error: itemsErr } = await adminClient
-                .from('inv_request_items')
-                .select('id, expected_amount')
-                .eq('request_id', input.request_id)
-                .in('id', normalizedItemIds);
+        if (existingDealerQuote) {
+            return {
+                success: false,
+                message: 'Dealer already has an active quote for this requisition. Edit existing quote instead.',
+            };
+        }
 
-            if (itemsErr || !items) {
-                return { success: false, message: 'Failed to fetch selected cost lines' };
-            }
-
-            if (items.length !== normalizedItemIds.length) {
-                return { success: false, message: 'Some selected cost lines are invalid for this requisition' };
-            }
-
-            expectedTotal = items.reduce((sum, item) => sum + Number(item.expected_amount), 0);
-        } else {
-            const { data: allItems, error: allItemsErr } = await adminClient
-                .from('inv_request_items')
-                .select('id, expected_amount')
-                .eq('request_id', input.request_id);
-
-            if (allItemsErr || !allItems) {
-                return { success: false, message: 'Failed to fetch requisition cost lines' };
-            }
-
-            resolvedItemIds = allItems.map(item => item.id);
-            expectedTotal = allItems.reduce((sum, item) => sum + Number(item.expected_amount), 0);
+        const resolved = await resolveQuoteItemsForRequest(input.request_id, input.bundled_item_ids || []);
+        if (!resolved.success || !resolved.resolvedItemIds) {
+            return { success: false, message: resolved.message || 'Failed to resolve quote cost lines' };
         }
 
         const { data: quote, error: quoteErr } = await adminClient
@@ -144,9 +173,9 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
                 request_id: input.request_id,
                 dealer_tenant_id: input.dealer_tenant_id,
                 quoted_by_user_id: user.id,
-                bundled_item_ids: resolvedItemIds,
+                bundled_item_ids: resolved.resolvedItemIds,
                 bundled_amount: input.bundled_amount,
-                expected_total: expectedTotal,
+                expected_total: resolved.expectedTotal || 0,
                 transport_amount: input.transport_amount || 0,
                 freebie_description: input.freebie_description || null,
                 freebie_sku_id: input.freebie_sku_id || null,
@@ -167,7 +196,80 @@ export async function addDealerQuote(input: AddDealerQuoteInput): Promise<Action
 }
 
 // =============================================================================
-// 3. SELECT QUOTE — Marks one quote as SELECTED, rejects others, creates PO
+// 3. UPDATE DEALER QUOTE — revise submitted quote during QUOTING phase
+// =============================================================================
+
+export async function updateDealerQuote(input: {
+    quote_id: string;
+    bundled_item_ids: string[];
+    bundled_amount: number;
+    transport_amount?: number;
+    freebie_description?: string | null;
+}): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        const { data: quote, error: quoteErr } = await adminClient
+            .from('inv_dealer_quotes')
+            .select('id, request_id, status')
+            .eq('id', input.quote_id)
+            .single();
+
+        if (quoteErr || !quote) {
+            return { success: false, message: 'Quote not found' };
+        }
+
+        if (quote.status !== 'SUBMITTED') {
+            return { success: false, message: `Only submitted quotes can be edited. Current status: ${quote.status}` };
+        }
+
+        const { data: request, error: requestErr } = await adminClient
+            .from('inv_requests')
+            .select('id, status')
+            .eq('id', quote.request_id)
+            .single();
+
+        if (requestErr || !request) {
+            return { success: false, message: 'Requisition not found' };
+        }
+
+        if (request.status !== 'QUOTING') {
+            return { success: false, message: `Cannot edit quote: requisition is ${request.status}` };
+        }
+
+        const resolved = await resolveQuoteItemsForRequest(quote.request_id, input.bundled_item_ids || []);
+        if (!resolved.success || !resolved.resolvedItemIds) {
+            return { success: false, message: resolved.message || 'Failed to resolve quote cost lines' };
+        }
+
+        const { data: updatedQuote, error: updateErr } = await adminClient
+            .from('inv_dealer_quotes')
+            .update({
+                bundled_item_ids: resolved.resolvedItemIds,
+                bundled_amount: input.bundled_amount,
+                expected_total: resolved.expectedTotal || 0,
+                transport_amount: input.transport_amount || 0,
+                freebie_description: input.freebie_description || null,
+                quoted_by_user_id: user.id,
+            })
+            .eq('id', input.quote_id)
+            .select('id, variance_amount')
+            .single();
+
+        if (updateErr || !updatedQuote) {
+            return { success: false, message: updateErr?.message || 'Failed to update quote' };
+        }
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, data: updatedQuote, message: 'Dealer quote updated' };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 4. SELECT QUOTE — Marks one quote as SELECTED, rejects others, creates PO
 // =============================================================================
 
 export async function selectQuote(quoteId: string): Promise<ActionResult> {
