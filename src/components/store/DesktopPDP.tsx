@@ -80,7 +80,7 @@ const WarrantyTab = dynamic(() => import('./Personalize/Tabs/WarrantyTab'), {
 import PricingCard from './Personalize/Cards/PricingCard';
 import FinanceCard from './Personalize/Cards/FinanceCard';
 import TechSpecsSection from './Personalize/TechSpecsSection';
-import { ParitySnapshot } from './sections/ParitySnapshot';
+import { ParitySnapshot } from './sections';
 
 interface DesktopPDPProps {
     product: any;
