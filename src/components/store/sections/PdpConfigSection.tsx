@@ -28,18 +28,29 @@ export interface PdpConfigSectionProps {
 // ─── Shared config card definitions ───────────────────────
 function getConfigCards(data: any) {
     const { selectedAccessories, selectedInsuranceAddons, selectedServices, regType } = data;
+    const accTotal = Math.round((data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0));
+    const insAddonsTotal = Math.round((data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0));
+    const svcTotal = Math.round((data.servicesPrice || 0) + (data.servicesDiscount || 0));
+
+    const fmt = (v: number) => `₹${v.toLocaleString('en-IN')}`;
 
     return [
         {
             id: 'ACCESSORIES',
             label: 'Accessories',
-            subtext: selectedAccessories.length > 0 ? `${selectedAccessories.length} Selected` : 'Add Extras',
+            subtext:
+                selectedAccessories.length > 0
+                    ? `${selectedAccessories.length} Selected • ${fmt(accTotal)}`
+                    : 'Add Extras',
             icon: Package,
         },
         {
             id: 'INSURANCE',
             label: 'Insurance',
-            subtext: selectedInsuranceAddons.length > 0 ? `${selectedInsuranceAddons.length} Addons` : 'Secure Rider',
+            subtext:
+                selectedInsuranceAddons.length > 0
+                    ? `${selectedInsuranceAddons.length} Addons • ${fmt(insAddonsTotal)}`
+                    : 'Secure Rider',
             icon: ShieldCheck,
         },
         {
@@ -51,7 +62,8 @@ function getConfigCards(data: any) {
         {
             id: 'SERVICES',
             label: 'Services',
-            subtext: selectedServices.length > 0 ? `${selectedServices.length} Selected` : 'AMC & Plans',
+            subtext:
+                selectedServices.length > 0 ? `${selectedServices.length} Selected • ${fmt(svcTotal)}` : 'AMC & Plans',
             icon: Wrench,
         },
         {
@@ -189,7 +201,7 @@ export function PdpConfigSection({
     }
 
     // Mobile: independent cards (no outer grouping), one open at a time.
-    const activeMobileCardId = mobileOpenCardId || mobileOpenId;
+    const activeMobileCardId = mobileOpenCardId !== undefined ? mobileOpenCardId : mobileOpenId;
     const selectMobileCard = (cardId: string) => {
         if (onMobileCardToggle) {
             onMobileCardToggle(cardId);

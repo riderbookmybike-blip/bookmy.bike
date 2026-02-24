@@ -111,7 +111,7 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
         },
         { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
-        { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
+
         ...(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)
             ? [
                   {
@@ -231,39 +231,70 @@ export function PdpPricingSection({
                 <ChevronDown size={18} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
 
-            {open && (
-                <div className="px-5 pb-5">
-                    <div className="border-t border-slate-200/60 pt-4 space-y-2">
-                        {breakup
-                            .filter((item: any) => !item.isInfo && item.value !== 0)
-                            .map((item: any, idx: number) => (
-                                <div
-                                    key={idx}
-                                    className={`flex justify-between items-center text-sm py-1.5 ${
-                                        item.isDeduction ? 'text-green-600' : 'text-slate-700'
-                                    }`}
-                                >
-                                    <span className="flex items-center gap-1.5">
-                                        {item.label}
-                                        {item.helpText && (
-                                            <Info className="w-3 h-3 text-slate-400 inline cursor-help" />
-                                        )}
-                                    </span>
-                                    <span className="font-mono font-semibold">
-                                        {item.isDeduction ? '−' : ''}₹{' '}
-                                        {Math.abs(Number(item.value) || 0).toLocaleString('en-IN')}
-                                    </span>
-                                </div>
-                            ))}
-                        {breakup.find((b: any) => b.isInfo) && (
-                            <div className="flex justify-between items-center text-xs text-slate-400 pt-1 border-t border-dashed border-slate-200">
-                                <span>Delivery TAT</span>
-                                <span className="font-semibold">7 DAYS</span>
+            {open &&
+                (() => {
+                    const regularItems = breakup.filter(
+                        (item: any) => !item.isInfo && !item.isDeduction && item.value !== 0
+                    );
+                    const deductionItem = breakup.find((item: any) => item.isDeduction && item.value !== 0);
+                    const deductionAmount = deductionItem ? Math.abs(Number(deductionItem.value) || 0) : 0;
+                    const grossTotal = regularItems.reduce(
+                        (sum: number, item: any) => sum + (Number(item.value) || 0),
+                        0
+                    );
+                    const netPrice = grossTotal - deductionAmount;
+
+                    return (
+                        <div className="px-5 pb-5">
+                            <div className="border-t border-slate-200/60 pt-4 space-y-2">
+                                {/* Line items */}
+                                {regularItems.map((item: any, idx: number) => (
+                                    <div
+                                        key={idx}
+                                        className="flex justify-between items-center text-sm py-1.5 text-slate-700"
+                                    >
+                                        <span className="flex items-center gap-1.5">
+                                            {item.label}
+                                            {item.helpText && (
+                                                <Info className="w-3 h-3 text-slate-400 inline cursor-help" />
+                                            )}
+                                        </span>
+                                        <span className="font-mono font-semibold">
+                                            ₹ {Math.abs(Number(item.value) || 0).toLocaleString('en-IN')}
+                                        </span>
+                                    </div>
+                                ))}
+
+                                {/* O'Circle Privileged deduction */}
+                                {deductionItem && (
+                                    <div className="flex justify-between items-center text-sm py-1.5 text-green-600">
+                                        <span className="flex items-center gap-1.5">
+                                            {deductionItem.label}
+                                            {deductionItem.helpText && (
+                                                <Info className="w-3 h-3 text-green-400 inline cursor-help" />
+                                            )}
+                                        </span>
+                                        <span className="font-mono font-semibold">
+                                            −₹ {deductionAmount.toLocaleString('en-IN')}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Net Offer Price */}
+                                {deductionAmount > 0 && (
+                                    <div className="flex justify-between items-center py-2.5 mt-1 border-t-2 border-brand-primary/30 bg-brand-primary/5 -mx-5 px-5 rounded-b-3xl">
+                                        <span className="uppercase tracking-widest text-[10px] font-black text-brand-primary">
+                                            Net Offer Price
+                                        </span>
+                                        <span className="font-mono font-black text-lg text-brand-primary">
+                                            ₹ {netPrice.toLocaleString('en-IN')}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
-                </div>
-            )}
+                        </div>
+                    );
+                })()}
         </div>
     );
 }

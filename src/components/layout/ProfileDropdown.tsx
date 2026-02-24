@@ -729,51 +729,6 @@ export function ProfileDropdown({
                                                 </motion.div>
                                             )}
 
-                                            {/* Unified Navigation - SOT for Mobile/Tablet */}
-                                            <div className="lg:hidden space-y-3 pb-2 pt-1">
-                                                <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                                                    Main Menu
-                                                </p>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {[
-                                                        { label: 'Home', icon: HomeIcon, href: '/' },
-                                                        { label: 'Catalog', icon: Bike, href: '/catalog' },
-                                                        { label: 'Wishlist', icon: HeartIcon, href: '/wishlist' },
-                                                        { label: 'Compare', icon: ArrowRightLeft, href: '/compare' },
-                                                        { label: 'Zero', icon: Zap, href: '/zero' },
-                                                        {
-                                                            label: "O' Circle",
-                                                            icon: Globe,
-                                                            href: '#o-circle',
-                                                            isScroll: true,
-                                                        },
-                                                    ].map(nav => (
-                                                        <a
-                                                            key={nav.label}
-                                                            href={nav.href}
-                                                            onClick={e => {
-                                                                if (nav.isScroll) {
-                                                                    e.preventDefault();
-                                                                    setIsOpen(false);
-                                                                    const el = document.getElementById('o-circle');
-                                                                    el?.scrollIntoView({ behavior: 'smooth' });
-                                                                } else {
-                                                                    setIsOpen(false);
-                                                                }
-                                                            }}
-                                                            className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
-                                                        >
-                                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-brand-primary transition-colors shadow-sm">
-                                                                <nav.icon size={16} />
-                                                            </div>
-                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-                                                                {nav.label}
-                                                            </span>
-                                                        </a>
-                                                    ))}
-                                                </div>
-                                            </div>
-
                                             {/* Simplified Unified Navigation — only for logged-in users */}
                                             {user && (
                                                 <div className="space-y-6 pt-2">
@@ -811,31 +766,96 @@ export function ProfileDropdown({
 
                                                     {/* Account & Profile Section — O'Circle mode only */}
                                                     {!businessMode && (
-                                                        <div className="space-y-3">
-                                                            <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                                                                <LucideUser size={10} strokeWidth={3} />
-                                                                My Account
-                                                            </p>
-                                                            <div className="space-y-1.5">
-                                                                {accountMenuItems.map(item => (
-                                                                    <a
-                                                                        key={item.label}
-                                                                        href={item.href}
-                                                                        onClick={() => setIsOpen(false)}
-                                                                        className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
-                                                                    >
-                                                                        <div
-                                                                            className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
+                                                        <>
+                                                            {/* Main Menu — inside O'Circle mode */}
+                                                            <div className="lg:hidden space-y-3 pb-2 pt-1">
+                                                                <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                                                    Main Menu
+                                                                </p>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    {[
+                                                                        { label: 'Home', icon: HomeIcon, href: '/' },
+                                                                        {
+                                                                            label: 'Catalog',
+                                                                            icon: Bike,
+                                                                            href: '/catalog',
+                                                                        },
+                                                                        {
+                                                                            label: 'Wishlist',
+                                                                            icon: HeartIcon,
+                                                                            href: '/wishlist',
+                                                                        },
+                                                                        {
+                                                                            label: 'Compare',
+                                                                            icon: ArrowRightLeft,
+                                                                            href: '/compare',
+                                                                        },
+                                                                        { label: 'Zero', icon: Zap, href: '/zero' },
+                                                                        {
+                                                                            label: "O' Circle",
+                                                                            icon: Globe,
+                                                                            href: '#o-circle',
+                                                                            isScroll: true,
+                                                                        },
+                                                                    ].map(nav => (
+                                                                        <a
+                                                                            key={nav.label}
+                                                                            href={nav.href}
+                                                                            onClick={e => {
+                                                                                if (nav.isScroll) {
+                                                                                    e.preventDefault();
+                                                                                    setIsOpen(false);
+                                                                                    const el =
+                                                                                        document.getElementById(
+                                                                                            'o-circle'
+                                                                                        );
+                                                                                    el?.scrollIntoView({
+                                                                                        behavior: 'smooth',
+                                                                                    });
+                                                                                } else {
+                                                                                    setIsOpen(false);
+                                                                                }
+                                                                            }}
+                                                                            className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
                                                                         >
-                                                                            <item.icon size={16} />
-                                                                        </div>
-                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-                                                                            {item.label}
-                                                                        </span>
-                                                                    </a>
-                                                                ))}
+                                                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-brand-primary transition-colors shadow-sm">
+                                                                                <nav.icon size={16} />
+                                                                            </div>
+                                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                                {nav.label}
+                                                                            </span>
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </div>
+
+                                                            {/* My Account */}
+                                                            <div className="space-y-3">
+                                                                <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                                                                    <LucideUser size={10} strokeWidth={3} />
+                                                                    My Account
+                                                                </p>
+                                                                <div className="space-y-1.5">
+                                                                    {accountMenuItems.map(item => (
+                                                                        <a
+                                                                            key={item.label}
+                                                                            href={item.href}
+                                                                            onClick={() => setIsOpen(false)}
+                                                                            className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
+                                                                        >
+                                                                            <div
+                                                                                className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
+                                                                            >
+                                                                                <item.icon size={16} />
+                                                                            </div>
+                                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                                {item.label}
+                                                                            </span>
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </>
                                                     )}
 
                                                     {/* Workspaces Section — only in Business mode */}

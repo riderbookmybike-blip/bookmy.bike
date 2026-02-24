@@ -120,7 +120,8 @@ export function PdpFinanceSection({
                     <div>
                         <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">Finance</p>
                         <p className="text-[11px] text-slate-500">
-                            ₹ {(footerEmi || emi || 0).toLocaleString('en-IN')}/mo × {emiTenure}mo
+                            ₹ {(footerEmi || emi || 0).toLocaleString('en-IN')}/mo × {emiTenure}mo • Loan ₹{' '}
+                            {(loanAmount || 0).toLocaleString('en-IN')}
                         </p>
                     </div>
                 </div>

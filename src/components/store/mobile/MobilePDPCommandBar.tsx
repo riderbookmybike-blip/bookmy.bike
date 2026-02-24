@@ -41,11 +41,6 @@ export function MobilePDPCommandBar({
                                     {label}
                                 </span>
                             </div>
-                            {emiPerMonth > 0 && (
-                                <span className="text-[11px] font-bold text-[#F4B000] mt-0.5">
-                                    ₹ {emiPerMonth.toLocaleString('en-IN')}/mo EMI
-                                </span>
-                            )}
                         </div>
 
                         {/* CTA */}

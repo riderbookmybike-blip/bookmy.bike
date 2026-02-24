@@ -144,7 +144,9 @@ export const MobilePDP = ({
             (data.insuranceAddonsDiscount || 0);
     const totalSavings = totalSavingsBase + (isReferralActive ? REFERRAL_BONUS : 0);
     // Single-open card state (string-based so adding future cards is trivial)
-    const [openContentCard, setOpenContentCard] = useState<string>('pricing');
+    // null = all closed, string = that card is open
+    const [openContentCard, setOpenContentCard] = useState<string | null>('pricing');
+    const toggleCard = (id: string) => setOpenContentCard(prev => (prev === id ? null : id));
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 pb-36 font-sans selection:bg-[#F4B000]/30 selection:text-black">
@@ -263,7 +265,7 @@ export const MobilePDP = ({
                     leadName={leadContext?.name}
                     serviceability={serviceability}
                     isOpen={openContentCard === 'pricing'}
-                    onToggle={() => setOpenContentCard('pricing')}
+                    onToggle={() => toggleCard('pricing')}
                 />
 
                 {/* 6. Finance Card */}
@@ -274,7 +276,7 @@ export const MobilePDP = ({
                     displayOnRoad={displayOnRoad}
                     footerEmi={footerEmi}
                     isOpen={openContentCard === 'finance'}
-                    onToggle={() => setOpenContentCard('finance')}
+                    onToggle={() => toggleCard('finance')}
                 />
 
                 {/* 7. Finance Summary Card */}
@@ -287,7 +289,7 @@ export const MobilePDP = ({
                     coinPricing={coinPricing}
                     footerEmi={footerEmi}
                     isOpen={openContentCard === 'finance-summary'}
-                    onToggle={() => setOpenContentCard('finance-summary')}
+                    onToggle={() => toggleCard('finance-summary')}
                 />
 
                 {/* 8. Config Cards — all 5 categories as independent cards */}
@@ -303,7 +305,7 @@ export const MobilePDP = ({
                         setRegType,
                     }}
                     mobileOpenCardId={openContentCard}
-                    onMobileCardToggle={setOpenContentCard}
+                    onMobileCardToggle={(id: string) => toggleCard(id)}
                 />
 
                 {/* 9. Tech Specs Categories (same category card count as desktop) */}

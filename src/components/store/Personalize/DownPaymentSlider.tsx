@@ -41,12 +41,13 @@ export default function DownPaymentSlider({
     // Build milestone labels + tick marks
     const milestones: React.ReactNode[] = [];
     if (range > 0) {
-        for (let v = 0; v <= maxDownPayment; v += 5000) {
+        for (let v = 0; v <= maxDownPayment; v += 10000) {
             if (v < minDownPayment) v = minDownPayment;
             const pct = ((v - minDownPayment) / range) * 100;
             if (pct < 0 || pct > 100) continue;
             const kVal = v / 1000;
-            const label = v === 0 ? '₹0' : `₹${kVal}K`;
+            const label =
+                v === 0 ? '₹0' : kVal >= 100 ? `₹${(kVal / 100).toFixed(kVal % 100 === 0 ? 0 : 1)}L` : `₹${kVal}K`;
             milestones.push(
                 <div
                     key={`label-${v}`}
@@ -54,14 +55,14 @@ export default function DownPaymentSlider({
                     style={{ left: `${pct}%`, top: '50%', transform: 'translateX(-50%)' }}
                 >
                     <div className="w-[1px] h-[6px] bg-slate-400 rounded-full" />
-                    <span className="text-[6px] font-black text-slate-400 mt-[1px] tabular-nums whitespace-nowrap">
+                    <span className="text-[7px] font-black text-slate-400 mt-[1px] tabular-nums whitespace-nowrap">
                         {label}
                     </span>
                 </div>
             );
         }
         for (let v = minDownPayment; v <= maxDownPayment; v += 1000) {
-            if (v % 5000 === 0) continue;
+            if (v % 10000 === 0) continue;
             const pct = ((v - minDownPayment) / range) * 100;
             if (pct <= fillPct) continue;
             milestones.push(
@@ -76,7 +77,7 @@ export default function DownPaymentSlider({
 
     return (
         <div
-            className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03]"
+            className="shrink-0 pl-5 pr-5 pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03]"
             onClick={e => e.stopPropagation()}
         >
             <div className="flex items-center justify-between mb-1.5">

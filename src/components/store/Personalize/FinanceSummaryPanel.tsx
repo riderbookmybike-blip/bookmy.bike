@@ -31,7 +31,7 @@ const Row = ({
     indent?: boolean;
     key?: number;
 }) => (
-    <div className={`flex justify-between items-start ${indent ? 'pl-4' : ''}`}>
+    <div className={`flex justify-between items-start py-1 ${indent ? 'pl-4' : ''}`}>
         <div className="flex flex-col">
             <span
                 className={`text-[11px] font-semibold uppercase tracking-[0.09em] ${indent ? 'text-slate-400' : 'text-slate-500'}`}
@@ -91,14 +91,14 @@ export default function FinanceSummaryPanel({
     return (
         <div className="flex flex-col h-full">
             {/* HEADER: Finance Partner */}
-            <div className="space-y-2 pb-3 border-b border-slate-200/60 shrink-0">
+            <div className="space-y-3 pb-4 border-b border-slate-200/60 shrink-0">
                 <Row label="Financier" value={initialFinance?.bank?.name || 'Standard'} />
                 <Row label="Scheme" value={initialFinance?.scheme?.name || 'Standard'} />
                 <Row label="Interest Rate" value={`${formatInterestRate(annualInterest)} (${interestType})`} />
             </div>
 
             {/* CONTENT: Calculation Flow */}
-            <div className="flex-1 flex flex-col justify-evenly py-2">
+            <div className="flex-1 flex flex-col justify-evenly py-3 gap-1">
                 <Row label="Asset Cost (Net SOT)" value={`₹${(totalOnRoad + totalSavings).toLocaleString()}`} />
                 {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
                     <Row

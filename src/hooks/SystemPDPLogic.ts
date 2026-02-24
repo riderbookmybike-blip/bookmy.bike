@@ -354,6 +354,13 @@ export function useSystemPDPLogic({
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, ' ')
             .trim();
+    // Canonical identity helps collapse legacy/hardcoded naming variants
+    // e.g. "Personal Accident (PA) Cover" vs "Personal Accident Cover".
+    const canonicalAddonKey = (val: any) =>
+        normalizeAddonKey(val)
+            .replace(/\bpa\b/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
     const jsonAddons = (insuranceJson?.addons || []) as {
         id: string;
         label: string;
@@ -363,55 +370,13 @@ export function useSystemPDPLogic({
         default: boolean;
     }[];
 
-    // Map Rule addons to UI format (Fallback source)
-    const ruleAddons =
-        insuranceRule?.addons?.map(a => {
-            const inclusionType = (a as any).inclusion_type || (a as any).inclusionType || 'OPTIONAL';
-            const baseAmount =
-                a.type === 'FIXED'
-                    ? a.amount || 0
-                    : Math.round(((a.percentage || 0) * (a.basis === 'EX_SHOWROOM' ? baseExShowroom : 100000)) / 100);
-            const priceWithGst = Math.round(baseAmount + (baseAmount * insuranceGstRate) / 100);
-            const gstAmount = Math.max(0, priceWithGst - baseAmount);
-
-            return {
-                id: a.id,
-                name: a.label,
-                price: priceWithGst,
-                description: a.type === 'PERCENTAGE' ? `${a.percentage}% of ${a.basis}` : 'Fixed Coverage',
-                discountPrice: undefined,
-                isMandatory: inclusionType === 'MANDATORY',
-                inclusionType: inclusionType,
-                breakdown: [
-                    { label: 'Base Premium', amount: baseAmount },
-                    { label: `GST (${insuranceGstRate}%)`, amount: gstAmount },
-                ],
-            };
-        }) || [];
-
-    const ruleAddonIndex = new Map<string, any>();
-    ruleAddons.forEach(a => {
-        ruleAddonIndex.set(normalizeAddonKey(a.id), a);
-        ruleAddonIndex.set(normalizeAddonKey(a.name), a);
-    });
-
-    // Map JSON addons to UI format (with rule fallback when totals are missing/zero)
+    // Map JSON addons to UI format (SOT-only).
+    // Intentionally do NOT merge rule/hardcoded addons to avoid duplicate entries.
     const mappedJsonAddons = jsonAddons.map(addon => {
-        const addonTotal = Number(addon.total ?? (addon.price || 0) + (addon.gst || 0));
-        const ruleMatch =
-            ruleAddonIndex.get(normalizeAddonKey(addon.id)) || ruleAddonIndex.get(normalizeAddonKey(addon.label));
-        const resolvedPrice = addonTotal > 0 ? addonTotal : Number(ruleMatch?.price || addonTotal || 0);
-        const resolvedBreakdown =
-            addonTotal > 0
-                ? [
-                      { label: 'Base Premium', amount: addon.price },
-                      { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
-                  ]
-                : ruleMatch?.breakdown || [
-                      { label: 'Base Premium', amount: addon.price },
-                      { label: `GST (${insuranceGstRate}%)`, amount: addon.gst },
-                  ];
-        const resolvedInclusionType = ruleMatch?.inclusionType || 'OPTIONAL';
+        const basePremium = Number(addon.price || 0);
+        const gstAmount = Number(addon.gst || 0);
+        const addonTotal = Number(addon.total ?? basePremium + gstAmount);
+        const resolvedPrice = addonTotal > 0 ? addonTotal : Math.max(0, basePremium + gstAmount);
 
         return {
             id: addon.id,
@@ -419,18 +384,27 @@ export function useSystemPDPLogic({
             price: resolvedPrice,
             description: 'Coverage',
             discountPrice: undefined,
-            isMandatory: ruleMatch?.isMandatory || false,
-            inclusionType: resolvedInclusionType,
-            breakdown: resolvedBreakdown,
+            isMandatory: Boolean(addon.default),
+            inclusionType: addon.default ? 'MANDATORY' : 'OPTIONAL',
+            breakdown: [
+                { label: 'Base Premium', amount: basePremium },
+                { label: `GST (${insuranceGstRate}%)`, amount: gstAmount },
+            ],
         };
     });
 
-    // Merge: Prefer JSON addons, append missing ones from Rules
-    // This allows SOT to override prices but falls back to rule engine for missing options
-    const jsonAddonIds = new Set(mappedJsonAddons.map(a => a.id));
-    const missingRuleAddons = ruleAddons.filter(a => !jsonAddonIds.has(a.id));
+    const availableInsuranceAddons = (() => {
+        const seen = new Set<string>();
+        const deduped: any[] = [];
 
-    const availableInsuranceAddons = [...mappedJsonAddons, ...missingRuleAddons];
+        for (const addon of mappedJsonAddons) {
+            const identity = canonicalAddonKey(addon.name) || normalizeAddonKey(addon.id);
+            if (!identity || seen.has(identity)) continue;
+            seen.add(identity);
+            deduped.push(addon);
+        }
+        return deduped;
+    })();
 
     const insuranceRequiredItems = [
         {

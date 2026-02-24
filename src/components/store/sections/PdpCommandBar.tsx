@@ -132,26 +132,18 @@ function MobilePriceSummary({
     const hasSavings = totalSavings > 0 || (coinPricing && coinPricing.discount > 0);
 
     return (
-        <div className="flex md:hidden flex-col gap-1">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">On-Road</span>
-            <div className="flex items-center gap-2">
-                {hasSavings && (
-                    <span className="text-[10px] text-slate-400 line-through font-mono">
-                        ₹ {(totalOnRoad + totalSavings).toLocaleString()}
-                    </span>
-                )}
-                <span className="text-base font-black text-slate-700 font-mono tabular-nums leading-none">
-                    ₹ {displayOnRoad.toLocaleString()}
+        <div className="flex md:hidden flex-col gap-0.5">
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">On-Road</span>
+            <div className="flex items-center gap-2.5">
+                <span className="text-lg font-black text-slate-800 font-mono tabular-nums leading-none tracking-tight">
+                    ₹ {displayOnRoad.toLocaleString('en-IN')}
                 </span>
                 <span className="text-slate-300">•</span>
-                <span className="inline-flex items-center gap-1 text-base font-black text-slate-700 font-mono tabular-nums leading-none">
-                    <Logo variant="icon" size={10} customColor="#334155" />
-                    {bCoinEquivalent.toLocaleString()}
+                <span className="inline-flex items-center gap-1 text-lg font-black text-slate-800 font-mono tabular-nums leading-none tracking-tight">
+                    <Logo variant="icon" size={12} customColor="#334155" />
+                    {bCoinEquivalent.toLocaleString('en-IN')}
                 </span>
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-700 font-mono tabular-nums">
-                EMI ₹ {footerEmi.toLocaleString()} / {emiTenure}mo
-            </span>
         </div>
     );
 }
