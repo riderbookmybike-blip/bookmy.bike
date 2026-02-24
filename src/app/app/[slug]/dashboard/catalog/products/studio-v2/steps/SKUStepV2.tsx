@@ -94,12 +94,30 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
         return sku.hex_primary || null;
     };
 
-    // Resolve display image: SKU's own image OR inherited from colour
-    const resolveSkuImage = (sku: CatalogSku): { url: string | null; inherited: boolean } => {
-        if (sku.primary_image) return { url: sku.primary_image, inherited: false };
-        const linked = colours.find(c => c.id === sku.colour_id);
-        if (linked?.primary_image) return { url: linked.primary_image, inherited: true };
-        return { url: null, inherited: false };
+    // Resolve display image: SKU → Colour → Variant → Model (only if media_shared)
+    const resolveSkuImage = (sku: CatalogSku): { url: string | null; inherited: boolean; source: string } => {
+        // 1. SKU's own image
+        if (sku.primary_image) return { url: sku.primary_image, inherited: false, source: '' };
+
+        // 2. Colour's image (if colour has media_shared on)
+        const linkedColour = colours.find(c => c.id === sku.colour_id);
+        if (linkedColour?.primary_image && linkedColour.media_shared) {
+            return { url: linkedColour.primary_image, inherited: true, source: 'C' };
+        }
+
+        // 3. Variant's image (if variant has media_shared on)
+        const skuVariantId = sku.vehicle_variant_id || sku.accessory_variant_id || sku.service_variant_id;
+        const linkedVariant = skuVariantId ? variants.find(v => v.id === skuVariantId) : null;
+        if (linkedVariant?.primary_image && linkedVariant.media_shared) {
+            return { url: linkedVariant.primary_image, inherited: true, source: 'V' };
+        }
+
+        // 4. Model's image (if model has media_shared on)
+        if (model.primary_image && model.media_shared) {
+            return { url: model.primary_image, inherited: true, source: 'M' };
+        }
+
+        return { url: null, inherited: false, source: '' };
     };
 
     // Toggle SKU existence (create/delete)
@@ -667,9 +685,9 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                                                                                           {img.inherited && (
                                                                                               <span
                                                                                                   className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-indigo-500 text-white text-[6px] font-black flex items-center justify-center"
-                                                                                                  title="From Colour"
+                                                                                                  title={`From ${img.source === 'C' ? 'Colour' : img.source === 'V' ? 'Variant' : 'Model'}`}
                                                                                               >
-                                                                                                  C
+                                                                                                  {img.source}
                                                                                               </span>
                                                                                           )}
                                                                                       </div>
@@ -924,9 +942,9 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                                                                                       {img.inherited && (
                                                                                           <span
                                                                                               className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-indigo-500 text-white text-[6px] font-black flex items-center justify-center shadow"
-                                                                                              title="From Colour"
+                                                                                              title={`From ${img.source === 'C' ? 'Colour' : img.source === 'V' ? 'Variant' : 'Model'}`}
                                                                                           >
-                                                                                              C
+                                                                                              {img.source}
                                                                                           </span>
                                                                                       )}
                                                                                   </>

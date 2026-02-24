@@ -540,7 +540,7 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
 
                                         {/* Actions */}
                                         {!isEditing && (
-                                            <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex gap-1.5">
                                                 <button
                                                     onClick={() => startEditing(colour)}
                                                     className="p-2 bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors"

@@ -67,7 +67,7 @@ export const SKU_SELECT = `
     finish,
     colour_id,
     vehicle_variant_id,
-    colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish, primary_image),
+    colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish, primary_image, media_shared),
     vehicle_variant:cat_variants_vehicle!vehicle_variant_id(
         id, name, slug, status,
         displacement, max_power, max_torque, transmission, mileage_arai,
@@ -85,7 +85,8 @@ export const SKU_SELECT = `
         headlamp_type, speedometer, tripmeter, clock,
         low_fuel_indicator, low_oil_indicator, low_battery_indicator,
         pillion_seat, pillion_footrest, stand_alarm, pass_light, killswitch,
-        warranty_years, warranty_km, service_interval
+        warranty_years, warranty_km, service_interval,
+        primary_image, media_shared
     )
 `;
 
@@ -120,11 +121,12 @@ export const CATALOG_SKU_SELECT = `
     offset_y,
     colour_id,
     colour:cat_colours!colour_id (
-        id, name, hex_primary, hex_secondary, finish, primary_image
+        id, name, hex_primary, hex_secondary, finish, primary_image, media_shared
     ),
     model:cat_models!model_id (
         id, name, slug, product_type, body_type, segment,
         engine_cc, fuel_type, emission_standard, status,
+        primary_image, media_shared,
         brand:cat_brands!brand_id (
             id, name, slug, logo_svg
         )
@@ -146,7 +148,8 @@ export const CATALOG_SKU_SELECT = `
         headlamp_type, speedometer, tripmeter, clock,
         low_fuel_indicator, low_oil_indicator, low_battery_indicator,
         pillion_seat, pillion_footrest, stand_alarm, pass_light, killswitch,
-        warranty_years, warranty_km, service_interval
+        warranty_years, warranty_km, service_interval,
+        primary_image, media_shared
     ),
     accessory_variant:cat_variants_accessory!accessory_variant_id (
         id, name, slug, status,
@@ -575,9 +578,10 @@ export async function fetchPublishedPricing(
 
 // ─── 5. Color Config Builder ─────────────────────────────────
 
-/** Build gallery assets from primary_image + gallery_img_* columns */
+/** Build gallery assets from primary_image + gallery_img_* columns.
+ *  Falls back through hierarchy: SKU → Colour → Variant → Model (if media_shared). */
 export function buildGalleryAssets(sku: any): SotAsset[] {
-    const urls = [
+    let urls = [
         sku.primary_image,
         sku.gallery_img_1,
         sku.gallery_img_2,
@@ -586,6 +590,24 @@ export function buildGalleryAssets(sku: any): SotAsset[] {
         sku.gallery_img_5,
         sku.gallery_img_6,
     ].filter(Boolean);
+
+    // If SKU has no images, fall back through hierarchy
+    if (urls.length === 0) {
+        const colour = sku.colour;
+        if (colour?.primary_image && colour.media_shared) {
+            urls = [colour.primary_image];
+        } else {
+            const variant = sku.vehicle_variant;
+            if (variant?.primary_image && variant.media_shared) {
+                urls = [variant.primary_image];
+            } else {
+                const model = sku.model;
+                if (model?.primary_image && model.media_shared) {
+                    urls = [model.primary_image];
+                }
+            }
+        }
+    }
 
     return urls.map((url: string, i: number) => ({
         id: `${sku.id}-img-${i}`,
