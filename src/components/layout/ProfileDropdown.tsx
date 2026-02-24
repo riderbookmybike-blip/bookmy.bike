@@ -115,7 +115,7 @@ export function ProfileDropdown({
     };
 
     // Dealer Session Hook
-    const { activeTenantId, setDealerContext } = useDealerSession();
+    const { activeTenantId, setDealerContext, clearDealerContext } = useDealerSession();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLButtonElement>(null); // Fixed: Ref is attached to a button
@@ -366,6 +366,18 @@ export function ProfileDropdown({
             DEALERSHIP_ADMIN: 'Admin',
         };
         return labels[role] || role;
+    };
+
+    const getWorkspaceDashboardHref = (slug: string | null | undefined) =>
+        slug ? `/app/${slug}/dashboard` : '/dashboard';
+
+    const handleWorkspaceLogin = (tenantId: string | null | undefined) => {
+        if (!tenantId) return;
+        setDealerContext(tenantId);
+    };
+
+    const handleWorkspaceLogout = () => {
+        clearDealerContext();
     };
 
     const sortedMemberships = useMemo(
@@ -872,6 +884,9 @@ export function ProfileDropdown({
                                                                     const t = m.tenants;
                                                                     if (!t) return null;
                                                                     const isActive = activeTenantId === t.id;
+                                                                    const dashboardHref = getWorkspaceDashboardHref(
+                                                                        t.slug
+                                                                    );
 
                                                                     return (
                                                                         <div
@@ -886,34 +901,60 @@ export function ProfileDropdown({
                                                                                 {getTenantIcon(t.type || '')}
                                                                             </div>
                                                                             <div className="flex-1 min-w-0">
-                                                                                <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                                                                                    {t.name}
-                                                                                </h5>
+                                                                                {isActive ? (
+                                                                                    <a
+                                                                                        href={dashboardHref}
+                                                                                        onClick={() => setIsOpen(false)}
+                                                                                        className="block font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate hover:text-brand-primary transition-colors"
+                                                                                    >
+                                                                                        {t.name}
+                                                                                    </a>
+                                                                                ) : (
+                                                                                    <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                                                                                        {t.name}
+                                                                                    </h5>
+                                                                                )}
                                                                                 <div className="flex items-center gap-2 mt-0.5">
                                                                                     <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest">
                                                                                         {getRoleLabel(m.role || '')}
                                                                                     </span>
+                                                                                    <span
+                                                                                        className={`text-[8px] font-black uppercase tracking-widest ${
+                                                                                            isActive
+                                                                                                ? 'text-emerald-500'
+                                                                                                : 'text-slate-400 dark:text-slate-500'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {isActive
+                                                                                            ? 'Active'
+                                                                                            : 'Inactive'}
+                                                                                    </span>
                                                                                 </div>
+                                                                                {isActive && (
+                                                                                    <a
+                                                                                        href={dashboardHref}
+                                                                                        onClick={() => setIsOpen(false)}
+                                                                                        className="inline-flex mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-primary transition-colors"
+                                                                                    >
+                                                                                        Open Dashboard
+                                                                                    </a>
+                                                                                )}
                                                                             </div>
                                                                             {isActive ? (
-                                                                                <a
-                                                                                    href={`/app/${t.slug}/dashboard`}
-                                                                                    onClick={() => setIsOpen(false)}
-                                                                                    className="px-3 py-1.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-black text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-black/10"
+                                                                                <button
+                                                                                    onClick={handleWorkspaceLogout}
+                                                                                    className="px-3 py-1.5 rounded-full bg-white text-slate-700 border border-slate-200 text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-sm"
                                                                                 >
-                                                                                    Dashboard
-                                                                                </a>
+                                                                                    Logout
+                                                                                </button>
                                                                             ) : (
                                                                                 <button
-                                                                                    onClick={() => {
-                                                                                        if (t.id) {
-                                                                                            setDealerContext(t.id);
-                                                                                            setIsOpen(false);
-                                                                                        }
-                                                                                    }}
+                                                                                    onClick={() =>
+                                                                                        handleWorkspaceLogin(t.id)
+                                                                                    }
                                                                                     className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-brand-primary/20"
                                                                                 >
-                                                                                    Activate
+                                                                                    Login
                                                                                 </button>
                                                                             )}
                                                                         </div>

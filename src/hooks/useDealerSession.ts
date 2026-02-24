@@ -114,6 +114,11 @@ export function useDealerSession() {
         setSession(newSession);
     }, []);
 
+    const clearDealerContext = useCallback(() => {
+        localStorage.removeItem(STORAGE_KEY);
+        setSession(defaultSession);
+    }, []);
+
     return {
         session,
         dealerId: session.dealerId,
@@ -122,6 +127,7 @@ export function useDealerSession() {
         district: session.district,
         isLoaded,
         setDealerContext,
+        clearDealerContext,
         // Legacy shims to prevent immediate breaks
         activeTenantId: session.dealerId,
         studioId: session.studioId,
