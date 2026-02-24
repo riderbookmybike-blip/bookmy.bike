@@ -13,13 +13,13 @@ import { Logo } from '@/components/brand/Logo';
 import { computeFinanceMetrics } from '../Personalize/pdpComputations';
 
 // Shared responsive section components
-import { PdpPricingSection } from '../Sections/PdpPricingSection';
-import { PdpFinanceSection } from '../Sections/PdpFinanceSection';
-import { PdpFinanceSummarySection } from '../Sections/PdpFinanceSummarySection';
-import { PdpConfigSection } from '../Sections/PdpConfigSection';
-import { PdpSpecsSection } from '../Sections/PdpSpecsSection';
-import { PdpCommandBar } from '../Sections/PdpCommandBar';
-import { ParitySnapshot } from '../Sections/ParitySnapshot';
+import { PdpPricingSection } from '../sections/PdpPricingSection';
+import { PdpFinanceSection } from '../sections/PdpFinanceSection';
+import { PdpFinanceSummarySection } from '../sections/PdpFinanceSummarySection';
+import { PdpConfigSection } from '../sections/PdpConfigSection';
+import { PdpSpecsSection } from '../sections/PdpSpecsSection';
+import { PdpCommandBar } from '../sections/PdpCommandBar';
+import { ParitySnapshot } from '../sections/ParitySnapshot';
 
 // ============================================================================
 // Props (Identical to DesktopPDPProps for 1:1 API compatibility)
