@@ -116,7 +116,23 @@ export interface CatalogColour {
     hex_secondary: string | null;
     finish: string | null;
     primary_image?: string | null;
-    is_popular?: boolean; // Added for popularity tracking at color level
+    // Gallery
+    gallery_img_1?: string | null;
+    gallery_img_2?: string | null;
+    gallery_img_3?: string | null;
+    gallery_img_4?: string | null;
+    gallery_img_5?: string | null;
+    gallery_img_6?: string | null;
+    // Video & PDF
+    video_url_1?: string | null;
+    video_url_2?: string | null;
+    pdf_url_1?: string | null;
+    // Display
+    zoom_factor?: number | null;
+    is_flipped?: boolean;
+    offset_x?: number | null;
+    offset_y?: number | null;
+    is_popular?: boolean;
     position: number;
     created_at: string;
     updated_at: string;
