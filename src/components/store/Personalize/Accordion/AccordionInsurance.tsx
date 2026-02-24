@@ -180,7 +180,8 @@ export default function AccordionInsurance({
                         </div>
                         {availableInsuranceAddons.map((addon: any) => {
                             const isActive = selectedInsuranceAddons.includes(addon.id);
-                            const isBundled = addon.inclusionType === 'BUNDLE' || addon.isMandatory;
+                            const isBundled = addon.inclusionType === 'BUNDLE';
+                            const isMandatory = addon.isMandatory || isBundled;
                             const basePrice = Number(addon.price || 0);
                             const hasDiscountOverride =
                                 addon.discountPrice !== undefined &&
@@ -191,19 +192,19 @@ export default function AccordionInsurance({
                             const offerAmount =
                                 !isBundled && hasDiscountOverride ? Math.max(0, basePrice - discountedPrice) : 0;
                             const hasOffer = offerAmount > 0;
-                            const highlightPrice = (hasOffer || effectivePrice === 0) && (isActive || isBundled);
+                            const highlightPrice = (hasOffer || effectivePrice === 0) && (isActive || isMandatory);
                             return (
                                 <div
                                     key={addon.id}
                                     onClick={() => {
-                                        if (!isBundled) toggleInsuranceAddon(addon.id);
+                                        if (!isMandatory) toggleInsuranceAddon(addon.id);
                                     }}
-                                    className={`px-4 py-2.5 border-t border-slate-50 transition-all duration-200 ${!isBundled ? 'cursor-pointer hover:bg-slate-50/50' : ''}`}
+                                    className={`px-4 py-2.5 border-t border-slate-50 transition-all duration-200 ${!isMandatory ? 'cursor-pointer hover:bg-slate-50/50' : ''}`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2.5">
                                             {/* Toggle checkbox */}
-                                            {!isBundled ? (
+                                            {!isMandatory ? (
                                                 <div
                                                     className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-all duration-200 ${
                                                         isActive
@@ -245,7 +246,7 @@ export default function AccordionInsurance({
                                                 </div>
                                             )}
                                             <span
-                                                className={`text-[11px] font-semibold ${isActive || isBundled ? 'text-slate-700' : 'text-slate-500'}`}
+                                                className={`text-[11px] font-semibold ${isActive || isMandatory ? 'text-slate-700' : 'text-slate-500'}`}
                                             >
                                                 {addon.name}
                                                 <InfoTip tip={getAddonTip(addon.name)} />
@@ -259,13 +260,13 @@ export default function AccordionInsurance({
                                         <span
                                             className={`text-[12px] font-bold tabular-nums ${highlightPrice ? 'text-emerald-600' : 'text-slate-700'}`}
                                         >
-                                            {effectivePrice === 0 && (isActive || isBundled)
+                                            {effectivePrice === 0 && (isActive || isMandatory)
                                                 ? 'FREE'
                                                 : `₹${effectivePrice.toLocaleString()}`}
                                         </span>
                                     </div>
                                     {/* Breakdown details */}
-                                    {addon.breakdown && addon.breakdown.length > 0 && (isActive || isBundled) && (
+                                    {addon.breakdown && addon.breakdown.length > 0 && (isActive || isMandatory) && (
                                         <div className="ml-6 mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
                                             {addon.breakdown
                                                 .filter((b: any) => !b.label.toLowerCase().includes('gst'))
