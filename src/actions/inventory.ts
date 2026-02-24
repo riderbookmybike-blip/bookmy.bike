@@ -9,6 +9,7 @@ import type {
     AddDealerQuoteInput,
     ReceiveStockInput,
     InvRequestStatus,
+    InvCostType,
     InvPoStatus,
     InvStockStatus,
 } from '@/types/inventory';
@@ -29,6 +30,307 @@ const PO_STATUS_TRANSITIONS: Record<InvPoStatus, InvPoStatus[]> = {
     SHIPPED: ['RECEIVED'],
     RECEIVED: [],
 };
+
+const ALL_INV_COST_TYPES = new Set<InvCostType>([
+    'EX_SHOWROOM',
+    'INSURANCE_TP',
+    'INSURANCE_ZD',
+    'RTO_REGISTRATION',
+    'HYPOTHECATION',
+    'TRANSPORT',
+    'ACCESSORY',
+    'OTHER',
+]);
+
+const COST_TYPE_ORDER: InvCostType[] = [
+    'EX_SHOWROOM',
+    'RTO_REGISTRATION',
+    'INSURANCE_TP',
+    'INSURANCE_ZD',
+    'HYPOTHECATION',
+    'TRANSPORT',
+    'ACCESSORY',
+    'OTHER',
+];
+
+const BASELINE_LOCKED_COST_TYPES = new Set<InvCostType>(['EX_SHOWROOM', 'RTO_REGISTRATION', 'INSURANCE_TP']);
+
+type RequestCostItemPayload = {
+    cost_type: InvCostType;
+    expected_amount: number;
+    description?: string | null;
+};
+
+type CostAccumulatorEntry = {
+    amount: number;
+    descriptions: Set<string>;
+};
+
+function asRecord(value: unknown): Record<string, any> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return value as Record<string, any>;
+}
+
+function toPositiveAmount(value: unknown): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+    return Math.round(parsed * 100) / 100;
+}
+
+function normalizeCostType(value: unknown): InvCostType | null {
+    const normalized = String(value || '')
+        .trim()
+        .toUpperCase();
+    if (!ALL_INV_COST_TYPES.has(normalized as InvCostType)) return null;
+    return normalized as InvCostType;
+}
+
+function normalizeDescription(value: unknown): string | null {
+    const normalized = String(value || '').trim();
+    return normalized ? normalized.slice(0, 500) : null;
+}
+
+function mergeCostItem(
+    accumulator: Map<InvCostType, CostAccumulatorEntry>,
+    item: RequestCostItemPayload,
+    mode: 'sum' | 'replace' | 'keep' = 'sum'
+) {
+    const costType = normalizeCostType(item.cost_type);
+    const amount = toPositiveAmount(item.expected_amount);
+    const description = normalizeDescription(item.description);
+    if (!costType || amount <= 0) return;
+
+    const existing = accumulator.get(costType);
+    if (!existing) {
+        accumulator.set(costType, {
+            amount,
+            descriptions: new Set(description ? [description] : []),
+        });
+        return;
+    }
+
+    if (mode === 'replace') {
+        existing.amount = amount;
+    } else if (mode === 'sum') {
+        existing.amount = Math.round((existing.amount + amount) * 100) / 100;
+    }
+
+    if (description) {
+        existing.descriptions.add(description);
+    }
+}
+
+function extractArrayRecords(value: unknown): Record<string, any>[] {
+    if (!Array.isArray(value)) return [];
+    return value.map(entry => asRecord(entry)).filter(entry => Object.keys(entry).length > 0);
+}
+
+function sumAmountFromLineItems(items: Record<string, any>[]): { total: number; labels: string[] } {
+    let total = 0;
+    const labels = new Set<string>();
+
+    for (const item of items) {
+        const isSelected = item.selected ?? item.is_selected ?? item.isSelected ?? true;
+        if (isSelected === false) continue;
+
+        const lineAmount = toPositiveAmount(
+            item.total ?? item.total_amount ?? item.amount ?? item.price ?? item.net ?? item.value ?? item.mrp ?? 0
+        );
+
+        if (lineAmount <= 0) continue;
+        total = Math.round((total + lineAmount) * 100) / 100;
+
+        const label = normalizeDescription(item.label ?? item.name ?? item.description ?? item.title);
+        if (label) labels.add(label);
+    }
+
+    return { total, labels: Array.from(labels) };
+}
+
+async function resolveSkuBaselineItems(skuId: string): Promise<RequestCostItemPayload[]> {
+    if (!skuId) return [];
+
+    const { data: priceRows, error } = await adminClient
+        .from('cat_price_state_mh')
+        .select(
+            `
+            state_code,
+            publish_stage,
+            ex_showroom,
+            rto_total_state,
+            rto_total_bh,
+            rto_total_company,
+            ins_sum_mandatory_insurance,
+            ins_sum_mandatory_insurance_gst_amount,
+            ins_gross_premium
+            `
+        )
+        .eq('sku_id', skuId);
+
+    if (error || !priceRows || priceRows.length === 0) {
+        return [];
+    }
+
+    const activeRows = priceRows.filter((row: any) => String(row.publish_stage || '').toUpperCase() === 'PUBLISHED');
+    const candidateRows = activeRows.length > 0 ? activeRows : priceRows;
+
+    const preferredRow =
+        candidateRows.find(
+            (row: any) =>
+                String(row.state_code || '').toUpperCase() === 'MH' && toPositiveAmount(row.rto_total_state) > 0
+        ) ||
+        candidateRows.find((row: any) => String(row.state_code || '').toUpperCase() === 'MH') ||
+        candidateRows.find((row: any) => toPositiveAmount(row.rto_total_state) > 0) ||
+        candidateRows[0];
+
+    if (!preferredRow) return [];
+
+    const exShowroom = toPositiveAmount((preferredRow as any).ex_showroom);
+    const rtoAmount =
+        toPositiveAmount((preferredRow as any).rto_total_state) ||
+        toPositiveAmount((preferredRow as any).rto_total_bh) ||
+        toPositiveAmount((preferredRow as any).rto_total_company);
+
+    const mandatoryInsurance =
+        toPositiveAmount((preferredRow as any).ins_sum_mandatory_insurance) +
+        toPositiveAmount((preferredRow as any).ins_sum_mandatory_insurance_gst_amount);
+    const insuranceAmount =
+        mandatoryInsurance > 0 ? mandatoryInsurance : toPositiveAmount((preferredRow as any).ins_gross_premium);
+
+    const items: RequestCostItemPayload[] = [];
+    if (exShowroom > 0) {
+        items.push({ cost_type: 'EX_SHOWROOM', expected_amount: exShowroom, description: 'Auto from SKU pricing' });
+    }
+    if (rtoAmount > 0) {
+        items.push({ cost_type: 'RTO_REGISTRATION', expected_amount: rtoAmount, description: 'Auto from SKU pricing' });
+    }
+    if (insuranceAmount > 0) {
+        items.push({
+            cost_type: 'INSURANCE_TP',
+            expected_amount: insuranceAmount,
+            description: 'Mandatory insurance from SKU pricing',
+        });
+    }
+
+    return items;
+}
+
+async function resolveBookingOptionalItems(bookingId: string): Promise<RequestCostItemPayload[]> {
+    if (!bookingId) return [];
+
+    const { data: booking, error: bookingErr } = await adminClient
+        .from('crm_bookings')
+        .select('id, quote_id')
+        .eq('id', bookingId)
+        .maybeSingle();
+
+    if (bookingErr || !booking?.quote_id) return [];
+
+    const { data: quote, error: quoteErr } = await adminClient
+        .from('crm_quotes')
+        .select('id, accessories_amount, commercials')
+        .eq('id', booking.quote_id)
+        .maybeSingle();
+
+    if (quoteErr || !quote) return [];
+
+    const commercials = asRecord(quote.commercials);
+    const pricingSnapshot = asRecord(commercials.pricing_snapshot);
+    const resolvedItems: RequestCostItemPayload[] = [];
+
+    const insuranceAddonItems = extractArrayRecords(
+        pricingSnapshot.insurance_addon_items || pricingSnapshot.insurance_addons || commercials.insurance_addons
+    );
+    const insuranceFromLines = sumAmountFromLineItems(insuranceAddonItems);
+    const insuranceAddonAmount =
+        toPositiveAmount(pricingSnapshot.insurance_addons_total) ||
+        toPositiveAmount(pricingSnapshot.insurance_addon_total) ||
+        insuranceFromLines.total;
+
+    if (insuranceAddonAmount > 0) {
+        const insuranceLabels = insuranceFromLines.labels.slice(0, 6);
+        const description = insuranceLabels.length
+            ? `Booking selected insurance add-ons: ${insuranceLabels.join(', ')}`
+            : 'Booking selected insurance add-ons';
+        resolvedItems.push({
+            cost_type: 'INSURANCE_ZD',
+            expected_amount: insuranceAddonAmount,
+            description,
+        });
+    }
+
+    const accessoryItems = extractArrayRecords(
+        pricingSnapshot.accessory_items || pricingSnapshot.accessories || commercials.accessories
+    );
+    const accessoriesFromLines = sumAmountFromLineItems(accessoryItems);
+    const accessoriesAmount =
+        toPositiveAmount(pricingSnapshot.accessories_total) ||
+        toPositiveAmount(quote.accessories_amount) ||
+        accessoriesFromLines.total;
+
+    if (accessoriesAmount > 0) {
+        const accessoryLabels = accessoriesFromLines.labels.slice(0, 8);
+        const description = accessoryLabels.length
+            ? `Booking selected accessories: ${accessoryLabels.join(', ')}`
+            : 'Booking selected accessories';
+        resolvedItems.push({
+            cost_type: 'ACCESSORY',
+            expected_amount: accessoriesAmount,
+            description,
+        });
+    }
+
+    return resolvedItems;
+}
+
+async function resolveRequestItemsForCreate(input: CreateRequestInput): Promise<RequestCostItemPayload[]> {
+    const accumulator = new Map<InvCostType, CostAccumulatorEntry>();
+
+    const baselineItems = await resolveSkuBaselineItems(input.sku_id);
+    const baselineTypes = new Set<InvCostType>();
+    for (const item of baselineItems) {
+        baselineTypes.add(item.cost_type);
+        mergeCostItem(accumulator, item, 'replace');
+    }
+
+    const requestedItems = Array.isArray(input.items) ? input.items : [];
+    for (const item of requestedItems) {
+        const normalizedType = normalizeCostType(item?.cost_type);
+        if (!normalizedType) continue;
+
+        const mode =
+            baselineTypes.has(normalizedType) && BASELINE_LOCKED_COST_TYPES.has(normalizedType) ? 'keep' : 'sum';
+        mergeCostItem(
+            accumulator,
+            {
+                cost_type: normalizedType,
+                expected_amount: item.expected_amount,
+                description: item.description,
+            },
+            mode
+        );
+    }
+
+    if ((input.source_type || 'DIRECT') === 'BOOKING' && input.booking_id) {
+        const bookingItems = await resolveBookingOptionalItems(input.booking_id);
+        for (const item of bookingItems) {
+            mergeCostItem(accumulator, item, 'sum');
+        }
+    }
+
+    const resolved: RequestCostItemPayload[] = [];
+    for (const costType of COST_TYPE_ORDER) {
+        const entry = accumulator.get(costType);
+        if (!entry || entry.amount <= 0) continue;
+        resolved.push({
+            cost_type: costType,
+            expected_amount: Math.round(entry.amount * 100) / 100,
+            description: entry.descriptions.size > 0 ? Array.from(entry.descriptions).join(' | ') : null,
+        });
+    }
+
+    return resolved;
+}
 
 async function resolveQuoteItemsForRequest(
     requestId: string,
@@ -80,6 +382,8 @@ export async function createRequest(input: CreateRequestInput): Promise<ActionRe
         const user = await getAuthUser();
         if (!user) return { success: false, message: 'Unauthorized' };
 
+        const resolvedItems = await resolveRequestItemsForCreate(input);
+
         // Create the request header
         const { data: request, error: reqError } = await adminClient
             .from('inv_requests')
@@ -100,8 +404,8 @@ export async function createRequest(input: CreateRequestInput): Promise<ActionRe
         }
 
         // Insert cost component items
-        if (input.items.length > 0) {
-            const itemRows = input.items.map(item => ({
+        if (resolvedItems.length > 0) {
+            const itemRows = resolvedItems.map(item => ({
                 request_id: request.id,
                 cost_type: item.cost_type,
                 expected_amount: item.expected_amount,
@@ -954,7 +1258,7 @@ export async function bookingShortageCheck(bookingId: string) {
             booking_id: bookingId,
             source_type: 'BOOKING',
             delivery_branch_id: booking.delivery_branch_id || undefined,
-            items: [], // Will be filled by createRequest logic from catalog baseline if implemented there, or empty for now
+            items: [], // createRequest server-side resolver auto-fills mandatory + booking-derived optional components
         };
 
         const result = await createRequest(requestInput);
