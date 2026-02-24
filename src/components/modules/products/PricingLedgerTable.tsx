@@ -206,6 +206,8 @@ export default function PricingLedgerTable({
     const [selectedSkuIds, setSelectedSkuIds] = useState<Set<string>>(new Set());
     const [isExporting, setIsExporting] = useState(false);
     const [openStatusDropdownId, setOpenStatusDropdownId] = useState<string | null>(null);
+    const [editingOfferSkuId, setEditingOfferSkuId] = useState<string | null>(null);
+    const [editingOfferValue, setEditingOfferValue] = useState<string>('');
 
     // Only allow editing when all selected rows belong to the SAME variant
     const singleVariantSelected = useMemo(() => {
@@ -421,7 +423,14 @@ export default function PricingLedgerTable({
 
     const [searchText, setSearchText] = useState('');
     const [prevSelectedCategory, setPrevSelectedCategory] = useState(selectedCategory);
-    const [prevFilters, setPrevFilters] = useState({ filters, selectedBrand, selectedSubCategory, selectedStateId });
+    const [prevFilters, setPrevFilters] = useState({
+        filters,
+        selectedBrand,
+        selectedSubCategory,
+        selectedStateId,
+        selectedModel,
+        selectedVariant,
+    } as any);
 
     const formatMoney = (value: number | null | undefined) => {
         if (value === null || value === undefined) return '—';
@@ -493,15 +502,25 @@ export default function PricingLedgerTable({
         }
     }
 
-    // Reset page 1 on internal filters (Render phase adjustment)
+    // Reset page 1 and clear selection on internal filters (Render phase adjustment)
     if (
         filters !== prevFilters.filters ||
         selectedBrand !== prevFilters.selectedBrand ||
         selectedSubCategory !== prevFilters.selectedSubCategory ||
-        selectedStateId !== prevFilters.selectedStateId
+        selectedStateId !== prevFilters.selectedStateId ||
+        selectedModel !== (prevFilters as any).selectedModel ||
+        selectedVariant !== (prevFilters as any).selectedVariant
     ) {
-        setPrevFilters({ filters, selectedBrand, selectedSubCategory, selectedStateId });
+        setPrevFilters({
+            filters,
+            selectedBrand,
+            selectedSubCategory,
+            selectedStateId,
+            selectedModel,
+            selectedVariant,
+        } as any);
         setCurrentPage(1);
+        setSelectedSkuIds(new Set());
     }
 
     // Sort & Filter State
@@ -2082,9 +2101,11 @@ export default function PricingLedgerTable({
                                                                     : sku.exShowroom) + 25000
                                                             }
                                                             value={
-                                                                activeCategory === 'vehicles'
-                                                                    ? (sku.onRoad || 0) + offerDelta
-                                                                    : sku.exShowroom + offerDelta
+                                                                editingOfferSkuId === sku.id
+                                                                    ? editingOfferValue
+                                                                    : activeCategory === 'vehicles'
+                                                                      ? (sku.onRoad || 0) + offerDelta
+                                                                      : sku.exShowroom + offerDelta
                                                             }
                                                             readOnly={!canEdit}
                                                             title={
@@ -2092,14 +2113,35 @@ export default function PricingLedgerTable({
                                                                     ? "Dealer's Offer On Road price to customer. Delta range: -25000 to +25000."
                                                                     : "Dealer's Final Price for this item. Delta range: -25000 to +25000."
                                                             }
-                                                            onChange={e => {
-                                                                const enteredPrice = Number(e.target.value);
-                                                                const base =
+                                                            onFocus={() => {
+                                                                const displayVal =
                                                                     activeCategory === 'vehicles'
-                                                                        ? sku.onRoad || 0
-                                                                        : sku.exShowroom;
-                                                                const newDelta = enteredPrice - base;
-                                                                onUpdateOffer(sku.id, newDelta);
+                                                                        ? (sku.onRoad || 0) + offerDelta
+                                                                        : sku.exShowroom + offerDelta;
+                                                                setEditingOfferSkuId(sku.id);
+                                                                setEditingOfferValue(String(displayVal));
+                                                            }}
+                                                            onChange={e => {
+                                                                if (editingOfferSkuId === sku.id) {
+                                                                    setEditingOfferValue(e.target.value);
+                                                                }
+                                                            }}
+                                                            onBlur={() => {
+                                                                if (editingOfferSkuId === sku.id) {
+                                                                    const enteredPrice = Number(editingOfferValue);
+                                                                    const base =
+                                                                        activeCategory === 'vehicles'
+                                                                            ? sku.onRoad || 0
+                                                                            : sku.exShowroom;
+                                                                    const newDelta = enteredPrice - base;
+                                                                    onUpdateOffer(sku.id, newDelta);
+                                                                    setEditingOfferSkuId(null);
+                                                                }
+                                                            }}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter') {
+                                                                    (e.target as HTMLInputElement).blur();
+                                                                }
                                                             }}
                                                             className={`w-24 rounded-lg px-2 py-1 text-[10px] font-bold text-right outline-none transition-all
                                                                 ${

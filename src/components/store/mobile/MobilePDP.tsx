@@ -138,10 +138,10 @@ export const MobilePDP = ({
     const totalSavingsBase =
         data.totalSavings ??
         (data.colorDiscount || 0) +
-        (data.offersDiscount < 0 ? Math.abs(data.offersDiscount) : 0) +
-        (data.accessoriesDiscount || 0) +
-        (data.servicesDiscount || 0) +
-        (data.insuranceAddonsDiscount || 0);
+            (data.offersDiscount < 0 ? Math.abs(data.offersDiscount) : 0) +
+            (data.accessoriesDiscount || 0) +
+            (data.servicesDiscount || 0) +
+            (data.insuranceAddonsDiscount || 0);
     const totalSavings = totalSavingsBase + (isReferralActive ? REFERRAL_BONUS : 0);
     // Single-open card state (string-based so adding future cards is trivial)
     // null = all closed, string = that card is open
@@ -196,12 +196,15 @@ export const MobilePDP = ({
                         className="object-contain drop-shadow-2xl"
                         priority
                         style={{
-                            transform: [
-                                activeColorConfig?.isFlipped ? 'scaleX(-1)' : '',
-                                activeColorConfig?.zoomFactor ? `scale(${activeColorConfig.zoomFactor})` : '',
-                                activeColorConfig?.offsetX ? `translateX(${activeColorConfig.offsetX}px)` : '',
-                                activeColorConfig?.offsetY ? `translateY(${activeColorConfig.offsetY}px)` : '',
-                            ].filter(Boolean).join(' ') || undefined,
+                            transform:
+                                [
+                                    activeColorConfig?.isFlipped ? 'scaleX(-1)' : '',
+                                    activeColorConfig?.zoomFactor ? `scale(${activeColorConfig.zoomFactor})` : '',
+                                    activeColorConfig?.offsetX ? `translateX(${activeColorConfig.offsetX}px)` : '',
+                                    activeColorConfig?.offsetY ? `translateY(${activeColorConfig.offsetY}px)` : '',
+                                ]
+                                    .filter(Boolean)
+                                    .join(' ') || undefined,
                         }}
                     />
                 </motion.div>
@@ -239,8 +242,9 @@ export const MobilePDP = ({
                                 <button
                                     key={c.id}
                                     onClick={() => handleColorChange(c.id)}
-                                    className={`relative w-12 h-12 rounded-full shrink-0 transition-all border-2 ${isColorSelected ? 'border-[#F4B000] scale-110' : 'border-transparent'
-                                        }`}
+                                    className={`relative w-12 h-12 rounded-full shrink-0 transition-all border-2 ${
+                                        isColorSelected ? 'border-[#F4B000] scale-110' : 'border-transparent'
+                                    }`}
                                 >
                                     <div
                                         className="absolute inset-[3px] rounded-full border border-black/10 overflow-hidden"

@@ -43,7 +43,7 @@ export default function VisualsRow({
     videoSource,
     className = '',
     isVideoOpen = false,
-    onCloseVideo = () => { },
+    onCloseVideo = () => {},
     isFlipped = false,
     zoomFactor = null,
     offsetX = 0,
@@ -104,8 +104,8 @@ export default function VisualsRow({
     const galleryImages =
         assets && assets.length > 0
             ? assets
-                .filter((a: any) => a.type === 'image' || a.url?.match(/\.(png|jpg|jpeg|webp|avif)$/i))
-                .map((a: any) => a.url)
+                  .filter((a: any) => a.type === 'image' || a.url?.match(/\.(png|jpg|jpeg|webp|avif)$/i))
+                  .map((a: any) => a.url)
             : [productImage];
     // Deduplicate
     const galaxyImages = [...new Set(galleryImages.length > 0 ? galleryImages : [productImage])] as string[];
@@ -159,15 +159,18 @@ export default function VisualsRow({
                             src={productImage || '/images/categories/scooter_nobg.png'}
                             alt="Product Visual"
                             onLoad={() => setImageLoaded(true)}
-                            className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)],0,0,0.9)] transition-opacity duration-500 ${imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
-                                }`}
+                            className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)],0,0,0.9)] transition-opacity duration-500 ${
+                                imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
+                            }`}
                             style={{
                                 transform: [
                                     isFlipped ? 'scaleX(-1)' : '',
                                     zoomFactor ? `scale(${zoomFactor})` : '',
                                     offsetX ? `translateX(${offsetX}px)` : '',
                                     offsetY ? `translateY(${offsetY}px)` : '',
-                                ].filter(Boolean).join(' '),
+                                ]
+                                    .filter(Boolean)
+                                    .join(' '),
                             }}
                         />
                     )}
@@ -177,10 +180,11 @@ export default function VisualsRow({
                         {has360 && (
                             <button
                                 onClick={() => setIs360Active(!is360Active)}
-                                className={`px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${is360Active
+                                className={`px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${
+                                    is360Active
                                         ? 'bg-[#F4B000] text-black shadow-[0_0_20px_rgba(244,176,0,0.5)]'
                                         : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
-                                    }`}
+                                }`}
                             >
                                 {is360Active ? 'Static View' : '360 View'}
                             </button>

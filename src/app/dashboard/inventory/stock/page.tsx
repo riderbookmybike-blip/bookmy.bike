@@ -118,7 +118,8 @@ export default function StockPage() {
         total: stock.length,
     };
 
-    const resolvedSlug = tenantSlug || (typeof params?.slug === 'string' ? params.slug : undefined);
+    const slugFromParams = typeof params?.slug === 'string' ? params.slug : undefined;
+    const resolvedSlug = slugFromParams || tenantSlug;
     const ordersBasePath = resolvedSlug
         ? `/app/${resolvedSlug}/dashboard/inventory/orders`
         : '/dashboard/inventory/orders';

@@ -125,7 +125,8 @@ export default function RequisitionsPage() {
         booking: requisitions.filter(r => r.source_type === 'BOOKING').length,
     };
 
-    const resolvedSlug = tenantSlug || (typeof params?.slug === 'string' ? params.slug : undefined);
+    const slugFromParams = typeof params?.slug === 'string' ? params.slug : undefined;
+    const resolvedSlug = slugFromParams || tenantSlug;
 
     return (
         <div className="space-y-8 pb-20">

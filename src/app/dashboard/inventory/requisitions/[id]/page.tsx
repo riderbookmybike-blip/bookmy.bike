@@ -128,7 +128,8 @@ export default function RequisitionDetailPage() {
     const router = useRouter();
     const { tenantSlug, tenantId } = useTenant();
     const requestId = params?.id || '';
-    const resolvedSlug = tenantSlug || (typeof params?.slug === 'string' ? params.slug : undefined);
+    const slugFromParams = typeof params?.slug === 'string' ? params.slug : undefined;
+    const resolvedSlug = slugFromParams || tenantSlug;
     const requisitionsBasePath = resolvedSlug
         ? `/app/${resolvedSlug}/dashboard/inventory/requisitions`
         : '/dashboard/inventory/requisitions';
