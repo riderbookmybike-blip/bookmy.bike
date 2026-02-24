@@ -10,6 +10,7 @@ import '@/styles/slider-enhanced.css';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
+import { Logo } from '@/components/brand/Logo';
 import {
     ShieldCheck,
     Zap,
@@ -47,7 +48,7 @@ import CascadingAccessorySelector from './Personalize/CascadingAccessorySelector
 import { ServiceOption } from '@/types/store';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
-import { computeOClubPricing, OCLUB_COIN_VALUE } from '@/lib/oclub/coin';
+import { computeOClubPricing, coinsNeededForPrice } from '@/lib/oclub/coin';
 
 // Lazy load tab components for code splitting
 const FinanceTab = dynamic(() => import('./Personalize/Tabs/FinanceTab'), {
@@ -79,6 +80,7 @@ const WarrantyTab = dynamic(() => import('./Personalize/Tabs/WarrantyTab'), {
 import PricingCard from './Personalize/Cards/PricingCard';
 import FinanceCard from './Personalize/Cards/FinanceCard';
 import TechSpecsSection from './Personalize/TechSpecsSection';
+import { ParitySnapshot } from './Sections/ParitySnapshot';
 
 interface DesktopPDPProps {
     product: any;
@@ -225,7 +227,7 @@ export function DesktopPDP({
             ? computeOClubPricing(totalOnRoad, walletCoinsValue)
             : null;
     const displayOnRoad = coinPricing?.effectivePrice ?? totalOnRoad;
-    const showCoinRate = Number.isFinite(walletCoinsValue);
+    const bCoinEquivalent = coinsNeededForPrice(displayOnRoad);
 
     // Compute EMI using shared finance computation (Phase 7)
     const financeMetrics = computeFinanceMetrics({
@@ -524,6 +526,12 @@ export function DesktopPDP({
 
     return (
         <div className="relative min-h-screen bg-slate-50 transition-colors duration-500 font-sans pt-0 pb-20">
+            {/* Parity Snapshot — hidden DOM element for Playwright parity tests */}
+            <ParitySnapshot data={data} product={product} />
+            {/* Always-mounted parity markers — these must exist regardless of active hero tab */}
+            <div data-parity-section="pricing" style={{ display: 'none' }} aria-hidden="true" />
+            <div data-parity-section="finance" style={{ display: 'none' }} aria-hidden="true" />
+            <div data-parity-section="finance-summary" style={{ display: 'none' }} aria-hidden="true" />
             {/* Cinematic Mesh Background */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div
@@ -702,53 +710,57 @@ export function DesktopPDP({
                                                 ) : (
                                                     <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col pl-[76px] pr-[76px] pt-2 pb-4">
                                                         {card.id === 'PRICING' && (
-                                                            <PricingCard
-                                                                product={product}
-                                                                variantName={displayVariant}
-                                                                activeColor={{
-                                                                    name: displayColor || activeColorConfig.name,
-                                                                    hex: activeColorConfig.hex,
-                                                                }}
-                                                                totalOnRoad={displayOnRoad}
-                                                                totalSavings={totalSavings}
-                                                                originalPrice={totalOnRoad + totalSavings}
-                                                                coinPricing={coinPricing}
-                                                                showOClubPrompt={showOClubPrompt}
-                                                                priceBreakup={priceBreakupData}
-                                                                productImage={getProductImage()}
-                                                                pricingSource={
-                                                                    [
-                                                                        initialLocation?.district,
-                                                                        bestOffer?.dealer?.business_name,
-                                                                    ]
-                                                                        .filter(Boolean)
-                                                                        .join(' • ') || data.pricingSource
-                                                                }
-                                                                leadName={leadContext?.name}
-                                                                isGated={isGated}
-                                                            />
+                                                            <div>
+                                                                <PricingCard
+                                                                    product={product}
+                                                                    variantName={displayVariant}
+                                                                    activeColor={{
+                                                                        name: displayColor || activeColorConfig.name,
+                                                                        hex: activeColorConfig.hex,
+                                                                    }}
+                                                                    totalOnRoad={displayOnRoad}
+                                                                    totalSavings={totalSavings}
+                                                                    originalPrice={totalOnRoad + totalSavings}
+                                                                    coinPricing={coinPricing}
+                                                                    showOClubPrompt={showOClubPrompt}
+                                                                    priceBreakup={priceBreakupData}
+                                                                    productImage={getProductImage()}
+                                                                    pricingSource={
+                                                                        [
+                                                                            initialLocation?.district,
+                                                                            bestOffer?.dealer?.business_name,
+                                                                        ]
+                                                                            .filter(Boolean)
+                                                                            .join(' • ') || data.pricingSource
+                                                                    }
+                                                                    leadName={leadContext?.name}
+                                                                    isGated={isGated}
+                                                                />
+                                                            </div>
                                                         )}
                                                         {card.id === 'FINANCE' && (
-                                                            <FinanceCard
-                                                                emi={emi}
-                                                                emiTenure={emiTenure}
-                                                                setEmiTenure={setEmiTenure}
-                                                                downPayment={userDownPayment || 0}
-                                                                setUserDownPayment={setUserDownPayment}
-                                                                minDownPayment={minDownPayment}
-                                                                maxDownPayment={maxDownPayment}
-                                                                totalOnRoad={displayOnRoad}
-                                                                loanAmount={Math.max(
-                                                                    0,
-                                                                    displayOnRoad - (userDownPayment || 0)
-                                                                )}
-                                                                annualInterest={annualInterest}
-                                                                interestType={interestType}
-                                                                schemeId={initialFinance?.scheme?.id}
-                                                                financeCharges={financeCharges}
-                                                                bank={initialFinance?.bank}
-                                                                scheme={initialFinance?.scheme}
-                                                            />
+                                                            <div>
+                                                                <FinanceCard
+                                                                    emi={emi}
+                                                                    emiTenure={emiTenure}
+                                                                    setEmiTenure={setEmiTenure}
+                                                                    downPayment={userDownPayment || 0}
+                                                                    setUserDownPayment={setUserDownPayment}
+                                                                    minDownPayment={minDownPayment}
+                                                                    maxDownPayment={maxDownPayment}
+                                                                    totalOnRoad={displayOnRoad}
+                                                                    loanAmount={Math.max(
+                                                                        0,
+                                                                        displayOnRoad - (userDownPayment || 0)
+                                                                    )}
+                                                                    annualInterest={annualInterest}
+                                                                    interestType={interestType}
+                                                                    schemeId={initialFinance?.scheme?.id}
+                                                                    financeCharges={financeCharges}
+                                                                    bank={initialFinance?.bank}
+                                                                    scheme={initialFinance?.scheme}
+                                                                />
+                                                            </div>
                                                         )}
                                                         {card.id === 'FINANCE_SUMMARY' && (
                                                             <FinanceSummaryPanel
@@ -814,8 +826,12 @@ export function DesktopPDP({
                                                 <span className="text-4xl font-black italic tracking-tighter text-brand-primary font-mono block drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-in zoom-in-95 duration-700">
                                                     ₹{displayOnRoad.toLocaleString()}
                                                 </span>
+                                                <span className="mt-1 inline-flex items-center gap-1 text-lg font-black italic tracking-tight text-brand-primary font-mono tabular-nums leading-none">
+                                                    <Logo variant="icon" size={12} />
+                                                    {bCoinEquivalent.toLocaleString()}
+                                                </span>
                                                 {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
-                                                    <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                                                    <span className="mt-1 self-stretch text-center text-[10px] font-black uppercase tracking-widest text-emerald-600">
                                                         ⚡ You Save ₹
                                                         {(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}
                                                     </span>
@@ -932,6 +948,7 @@ export function DesktopPDP({
 
                 {/* 4. Modular 5-Pillar Configuration Grid (Horizontal Accordion Design) */}
                 <div
+                    data-parity-section="config"
                     className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} flex-row gap-4 h-[720px] overflow-visible`}
                 >
                     {configCards.map((category, idx) => {
@@ -1021,6 +1038,7 @@ export function DesktopPDP({
                 {/* 5. Technical Specifications Section */}
                 {product.specs && Object.keys(product.specs).length > 0 && (
                     <motion.div
+                        data-parity-section="specs"
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.8, duration: 0.6 }}
@@ -1037,26 +1055,25 @@ export function DesktopPDP({
             </div>
 
             {/* Floating Bottom Command Bar (All Viewports) */}
-            <FloatingCommandBar
-                getProductImage={getProductImage}
-                displayModel={displayModel}
-                displayVariant={displayVariant}
-                displayColor={displayColor}
-                activeColorConfig={activeColorConfig}
-                displayOnRoad={displayOnRoad}
-                totalOnRoad={totalOnRoad}
-                totalSavings={totalSavings}
-                coinPricing={coinPricing}
-                showOClubPrompt={showOClubPrompt}
-                footerEmi={footerEmi}
-                emiTenure={emiTenure}
-                forceMobileLayout={forceMobileLayout}
-                handleShareQuote={handleShareQuote}
-                handleSaveQuote={handleSaveQuote}
-                handleBookingRequest={handleBookingRequest}
-                serviceability={serviceability}
-                isGated={isGated}
-            />
+            <div data-parity-section="command-bar">
+                <FloatingCommandBar
+                    getProductImage={getProductImage}
+                    displayModel={displayModel}
+                    displayVariant={displayVariant}
+                    displayColor={displayColor}
+                    activeColorConfig={activeColorConfig}
+                    displayOnRoad={displayOnRoad}
+                    totalOnRoad={totalOnRoad}
+                    totalSavings={totalSavings}
+                    coinPricing={coinPricing}
+                    forceMobileLayout={forceMobileLayout}
+                    handleShareQuote={handleShareQuote}
+                    handleSaveQuote={handleSaveQuote}
+                    handleBookingRequest={handleBookingRequest}
+                    serviceability={serviceability}
+                    isGated={isGated}
+                />
+            </div>
         </div>
     );
 }

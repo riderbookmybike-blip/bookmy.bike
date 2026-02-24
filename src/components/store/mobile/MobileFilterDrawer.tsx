@@ -261,10 +261,10 @@ export function MobileFilterTrigger({ onClick, activeCount }: { onClick: () => v
     return (
         <button
             onClick={onClick}
-            className="fixed z-[50] bottom-[calc(60px+env(safe-area-inset-bottom,0px)+12px)] left-1/2 -translate-x-1/2 flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0b0d10]/90 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 active:scale-95 transition-all"
+            className="fixed z-[50] bottom-[calc(60px+env(safe-area-inset-bottom,0px)+12px)] left-1/2 -translate-x-1/2 flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl shadow-slate-300/40 active:scale-95 transition-all"
         >
             <SlidersHorizontal size={14} className="text-[#FFD700]" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">Customize</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Customize</span>
             {activeCount > 0 && (
                 <span className="w-4.5 h-4.5 rounded-full bg-[#FFD700] text-black text-[9px] font-black flex items-center justify-center min-w-[18px] px-1">
                     {activeCount}

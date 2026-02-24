@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Share2, Heart, ArrowRight } from 'lucide-react';
+import { Share2, Heart, ArrowRight, Wallet, Sparkles, Zap } from 'lucide-react';
 
 export interface FloatingCommandBarProps {
     getProductImage: () => string;
@@ -15,9 +15,6 @@ export interface FloatingCommandBarProps {
     totalOnRoad: number;
     totalSavings: number;
     coinPricing: any;
-    showOClubPrompt: boolean;
-    footerEmi: number;
-    emiTenure: number;
     forceMobileLayout: boolean;
     handleShareQuote: () => void;
     handleSaveQuote: () => void;
@@ -35,6 +32,30 @@ const ActionIcon = ({ icon: Icon, onClick, colorClass }: { icon: any; onClick: (
     </button>
 );
 
+const PriceMetric = ({
+    icon: Icon,
+    label,
+    amount,
+    amountClass = 'text-slate-800',
+    labelClass = 'text-slate-500',
+}: {
+    icon: any;
+    label: string;
+    amount: string;
+    amountClass?: string;
+    labelClass?: string;
+}) => (
+    <div className="min-w-[90px] px-2.5 py-1.5 rounded-xl bg-white/72 border border-slate-200/70 shadow-sm">
+        <p className={`text-[14px] font-black font-mono tabular-nums leading-none ${amountClass}`}>{amount}</p>
+        <p
+            className={`mt-1 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.09em] ${labelClass}`}
+        >
+            <Icon size={10} />
+            {label}
+        </p>
+    </div>
+);
+
 export default function FloatingCommandBar({
     getProductImage,
     displayModel,
@@ -45,9 +66,6 @@ export default function FloatingCommandBar({
     totalOnRoad,
     totalSavings,
     coinPricing,
-    showOClubPrompt,
-    footerEmi,
-    emiTenure,
     forceMobileLayout,
     handleShareQuote,
     handleSaveQuote,
@@ -55,6 +73,42 @@ export default function FloatingCommandBar({
     serviceability,
     isGated,
 }: FloatingCommandBarProps) {
+    const privilegedSavings = Math.max(0, totalSavings + (coinPricing?.discount || 0));
+    const onRoadBase = Math.max(0, displayOnRoad + privilegedSavings);
+    const showDesktopBreakdown = !forceMobileLayout;
+
+    const desktopMetrics: {
+        key: string;
+        icon: any;
+        label: string;
+        amount: string;
+        amountClass?: string;
+        labelClass?: string;
+    }[] = [
+        {
+            key: 'on-road',
+            icon: Wallet,
+            label: 'On-Road',
+            amount: `₹ ${onRoadBase.toLocaleString('en-IN')}`,
+        },
+        {
+            key: 'privileged',
+            icon: Sparkles,
+            label: "O'Circle Benefit",
+            amount: `− ₹ ${privilegedSavings.toLocaleString('en-IN')}`,
+            amountClass: 'text-emerald-600',
+            labelClass: 'text-emerald-600',
+        },
+        {
+            key: 'final-offer',
+            icon: Zap,
+            label: 'Final Offer',
+            amount: `₹ ${displayOnRoad.toLocaleString('en-IN')}`,
+            amountClass: 'text-[#C99700]',
+            labelClass: 'text-brand-primary',
+        },
+    ];
+
     return (
         <div className="fixed inset-x-0 bottom-0 z-[95]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
             <div className="page-container mb-2 md:mb-4">
@@ -98,65 +152,36 @@ export default function FloatingCommandBar({
 
                             {/* Price Summary */}
                             <div className="flex items-center gap-3 md:gap-4">
-                                <div className="flex flex-col md:flex-row md:items-center md:gap-3">
-                                    <span
-                                        className={`text-[10px] font-black uppercase tracking-widest text-slate-500 ${forceMobileLayout ? '' : 'md:hidden'}`}
-                                    >
-                                        On-Road
+                                {showDesktopBreakdown && (
+                                    <div className="hidden md:flex items-center gap-2">
+                                        {desktopMetrics.map(metric => (
+                                            <PriceMetric
+                                                key={metric.key}
+                                                icon={metric.icon}
+                                                label={metric.label}
+                                                amount={metric.amount}
+                                                amountClass={metric.amountClass}
+                                                labelClass={metric.labelClass}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className={`${showDesktopBreakdown ? 'md:hidden' : ''} flex flex-col`}>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                        Final Offer
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        <span
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline'} text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500`}
-                                        >
-                                            On-Road
-                                        </span>
                                         {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
                                             <span className="text-[10px] text-slate-400 line-through font-mono">
-                                                ₹{(totalOnRoad + totalSavings).toLocaleString()}
+                                                ₹ {(totalOnRoad + totalSavings).toLocaleString('en-IN')}
                                             </span>
                                         )}
                                         <span className="text-lg font-black text-[#C99700] font-mono">
-                                            ₹{displayOnRoad.toLocaleString()}
+                                            ₹ {displayOnRoad.toLocaleString('en-IN')}
                                         </span>
                                     </div>
                                 </div>
-
-                                {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
-                                    <>
-                                        <div
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-6 bg-slate-200`}
-                                        />
-                                        <span
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline'} text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-600`}
-                                        >
-                                            ✦ O&apos; Circle Privileged Saving: ₹
-                                            {(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}
-                                        </span>
-                                    </>
-                                )}
-
-                                {!coinPricing && showOClubPrompt && (
-                                    <>
-                                        <div
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-6 bg-slate-200`}
-                                        />
-                                        <span
-                                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline-flex'} items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-[9px] font-semibold uppercase tracking-[0.1em] text-indigo-600`}
-                                        >
-                                            +13 O&apos; Circle Coins
-                                        </span>
-                                    </>
-                                )}
-
-                                {/* EMI & Tenure */}
-                                <div
-                                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-6 bg-slate-200`}
-                                />
-                                <span
-                                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:inline'} text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-700 font-mono tabular-nums`}
-                                >
-                                    EMI ₹{footerEmi.toLocaleString()} / {emiTenure}mo
-                                </span>
                             </div>
                         </div>
 

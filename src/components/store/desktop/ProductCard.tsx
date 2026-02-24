@@ -267,6 +267,9 @@ export const ProductCard = ({
     };
     const bcoinAdjustment = coinPricing.discount || 0;
     const isShowingEffectivePrice = bcoinAdjustment > 0;
+    const baseOnRoadPrice = onRoad > 0 ? onRoad : offerPrice;
+    const effectiveOfferPrice = Math.max(0, offerPrice - bcoinAdjustment);
+    const showOnRoadStrike = baseOnRoadPrice > effectiveOfferPrice;
 
     // If dealer offer exists, price is CONFIRMED not estimated
     const isConfirmedPrice = !!bestOffer;
@@ -480,7 +483,7 @@ export const ProductCard = ({
                                 <div className="flex flex-col">
                                     <div className="flex items-baseline gap-3">
                                         <span className="text-3xl font-black text-slate-900 leading-none tracking-tight">
-                                            ₹{basePrice.toLocaleString('en-IN')}
+                                            ₹{baseOnRoadPrice.toLocaleString('en-IN')}
                                         </span>
                                         {bestOffer ? (
                                             <div className="flex flex-col items-start leading-none">
@@ -935,7 +938,7 @@ export const ProductCard = ({
                                             Total Offer
                                         </span>
                                         <span className="text-[13px] font-black text-slate-900 tabular-nums">
-                                            ₹{(offerPrice - bcoinAdjustment).toLocaleString('en-IN')}
+                                            ₹{effectiveOfferPrice.toLocaleString('en-IN')}
                                         </span>
                                     </div>
 
@@ -967,14 +970,15 @@ export const ProductCard = ({
                         <div className="flex flex-col gap-1.5">
                             <div className="flex flex-col gap-1">
                                 <span
-                                    className={`${isShowingEffectivePrice ? 'text-lg md:text-xl font-normal line-through text-slate-800' : 'text-[22px] md:text-3xl font-black'} italic text-slate-900 leading-none`}
+                                    className={`${showOnRoadStrike ? 'text-lg md:text-xl font-normal line-through text-slate-800' : 'text-[22px] md:text-3xl font-black'} italic text-slate-900 leading-none`}
                                 >
-                                    ₹{offerPrice.toLocaleString('en-IN')}
+                                    ₹
+                                    {(showOnRoadStrike ? baseOnRoadPrice : effectiveOfferPrice).toLocaleString('en-IN')}
                                 </span>
-                                {isShowingEffectivePrice && (
+                                {showOnRoadStrike && (
                                     <div className="flex items-center">
                                         <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
-                                            ₹{(offerPrice - bcoinAdjustment).toLocaleString('en-IN')}
+                                            ₹{effectiveOfferPrice.toLocaleString('en-IN')}
                                         </span>
                                     </div>
                                 )}

@@ -103,7 +103,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     if (!mounted) {
         if (isAppRoute) {
             content = (
-                <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+                <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                     <div className="text-center space-y-3">
                         <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -130,7 +130,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     // Avoid marketplace shell on /app/* while role is still loading
     if (isAppRoute && !activeRole && !userRole) {
         content = (
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-center space-y-3">
                     <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -145,7 +145,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     // --- REGULAR USER LAYOUT ---
     if (isRegularUser) {
         content = (
-            <div className="min-h-screen bg-white dark:bg-slate-950">
+            <div className="min-h-screen bg-white">
                 <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
                 <main className={`${isHome ? 'pt-0' : 'pt-20'} p-0 md:p-0 max-w-none mx-auto overflow-x-hidden`}>
                     {children}
@@ -168,7 +168,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
     content = (
         <div
-            className="min-h-screen bg-slate-50 dark:bg-slate-950"
+            className="min-h-screen bg-slate-50"
             style={
                 {
                     '--primary': primaryColor || '#4F46E5', // Indigo-600 default
@@ -208,7 +208,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
                     className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-300 ease-in-out ${contentMargin}`}
                 >
                     <main
-                        className={`flex-1 h-full min-w-0 w-full ${isPhone ? 'overflow-hidden' : 'overflow-y-auto'} ${mainPadding} bg-slate-50 dark:bg-slate-950 relative`}
+                        className={`flex-1 h-full min-w-0 w-full ${isPhone ? 'overflow-hidden' : 'overflow-y-auto'} ${mainPadding} bg-slate-50 relative`}
                     >
                         <CrmReadOnlyGuard>{children}</CrmReadOnlyGuard>
                     </main>

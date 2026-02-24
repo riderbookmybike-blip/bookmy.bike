@@ -308,6 +308,19 @@ export async function checkExistingCustomer(phone: string) {
 
     if (profile) {
         const hasActiveDelivery = await hasMemberActiveDelivery(profile.id);
+
+        // Fetch B-coin wallet balance for pricing snapshot
+        let walletCoins = 0;
+        const { data: wallet } = await adminClient
+            .from('oclub_wallets')
+            .select('available_system, available_referral, available_sponsored')
+            .eq('member_id', profile.id)
+            .maybeSingle();
+        if (wallet) {
+            const w = wallet as any;
+            walletCoins = (w.available_system || 0) + (w.available_referral || 0) + (w.available_sponsored || 0);
+        }
+
         return {
             data: {
                 name: profile.full_name,
@@ -316,10 +329,11 @@ export async function checkExistingCustomer(phone: string) {
             },
             memberId: profile.id,
             hasActiveDelivery,
+            walletCoins,
         };
     }
 
-    return { data: null, memberId: null, hasActiveDelivery: false };
+    return { data: null, memberId: null, hasActiveDelivery: false, walletCoins: 0 };
 }
 
 const REPEAT_DELIVERY_BOOKING_STATUSES = ['ACTIVE', 'CONFIRMED', 'BOOKED', 'DELIVERED'] as const;

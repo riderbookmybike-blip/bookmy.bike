@@ -230,6 +230,8 @@ export default function ProductClient({
             headers: { 'Content-Type': 'application/json' },
             body: payload,
             keepalive: true,
+        }).catch(() => {
+            // Best-effort telemetry; never surface network failures to user/runtime overlay.
         });
     }, []);
 
@@ -405,7 +407,8 @@ export default function ProductClient({
                     url: url.toString(),
                 });
             } catch (err: unknown) {
-                if (err?.name !== 'AbortError' && err?.name !== 'InvalidStateError') {
+                const errorName = err instanceof Error ? err.name : '';
+                if (errorName !== 'AbortError' && errorName !== 'InvalidStateError') {
                     console.error('Share failed:', err);
                 }
             } finally {
@@ -825,8 +828,7 @@ export default function ProductClient({
     const pdpOfferDeltaForParity = Number(
         ssppServerPricing?.dealer?.offer ??
             bestOffer?.price ??
-            Number(data.colorSurge || 0) - Number(data.colorDiscount || 0) ??
-            0
+            Number(data.colorSurge || 0) - Number(data.colorDiscount || 0)
     );
     const pdpDistrictForParity = String(
         ssppServerPricing?.location?.district || resolvedLocation?.district || initialLocation?.district || ''

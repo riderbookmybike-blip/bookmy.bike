@@ -158,12 +158,12 @@ export function MobileCompare() {
     const toggleCat = (key: string) => setOpenCats(prev => ({ ...prev, [key]: !prev[key] }));
 
     return (
-        <div className="bg-[#0b0d10] text-white min-h-screen pb-20 font-sans selection:bg-[#F4B000]/30">
+        <div className="bg-slate-50 text-slate-900 min-h-screen pb-20 font-sans selection:bg-[#F4B000]/30">
             {/* Header */}
-            <div className="sticky top-0 z-50 bg-[#0b0d10]/95 backdrop-blur-xl border-b border-white/5 pt-safe p-4 flex items-center gap-3">
+            <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200 pt-safe p-4 flex items-center gap-3">
                 <button
                     onClick={() => window.history.back()}
-                    className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white active:bg-white/10"
+                    className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-700 active:bg-slate-100"
                 >
                     <ChevronLeft size={20} />
                 </button>
@@ -176,16 +176,16 @@ export function MobileCompare() {
             </div>
 
             {/* Sticky Compare Matrix Header (Swipable) */}
-            <div className="sticky top-[73px] z-40 bg-[#0b0d10] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+            <div className="sticky top-[73px] z-40 bg-white border-b border-slate-200 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
                 <div className="flex w-full">
                     {/* Frozen Left Column (Labels) */}
-                    <div className="w-[120px] shrink-0 bg-[#0f1115] border-r border-white/10 flex flex-col justify-end p-3 relative z-10 shadow-[5px_0_15px_-5px_rgba(0,0,0,0.6)]">
+                    <div className="w-[120px] shrink-0 bg-slate-100 border-r border-slate-200 flex flex-col justify-end p-3 relative z-10 shadow-[5px_0_15px_-5px_rgba(15,23,42,0.1)]">
                         <div className="text-[10px] font-black uppercase tracking-widest text-[#F4B000] mb-1">
                             Finances
                         </div>
                         <button
                             onClick={onEditDownpayment}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-white bg-white/5 border border-white/10 px-2 py-1.5 rounded-lg active:bg-white/10"
+                            className="flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-1.5 rounded-lg active:bg-slate-50"
                         >
                             <Pencil size={10} />
                             Edit Terms
@@ -197,7 +197,7 @@ export function MobileCompare() {
                         {activeVariants.map(v => (
                             <div
                                 key={v.id}
-                                className="w-[180px] shrink-0 snap-center border-r border-white/5 p-3 relative flex flex-col items-center text-center"
+                                className="w-[180px] shrink-0 snap-center border-r border-slate-200 p-3 relative flex flex-col items-center text-center"
                             >
                                 {/* Remove Button */}
                                 {activeVariants.length > 2 && (
@@ -214,13 +214,13 @@ export function MobileCompare() {
                                     alt={v.model}
                                     className="h-20 object-contain mb-2 drop-shadow-xl"
                                 />
-                                <h3 className="text-[12px] font-black uppercase text-white leading-tight line-clamp-1">
+                                <h3 className="text-[12px] font-black uppercase text-slate-900 leading-tight line-clamp-1">
                                     {v.model}
                                 </h3>
                                 <p className="text-[10px] text-slate-400 truncate w-full">{v.variant}</p>
 
-                                <div className="mt-3 w-full bg-white/5 rounded-xl border border-white/10 p-2">
-                                    <p className="text-[14px] font-black text-white leading-none">
+                                <div className="mt-3 w-full bg-white rounded-xl border border-slate-200 p-2">
+                                    <p className="text-[14px] font-black text-slate-900 leading-none">
                                         ₹{(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString()}
                                     </p>
                                     <p className="text-[10px] font-bold text-[#F4B000] mt-1 uppercase">
@@ -232,10 +232,10 @@ export function MobileCompare() {
                         ))}
                         {/* Empty Ghost Slot to encourage adding more if < 4 */}
                         {activeVariants.length < 4 && (
-                            <div className="w-[180px] shrink-0 snap-center border-r border-white/5 p-3 flex flex-col items-center justify-center">
+                            <div className="w-[180px] shrink-0 snap-center border-r border-slate-200 p-3 flex flex-col items-center justify-center">
                                 <button
                                     onClick={() => router.push('/store/catalog')}
-                                    className="w-16 h-16 rounded-full border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-slate-500 hover:text-white hover:border-[#F4B000] transition-colors"
+                                    className="w-16 h-16 rounded-full border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-500 hover:text-slate-900 hover:border-[#F4B000] transition-colors"
                                 >
                                     <Search size={20} className="mb-1" />
                                 </button>
@@ -263,16 +263,16 @@ export function MobileCompare() {
                             </h2>
                         </div>
 
-                        <div className="border-t border-b border-white/5 bg-[#0f1115]">
+                        <div className="border-t border-b border-slate-200 bg-white">
                             {smartSpecs.diffSpecs.map((cat, idx) => {
                                 const isOpen = openCats[`diff-${cat.name}`];
                                 return (
-                                    <div key={cat.name} className={`${idx > 0 ? 'border-t border-white/5' : ''}`}>
+                                    <div key={cat.name} className={`${idx > 0 ? 'border-t border-slate-200' : ''}`}>
                                         <button
                                             onClick={() => toggleCat(`diff-${cat.name}`)}
-                                            className="w-full flex items-center justify-between p-4 bg-white/[0.02]"
+                                            className="w-full flex items-center justify-between p-4 bg-slate-50"
                                         >
-                                            <span className="text-[11px] font-bold uppercase tracking-widest text-white">
+                                            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900">
                                                 {cat.name}
                                             </span>
                                             {isOpen ? (
@@ -283,10 +283,10 @@ export function MobileCompare() {
                                         </button>
 
                                         {isOpen && (
-                                            <div className="divide-y divide-white/5 border-t border-white/5">
+                                            <div className="divide-y divide-slate-200 border-t border-slate-200">
                                                 {cat.specs.map(sp => (
                                                     <div key={sp.key} className="flex">
-                                                        <div className="w-[120px] shrink-0 bg-black/40 border-r border-white/5 p-3 flex flex-col justify-center">
+                                                        <div className="w-[120px] shrink-0 bg-slate-50 border-r border-slate-200 p-3 flex flex-col justify-center">
                                                             <span className="text-[10px] font-bold text-slate-400 capitalize">
                                                                 {sp.label}
                                                             </span>
@@ -299,7 +299,7 @@ export function MobileCompare() {
                                                                 return (
                                                                     <div
                                                                         key={`${v.id}-${sp.key}`}
-                                                                        className="w-[180px] shrink-0 border-r border-white/5 p-3 flex items-center justify-center text-center"
+                                                                        className="w-[180px] shrink-0 border-r border-slate-200 p-3 flex items-center justify-center text-center"
                                                                     >
                                                                         {val === 'Yes' ? (
                                                                             <Check
@@ -310,7 +310,7 @@ export function MobileCompare() {
                                                                             <X size={16} className="text-slate-600" />
                                                                         ) : (
                                                                             <span
-                                                                                className={`text-[11px] font-semibold ${isMissing ? 'text-slate-600' : 'text-slate-200'}`}
+                                                                                className={`text-[11px] font-semibold ${isMissing ? 'text-slate-400' : 'text-slate-700'}`}
                                                                             >
                                                                                 {val}
                                                                             </span>
@@ -319,7 +319,7 @@ export function MobileCompare() {
                                                                 );
                                                             })}
                                                             {activeVariants.length < 4 && (
-                                                                <div className="w-[180px] shrink-0 border-r border-white/5" />
+                                                                <div className="w-[180px] shrink-0 border-r border-slate-200" />
                                                             )}
                                                         </div>
                                                     </div>
@@ -336,22 +336,22 @@ export function MobileCompare() {
                 {/* 2. All Specifications Section */}
                 {smartSpecs.restSpecs.length > 0 && (
                     <div className="mt-8">
-                        <div className="px-4 py-3 flex items-center justify-between border-t border-white/10">
-                            <h2 className="text-[13px] font-black uppercase tracking-[0.2em] text-slate-300">
+                        <div className="px-4 py-3 flex items-center justify-between border-t border-slate-200">
+                            <h2 className="text-[13px] font-black uppercase tracking-[0.2em] text-slate-600">
                                 All Specifications
                             </h2>
                         </div>
 
-                        <div className="border-t border-b border-white/5 bg-[#0f1115]">
+                        <div className="border-t border-b border-slate-200 bg-white">
                             {smartSpecs.restSpecs.map((cat, idx) => {
                                 const isOpen = openCats[`all-${cat.name}`];
                                 return (
-                                    <div key={cat.name} className={`${idx > 0 ? 'border-t border-white/5' : ''}`}>
+                                    <div key={cat.name} className={`${idx > 0 ? 'border-t border-slate-200' : ''}`}>
                                         <button
                                             onClick={() => toggleCat(`all-${cat.name}`)}
-                                            className="w-full flex items-center justify-between p-4 bg-white/[0.02]"
+                                            className="w-full flex items-center justify-between p-4 bg-slate-50"
                                         >
-                                            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-300">
+                                            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-700">
                                                 {cat.name}
                                             </span>
                                             {isOpen ? (
@@ -362,10 +362,10 @@ export function MobileCompare() {
                                         </button>
 
                                         {isOpen && (
-                                            <div className="divide-y divide-white/5 border-t border-white/5">
+                                            <div className="divide-y divide-slate-200 border-t border-slate-200">
                                                 {cat.specs.map(sp => (
                                                     <div key={sp.key} className="flex">
-                                                        <div className="w-[120px] shrink-0 bg-black/40 border-r border-white/5 p-3 flex flex-col justify-center">
+                                                        <div className="w-[120px] shrink-0 bg-slate-50 border-r border-slate-200 p-3 flex flex-col justify-center">
                                                             <span className="text-[10px] font-bold text-slate-500 capitalize">
                                                                 {sp.label}
                                                             </span>

@@ -39,6 +39,7 @@ import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';
 import { useDealerSession } from '@/hooks/useDealerSession';
+import { MembershipCard, WalletData } from '@/components/auth/MembershipCard';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getDefaultAvatar, AVATAR_PRESETS } from '@/lib/avatars';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -81,6 +82,8 @@ export function ProfileDropdown({
     const [memberships, setProfileMemberships] = useState<ProfileMembership[]>([]);
     const [internalOpen, setInternalOpen] = useState(false);
     const [bCoins, setBCoins] = useState<number | null>(null);
+    const [memberCode, setMemberCode] = useState<string>('BMB-000-000');
+    const [walletData, setWalletData] = useState<WalletData | null>(null);
 
     const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
     const setIsOpen = (open: boolean) => {
@@ -98,8 +101,21 @@ export function ProfileDropdown({
     const [uploading, setUploading] = useState(false);
     const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
+    // O'Circle vs Business mode toggle (persisted)
+    const [businessMode, setBusinessMode] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return localStorage.getItem('bkmb_sidebar_mode') === 'business';
+    });
+    const toggleMode = () => {
+        setBusinessMode(prev => {
+            const next = !prev;
+            localStorage.setItem('bkmb_sidebar_mode', next ? 'business' : 'ocircle');
+            return next;
+        });
+    };
+
     // Dealer Session Hook
-    const { activeTenantId } = useDealerSession();
+    const { activeTenantId, setDealerContext } = useDealerSession();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLButtonElement>(null); // Fixed: Ref is attached to a button
@@ -113,10 +129,38 @@ export function ProfileDropdown({
             import('@/actions/oclub').then(({ getOClubWallet }) => {
                 getOClubWallet(authUser.id).then(res => {
                     if (res.success && res.wallet) {
-                        setBCoins((res.wallet as any).available_system || 0);
+                        const w = res.wallet as any;
+                        setBCoins(w.available_system || 0);
+                        setWalletData({
+                            available_system: w.available_system || 0,
+                            available_referral: w.available_referral || 0,
+                            available_sponsored: w.available_sponsored || 0,
+                            lifetime_earned: w.lifetime_earned || 0,
+                            lifetime_redeemed: w.lifetime_redeemed || 0,
+                            locked: w.locked || 0,
+                        });
                     }
                 });
             });
+
+            // Fetch referral_code (9-char customer ID) for membership card
+            const supabase = createClient();
+            supabase
+                .from('id_members')
+                .select('referral_code')
+                .eq('id', authUser.id)
+                .maybeSingle()
+                .then(({ data }) => {
+                    if (data?.referral_code) {
+                        const code = data.referral_code.toUpperCase();
+                        // Format as XXX-XXX-XXX if it's 9 chars
+                        if (code.length === 9) {
+                            setMemberCode(`${code.slice(0, 3)}-${code.slice(3, 6)}-${code.slice(6, 9)}`);
+                        } else {
+                            setMemberCode(code);
+                        }
+                    }
+                });
         } else {
             setBCoins(null);
         }
@@ -353,7 +397,8 @@ export function ProfileDropdown({
     const accountMenuItems = useMemo(() => {
         if (!user) return [];
 
-        if (!hasWorkspaceAccess) {
+        if (!hasWorkspaceAccess || !businessMode) {
+            // O'Circle / consumer mode
             return [
                 {
                     label: 'Profile',
@@ -363,9 +408,9 @@ export function ProfileDropdown({
                     bg: 'bg-blue-500/10',
                 },
                 {
-                    label: 'Wishlist',
+                    label: 'Favorites',
                     icon: Heart,
-                    href: '/wishlist',
+                    href: '/store/favorites',
                     color: 'text-rose-500',
                     bg: 'bg-rose-500/10',
                 },
@@ -386,6 +431,7 @@ export function ProfileDropdown({
             ];
         }
 
+        // Business mode
         const workspaceItems = [
             {
                 label: 'Dashboard',
@@ -418,7 +464,7 @@ export function ProfileDropdown({
         ];
 
         return workspaceItems;
-    }, [user, hasWorkspaceAccess, workspaceBasePath, isAdminWorkspaceRole]);
+    }, [user, hasWorkspaceAccess, workspaceBasePath, isAdminWorkspaceRole, businessMode]);
 
     const isLight = tone === 'light' || (tone !== 'dark' && (mounted ? theme !== 'dark' : true));
     const isDarkSurface = !isLight;
@@ -666,107 +712,20 @@ export function ProfileDropdown({
                                                 </motion.div>
                                             )}
 
-                                            {/* O' CIRCLE WALLET HERO CARD (Moves inside sidebar) */}
-                                            {user && bCoins !== null && (
-                                                <motion.div
-                                                    variants={itemVariants}
-                                                    className="w-full relative overflow-hidden bg-gradient-to-br from-white to-slate-50 rounded-3xl border border-slate-200 p-5 mt-2 group shadow-sm"
-                                                >
-                                                    {/* Background Glows and Shapes */}
-                                                    <div className="absolute top-0 right-0 w-48 h-48 bg-[#F4B000]/10 rounded-full blur-[40px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
-                                                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#F4B000]/5 rounded-full blur-[30px] pointer-events-none -translate-x-1/3 translate-y-1/3" />
-
-                                                    {/* Header */}
-                                                    <div className="flex justify-between items-start mb-6 relative z-10">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-xl bg-[#F4B000]/10 border border-[#F4B000]/20 flex items-center justify-center">
-                                                                <Logo variant="icon" size={16} />
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
-                                                                    O' Circle Wallet
-                                                                </h4>
-                                                                <p className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">
-                                                                    Available Balance
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <button className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors bg-white hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                                                            View Ledger
-                                                        </button>
-                                                    </div>
-
-                                                    {/* Balance */}
-                                                    <div className="relative z-10 flex flex-col pt-2 border-t border-slate-200">
-                                                        <div className="flex items-baseline gap-2">
-                                                            <span className="text-4xl font-black text-slate-900 italic tracking-tighter">
-                                                                {bCoins.toLocaleString('en-IN')}
-                                                            </span>
-                                                            <span className="text-[10px] font-black uppercase text-[#F4B000] tracking-widest opacity-80">
-                                                                B-Coins
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
-                                            )}
-
-                                            {/* Avatar Picker (Only for logged in users) */}
+                                            {/* O' CIRCLE MEMBERSHIP CARD — Reusable SOT */}
                                             {user && (
-                                                <motion.div variants={itemVariants}>
-                                                    <button
-                                                        onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                                                        className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-[#F4B000]/30 transition-all group"
-                                                    >
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 group-hover:text-[#F4B000] transition-colors">
-                                                            Change Avatar
-                                                        </span>
-                                                        <ChevronDown
-                                                            size={12}
-                                                            className={`text-slate-400 transition-transform duration-200 ${showAvatarPicker ? 'rotate-180' : ''}`}
-                                                        />
-                                                    </button>
-                                                    <AnimatePresence>
-                                                        {showAvatarPicker && (
-                                                            <motion.div
-                                                                initial={{ height: 0, opacity: 0 }}
-                                                                animate={{ height: 'auto', opacity: 1 }}
-                                                                exit={{ height: 0, opacity: 0 }}
-                                                                transition={{ duration: 0.2 }}
-                                                                className="overflow-hidden"
-                                                            >
-                                                                <div className="flex gap-2 pt-3 pb-1 overflow-x-auto custom-scrollbar">
-                                                                    {AVATAR_PRESETS.map(preset => (
-                                                                        <button
-                                                                            key={preset.id}
-                                                                            onClick={() =>
-                                                                                handleAvatarSelect(preset.url)
-                                                                            }
-                                                                            disabled={uploading}
-                                                                            title={preset.label}
-                                                                            className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-all duration-200 hover:scale-110 ${
-                                                                                user.user_metadata?.avatar_url ===
-                                                                                preset.url
-                                                                                    ? 'ring-[#F4B000] shadow-lg shadow-[#F4B000]/30'
-                                                                                    : 'ring-transparent hover:ring-slate-300 dark:hover:ring-white/20'
-                                                                            } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-                                                                        >
-                                                                            <img
-                                                                                src={preset.url}
-                                                                                alt={preset.label}
-                                                                                className="w-full h-full"
-                                                                            />
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => fileInputRef.current?.click()}
-                                                                    className="w-full mt-2 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-[#F4B000] hover:bg-[#F4B000]/10 transition-all"
-                                                                >
-                                                                    Upload Custom Photo
-                                                                </button>
-                                                            </motion.div>
-                                                        )}
-                                                    </AnimatePresence>
+                                                <motion.div variants={itemVariants} className="mt-2">
+                                                    <MembershipCard
+                                                        name={
+                                                            user.user_metadata?.full_name ||
+                                                            user.user_metadata?.name ||
+                                                            'MEMBER'
+                                                        }
+                                                        id={memberCode}
+                                                        validity="∞"
+                                                        compact
+                                                        wallet={walletData}
+                                                    />
                                                 </motion.div>
                                             )}
 
@@ -818,35 +777,69 @@ export function ProfileDropdown({
                                             {/* Simplified Unified Navigation — only for logged-in users */}
                                             {user && (
                                                 <div className="space-y-6 pt-2">
-                                                    {/* Account & Profile Section */}
-                                                    <div className="space-y-3">
-                                                        <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                                                            <LucideUser size={10} strokeWidth={3} />
-                                                            Account Settings
-                                                        </p>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            {accountMenuItems.map(item => (
-                                                                <a
-                                                                    key={item.label}
-                                                                    href={item.href}
-                                                                    onClick={() => setIsOpen(false)}
-                                                                    className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
-                                                                >
-                                                                    <div
-                                                                        className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
-                                                                    >
-                                                                        <item.icon size={16} />
-                                                                    </div>
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-                                                                        {item.label}
-                                                                    </span>
-                                                                </a>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Workspaces Section */}
+                                                    {/* O'Circle / Business Mode Toggle */}
                                                     {sortedMemberships.length > 0 && (
+                                                        <div className="flex items-center gap-0 p-1 rounded-2xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10">
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (businessMode) toggleMode();
+                                                                }}
+                                                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+                                                                    !businessMode
+                                                                        ? 'bg-brand-primary text-black shadow-md shadow-brand-primary/20'
+                                                                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
+                                                                }`}
+                                                            >
+                                                                <Logo variant="icon" size={12} />
+                                                                O&apos; Circle
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (!businessMode) toggleMode();
+                                                                }}
+                                                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+                                                                    businessMode
+                                                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-black shadow-md'
+                                                                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
+                                                                }`}
+                                                            >
+                                                                <Building2 size={12} />
+                                                                Business
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Account & Profile Section — O'Circle mode only */}
+                                                    {!businessMode && (
+                                                        <div className="space-y-3">
+                                                            <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                                                                <LucideUser size={10} strokeWidth={3} />
+                                                                My Account
+                                                            </p>
+                                                            <div className="space-y-1.5">
+                                                                {accountMenuItems.map(item => (
+                                                                    <a
+                                                                        key={item.label}
+                                                                        href={item.href}
+                                                                        onClick={() => setIsOpen(false)}
+                                                                        className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
+                                                                    >
+                                                                        <div
+                                                                            className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
+                                                                        >
+                                                                            <item.icon size={16} />
+                                                                        </div>
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                            {item.label}
+                                                                        </span>
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Workspaces Section — only in Business mode */}
+                                                    {businessMode && sortedMemberships.length > 0 && (
                                                         <div className="space-y-3">
                                                             <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center justify-between">
                                                                 <span className="flex items-center gap-2">
@@ -875,11 +868,6 @@ export function ProfileDropdown({
                                                                             <div className="flex-1 min-w-0">
                                                                                 <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
                                                                                     {t.name}
-                                                                                    {isActive && !isUnifiedContext && (
-                                                                                        <span className="ml-2 text-[8px] px-1.5 py-0.5 rounded-full bg-brand-primary text-black font-black uppercase tracking-tighter">
-                                                                                            Active
-                                                                                        </span>
-                                                                                    )}
                                                                                 </h5>
                                                                                 <div className="flex items-center gap-2 mt-0.5">
                                                                                     <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest">
@@ -887,21 +875,27 @@ export function ProfileDropdown({
                                                                                     </span>
                                                                                 </div>
                                                                             </div>
-                                                                            <a
-                                                                                href={`/app/${t.slug}/dashboard`}
-                                                                                {...(!isActive
-                                                                                    ? {
-                                                                                          target: '_blank',
-                                                                                          rel: 'noopener noreferrer',
-                                                                                      }
-                                                                                    : {})}
-                                                                                onClick={() => {
-                                                                                    if (isActive) setIsOpen(false);
-                                                                                }}
-                                                                                className="px-3 py-1.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-black text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-black/10"
-                                                                            >
-                                                                                Open
-                                                                            </a>
+                                                                            {isActive ? (
+                                                                                <a
+                                                                                    href={`/app/${t.slug}/dashboard`}
+                                                                                    onClick={() => setIsOpen(false)}
+                                                                                    className="px-3 py-1.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-black text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-black/10"
+                                                                                >
+                                                                                    Dashboard
+                                                                                </a>
+                                                                            ) : (
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        if (t.id) {
+                                                                                            setDealerContext(t.id);
+                                                                                            setIsOpen(false);
+                                                                                        }
+                                                                                    }}
+                                                                                    className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-brand-primary/20"
+                                                                                >
+                                                                                    Activate
+                                                                                </button>
+                                                                            )}
                                                                         </div>
                                                                     );
                                                                 })}

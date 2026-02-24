@@ -171,15 +171,27 @@ export const M2Footer = () => {
                 {/* Social & Meta */}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8 mt-20 pt-10 border-t border-slate-100">
                     <div className="flex gap-3">
-                        <SocialIcon icon={<Newspaper size={16} />} href="/blog" bg="hover:bg-slate-900" />
+                        <SocialIcon icon={<Newspaper size={16} />} href="/blog" bg="hover:bg-[#F4B000]/20" />
                         <SocialIcon
                             icon={<Instagram size={16} />}
                             href="https://instagram.com"
-                            bg="hover:bg-slate-900"
+                            bg="hover:bg-[#F4B000]/20"
                         />
-                        <SocialIcon icon={<Twitter size={16} />} href="https://twitter.com" bg="hover:bg-slate-900" />
-                        <SocialIcon icon={<Linkedin size={16} />} href="https://linkedin.com" bg="hover:bg-slate-900" />
-                        <SocialIcon icon={<Facebook size={16} />} href="https://facebook.com" bg="hover:bg-slate-900" />
+                        <SocialIcon
+                            icon={<Twitter size={16} />}
+                            href="https://twitter.com"
+                            bg="hover:bg-[#F4B000]/20"
+                        />
+                        <SocialIcon
+                            icon={<Linkedin size={16} />}
+                            href="https://linkedin.com"
+                            bg="hover:bg-[#F4B000]/20"
+                        />
+                        <SocialIcon
+                            icon={<Facebook size={16} />}
+                            href="https://facebook.com"
+                            bg="hover:bg-[#F4B000]/20"
+                        />
                     </div>
 
                     <div className="flex flex-col md:items-end gap-1.5 items-center">
@@ -201,7 +213,7 @@ const SocialIcon = ({ icon, href, bg }: { icon: React.ReactElement; href: string
     return (
         <a
             href={href}
-            className={`w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-white transition-all duration-300 border border-slate-100 hover:border-slate-900 ${bg}`}
+            className={`w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-slate-900 transition-all duration-300 border border-slate-100 hover:border-[#F4B000]/60 ${bg}`}
         >
             {icon}
         </a>

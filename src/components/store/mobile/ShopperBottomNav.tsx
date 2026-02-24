@@ -131,7 +131,7 @@ export function ShopperBottomNav() {
         <>
             {/* Bottom Nav Bar */}
             <nav
-                className="fixed bottom-0 left-0 right-0 z-[55] bg-[#0b0d10]/95 backdrop-blur-2xl border-t border-white/5"
+                className="fixed bottom-0 left-0 right-0 z-[55] bg-white/95 backdrop-blur-2xl border-t border-slate-200"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             >
                 <div className="flex items-stretch justify-around h-[60px]">
@@ -146,7 +146,7 @@ export function ShopperBottomNav() {
                                 <div className="relative">
                                     <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
                                     {isLove && favorites.length > 0 && (
-                                        <span className="absolute -top-1.5 -right-2.5 w-4 h-4 bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border border-[#0b0d10]">
+                                        <span className="absolute -top-1.5 -right-2.5 w-4 h-4 bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border border-white">
                                             {favorites.length > 9 ? '9+' : favorites.length}
                                         </span>
                                     )}
@@ -163,7 +163,7 @@ export function ShopperBottomNav() {
                         );
 
                         const cls = `flex flex-col items-center justify-center flex-1 gap-1 transition-all duration-300 min-h-[44px] relative ${
-                            active ? 'text-[#FFD700]' : 'text-slate-500 active:text-slate-300'
+                            active ? 'text-[#D6A900]' : 'text-slate-500 active:text-slate-700'
                         }`;
 
                         if (isMenu) {
@@ -212,11 +212,11 @@ export function ShopperBottomNav() {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-                            className="fixed top-14 right-0 z-[53] w-[55vw] bg-black/40 backdrop-blur-2xl border-l border-white/10 rounded-l-2xl flex flex-col overflow-hidden"
+                            className="fixed top-14 right-0 z-[53] w-[55vw] bg-white/95 backdrop-blur-2xl border-l border-slate-200 rounded-l-2xl flex flex-col overflow-hidden"
                             style={{ height: 'calc(100% - 56px - 60px - env(safe-area-inset-bottom, 0px))' }}
                         >
                             {/* Top: Login/User Section */}
-                            <div className="px-4 pt-6 pb-4 border-b border-white/8">
+                            <div className="px-4 pt-6 pb-4 border-b border-slate-200">
                                 {user ? (
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#F4B000] flex items-center justify-center text-black text-sm font-black shrink-0">
@@ -227,7 +227,7 @@ export function ShopperBottomNav() {
                                             ).toUpperCase()}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-[13px] font-black text-white uppercase tracking-wide truncate">
+                                            <p className="text-[13px] font-black text-slate-900 uppercase tracking-wide truncate">
                                                 {user.user_metadata?.full_name ||
                                                     user.user_metadata?.name ||
                                                     user.email?.split('@')[0] ||
@@ -275,7 +275,7 @@ export function ShopperBottomNav() {
                                             className={`flex items-center gap-3 px-3 py-3 rounded-xl mb-0.5 transition-all ${
                                                 active
                                                     ? 'bg-[#FFD700]/10 text-[#FFD700]'
-                                                    : 'text-slate-400 active:bg-white/5'
+                                                    : 'text-slate-600 active:bg-slate-100'
                                             }`}
                                         >
                                             <item.icon size={18} strokeWidth={active ? 2.5 : 1.5} />
@@ -302,7 +302,7 @@ export function ShopperBottomNav() {
                                 {/* Account items — only when logged in */}
                                 {user && (
                                     <>
-                                        <div className="my-3 border-t border-white/5" />
+                                        <div className="my-3 border-t border-slate-200" />
                                         <p className="px-3 pb-2 text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
                                             Account
                                         </p>
@@ -316,7 +316,7 @@ export function ShopperBottomNav() {
                                                     className={`flex items-center gap-3 px-3 py-3 rounded-xl mb-0.5 transition-all ${
                                                         active
                                                             ? 'bg-[#FFD700]/10 text-[#FFD700]'
-                                                            : 'text-slate-400 active:bg-white/5'
+                                                            : 'text-slate-600 active:bg-slate-100'
                                                     }`}
                                                 >
                                                     <item.icon size={18} strokeWidth={active ? 2.5 : 1.5} />
@@ -333,7 +333,7 @@ export function ShopperBottomNav() {
 
                             {/* Bottom: Logout */}
                             {user && (
-                                <div className="px-3 py-3 border-t border-white/8">
+                                <div className="px-3 py-3 border-t border-slate-200">
                                     <button
                                         onClick={handleLogout}
                                         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500/10 text-rose-400 active:bg-rose-500/20 transition-all"

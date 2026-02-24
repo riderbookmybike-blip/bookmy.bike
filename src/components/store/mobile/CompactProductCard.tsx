@@ -63,9 +63,9 @@ export function CompactProductCard({
         walletCoins !== null && walletCoins !== undefined && hasCoinsToUse
             ? computeOClubPricing(baseDisplayPrice, Number(walletCoins))
             : (v.price as any)?.coinPricing || {
-                discount: 1000,
-                coinsUsed: 13,
-            };
+                  discount: 1000,
+                  coinsUsed: 13,
+              };
 
     const bcoinAdjustment = isShowingEffectivePrice ? coinPricing.discount || 0 : 0;
     const displayPrice = Math.max(0, baseDisplayPrice - bcoinAdjustment);
@@ -195,24 +195,28 @@ export function CompactProductCard({
                                     className="text-[#F4B000]/60 hover:text-[#F4B000] cursor-help transition-colors"
                                 />
                                 {/* Tooltip */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 p-3 bg-[#0f1115] border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-xl opacity-0 invisible group-hover/bcoin:opacity-100 group-hover/bcoin:visible transition-all pointer-events-auto z-[100] shadow-2xl min-w-[200px] text-center">
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 p-3 bg-white border border-slate-200 text-slate-900 text-[9px] font-black uppercase tracking-widest rounded-xl opacity-0 invisible group-hover/bcoin:opacity-100 group-hover/bcoin:visible transition-all pointer-events-auto z-[100] shadow-2xl min-w-[200px] text-center">
                                     <div className="flex flex-col gap-2.5">
                                         {showOClubPrompt ? (
                                             <>
                                                 <div className="space-y-1">
-                                                    <div className="text-slate-200 text-[10px] leading-tight flex flex-col items-center gap-1">
+                                                    <div className="text-slate-700 text-[10px] leading-tight flex flex-col items-center gap-1">
                                                         <span>You are a step away from earning</span>
                                                         <span className="text-[#F4B000] text-sm italic flex items-center gap-1">
                                                             {coinPricing.coinsUsed} <Logo variant="icon" size={10} />
                                                         </span>
                                                     </div>
-                                                    <p className="text-slate-400 text-[8px] font-medium leading-normal normal-case">
+                                                    <p className="text-slate-500 text-[8px] font-medium leading-normal normal-case">
                                                         Signup now to join O&apos;Club and unlock this special member
                                                         price.
                                                     </p>
                                                 </div>
                                                 <span
-                                                    onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = '/store/ocircle'; }}
+                                                    onClick={e => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        window.location.href = '/store/ocircle';
+                                                    }}
                                                     className="w-full py-2 bg-[#F4B000] text-black rounded-lg font-black flex items-center justify-center gap-1.5 cursor-pointer"
                                                 >
                                                     Join O&apos;Club <ArrowRight size={10} />
@@ -221,27 +225,31 @@ export function CompactProductCard({
                                         ) : (
                                             <>
                                                 <div className="space-y-1">
-                                                    <div className="text-slate-200 text-[10px] leading-tight flex flex-col items-center gap-1">
+                                                    <div className="text-slate-700 text-[10px] leading-tight flex flex-col items-center gap-1">
                                                         <span>You have just earned</span>
                                                         <span className="text-emerald-400 text-sm italic flex items-center gap-1">
                                                             {coinPricing.coinsUsed} <Logo variant="icon" size={10} />
                                                         </span>
                                                         <span>by signup!</span>
                                                     </div>
-                                                    <p className="text-slate-400 text-[8px] font-medium leading-normal normal-case">
+                                                    <p className="text-slate-500 text-[8px] font-medium leading-normal normal-case">
                                                         Applied to your member specific offer price.
                                                     </p>
                                                 </div>
                                                 <span
-                                                    onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = '/store/ocircle'; }}
-                                                    className="text-[#F4B000] hover:underline flex items-center justify-center gap-1 py-1 border-t border-white/5 mt-1 cursor-pointer"
+                                                    onClick={e => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        window.location.href = '/store/ocircle';
+                                                    }}
+                                                    className="text-[#F4B000] hover:underline flex items-center justify-center gap-1 py-1 border-t border-slate-200 mt-1 cursor-pointer"
                                                 >
                                                     O&apos;Club Benefits <ArrowRight size={10} />
                                                 </span>
                                             </>
                                         )}
                                     </div>
-                                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#0f1115] border-b border-r border-white/10 rotate-45" />
+                                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white border-b border-r border-slate-200 rotate-45" />
                                 </div>
                             </div>
                         </div>

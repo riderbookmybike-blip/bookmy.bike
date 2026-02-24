@@ -12,6 +12,7 @@ import { getSelfMemberLocation } from '@/actions/members';
 import { setLocationCookie } from '@/actions/locationCookie';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { ShopperBottomNav } from '@/components/store/mobile/ShopperBottomNav';
+import { DealershipGate } from '@/components/store/DealershipGate';
 import Script from 'next/script';
 
 interface StoreLayoutClientProps {
@@ -138,6 +139,9 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
                         strategy="afterInteractive"
                     />
                     <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
+
+                    {/* Dealership Gate — blocks marketplace for staff without active dealership */}
+                    <DealershipGate />
 
                     <main
                         className="flex-1"

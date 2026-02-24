@@ -373,3 +373,118 @@ test.describe('Cross-Viewport Parity', () => {
         }
     });
 });
+
+// ─── PDP Content Parity (Desktop ↔ Mobile Section Presence + Snapshot) ──────
+
+test.describe('PDP Content Parity', () => {
+    const EXPECTED_SECTIONS = ['pricing', 'finance', 'finance-summary', 'config', 'specs', 'command-bar'];
+
+    for (const product of TEST_PRODUCTS) {
+        test(`${product.label}: Desktop and Mobile render same parity snapshot`, async ({ browser }) => {
+            test.setTimeout(120_000);
+            const url = `/store/${product.make}/${product.model}/${product.variant}?district=${DISTRICT}`;
+
+            // Desktop context
+            const desktopCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+            const desktopPage = await desktopCtx.newPage();
+            await gotoStorePage(desktopPage, url);
+
+            // Mobile context
+            const mobileCtx = await browser.newContext({
+                viewport: { width: 390, height: 844 },
+                isMobile: true,
+                hasTouch: true,
+            });
+            const mobilePage = await mobileCtx.newPage();
+            await gotoStorePage(mobilePage, url);
+
+            // Extract parity snapshots
+            const extractSnapshot = async (page: Page) => {
+                await page.waitForSelector('[data-testid="pdp-parity-json"]', {
+                    timeout: 30_000,
+                    state: 'attached',
+                });
+                const raw = await page
+                    .locator('[data-testid="pdp-parity-json"]')
+                    .first()
+                    .getAttribute('data-parity-snapshot');
+                return raw ? JSON.parse(raw) : null;
+            };
+
+            const desktopSnap = await extractSnapshot(desktopPage);
+            const mobileSnap = await extractSnapshot(mobilePage);
+
+            expect(desktopSnap, 'Desktop parity snapshot missing').not.toBeNull();
+            expect(mobileSnap, 'Mobile parity snapshot missing').not.toBeNull();
+
+            // Core aggregate parity
+            expect(mobileSnap.totalOnRoad, 'totalOnRoad mismatch').toBe(desktopSnap.totalOnRoad);
+            expect(mobileSnap.baseExShowroom, 'baseExShowroom mismatch').toBe(desktopSnap.baseExShowroom);
+            expect(mobileSnap.emi, 'emi mismatch').toBe(desktopSnap.emi);
+            expect(mobileSnap.emiTenure, 'emiTenure mismatch').toBe(desktopSnap.emiTenure);
+            expect(mobileSnap.regType, 'regType mismatch').toBe(desktopSnap.regType);
+
+            // Option lists parity
+            expect(mobileSnap.specKeys.sort(), 'specKeys mismatch').toEqual(desktopSnap.specKeys.sort());
+            expect(mobileSnap.accessoryIds.sort(), 'accessoryIds mismatch').toEqual(desktopSnap.accessoryIds.sort());
+            expect(mobileSnap.serviceIds.sort(), 'serviceIds mismatch').toEqual(desktopSnap.serviceIds.sort());
+            expect(mobileSnap.insuranceAddonIds.sort(), 'insuranceAddonIds mismatch').toEqual(
+                desktopSnap.insuranceAddonIds.sort()
+            );
+            expect(mobileSnap.pricingLineItemKeys.sort(), 'pricingLineItemKeys mismatch').toEqual(
+                desktopSnap.pricingLineItemKeys.sort()
+            );
+            expect(mobileSnap.registrationOptions.sort(), 'registrationOptions mismatch').toEqual(
+                desktopSnap.registrationOptions.sort()
+            );
+            expect(mobileSnap.warrantyItemIds.sort(), 'warrantyItemIds mismatch').toEqual(
+                desktopSnap.warrantyItemIds.sort()
+            );
+
+            await desktopCtx.close();
+            await mobileCtx.close();
+        });
+
+        test(`${product.label}: Desktop and Mobile render same data-parity-section markers`, async ({ browser }) => {
+            test.setTimeout(120_000);
+            const url = `/store/${product.make}/${product.model}/${product.variant}?district=${DISTRICT}`;
+
+            const extractSections = async (viewport: { width: number; height: number }, mobile = false) => {
+                const ctx = await browser.newContext({
+                    viewport,
+                    ...(mobile ? { isMobile: true, hasTouch: true } : {}),
+                });
+                const page = await ctx.newPage();
+                await gotoStorePage(page, url);
+
+                // Wait for at least one parity section marker
+                await page.waitForSelector('[data-parity-section]', {
+                    timeout: 30_000,
+                    state: 'attached',
+                });
+
+                const sections = await page.evaluate(() =>
+                    Array.from(document.querySelectorAll('[data-parity-section]'))
+                        .map(el => (el as HTMLElement).dataset.paritySection || '')
+                        .filter(Boolean)
+                        .sort()
+                );
+
+                await ctx.close();
+                return sections;
+            };
+
+            const desktopSections = await extractSections({ width: 1366, height: 768 });
+            const mobileSections = await extractSections({ width: 390, height: 844 }, true);
+
+            // Both should have all expected sections
+            for (const section of EXPECTED_SECTIONS) {
+                expect(desktopSections, `Desktop missing section: ${section}`).toContain(section);
+                expect(mobileSections, `Mobile missing section: ${section}`).toContain(section);
+            }
+
+            // Same set of sections on both
+            expect(mobileSections, 'Section list mismatch between desktop and mobile').toEqual(desktopSections);
+        });
+    }
+});

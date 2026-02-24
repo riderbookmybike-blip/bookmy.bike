@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, Loader2, Briefcase, ChevronRight, Phone, User, MapPin } from 'lucide-react';
+import { X, CheckCircle, Loader2, Briefcase, ChevronRight, Phone, User, MapPin, Coins } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useDealerSession } from '@/hooks/useDealerSession';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
 import { normalizePhone, formatPhone, isValidPhone } from '@/lib/utils/phoneUtils';
 import { checkExistingCustomer, createQuoteAction, createLeadAction } from '@/actions/crm';
+import { ensureMemberByPhone } from '@/actions/teamActions';
+import { OCLUB_SIGNUP_BONUS, OCLUB_COIN_VALUE, discountForCoins, computeOClubPricing } from '@/lib/oclub/coin';
+import { Logo } from '@/components/brand/Logo';
 import { toast } from 'sonner';
 
 interface LeadCaptureModalProps {
@@ -47,6 +50,16 @@ export function LeadCaptureModal({
     const [memberId, setMemberId] = useState<string | null>(null);
     const [quoteId, setQuoteId] = useState<string | null>(null);
 
+    // B-coin state
+    const [customerCoins, setCustomerCoins] = useState<number | null>(null);
+    const [isNewCustomer, setIsNewCustomer] = useState(false);
+
+    // Referral state
+    const [referredByPhone, setReferredByPhone] = useState('');
+    const [referralResolved, setReferralResolved] = useState<{ memberId: string; name: string | null } | null>(null);
+    const [referralError, setReferralError] = useState<string | null>(null);
+    const [referralResolving, setReferralResolving] = useState(false);
+
     // Detect if current user is a staff member of any dealership
     const isStaff = userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER';
     const effectiveTenantId = sessionDealerId || quoteTenantId || tenantId || undefined;
@@ -65,6 +78,11 @@ export function LeadCaptureModal({
             setSuccess(false);
             setQuoteId(null);
             setAutoPhoneLoaded(false);
+            setCustomerCoins(null);
+            setIsNewCustomer(false);
+            setReferredByPhone('');
+            setReferralResolved(null);
+            setReferralError(null);
         }
     }, [isOpen]);
 
@@ -125,10 +143,16 @@ export function LeadCaptureModal({
         setIsSubmitting(true);
         try {
             const cleanPhone = normalizePhone(rawPhone);
-            const { data: existingUser, memberId: existingMemberId } = await checkExistingCustomer(cleanPhone);
+            const result = await checkExistingCustomer(cleanPhone);
+            const { data: existingUser, memberId: existingMemberId, walletCoins } = result;
 
             if (existingUser && existingMemberId) {
-                // User exists, create a lead for them first to link the quote
+                // Existing customer — show actual wallet coins
+                setCustomerCoins(walletCoins || 0);
+                setIsNewCustomer(false);
+                setMemberId(existingMemberId);
+
+                // Create lead and quote
                 const leadResult = await createLeadAction({
                     customer_name: existingUser.name || 'Unknown',
                     customer_phone: cleanPhone,
@@ -138,15 +162,18 @@ export function LeadCaptureModal({
                     owner_tenant_id: effectiveTenantId,
                     selected_dealer_id: effectiveTenantId,
                     source: isStaff ? 'DEALER_REFERRAL' : 'PDP_QUICK_QUOTE',
+                    referred_by_phone: referralResolved ? undefined : referredByPhone || undefined,
                 });
 
                 if (leadResult.success && (leadResult as any).leadId) {
-                    await handleCreateQuote((leadResult as any).leadId);
+                    await handleCreateQuote((leadResult as any).leadId, walletCoins || 0, false);
                 } else {
                     setError(leadResult.message || 'Failed to create lead. Please try again.');
                 }
             } else {
-                // New user, move to step 1
+                // New customer — welcome bonus applies
+                setCustomerCoins(OCLUB_SIGNUP_BONUS);
+                setIsNewCustomer(true);
                 setStep(1);
             }
         } catch (err) {
@@ -160,6 +187,44 @@ export function LeadCaptureModal({
     async function handlePhoneSubmit(e: React.FormEvent) {
         e.preventDefault();
         await processPhoneNumber(phone);
+    }
+
+    // Referral phone blur handler — resolve or auto-create member
+    async function handleReferralBlur() {
+        if (!referredByPhone || referredByPhone.length < 10) {
+            setReferralResolved(null);
+            setReferralError(null);
+            return;
+        }
+
+        // Self-referral guard
+        const normalizedRef = normalizePhone(referredByPhone);
+        const normalizedCustomer = normalizePhone(phone);
+        if (normalizedRef === normalizedCustomer) {
+            setReferralError('Referral cannot be the same as customer phone');
+            setReferralResolved(null);
+            return;
+        }
+
+        setReferralResolving(true);
+        setReferralError(null);
+        try {
+            const result = await ensureMemberByPhone(referredByPhone);
+            if (result.success) {
+                setReferralResolved({ memberId: result.memberId, name: result.name || null });
+                setReferralError(null);
+                if (result.created) {
+                    toast.success('Referrer profile created automatically');
+                }
+            } else {
+                setReferralError(result.message || 'Could not resolve referrer');
+                setReferralResolved(null);
+            }
+        } catch {
+            setReferralError('Failed to resolve referrer');
+        } finally {
+            setReferralResolving(false);
+        }
     }
 
     async function handleDetailSubmit(e: React.FormEvent) {
@@ -177,7 +242,6 @@ export function LeadCaptureModal({
 
         setIsSubmitting(true);
         try {
-            // 1. Create Lead via CRM action (which also creates/updates member profile)
             const leadResult = await createLeadAction({
                 customer_name: name,
                 customer_phone: phone,
@@ -186,11 +250,12 @@ export function LeadCaptureModal({
                 owner_tenant_id: effectiveTenantId,
                 selected_dealer_id: effectiveTenantId,
                 source: isStaff ? 'DEALER_REFERRAL' : 'PDP_QUICK_QUOTE',
+                referred_by_phone: referredByPhone || undefined,
             });
 
             if (leadResult.success && (leadResult as any).leadId) {
-                // 2. Create Quote Linked to the Lead
-                await handleCreateQuote((leadResult as any).leadId);
+                // New customer gets welcome bonus
+                await handleCreateQuote((leadResult as any).leadId, OCLUB_SIGNUP_BONUS, true);
             } else {
                 setError(leadResult.success === false ? 'Failed to save details' : 'System error');
             }
@@ -202,11 +267,32 @@ export function LeadCaptureModal({
         }
     }
 
-    async function handleCreateQuote(lId: string) {
+    async function handleCreateQuote(lId: string, coins: number, isWelcome: boolean) {
         if (!variantId || !commercials) {
             setError('Quote creation blocked: missing required product or pricing data.');
             return;
         }
+
+        // Build deterministic B-coin snapshot
+        const totalOnRoad = commercials?.pricing_snapshot?.final_on_road || commercials?.totalOnRoad || 0;
+        const coinPricing = computeOClubPricing(totalOnRoad, coins);
+        const bcoinApplied = {
+            coins: coinPricing.coinsUsed,
+            discount: coinPricing.discount,
+            source: isWelcome ? 'WELCOME' : 'WALLET',
+            coin_value: OCLUB_COIN_VALUE,
+            calc_version: 'v1',
+            resolved_at: new Date().toISOString(),
+        };
+
+        // Merge bcoin_applied into commercials
+        const enrichedCommercials = {
+            ...commercials,
+            pricing_snapshot: {
+                ...(commercials?.pricing_snapshot || {}),
+                bcoin_applied: bcoinApplied,
+            },
+        };
 
         try {
             const result = await createQuoteAction({
@@ -214,7 +300,7 @@ export function LeadCaptureModal({
                 lead_id: lId,
                 variant_id: variantId,
                 color_id: colorId,
-                commercials,
+                commercials: enrichedCommercials,
                 source,
             });
 
@@ -345,6 +431,49 @@ export function LeadCaptureModal({
                                     </div>
                                 </div>
 
+                                {/* Referred By Phone */}
+                                {isStaff && (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                                Referred By (Optional)
+                                            </label>
+                                            <Phone className="w-3 h-3 text-slate-400" />
+                                        </div>
+                                        <div className="relative">
+                                            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 font-bold text-sm select-none">
+                                                +91
+                                            </span>
+                                            <input
+                                                type="tel"
+                                                value={referredByPhone}
+                                                onChange={e => {
+                                                    setReferredByPhone(normalizeIndianPhone(e.target.value));
+                                                    setReferralResolved(null);
+                                                    setReferralError(null);
+                                                }}
+                                                onBlur={handleReferralBlur}
+                                                placeholder="Referrer's mobile"
+                                                maxLength={10}
+                                                className="w-full pl-14 pr-6 py-3.5 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-indigo-500/50 rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white tracking-wider transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                            />
+                                        </div>
+                                        {referralResolving && (
+                                            <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-1">
+                                                <Loader2 className="w-3 h-3 animate-spin" /> Resolving referrer...
+                                            </p>
+                                        )}
+                                        {referralResolved && (
+                                            <p className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 px-1">
+                                                ✓ {referralResolved.name || 'Member'} linked as referrer
+                                            </p>
+                                        )}
+                                        {referralError && (
+                                            <p className="text-[10px] font-bold text-red-500 px-1">{referralError}</p>
+                                        )}
+                                    </div>
+                                )}
+
                                 <button
                                     type="submit"
                                     disabled={isSubmitting || !isValidPhone(phone)}
@@ -419,6 +548,27 @@ export function LeadCaptureModal({
                                     </button>
                                 </div>
                             </form>
+                        )}
+
+                        {/* B-coin Savings Banner */}
+                        {customerCoins !== null && customerCoins > 0 && (
+                            <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-brand-primary/5 to-brand-primary/10 border border-brand-primary/20 animate-in slide-in-from-bottom-2 duration-500">
+                                <div className="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center flex-shrink-0">
+                                    <Logo variant="icon" size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-primary leading-none">
+                                        {isNewCustomer ? "O' Circle Welcome Bonus" : "O' Circle Balance"}
+                                    </p>
+                                    <p className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300">
+                                        <span className="text-brand-primary font-black">{customerCoins}</span> coins ={' '}
+                                        <span className="text-emerald-600 font-black">
+                                            ₹{discountForCoins(customerCoins).toLocaleString()}
+                                        </span>{' '}
+                                        savings
+                                    </p>
+                                </div>
+                            </div>
                         )}
 
                         <p className="text-[9px] text-center text-slate-400 dark:text-slate-600 leading-relaxed font-medium uppercase tracking-wider px-4">

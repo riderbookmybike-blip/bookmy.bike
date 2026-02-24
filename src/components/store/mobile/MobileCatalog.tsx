@@ -287,22 +287,22 @@ export const MobileCatalog = ({
     }));
 
     return (
-        <div className="min-h-screen bg-[#0b0d10] text-white pb-32">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
             {/* 1. Search Bar (Sticky) */}
-            <div className="sticky top-0 z-40 bg-[#0b0d10]/95 backdrop-blur-xl border-b border-white/10 pt-3 pb-3 px-4">
+            <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200 pt-3 pb-3 px-4">
                 <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search bikes, scooters, brands..."
-                        className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 text-sm text-white placeholder:text-white/30 font-medium focus:outline-none focus:border-[#F4B000]/40 focus:bg-white/[0.08] transition-all"
+                        className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none focus:border-[#F4B000]/40 focus:bg-white transition-all"
                     />
                     {searchQuery && (
                         <button
                             onClick={() => setSearchQuery('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
                         >
                             <X size={14} />
                         </button>
@@ -316,10 +316,10 @@ export const MobileCatalog = ({
                     <div className="flex flex-col gap-6">
                         {[1, 2, 3].map(i => (
                             <div key={i} className="flex flex-col gap-2">
-                                <div className="h-6 w-1/3 bg-white/5 rounded animate-pulse" />
+                                <div className="h-6 w-1/3 bg-slate-200 rounded animate-pulse" />
                                 <div className="flex gap-3 overflow-hidden">
-                                    <div className="w-[85vw] max-w-[320px] shrink-0 bg-white/5 border border-white/10 rounded-2xl aspect-[3/4] animate-pulse" />
-                                    <div className="w-[85vw] max-w-[320px] shrink-0 bg-white/5 border border-white/10 rounded-2xl aspect-[3/4] animate-pulse" />
+                                    <div className="w-[85vw] max-w-[320px] shrink-0 bg-white border border-slate-200 rounded-2xl aspect-[3/4] animate-pulse" />
+                                    <div className="w-[85vw] max-w-[320px] shrink-0 bg-white border border-slate-200 rounded-2xl aspect-[3/4] animate-pulse" />
                                 </div>
                             </div>
                         ))}
@@ -329,7 +329,7 @@ export const MobileCatalog = ({
                         {groupProductsByModel(finalResults).map(group => (
                             <div
                                 key={group.modelSlug}
-                                className="flex flex-col border-b border-white/5 pb-8 last:border-0 last:pb-0"
+                                className="flex flex-col border-b border-slate-200 pb-8 last:border-0 last:pb-0"
                             >
                                 {/* Model Header block */}
                                 <div className="flex items-end justify-between mb-3 px-1">
@@ -337,7 +337,7 @@ export const MobileCatalog = ({
                                         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">
                                             {group.make}
                                         </div>
-                                        <h3 className="text-xl font-black italic uppercase tracking-wider text-white leading-none">
+                                        <h3 className="text-xl font-black italic uppercase tracking-wider text-slate-900 leading-none">
                                             {group.model}
                                         </h3>
                                     </div>
@@ -370,10 +370,10 @@ export const MobileCatalog = ({
                     </div>
                 ) : (
                     <div className="py-20 flex flex-col items-center justify-center text-center">
-                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                        <div className="w-16 h-16 rounded-full bg-white border border-slate-200 flex items-center justify-center mb-4">
                             <Search size={24} className="text-slate-500" />
                         </div>
-                        <h3 className="text-lg font-black text-white mb-2">No Vehicles Found</h3>
+                        <h3 className="text-lg font-black text-slate-900 mb-2">No Vehicles Found</h3>
                         <p className="text-sm font-medium text-slate-400 mb-6 max-w-[200px]">
                             Try adjusting your filters or searching for something else.
                         </p>
