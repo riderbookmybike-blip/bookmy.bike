@@ -115,6 +115,7 @@ export interface CatalogColour {
     hex_primary: string | null;
     hex_secondary: string | null;
     finish: string | null;
+    primary_image?: string | null;
     is_popular?: boolean; // Added for popularity tracking at color level
     position: number;
     created_at: string;

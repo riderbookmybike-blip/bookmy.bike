@@ -67,7 +67,7 @@ export const SKU_SELECT = `
     finish,
     colour_id,
     vehicle_variant_id,
-    colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish),
+    colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish, primary_image),
     vehicle_variant:cat_variants_vehicle!vehicle_variant_id(
         id, name, slug, status,
         displacement, max_power, max_torque, transmission, mileage_arai,
@@ -120,7 +120,7 @@ export const CATALOG_SKU_SELECT = `
     offset_y,
     colour_id,
     colour:cat_colours!colour_id (
-        id, name, hex_primary, hex_secondary, finish
+        id, name, hex_primary, hex_secondary, finish, primary_image
     ),
     model:cat_models!model_id (
         id, name, slug, product_type, body_type, segment,
@@ -803,7 +803,8 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
                 name,
                 hex_primary,
                 hex_secondary,
-                finish
+                finish,
+                primary_image
             ),
             model:cat_models!model_id (
                 id,

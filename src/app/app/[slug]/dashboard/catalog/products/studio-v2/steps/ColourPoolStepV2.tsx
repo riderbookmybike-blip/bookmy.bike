@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Loader2, Plus, Trash2, Palette, Save, GripVertical, Sparkles, Layers } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Loader2, Plus, Trash2, Palette, Save, GripVertical, Sparkles, Layers, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { createColour, updateColour, deleteColour, reorderColours } from '@/actions/catalog/catalogV2Actions';
 import type { CatalogModel, CatalogColour } from '@/actions/catalog/catalogV2Actions';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import CopyableId from '@/components/ui/CopyableId';
+import { createClient } from '@/lib/supabase/client';
 
 // ── Finish badge styling ──
 const finishStyles: Record<string, { bg: string; text: string; label: string }> = {
@@ -41,6 +42,8 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editData, setEditData] = useState<Record<string, Partial<CatalogColour>>>({});
     const [isSaving, setIsSaving] = useState<string | null>(null);
+    const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
+    const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     // ── Actions ──
     const handleCreate = async () => {
@@ -133,6 +136,46 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
             ...prev,
             [id]: { ...prev[id], [key]: value },
         }));
+    };
+
+    // ── Colour image upload ──
+    const handleColourImageUpload = async (colourId: string, file: File) => {
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file');
+            return;
+        }
+        setUploadingImageId(colourId);
+        try {
+            const supabase = createClient();
+            const ext = file.name.split('.').pop() || 'webp';
+            const fileName = `catalog/colour_${colourId}_${Date.now()}.${ext}`;
+            const { error: uploadError } = await supabase.storage.from('vehicles').upload(fileName, file, {
+                contentType: file.type,
+                upsert: false,
+            });
+            if (uploadError) throw uploadError;
+            const {
+                data: { publicUrl },
+            } = supabase.storage.from('vehicles').getPublicUrl(fileName);
+            const updated = await updateColour(colourId, { primary_image: publicUrl });
+            onUpdate(colours.map(c => (c.id === colourId ? updated : c)));
+            toast.success('Colour image uploaded');
+        } catch (err) {
+            console.error('[ColourImage] Upload error:', err);
+            toast.error('Image upload failed');
+        } finally {
+            setUploadingImageId(null);
+        }
+    };
+
+    const handleRemoveColourImage = async (colourId: string) => {
+        try {
+            const updated = await updateColour(colourId, { primary_image: null } as any);
+            onUpdate(colours.map(c => (c.id === colourId ? { ...c, primary_image: null } : c)));
+            toast.success('Colour image removed');
+        } catch (err) {
+            toast.error('Failed to remove image');
+        }
     };
 
     return (
@@ -334,10 +377,11 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                     return (
                         <div
                             key={colour.id}
-                            className={`group relative rounded-2xl border-2 transition-all ${isEditing
+                            className={`group relative rounded-2xl border-2 transition-all ${
+                                isEditing
                                     ? 'border-indigo-300 dark:border-indigo-500/40 shadow-lg shadow-indigo-500/5 bg-white dark:bg-white/5'
                                     : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/[0.03] hover:border-slate-200 dark:hover:border-white/10'
-                                }`}
+                            }`}
                         >
                             <div className="p-5">
                                 <div className="flex items-center gap-4">
@@ -386,6 +430,55 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Colour Image — compact upload/preview */}
+                                    {isVehicle && (
+                                        <div className="flex items-center gap-2">
+                                            {colour.primary_image ? (
+                                                <div className="relative group/img">
+                                                    <img
+                                                        src={colour.primary_image}
+                                                        alt={colour.name}
+                                                        className="w-16 h-12 object-contain rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5"
+                                                    />
+                                                    <button
+                                                        onClick={() => handleRemoveColourImage(colour.id)}
+                                                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity shadow-sm"
+                                                        title="Remove image"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <label
+                                                    className={`flex items-center justify-center w-16 h-12 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
+                                                        uploadingImageId === colour.id
+                                                            ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                                                            : 'border-slate-200 dark:border-white/10 hover:border-indigo-300 bg-slate-50 dark:bg-white/5'
+                                                    }`}
+                                                >
+                                                    {uploadingImageId === colour.id ? (
+                                                        <Loader2 size={14} className="animate-spin text-indigo-500" />
+                                                    ) : (
+                                                        <ImagePlus size={14} className="text-slate-400" />
+                                                    )}
+                                                    <input
+                                                        type="file"
+                                                        hidden
+                                                        accept="image/*"
+                                                        ref={el => {
+                                                            fileInputRefs.current[colour.id] = el;
+                                                        }}
+                                                        onChange={e => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) handleColourImageUpload(colour.id, file);
+                                                            e.target.value = '';
+                                                        }}
+                                                    />
+                                                </label>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Details */}
                                     <div className="flex-1 min-w-0">

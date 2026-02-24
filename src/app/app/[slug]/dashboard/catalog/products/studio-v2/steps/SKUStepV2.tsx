@@ -94,6 +94,14 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
         return sku.hex_primary || null;
     };
 
+    // Resolve display image: SKU's own image OR inherited from colour
+    const resolveSkuImage = (sku: CatalogSku): { url: string | null; inherited: boolean } => {
+        if (sku.primary_image) return { url: sku.primary_image, inherited: false };
+        const linked = colours.find(c => c.id === sku.colour_id);
+        if (linked?.primary_image) return { url: linked.primary_image, inherited: true };
+        return { url: null, inherited: false };
+    };
+
     // Toggle SKU existence (create/delete)
     const handleToggleSku = async (variantId: string, colour: CatalogColour) => {
         const cellKey = `${variantId}-${colour.id}`;
@@ -645,20 +653,33 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                                                                               className="p-1 rounded-lg bg-slate-50 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
                                                                               title="Manage media"
                                                                           >
-                                                                              {sku.primary_image ? (
-                                                                                  <img
-                                                                                      src={getProxiedUrl(
-                                                                                          sku.primary_image
-                                                                                      )}
-                                                                                      alt=""
-                                                                                      className="w-5 h-5 rounded object-cover"
-                                                                                  />
-                                                                              ) : (
-                                                                                  <ImageIcon
-                                                                                      size={12}
-                                                                                      className="text-slate-300"
-                                                                                  />
-                                                                              )}
+                                                                              {(() => {
+                                                                                  const img = resolveSkuImage(sku);
+                                                                                  return img.url ? (
+                                                                                      <div className="relative">
+                                                                                          <img
+                                                                                              src={getProxiedUrl(
+                                                                                                  img.url
+                                                                                              )}
+                                                                                              alt=""
+                                                                                              className={`w-5 h-5 rounded object-cover ${img.inherited ? 'opacity-70' : ''}`}
+                                                                                          />
+                                                                                          {img.inherited && (
+                                                                                              <span
+                                                                                                  className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-indigo-500 text-white text-[6px] font-black flex items-center justify-center"
+                                                                                                  title="From Colour"
+                                                                                              >
+                                                                                                  C
+                                                                                              </span>
+                                                                                          )}
+                                                                                      </div>
+                                                                                  ) : (
+                                                                                      <ImageIcon
+                                                                                          size={12}
+                                                                                          className="text-slate-300"
+                                                                                      />
+                                                                                  );
+                                                                              })()}
                                                                           </button>
                                                                           {!sku.primary_image &&
                                                                               skus.some(
@@ -879,31 +900,43 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                                                                       <button
                                                                           onClick={() => setActiveMediaSku(sku)}
                                                                           className={`w-10 h-10 rounded-lg border transition-all overflow-hidden flex items-center justify-center group/media relative ${
-                                                                              sku.primary_image
+                                                                              resolveSkuImage(sku).url
                                                                                   ? 'border-indigo-500/30 hover:border-indigo-500'
                                                                                   : 'bg-slate-50 dark:bg-black/40 border-dashed border-slate-200 dark:border-white/10 text-slate-300 hover:text-indigo-500 hover:border-indigo-400'
                                                                           }`}
                                                                           title="Manage Media"
                                                                       >
-                                                                          {sku.primary_image ? (
-                                                                              <>
-                                                                                  <img
-                                                                                      src={getProxiedUrl(
-                                                                                          sku.primary_image
-                                                                                      )}
-                                                                                      className="w-full h-full object-contain p-0.5 group-hover/media:scale-110 transition-transform duration-300"
-                                                                                      alt={sku.name}
-                                                                                  />
-                                                                                  <div className="absolute inset-0 bg-indigo-600/60 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                                                                      <Upload
-                                                                                          size={14}
-                                                                                          strokeWidth={3}
+                                                                          {(() => {
+                                                                              const img = resolveSkuImage(sku);
+                                                                              return img.url ? (
+                                                                                  <>
+                                                                                      <img
+                                                                                          src={getProxiedUrl(img.url)}
+                                                                                          className={`w-full h-full object-contain p-0.5 group-hover/media:scale-110 transition-transform duration-300 ${img.inherited ? 'opacity-70' : ''}`}
+                                                                                          alt={sku.name}
                                                                                       />
-                                                                                  </div>
-                                                                              </>
-                                                                          ) : (
-                                                                              <ImageIcon size={14} strokeWidth={1.5} />
-                                                                          )}
+                                                                                      <div className="absolute inset-0 bg-indigo-600/60 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                                                                          <Upload
+                                                                                              size={14}
+                                                                                              strokeWidth={3}
+                                                                                          />
+                                                                                      </div>
+                                                                                      {img.inherited && (
+                                                                                          <span
+                                                                                              className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-indigo-500 text-white text-[6px] font-black flex items-center justify-center shadow"
+                                                                                              title="From Colour"
+                                                                                          >
+                                                                                              C
+                                                                                          </span>
+                                                                                      )}
+                                                                                  </>
+                                                                              ) : (
+                                                                                  <ImageIcon
+                                                                                      size={14}
+                                                                                      strokeWidth={1.5}
+                                                                                  />
+                                                                              );
+                                                                          })()}
                                                                       </button>
                                                                   )}
                                                               </div>
