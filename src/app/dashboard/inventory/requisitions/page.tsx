@@ -59,7 +59,7 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 
 export default function RequisitionsPage() {
     const supabase = createClient();
-    const { tenantId } = useTenant();
+    const { tenantId, slug } = useTenant();
     const router = useRouter();
     const [requisitions, setRequisitions] = useState<Requisition[]>([]);
     const [loading, setLoading] = useState(true);
@@ -248,7 +248,13 @@ export default function RequisitionsPage() {
                                 {filteredRequisitions.map(req => (
                                     <tr
                                         key={req.id}
-                                        onClick={() => router.push(`/dashboard/inventory/requisitions/${req.id}`)}
+                                        onClick={() =>
+                                            router.push(
+                                                slug
+                                                    ? `/app/${slug}/dashboard/inventory/requisitions/${req.id}`
+                                                    : `/dashboard/inventory/requisitions/${req.id}`
+                                            )
+                                        }
                                         className="group border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors cursor-pointer"
                                     >
                                         <td className="px-6 py-4">
