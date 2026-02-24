@@ -9,7 +9,7 @@
  *   - Mobile: MobilePDP.tsx inline sticky bar (price + EMI + CTA)
  *
  * Guard behaviors preserved (G4):
- *   - isGated: disables CTA for team members without lead
+ *   - isGated: switches primary CTA to "Share Quote" for team members without lead
  *   - serviceability: disables CTA when area not serviceable
  *   - showOClubPrompt: shows O'Club join prompt (desktop)
  *   - coinPricing: shows savings with coin discount
@@ -169,7 +169,11 @@ export function PdpCommandBar({
     isGated,
 }: PdpCommandBarProps) {
     const isDesktop = layout === 'desktop';
-    const isDisabled = isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable);
+    const isShareMode = isGated;
+    const isServiceabilityBlocked = serviceability?.status === 'SET' && !serviceability?.isServiceable;
+    const isDisabled = !isShareMode && isServiceabilityBlocked;
+    const primaryAction = isShareMode ? handleShareQuote : handleBookingRequest;
+    const primaryLabel = isDisabled ? 'NOT SERVICEABLE' : isShareMode ? 'SHARE QUOTE' : 'GET QUOTE';
     const bCoinEquivalent = coinsNeededForPrice(displayOnRoad);
 
     return (
@@ -273,7 +277,7 @@ export function PdpCommandBar({
 
                             {/* CTA Button — both layouts */}
                             <button
-                                onClick={handleBookingRequest}
+                                onClick={primaryAction}
                                 disabled={isDisabled}
                                 className={`h-11 px-5 md:px-6 font-black text-[11px] uppercase tracking-[0.12em] rounded-full shadow-xl flex items-center gap-2 transition-all group
                                     ${
@@ -282,7 +286,7 @@ export function PdpCommandBar({
                                             : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
                                     }`}
                             >
-                                {isGated ? 'OPEN LEAD' : 'GET QUOTE'}
+                                {primaryLabel}
                                 <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                             </button>
                         </div>

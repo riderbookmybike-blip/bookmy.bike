@@ -13,6 +13,7 @@ import { checkServiceability } from './serviceArea';
 import { createOrLinkMember } from './members';
 import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
 import { isAccessoryCompatible } from '@/lib/catalog/accessoryCompatibility';
+import { sendStoreVisitSms } from '@/lib/sms/msg91';
 
 const END_CUSTOMER_ROLES = new Set(['bmb_user', 'member', 'customer']);
 const STAFF_SOURCE_HINTS = new Set(['LEADS', 'DEALER_REFERRAL', 'CRM']);
@@ -2086,6 +2087,12 @@ export async function createLeadAction(data: {
             actorTenantId: effectiveOwnerId || null,
         });
 
+        // Fire-and-forget SMS notification to customer
+        sendStoreVisitSms({
+            phone: data.customer_phone,
+            name: data.customer_name,
+        }).catch(err => console.error('[SMS] Lead creation SMS failed:', err));
+
         // console.log('[DEBUG] Lead created successfully:', lead.id);
         revalidatePath('/app/[slug]/leads', 'page');
         return { success: true, leadId: lead.id, memberId: customerId };
@@ -2605,6 +2612,25 @@ export async function createQuoteAction(data: {
 
     revalidatePath('/app/[slug]/quotes');
     revalidatePath('/profile'); // Transaction Registry
+
+    // Fire-and-forget SMS to customer on quote creation
+    if (memberId) {
+        adminClient
+            .from('id_members')
+            .select('full_name, primary_phone')
+            .eq('id', memberId)
+            .maybeSingle()
+            .then(({ data: member }) => {
+                if (member?.primary_phone) {
+                    sendStoreVisitSms({
+                        phone: member.primary_phone,
+                        name: member.full_name || 'Customer',
+                    }).catch(err => console.error('[SMS] Quote creation SMS failed:', err));
+                }
+            })
+            .catch(err => console.error('[SMS] Member lookup for SMS failed:', err));
+    }
+
     return { success: true, data: quote };
 }
 

@@ -254,13 +254,26 @@ const addonLabelFromKey = (key: string) =>
         })
         .join(' ');
 
+const normalizeAddonBaseKey = (key: string) => {
+    const normalized = String(key || '')
+        .trim()
+        .toLowerCase();
+    if (!normalized) return '';
+    // Legacy alias columns that represent owner-driver personal accident cover.
+    if (/^pa(_cover)?$/.test(normalized) || normalized === 'personal_accident') {
+        return 'personal_accident_cover';
+    }
+    return normalized;
+};
+
 const buildInsuranceAddons = (row: Record<string, any>) => {
     const addonBaseKeys = Object.keys(row)
         .filter(key => key.startsWith('addon_') && key.endsWith('_total_amount'))
         .map(key => key.slice('addon_'.length, -'_total_amount'.length));
 
-    return addonBaseKeys
+    const parsedAddons = addonBaseKeys
         .map(baseKey => {
+            const canonicalBaseKey = normalizeAddonBaseKey(baseKey);
             const total = toNumber(row[`addon_${baseKey}_total_amount`]);
             const price = toNumber(row[`addon_${baseKey}_amount`]);
             const gst = toNumber(row[`addon_${baseKey}_gst_amount`]);
@@ -275,8 +288,8 @@ const buildInsuranceAddons = (row: Record<string, any>) => {
             if (total <= 0 && price <= 0 && gst <= 0) return null;
 
             return {
-                id: baseKey,
-                label: addonLabelFromKey(baseKey),
+                rawBaseKey: String(baseKey || ''),
+                canonicalBaseKey,
                 price,
                 gst,
                 total,
@@ -284,13 +297,53 @@ const buildInsuranceAddons = (row: Record<string, any>) => {
             };
         })
         .filter(Boolean) as {
-        id: string;
-        label: string;
+        rawBaseKey: string;
+        canonicalBaseKey: string;
         price: number;
         gst: number;
         total: number;
         default: boolean;
     }[];
+
+    const deduped = new Map<
+        string,
+        {
+            rawBaseKey: string;
+            canonicalBaseKey: string;
+            price: number;
+            gst: number;
+            total: number;
+            default: boolean;
+        }
+    >();
+
+    for (const addon of parsedAddons) {
+        const existing = deduped.get(addon.canonicalBaseKey);
+        if (!existing) {
+            deduped.set(addon.canonicalBaseKey, addon);
+            continue;
+        }
+
+        const existingIsLegacyPaAlias = /^pa(_cover)?$/.test(existing.rawBaseKey);
+        const candidateIsLegacyPaAlias = /^pa(_cover)?$/.test(addon.rawBaseKey);
+        const shouldReplace =
+            (existingIsLegacyPaAlias && !candidateIsLegacyPaAlias) ||
+            (!existing.default && addon.default) ||
+            addon.total > existing.total;
+
+        if (shouldReplace) {
+            deduped.set(addon.canonicalBaseKey, addon);
+        }
+    }
+
+    return Array.from(deduped.values()).map(addon => ({
+        id: addon.canonicalBaseKey,
+        label: addonLabelFromKey(addon.canonicalBaseKey),
+        price: addon.price,
+        gst: addon.gst,
+        total: addon.total,
+        default: addon.default,
+    }));
 };
 
 // ─── 1. Model Resolution ────────────────────────────────────

@@ -221,10 +221,10 @@ export const MobilePDP = ({
             {/* 4. Color Selection */}
             {colors && colors.length > 0 && (
                 <div className="px-5 mb-8">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3">
-                        Choose Color: <span className="text-slate-900">{displayColor}</span>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 mb-3 text-center">
+                        {displayColor}
                     </p>
-                    <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
+                    <div className="flex justify-center flex-wrap gap-4 py-3 px-2">
                         {colors.map((c: any) => {
                             const isColorSelected = c.id === selectedColor;
                             return (
@@ -236,9 +236,14 @@ export const MobilePDP = ({
                                     }`}
                                 >
                                     <div
-                                        className="absolute inset-[3px] rounded-full shadow-inner"
+                                        className="absolute inset-[3px] rounded-full border border-black/10 overflow-hidden"
                                         style={{ backgroundColor: c.hexCode || c.hex || '#ffffff' }}
-                                    />
+                                    >
+                                        {/* Shimmer gloss effect — same as DesktopPDP */}
+                                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/50 via-white/10 to-transparent" />
+                                        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/30 to-white/10" />
+                                        <div className="absolute inset-[-2px] rounded-full bg-[conic-gradient(from_0deg,transparent_60%,rgba(255,255,255,0.3)_80%,transparent_100%)] animate-[spin_3s_linear_infinite] opacity-40" />
+                                    </div>
                                     {isColorSelected && (
                                         <div className="absolute inset-0 rounded-full border border-slate-200" />
                                     )}

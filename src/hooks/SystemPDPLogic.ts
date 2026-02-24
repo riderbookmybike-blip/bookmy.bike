@@ -102,15 +102,29 @@ export function useSystemPDPLogic({
         .filter(a => a.isMandatory || a.inclusionType === 'BUNDLE')
         .map(a => a.id);
     const [selectedAccessories, setSelectedAccessories] = useState<string[]>(defaultSelectedAccessoryIds);
+    const normalizeInsuranceAddonId = (value: any) => {
+        const normalized = String(value || '')
+            .trim()
+            .toLowerCase();
+        if (/^pa(_cover)?$/.test(normalized) || normalized === 'personal_accident') {
+            return 'personal_accident_cover';
+        }
+        return normalized;
+    };
     // SOT Phase 3: Use JSON addons with default flag; fallback to legacy insuranceRule
-    const defaultInsuranceAddonIds = (serverPricing?.insurance?.addons || [])
-        .filter(
-            (a: { id: string; default?: boolean; inclusion_type?: string; inclusionType?: string }) =>
-                a.default === true ||
-                (a.inclusion_type || a.inclusionType) === 'MANDATORY' ||
-                (a.inclusion_type || a.inclusionType) === 'BUNDLE'
+    const defaultInsuranceAddonIds = Array.from(
+        new Set(
+            (serverPricing?.insurance?.addons || [])
+                .filter(
+                    (a: { id: string; default?: boolean; inclusion_type?: string; inclusionType?: string }) =>
+                        a.default === true ||
+                        (a.inclusion_type || a.inclusionType) === 'MANDATORY' ||
+                        (a.inclusion_type || a.inclusionType) === 'BUNDLE'
+                )
+                .map((a: { id: string }) => normalizeInsuranceAddonId(a.id))
+                .filter(Boolean)
         )
-        .map((a: { id: string }) => a.id);
+    );
     const [selectedInsuranceAddons, setSelectedInsuranceAddons] = useState<string[]>(defaultInsuranceAddonIds);
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
     const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
@@ -379,7 +393,7 @@ export function useSystemPDPLogic({
         const resolvedPrice = addonTotal > 0 ? addonTotal : Math.max(0, basePremium + gstAmount);
 
         return {
-            id: addon.id,
+            id: normalizeInsuranceAddonId(addon.id),
             name: addon.label,
             price: resolvedPrice,
             description: 'Coverage',

@@ -60,8 +60,9 @@ export function LeadCaptureModal({
     const [referralError, setReferralError] = useState<string | null>(null);
     const [referralResolving, setReferralResolving] = useState(false);
 
-    // Detect if current user is a staff member of any dealership
-    const isStaff = userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER';
+    // Detect if current user role has been resolved and whether it's a staff role.
+    const hasResolvedRole = typeof userRole === 'string' && userRole.length > 0;
+    const isStaff = hasResolvedRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER';
     const effectiveTenantId = sessionDealerId || quoteTenantId || tenantId || undefined;
     const primaryMembership = memberships?.find(m => m.tenant_id === tenantId);
     const [autoPhoneLoaded, setAutoPhoneLoaded] = useState(false);
@@ -87,7 +88,9 @@ export function LeadCaptureModal({
     }, [isOpen]);
 
     useEffect(() => {
-        if (!isOpen || autoPhoneLoaded || isStaff) return;
+        // Important: wait for role hydration first, otherwise staff users can be treated
+        // as end-customers briefly and their own phone gets auto-submitted.
+        if (!isOpen || autoPhoneLoaded || !hasResolvedRole || isStaff) return;
         const supabase = createClient();
         const hydratePhone = async () => {
             const { data: auth } = await supabase.auth.getUser();
@@ -128,7 +131,7 @@ export function LeadCaptureModal({
             setAutoPhoneLoaded(true);
         };
         hydratePhone();
-    }, [isOpen, autoPhoneLoaded, isStaff]);
+    }, [isOpen, autoPhoneLoaded, hasResolvedRole, isStaff]);
 
     if (!isOpen) return null;
 

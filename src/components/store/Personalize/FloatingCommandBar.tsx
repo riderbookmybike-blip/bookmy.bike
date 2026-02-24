@@ -73,6 +73,11 @@ export default function FloatingCommandBar({
     serviceability,
     isGated,
 }: FloatingCommandBarProps) {
+    const isShareMode = isGated;
+    const isServiceabilityBlocked = serviceability?.status === 'SET' && !serviceability?.isServiceable;
+    const isDisabled = !isShareMode && isServiceabilityBlocked;
+    const primaryAction = isShareMode ? handleShareQuote : handleBookingRequest;
+    const primaryLabel = isDisabled ? 'NOT SERVICEABLE' : isShareMode ? 'SHARE QUOTE' : 'GET QUOTE';
     const privilegedSavings = Math.max(0, totalSavings + (coinPricing?.discount || 0));
     const onRoadBase = Math.max(0, displayOnRoad + privilegedSavings);
     const showDesktopBreakdown = !forceMobileLayout;
@@ -201,19 +206,17 @@ export default function FloatingCommandBar({
                                 />
                             </div>
                             <button
-                                onClick={handleBookingRequest}
-                                disabled={
-                                    isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
-                                }
+                                onClick={primaryAction}
+                                disabled={isDisabled}
                                 className={`h-11 px-5 md:px-6 font-black text-[11px] uppercase tracking-[0.12em] rounded-full shadow-xl flex items-center gap-2 transition-all group
                             ${
-                                isGated || (serviceability?.status === 'SET' && !serviceability?.isServiceable)
+                                isDisabled
                                     ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                                     : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
                             }
                         `}
                             >
-                                {isGated ? 'OPEN LEAD' : 'GET QUOTE'}
+                                {primaryLabel}
                                 <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                             </button>
                         </div>

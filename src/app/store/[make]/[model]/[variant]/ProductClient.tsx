@@ -738,10 +738,25 @@ export default function ProductClient({
     };
 
     const toggleAccessory = (id: string) => {
-        const accessory = data.activeAccessories.find((a: any) => a.id === id);
+        const accessory: any = data.activeAccessories.find((a: any) => a.id === id);
         if (accessory?.isMandatory) return;
         setHasTouchedAccessories(true);
-        setSelectedAccessories(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+        setSelectedAccessories(prev => {
+            // Deselecting: simply remove
+            if (prev.includes(id)) return prev.filter(x => x !== id);
+
+            // Selecting: enforce one-SKU-per-product-group
+            const group = accessory?.productGroup;
+            if (group) {
+                // Find sibling SKU IDs in the same product group
+                const siblingIds = data.activeAccessories
+                    .filter((a: any) => a.productGroup === group && a.id !== id && !a.isMandatory)
+                    .map((a: any) => a.id);
+                // Remove any siblings, then add the new one
+                return [...prev.filter(x => !siblingIds.includes(x)), id];
+            }
+            return [...prev, id];
+        });
     };
 
     const toggleInsuranceAddon = (id: string) => {

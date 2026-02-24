@@ -25,7 +25,7 @@ import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
     const fullStars = Math.floor(rating);
@@ -337,8 +337,18 @@ export const ProductCard = ({
         }
     };
 
+    const router = useRouter();
+    const variantUrl = buildProductUrl({
+        make: v.make,
+        model: v.model,
+        variant: v.variant,
+        color: v.availableColors?.[0]?.name ? slugify(v.availableColors?.[0]?.name) : undefined,
+        district: navigableDistrict,
+        leadId: leadId,
+        basePath,
+    }).url;
     const handleCardClick = () => {
-        setRatingCount(prev => prev + 1);
+        router.push(variantUrl);
     };
 
     // Force Grid View for consistency if requested or stick to logic
