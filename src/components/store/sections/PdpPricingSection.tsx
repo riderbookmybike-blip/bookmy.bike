@@ -218,14 +218,14 @@ export function PdpPricingSection({
                     </div>
                     <div>
                         <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">Pricing</p>
-                        <p className="text-[11px] font-semibold font-mono tabular-nums text-slate-600 flex items-center gap-1.5">
+                        <span className="text-[11px] font-semibold font-mono tabular-nums text-slate-600 flex items-center gap-1.5">
                             <span className="leading-none">₹ {displayOnRoad.toLocaleString('en-IN')}</span>
                             <span className="text-slate-300">•</span>
                             <Logo variant="icon" size={10} customColor="#475569" />
                             <span className="leading-none text-slate-600">
                                 {bCoinEquivalent.toLocaleString('en-IN')}
                             </span>
-                        </p>
+                        </span>
                     </div>
                 </div>
                 <ChevronDown size={18} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
