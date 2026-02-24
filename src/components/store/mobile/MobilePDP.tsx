@@ -149,7 +149,22 @@ export const MobilePDP = ({
     const toggleCard = (id: string) => setOpenContentCard(prev => (prev === id ? null : id));
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 pb-36 font-sans selection:bg-[#F4B000]/30 selection:text-black">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pb-14 font-sans selection:bg-[#F4B000]/30 selection:text-black">
+            {/* Cinematic Color Mesh Background — matches Desktop PDP */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div
+                    className="absolute inset-0 opacity-40 transition-all duration-[2000ms] blur-[120px]"
+                    style={{
+                        background: `
+                            radial-gradient(circle at 20% 20%, ${activeColorConfig?.hex || '#888'}44, transparent 40%),
+                            radial-gradient(circle at 80% 80%, ${activeColorConfig?.hex || '#888'}33, transparent 40%),
+                            radial-gradient(circle at 10% 90%, ${activeColorConfig?.hex || '#888'}22, transparent 40%),
+                            radial-gradient(circle at 90% 10%, ${activeColorConfig?.hex || '#888'}11, transparent 40%)
+                        `,
+                    }}
+                />
+            </div>
+
             {/* Parity Snapshot — hidden DOM element for Playwright parity tests */}
             <ParitySnapshot data={data} product={product} />
 
@@ -181,7 +196,10 @@ export const MobilePDP = ({
             </div>
 
             {/* 2. Edge-to-Edge Hero Image */}
-            <div className="relative w-full aspect-[4/3] bg-gradient-to-b from-slate-100 to-white pt-12 flex items-center justify-center overflow-hidden">
+            <div
+                className="relative w-full aspect-[4/3] pt-12 flex items-center justify-center overflow-hidden transition-colors duration-700"
+                style={{ backgroundColor: `${activeColorConfig?.hex || '#e2e8f0'}26` }}
+            >
                 <motion.div
                     key={selectedColor}
                     initial={{ opacity: 0, scale: 0.95, x: 50 }}
@@ -242,22 +260,23 @@ export const MobilePDP = ({
                                 <button
                                     key={c.id}
                                     onClick={() => handleColorChange(c.id)}
-                                    className={`relative w-12 h-12 rounded-full shrink-0 transition-all border-2 ${
-                                        isColorSelected ? 'border-[#F4B000] scale-110' : 'border-transparent'
-                                    }`}
+                                    className="relative flex flex-col items-center gap-1.5 shrink-0 transition-all"
                                 >
-                                    <div
-                                        className="absolute inset-[3px] rounded-full border border-black/10 overflow-hidden"
-                                        style={{ backgroundColor: c.hexCode || c.hex || '#ffffff' }}
-                                    >
-                                        {/* Shimmer gloss effect — same as DesktopPDP */}
-                                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/50 via-white/10 to-transparent" />
-                                        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/30 to-white/10" />
-                                        <div className="absolute inset-[-2px] rounded-full bg-[conic-gradient(from_0deg,transparent_60%,rgba(255,255,255,0.3)_80%,transparent_100%)] animate-[spin_3s_linear_infinite] opacity-40" />
+                                    <div className="w-12 h-12 rounded-full relative">
+                                        <div
+                                            className="absolute inset-0 rounded-full border border-black/10 overflow-hidden"
+                                            style={{ backgroundColor: c.hexCode || c.hex || '#ffffff' }}
+                                        >
+                                            {/* Shimmer gloss effect — same as DesktopPDP */}
+                                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/50 via-white/10 to-transparent" />
+                                            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/30 to-white/10" />
+                                            <div className="absolute inset-[-2px] rounded-full bg-[conic-gradient(from_0deg,transparent_60%,rgba(255,255,255,0.3)_80%,transparent_100%)] animate-[spin_3s_linear_infinite] opacity-40" />
+                                        </div>
                                     </div>
-                                    {isColorSelected && (
-                                        <div className="absolute inset-0 rounded-full border border-slate-200" />
-                                    )}
+                                    {/* Brand color underline for selected */}
+                                    <div
+                                        className={`h-[3px] rounded-full transition-all duration-300 ${isColorSelected ? 'w-6 bg-[#F4B000]' : 'w-0 bg-transparent'}`}
+                                    />
                                 </button>
                             );
                         })}

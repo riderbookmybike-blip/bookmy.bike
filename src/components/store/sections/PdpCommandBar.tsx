@@ -126,21 +126,30 @@ function MobilePriceSummary({
     totalSavings,
     coinPricing,
     bCoinEquivalent,
-    footerEmi,
-    emiTenure,
 }: PriceSummaryProps) {
     const hasSavings = totalSavings > 0 || (coinPricing && coinPricing.discount > 0);
 
     return (
-        <div className="flex md:hidden flex-col gap-0.5">
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">On-Road</span>
-            <div className="flex items-center gap-2.5">
-                <span className="text-lg font-black text-slate-800 font-mono tabular-nums leading-none tracking-tight">
-                    ₹ {displayOnRoad.toLocaleString('en-IN')}
+        <div className="flex md:hidden items-center gap-3 min-w-0">
+            {/* INR Price */}
+            <div className="flex items-baseline gap-1.5">
+                <span className="text-[16px] font-black text-white font-mono tabular-nums leading-none tracking-tight drop-shadow-sm">
+                    ₹{displayOnRoad.toLocaleString('en-IN')}
                 </span>
-                <span className="text-slate-300">•</span>
-                <span className="inline-flex items-center gap-1 text-lg font-black text-slate-800 font-mono tabular-nums leading-none tracking-tight">
-                    <Logo variant="icon" size={12} customColor="#334155" />
+                {hasSavings && (
+                    <span className="text-[9px] text-white/40 line-through font-mono tabular-nums">
+                        ₹{(totalOnRoad + totalSavings).toLocaleString('en-IN')}
+                    </span>
+                )}
+            </div>
+
+            {/* Separator */}
+            <div className="w-px h-4 bg-white/20" />
+
+            {/* B-Coin equivalent */}
+            <div className="flex items-center gap-1">
+                <Logo variant="icon" size={11} customColor="#FFD700" />
+                <span className="text-[13px] font-bold text-[#FFD700] font-mono tabular-nums leading-none">
                     {bCoinEquivalent.toLocaleString('en-IN')}
                 </span>
             </div>
@@ -182,18 +191,20 @@ export function PdpCommandBar({
             className="fixed inset-x-0 bottom-0 z-[95]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-            <div className={`page-container ${isDesktop ? 'mb-2 md:mb-4' : 'mb-0'}`}>
+            <div className={`${isDesktop ? 'page-container mb-2 md:mb-4' : 'px-4 mb-3'}`}>
                 <div
-                    className={`relative overflow-hidden border shadow-[0_10px_34px_rgba(15,23,42,0.12)] ${
+                    className={`relative overflow-hidden border ${
                         isDesktop
-                            ? 'rounded-2xl md:rounded-full border-white/80 bg-white/58 backdrop-blur-3xl'
-                            : 'rounded-t-2xl border-slate-200 bg-white/95 backdrop-blur-xl'
+                            ? 'rounded-2xl md:rounded-full border-white/80 bg-white/58 backdrop-blur-3xl shadow-[0_10px_34px_rgba(15,23,42,0.12)]'
+                            : 'rounded-full border-white/[0.08] bg-[#0b0d10]/80 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.05)_inset]'
                     }`}
                 >
-                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.62),rgba(255,255,255,0.18)_65%)]" />
+                    <div
+                        className={`pointer-events-none absolute inset-0 ${isDesktop ? 'bg-[linear-gradient(135deg,rgba(255,255,255,0.62),rgba(255,255,255,0.18)_65%)]' : 'bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_65%)]'}`}
+                    />
                     <div
                         className={`relative z-10 flex items-center justify-between ${
-                            isDesktop ? 'p-3 md:px-8 md:py-3 gap-3 md:gap-6' : 'px-4 py-3 gap-3'
+                            isDesktop ? 'p-3 md:px-8 md:py-3 gap-3 md:gap-6' : 'px-5 py-2.5 gap-3'
                         }`}
                     >
                         {/* Left: Product Identity + Price */}
@@ -279,11 +290,13 @@ export function PdpCommandBar({
                             <button
                                 onClick={primaryAction}
                                 disabled={isDisabled}
-                                className={`h-11 px-5 md:px-6 font-black text-[11px] uppercase tracking-[0.12em] rounded-full shadow-xl flex items-center gap-2 transition-all group
+                                className={`${isDesktop ? 'h-11 px-6' : 'h-9 px-4'} font-black text-[11px] uppercase tracking-[0.12em] rounded-full shadow-xl flex items-center gap-2 transition-all group
                                     ${
                                         isDisabled
                                             ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                            : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
+                                            : isDesktop
+                                              ? 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
+                                              : 'bg-[#FFD700] text-[#0b0d10] shadow-[0_0_20px_rgba(255,215,0,0.3)]'
                                     }`}
                             >
                                 {primaryLabel}

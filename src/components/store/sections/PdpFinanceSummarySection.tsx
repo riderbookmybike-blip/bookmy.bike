@@ -77,9 +77,7 @@ export function PdpFinanceSummarySection({
                         <Landmark size={18} />
                     </div>
                     <div>
-                        <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
-                            Finance Summary
-                        </p>
+                        <p className="text-sm font-black tracking-[0.05em] text-brand-primary">Finance Summary</p>
                         <p className="text-[11px] text-slate-500">{financeHeaderSubtitle}</p>
                     </div>
                 </div>

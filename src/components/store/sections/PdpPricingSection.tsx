@@ -217,8 +217,9 @@ export function PdpPricingSection({
                         <Zap size={18} />
                     </div>
                     <div>
-                        <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">Pricing</p>
+                        <p className="text-sm font-black tracking-[0.05em] text-brand-primary">Pricing</p>
                         <span className="text-[11px] font-semibold font-mono tabular-nums text-slate-600 flex items-center gap-1.5">
+                            <span className="leading-none">On Road</span>
                             <span className="leading-none">₹ {displayOnRoad.toLocaleString('en-IN')}</span>
                             <span className="text-slate-300">•</span>
                             <Logo variant="icon" size={10} customColor="#475569" />

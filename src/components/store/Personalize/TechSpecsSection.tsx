@@ -490,11 +490,18 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                                     <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
                                         <Icon size={18} />
                                     </div>
-                                    <div>
-                                        <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-black tracking-[0.05em] text-brand-primary">
                                             {cat.label}
                                         </p>
-                                        <p className="text-[11px] text-slate-500">{cat.items.length} specs</p>
+                                        <p className="text-[11px] font-semibold text-slate-600 truncate">
+                                            {(() => {
+                                                const names = cat.items.map((s: any) => s.label).filter(Boolean);
+                                                const shown = names.slice(0, 2).join(', ');
+                                                const rest = names.length - 2;
+                                                return rest > 0 ? `${shown} & +${rest}` : shown;
+                                            })()}
+                                        </p>
                                     </div>
                                 </div>
                                 <ChevronDown

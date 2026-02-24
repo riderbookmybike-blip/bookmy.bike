@@ -27,49 +27,113 @@ export interface PdpConfigSectionProps {
 
 // ─── Shared config card definitions ───────────────────────
 function getConfigCards(data: any) {
-    const { selectedAccessories, selectedInsuranceAddons, selectedServices, regType } = data;
+    const { selectedAccessories, selectedInsuranceAddons, selectedServices, regType, activeAccessories } = data;
     const accTotal = Math.round((data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0));
     const insAddonsTotal = Math.round((data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0));
     const svcTotal = Math.round((data.servicesPrice || 0) + (data.servicesDiscount || 0));
 
     const fmt = (v: number) => `₹${v.toLocaleString('en-IN')}`;
 
+    // Build accessory subtext: "Side Stand, Floor Matt & +5"
+    let accSubtext = 'Add Extras';
+    const allActive = (activeAccessories || []).filter((a: any) => a.isMandatory || selectedAccessories.includes(a.id));
+    if (allActive.length > 0) {
+        const toTitle = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        const cleanName = (raw: string) => {
+            let n = toTitle(raw);
+            n = n.replace(/\s+(Standard|Universal|Generic)?\s*(For\s+.*)$/i, '').trim();
+            return n;
+        };
+        // Try unique product group names first
+        let names = [...new Set<string>(allActive.map((a: any) => cleanName(a.productGroup || '')))].filter(Boolean);
+        // If less than 2 unique groups, supplement with individual cleaned names
+        if (names.length < 2) {
+            const individualNames = allActive.map((a: any) =>
+                cleanName(a.productGroup || a.displayName || a.name || '')
+            );
+            names = [...new Set<string>(individualNames)].filter(Boolean);
+        }
+        const totalItems = allActive.length;
+        const shown = names.slice(0, 2).join(', ');
+        const rest = totalItems - 2;
+        accSubtext = rest > 0 ? `${shown} & +${rest}` : shown;
+    }
+
     return [
         {
             id: 'ACCESSORIES',
             label: 'Accessories',
-            subtext:
-                selectedAccessories.length > 0
-                    ? `${selectedAccessories.length} Selected • ${fmt(accTotal)}`
-                    : 'Add Extras',
+            subtext: accSubtext,
             icon: Package,
         },
         {
             id: 'INSURANCE',
             label: 'Insurance',
-            subtext:
-                selectedInsuranceAddons.length > 0
-                    ? `${selectedInsuranceAddons.length} Addons • ${fmt(insAddonsTotal)}`
-                    : 'Secure Rider',
+            subtext: '5 Year Liability Only & 1 Year Comprehensive',
             icon: ShieldCheck,
         },
         {
             id: 'REGISTRATION',
             label: 'Registration',
-            subtext: regType || 'Choose Type',
+            subtext: (() => {
+                const stateNames: Record<string, string> = {
+                    MH: 'Maharashtra',
+                    DL: 'Delhi',
+                    KA: 'Karnataka',
+                    TN: 'Tamil Nadu',
+                    UP: 'Uttar Pradesh',
+                    GJ: 'Gujarat',
+                    RJ: 'Rajasthan',
+                    WB: 'West Bengal',
+                    MP: 'Madhya Pradesh',
+                    AP: 'Andhra Pradesh',
+                    TS: 'Telangana',
+                    KL: 'Kerala',
+                    PB: 'Punjab',
+                    HR: 'Haryana',
+                    BR: 'Bihar',
+                    JH: 'Jharkhand',
+                    GA: 'Goa',
+                    OR: 'Odisha',
+                    CG: 'Chhattisgarh',
+                    UK: 'Uttarakhand',
+                    HP: 'Himachal Pradesh',
+                };
+                const code = data.stateCode?.toUpperCase() || '';
+                const fullName = stateNames[code] || '';
+                if (regType === 'STATE' && fullName) return `${fullName} State (${code})`;
+                if (regType === 'BH') return 'Bharat Series (BH)';
+                if (regType === 'COMPANY') return fullName ? `Company ${fullName} (${code})` : 'Company Registration';
+                return regType || 'Choose Type';
+            })(),
             icon: ClipboardList,
         },
         {
             id: 'SERVICES',
             label: 'Services',
-            subtext:
-                selectedServices.length > 0 ? `${selectedServices.length} Selected • ${fmt(svcTotal)}` : 'AMC & Plans',
+            subtext: (() => {
+                const active = (data.activeServices || []).filter(
+                    (s: any) => s.isMandatory || selectedServices.includes(s.id)
+                );
+                if (active.length === 0) return 'AMC & Plans';
+                const names = active.map((s: any) => s.name || '').filter(Boolean);
+                const shown = names.slice(0, 2).join(', ');
+                const rest = active.length - 2;
+                return rest > 0 ? `${shown} & +${rest}` : shown;
+            })(),
             icon: Wrench,
         },
         {
             id: 'WARRANTY',
             label: 'Warranty',
-            subtext: 'Protect Ride',
+            subtext: (() => {
+                const items = data.warrantyItems || [];
+                if (items.length === 0) return 'Included Protection';
+                const names = items.map((w: any) => w.name || '').filter(Boolean);
+                const shown = names.slice(0, 2).join(', ');
+                const rest = items.length - 2;
+                return rest > 0 ? `${shown} & +${rest}` : shown;
+            })(),
             icon: Gift,
         },
     ];
@@ -229,11 +293,11 @@ export function PdpConfigSection({
                                 <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
                                     <Icon size={18} />
                                 </div>
-                                <div>
-                                    <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
+                                <div className="min-w-0">
+                                    <p className="text-sm font-black tracking-[0.05em] text-brand-primary">
                                         {card.label}
                                     </p>
-                                    <p className="text-[11px] text-slate-500">{card.subtext}</p>
+                                    <p className="text-[11px] font-semibold text-slate-600 truncate">{card.subtext}</p>
                                 </div>
                             </div>
                             <ChevronDown
