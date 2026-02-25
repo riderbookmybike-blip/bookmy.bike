@@ -2325,6 +2325,7 @@ export async function createQuoteAction(data: {
     color_id?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     commercials: Record<string, any>;
+    store_url?: string;
     source?: 'STORE_PDP' | 'LEADS';
 }): Promise<{ success: boolean; data?: any; message?: string }> {
     const user = await getAuthUser();
@@ -2621,8 +2622,10 @@ export async function createQuoteAction(data: {
     revalidatePath('/app/[slug]/quotes');
     revalidatePath('/profile'); // Transaction Registry
 
-    // Fire-and-forget SMS to customer on quote creation
-    if (memberId) {
+    // Fire-and-forget SMS to customer on marketplace quote/share flows
+    const smsStoreUrl = typeof data.store_url === 'string' ? data.store_url.trim() : '';
+    const shouldSendQuoteSms = Boolean(memberId && data.source === 'STORE_PDP');
+    if (shouldSendQuoteSms) {
         adminClient
             .from('id_members')
             .select('full_name, primary_phone')
@@ -2633,6 +2636,7 @@ export async function createQuoteAction(data: {
                     sendStoreVisitSms({
                         phone: member.primary_phone,
                         name: member.full_name || 'Customer',
+                        storeUrl: smsStoreUrl || undefined,
                     }).catch(err => console.error('[SMS] Quote creation SMS failed:', err));
                 }
             })

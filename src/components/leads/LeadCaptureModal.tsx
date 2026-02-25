@@ -353,6 +353,7 @@ export function LeadCaptureModal({
                 bcoin_applied: bcoinApplied,
             },
         };
+        const storeUrl = typeof window !== 'undefined' ? window.location.href : undefined;
 
         try {
             const result = await createQuoteAction({
@@ -361,6 +362,7 @@ export function LeadCaptureModal({
                 variant_id: variantId,
                 color_id: colorId,
                 commercials: enrichedCommercials,
+                store_url: storeUrl,
                 source,
             });
 
