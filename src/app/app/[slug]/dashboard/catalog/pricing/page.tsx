@@ -45,6 +45,8 @@ interface SKUPriceRow {
     engineCc: number;
     suitableFor?: string;
     exShowroom: number;
+    exFactory?: number;
+    exFactoryGst?: number;
     offerAmount: number; // New Field (-ve Discount, +ve Surge)
     originalExShowroom?: number;
     originalOfferAmount?: number; // For History Diff
@@ -263,6 +265,8 @@ export default function PricingPage() {
                 string,
                 {
                     price: number;
+                    exFactory: number;
+                    exFactoryGst: number;
                     rto: number;
                     rto_data?: any;
                     insurance: number;
@@ -294,6 +298,8 @@ export default function PricingPage() {
                 if (!skuId) return;
                 priceMap.set(skuId, {
                     price: Number(row.ex_showroom) || 0,
+                    exFactory: Number(row.ex_showroom_basic) || 0,
+                    exFactoryGst: Number(row.ex_showroom_gst_amount) || 0,
                     rto: Number(row.rto_total_state) || 0,
                     rto_data: {
                         STATE: Number(row.rto_total_state || 0),
@@ -385,6 +391,8 @@ export default function PricingPage() {
                     engineCc: variant?.displacement || 0,
                     suitableFor: '',
                     exShowroom: finalPrice,
+                    exFactory: priceRecord?.exFactory || 0,
+                    exFactoryGst: priceRecord?.exFactoryGst || 0,
                     offerAmount: stateOffer,
                     inclusionType: finalInclusionType,
                     type: itemType,

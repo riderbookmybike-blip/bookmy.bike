@@ -52,6 +52,8 @@ interface SKUPriceRow {
     color: string;
     engineCc: string | number;
     exShowroom: number;
+    exFactory?: number;
+    exFactoryGst?: number;
     offerAmount?: number;
     originalExShowroom?: number;
     originalOfferAmount?: number;
@@ -276,7 +278,7 @@ export default function PricingLedgerTable({
             };
 
             // --- Build data grouped by brand ---
-            const fmt = (n?: number) => (n ? n.toLocaleString('en-IN') : '-');
+            const fmt = (n?: number) => (n ? Math.round(n).toLocaleString('en-IN') : '-');
             const isVehicle = activeCategory === 'vehicles';
             const headers = isVehicle
                 ? [
@@ -432,7 +434,7 @@ export default function PricingLedgerTable({
         if (value === null || value === undefined) return '—';
         const num = Number(value);
         if (isNaN(num)) return '—';
-        return `₹${num.toLocaleString()}`;
+        return `₹${Math.round(num).toLocaleString()}`;
     };
 
     const getRtoTypeDetail = (rtoData: any, type: 'STATE' | 'BH' | 'COMPANY') => {
@@ -1106,6 +1108,64 @@ export default function PricingLedgerTable({
                         )}
                     </div>
 
+                    {/* Variant Filter */}
+                    <div className="relative group w-[140px]">
+                        <button
+                            onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'variant' ? null : 'variant')}
+                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'variant' ? 'border-indigo-500 ring-2 ring-indigo-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
+                        >
+                            <Layers
+                                size={12}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-600 z-10"
+                            />
+                            <span className="truncate">
+                                {selectedVariant === 'ALL' ? 'All Variants' : selectedVariant}
+                            </span>
+                            <Filter
+                                size={10}
+                                className={`opacity-50 ${selectedVariant !== 'ALL' ? 'text-indigo-600 opacity-100' : ''}`}
+                            />
+                        </button>
+
+                        {activeToolbarFilter === 'variant' && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
+                                <div className="absolute top-full mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                            Filter Variant
+                                        </span>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
+                                        <button
+                                            onClick={() => {
+                                                onVariantChange('ALL');
+                                                setActiveToolbarFilter(null);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedVariant === 'ALL' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                        >
+                                            All Variants
+                                            {selectedVariant === 'ALL' && <CheckCircle2 size={12} />}
+                                        </button>
+                                        {variants.map(v => (
+                                            <button
+                                                key={v}
+                                                onClick={() => {
+                                                    onVariantChange(v);
+                                                    setActiveToolbarFilter(null);
+                                                }}
+                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedVariant === v ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                            >
+                                                {v}
+                                                {selectedVariant === v && <CheckCircle2 size={12} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
                     {/* Individual active filters with reset icons */}
                     {Object.entries(filters).map(([key, value]) => {
                         if (!value || value === 'ALL' || key === 'displayState') return null;
@@ -1171,6 +1231,19 @@ export default function PricingLedgerTable({
                             <span>{selectedModel}</span>
                             <button
                                 onClick={() => onModelChange('ALL')}
+                                className="ml-1 hover:text-rose-500 transition-colors"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    )}
+
+                    {selectedVariant !== 'ALL' && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 group animate-in fade-in zoom-in duration-200">
+                            <span className="opacity-50">Variant:</span>
+                            <span>{selectedVariant}</span>
+                            <button
+                                onClick={() => onVariantChange('ALL')}
                                 className="ml-1 hover:text-rose-500 transition-colors"
                             >
                                 <X size={12} />
@@ -1322,10 +1395,7 @@ export default function PricingLedgerTable({
                                         />
                                     </th>
                                     {/* DYAMIC COLUMNS based on Category */}
-                                    {(activeCategory === 'vehicles'
-                                        ? ['model', 'variant', 'color', 'engineCc']
-                                        : ['product', 'color']
-                                    ).map(key => {
+                                    {(activeCategory === 'vehicles' ? ['color'] : ['product', 'color']).map(key => {
                                         // MAPPING: 'product' maps to 'model' for data operations
                                         const dataKey = key === 'product' ? 'model' : (key as keyof SKUPriceRow);
                                         const values = getUniqueValues(dataKey);
@@ -1393,6 +1463,18 @@ export default function PricingLedgerTable({
                                             </th>
                                         );
                                     })}
+
+                                    {/* EX-FACTORY (vehicles only) */}
+                                    {activeCategory === 'vehicles' && (
+                                        <th className="px-2 py-2.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                            <div
+                                                className="flex items-center gap-1 justify-end cursor-pointer hover:text-emerald-600 transition-colors"
+                                                onClick={() => handleSort('exShowroom')}
+                                            >
+                                                Ex-Factory
+                                            </div>
+                                        </th>
+                                    )}
 
                                     <th className="px-3 py-2.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap">
                                         <div
@@ -1594,9 +1676,9 @@ export default function PricingLedgerTable({
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {paginatedSkus.map(sku => {
-                                    const offerDelta = Number(sku.offerAmount || 0);
+                                    const offerDelta = Math.round(Number(sku.offerAmount || 0));
                                     const gstRate = sku.gstRate || 28;
-                                    const basePrice = sku.exShowroom / (1 + gstRate / 100);
+                                    const basePrice = Math.round(sku.exShowroom / (1 + gstRate / 100));
                                     const totalGst = sku.exShowroom - basePrice;
                                     const isDirty =
                                         sku.originalExShowroom !== undefined &&
@@ -1638,21 +1720,7 @@ export default function PricingLedgerTable({
                                                 />
                                             </td>
 
-                                            {/* VEHICLE COLUMNS */}
-                                            {activeCategory === 'vehicles' && (
-                                                <>
-                                                    <td className="px-2 py-1">
-                                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                                                            {sku.model}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-2 py-1">
-                                                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
-                                                            {sku.variant}
-                                                        </span>
-                                                    </td>
-                                                </>
-                                            )}
+                                            {/* VEHICLE COLUMNS — no more Product/Variant columns */}
 
                                             {/* ACCESSORY COLUMNS - Composite Product */}
                                             {activeCategory !== 'vehicles' && (
@@ -1688,15 +1756,42 @@ export default function PricingLedgerTable({
                                                                 {sku.finish}
                                                             </span>
                                                         )}
+                                                        {activeCategory === 'vehicles' && sku.engineCc ? (
+                                                            <span className="text-[9px] font-bold text-indigo-500 dark:text-indigo-400 tracking-tight mt-0.5">
+                                                                {formatEngineCC(Number(sku.engineCc))}
+                                                            </span>
+                                                        ) : null}
                                                     </div>
                                                 </div>
                                             </td>
 
+                                            {/* EX-FACTORY cell (vehicles only, editable) */}
                                             {activeCategory === 'vehicles' && (
-                                                <td className="px-3 py-1.5">
-                                                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tight">
-                                                        {sku.engineCc ? formatEngineCC(Number(sku.engineCc)) : '—'}
-                                                    </span>
+                                                <td className="px-2 py-1 text-right">
+                                                    <input
+                                                        type="number"
+                                                        value={sku.exFactory || sku.exShowroom || 0}
+                                                        readOnly={!canEdit}
+                                                        onChange={e => {
+                                                            const val = Number(e.target.value);
+                                                            // Update exFactory locally
+                                                            const safeVal =
+                                                                Number.isFinite(val) && val > 0 ? Math.round(val) : 0;
+                                                            // Use onUpdatePrice indirectly — store in SKU state
+                                                            setSkus?.((prev: SKUPriceRow[]) =>
+                                                                prev.map((s: SKUPriceRow) =>
+                                                                    s.id === sku.id ? { ...s, exFactory: safeVal } : s
+                                                                )
+                                                            );
+                                                        }}
+                                                        className={`w-24 rounded-lg px-2 py-1 text-[10px] font-black text-right transition-all
+                                                            ${
+                                                                !canEdit
+                                                                    ? 'bg-transparent border-transparent text-slate-400 dark:text-slate-500 cursor-default tabular-nums'
+                                                                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:text-white tabular-nums'
+                                                            }
+                                                        `}
+                                                    />
                                                 </td>
                                             )}
 
@@ -1722,17 +1817,17 @@ export default function PricingLedgerTable({
                                             </td>
                                             {activeCategory === 'vehicles' ? (
                                                 <>
-                                                    <td className="px-3 py-1.5 text-right relative group/tooltip">
+                                                    <td className="px-3 py-1.5 text-right relative group/rto">
                                                         <span
                                                             className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.rto_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
                                                         >
-                                                            {sku.rto ? `₹${sku.rto.toLocaleString()}` : '—'}
+                                                            {sku.rto ? `₹${Math.round(sku.rto).toLocaleString()}` : '—'}
                                                         </span>
                                                         {sku.rto_data && (
-                                                            <div className="fixed right-8 top-24 z-50 w-max min-w-[240px] p-3 rounded-xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 pointer-events-none origin-top-right text-left">
-                                                                <div className="space-y-2">
+                                                            <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[260px] p-3.5 rounded-xl bg-[#0d1117] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover/rto:opacity-100 group-hover/rto:visible transition-all duration-200 pointer-events-none text-left">
+                                                                <div className="space-y-2.5">
                                                                     <div className="pb-2 border-b border-white/5">
-                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-0.5">
+                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-0.5">
                                                                             Registration Options
                                                                         </p>
                                                                     </div>
@@ -1764,11 +1859,11 @@ export default function PricingLedgerTable({
                                                                             return (
                                                                                 <div
                                                                                     key={opt.key}
-                                                                                    className="bg-white/5 p-2.5 rounded-lg border border-white/5"
+                                                                                    className="bg-white/[0.04] p-2.5 rounded-lg border border-white/[0.06] hover:border-white/10 transition-colors"
                                                                                 >
                                                                                     <div className="flex items-center justify-between gap-4 mb-2">
                                                                                         <div className="flex flex-col">
-                                                                                            <span className="text-[9px] font-bold text-white uppercase tracking-tighter">
+                                                                                            <span className="text-[10px] font-bold text-white/90 uppercase tracking-tight">
                                                                                                 {opt.label}
                                                                                             </span>
                                                                                             <span className="text-[8px] text-slate-500">
@@ -1776,7 +1871,7 @@ export default function PricingLedgerTable({
                                                                                             </span>
                                                                                         </div>
                                                                                         <span
-                                                                                            className={`text-[10px] font-black tabular-nums ${detail?.total ? 'text-emerald-500' : 'text-slate-600'}`}
+                                                                                            className={`text-[11px] font-black tabular-nums ${detail?.total ? 'text-emerald-400' : 'text-slate-600'}`}
                                                                                         >
                                                                                             {detail?.total
                                                                                                 ? formatMoney(
@@ -1786,7 +1881,7 @@ export default function PricingLedgerTable({
                                                                                         </span>
                                                                                     </div>
                                                                                     {breakdown && (
-                                                                                        <div className="pt-2 border-t border-dashed border-white/10 space-y-1">
+                                                                                        <div className="pt-2 border-t border-dashed border-white/[0.06] space-y-1">
                                                                                             {[
                                                                                                 {
                                                                                                     l: 'Road Tax',
@@ -1822,7 +1917,7 @@ export default function PricingLedgerTable({
                                                                                                         <span className="text-slate-500">
                                                                                                             {item.l}
                                                                                                         </span>
-                                                                                                        <span className="text-slate-300 font-mono">
+                                                                                                        <span className="text-slate-300 font-mono tabular-nums">
                                                                                                             {formatMoney(
                                                                                                                 item.v
                                                                                                             )}
@@ -1832,7 +1927,7 @@ export default function PricingLedgerTable({
                                                                                         </div>
                                                                                     )}
                                                                                     {!breakdown && detail?.fees && (
-                                                                                        <div className="pt-2 border-t border-dashed border-white/10 space-y-1">
+                                                                                        <div className="pt-2 border-t border-dashed border-white/[0.06] space-y-1">
                                                                                             {detail.fees.map(
                                                                                                 (
                                                                                                     item: any,
@@ -1845,7 +1940,7 @@ export default function PricingLedgerTable({
                                                                                                         <span className="text-slate-500">
                                                                                                             {item.label}
                                                                                                         </span>
-                                                                                                        <span className="text-slate-300 font-mono">
+                                                                                                        <span className="text-slate-300 font-mono tabular-nums">
                                                                                                             {formatMoney(
                                                                                                                 item.amount
                                                                                                             )}
@@ -1865,7 +1960,7 @@ export default function PricingLedgerTable({
                                                                                                         <span className="text-slate-500">
                                                                                                             {item.label}
                                                                                                         </span>
-                                                                                                        <span className="text-slate-300 font-mono">
+                                                                                                        <span className="text-slate-300 font-mono tabular-nums">
                                                                                                             {formatMoney(
                                                                                                                 item.amount
                                                                                                             )}
@@ -1881,104 +1976,162 @@ export default function PricingLedgerTable({
                                                                     </div>
                                                                 </div>
                                                                 {/* Triangle pointer */}
-                                                                <div className="absolute -top-1 right-8 w-2 h-2 bg-[#15191e] border-l border-t border-white/10 rotate-45" />
+                                                                <div className="absolute -top-1 right-4 w-2 h-2 bg-[#0d1117] border-l border-t border-white/10 rotate-45" />
                                                             </div>
                                                         )}
                                                     </td>
-                                                    <td className="px-3 py-1.5 text-right relative group/tooltip">
+                                                    <td className="px-3 py-1.5 text-right relative group/ins">
                                                         <span
                                                             className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.insurance_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
                                                         >
-                                                            {sku.insurance ? `₹${sku.insurance.toLocaleString()}` : '—'}
+                                                            {sku.insurance
+                                                                ? `₹${Math.round(sku.insurance).toLocaleString()}`
+                                                                : '—'}
                                                         </span>
                                                         {sku.insurance_data && (
-                                                            <div className="fixed right-8 top-24 z-50 w-max min-w-[260px] p-3 rounded-xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 pointer-events-none origin-top-right text-left">
-                                                                <div className="space-y-2">
+                                                            <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[280px] p-3.5 rounded-xl bg-[#0d1117] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover/ins:opacity-100 group-hover/ins:visible transition-all duration-200 pointer-events-none text-left">
+                                                                <div className="space-y-2.5">
                                                                     <div className="pb-2 border-b border-white/5">
-                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-0.5">
+                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-0.5">
                                                                             Insurance Breakdown
                                                                         </p>
                                                                     </div>
-                                                                    <div className="space-y-1">
-                                                                        <div className="flex justify-between items-center text-[9px]">
-                                                                            <span className="text-slate-500">
-                                                                                OD Premium
+
+                                                                    {/* OD Section */}
+                                                                    <div className="bg-white/[0.04] p-2.5 rounded-lg border border-white/[0.06]">
+                                                                        <div className="flex items-center justify-between mb-2">
+                                                                            <span className="text-[10px] font-bold text-white/90 uppercase tracking-tight">
+                                                                                Own Damage (OD)
                                                                             </span>
-                                                                            <span className="text-slate-300 font-mono">
+                                                                            <span className="text-[11px] font-black tabular-nums text-emerald-400">
                                                                                 {formatMoney(
-                                                                                    sku.insurance_data.od?.base
+                                                                                    (sku.insurance_data.od?.base || 0) +
+                                                                                        (sku.insurance_data.od?.gst ||
+                                                                                            0)
                                                                                 )}
                                                                             </span>
                                                                         </div>
-                                                                        <div className="flex justify-between items-center text-[9px]">
-                                                                            <span className="text-slate-500">
-                                                                                TP Premium
-                                                                            </span>
-                                                                            <span className="text-slate-300 font-mono">
-                                                                                {formatMoney(
-                                                                                    sku.insurance_data.tp?.base
-                                                                                )}
-                                                                            </span>
+                                                                        <div className="pt-1.5 border-t border-dashed border-white/[0.06] space-y-1">
+                                                                            <div className="flex justify-between items-center text-[9px]">
+                                                                                <span className="text-slate-500">
+                                                                                    Premium
+                                                                                </span>
+                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                    {formatMoney(
+                                                                                        sku.insurance_data.od?.base
+                                                                                    )}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center text-[9px]">
+                                                                                <span className="text-slate-500">
+                                                                                    GST
+                                                                                </span>
+                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                    {formatMoney(
+                                                                                        sku.insurance_data.od?.gst
+                                                                                    )}
+                                                                                </span>
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="flex justify-between items-center text-[9px]">
-                                                                            <span className="text-slate-500">
-                                                                                GST ({sku.insurance_data.gst_rate || 18}
-                                                                                %)
+                                                                    </div>
+
+                                                                    {/* TP Section */}
+                                                                    <div className="bg-white/[0.04] p-2.5 rounded-lg border border-white/[0.06]">
+                                                                        <div className="flex items-center justify-between mb-2">
+                                                                            <span className="text-[10px] font-bold text-white/90 uppercase tracking-tight">
+                                                                                Third Party (TP)
                                                                             </span>
-                                                                            <span className="text-slate-300 font-mono">
+                                                                            <span className="text-[11px] font-black tabular-nums text-emerald-400">
                                                                                 {formatMoney(
-                                                                                    (sku.insurance_data.od?.gst || 0) +
+                                                                                    (sku.insurance_data.tp?.base || 0) +
                                                                                         (sku.insurance_data.tp?.gst ||
                                                                                             0)
                                                                                 )}
                                                                             </span>
                                                                         </div>
-                                                                        <div className="flex justify-between items-center text-[9px] font-bold">
-                                                                            <span className="text-slate-400">
-                                                                                Base Total
+                                                                        <div className="pt-1.5 border-t border-dashed border-white/[0.06] space-y-1">
+                                                                            <div className="flex justify-between items-center text-[9px]">
+                                                                                <span className="text-slate-500">
+                                                                                    Premium
+                                                                                </span>
+                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                    {formatMoney(
+                                                                                        sku.insurance_data.tp?.base
+                                                                                    )}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center text-[9px]">
+                                                                                <span className="text-slate-500">
+                                                                                    GST
+                                                                                </span>
+                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                    {formatMoney(
+                                                                                        sku.insurance_data.tp?.gst
+                                                                                    )}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Addons */}
+                                                                    {Array.isArray(sku.insurance_data.addons) &&
+                                                                        sku.insurance_data.addons.length > 0 && (
+                                                                            <div className="bg-white/[0.04] p-2.5 rounded-lg border border-white/[0.06]">
+                                                                                <p className="text-[9px] font-bold text-white/70 uppercase tracking-tight mb-1.5">
+                                                                                    Add-ons
+                                                                                </p>
+                                                                                <div className="space-y-1">
+                                                                                    {sku.insurance_data.addons.map(
+                                                                                        (addon: any) => (
+                                                                                            <div
+                                                                                                key={
+                                                                                                    addon.id ||
+                                                                                                    addon.label
+                                                                                                }
+                                                                                                className="flex justify-between items-center text-[9px]"
+                                                                                            >
+                                                                                                <span className="text-slate-500">
+                                                                                                    {addon.label ||
+                                                                                                        addon.id}
+                                                                                                </span>
+                                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                                    {formatMoney(
+                                                                                                        addon.total ??
+                                                                                                            addon.price
+                                                                                                    )}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        )
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                    {/* Grand Total */}
+                                                                    <div className="pt-2.5 border-t border-white/10">
+                                                                        <div className="flex justify-between items-center">
+                                                                            <span className="text-[10px] font-black text-white/80 uppercase tracking-tight">
+                                                                                Gross Premium
                                                                             </span>
-                                                                            <span className="text-emerald-500 font-mono">
+                                                                            <span className="text-[12px] font-black text-emerald-400 font-mono tabular-nums">
                                                                                 {formatMoney(
                                                                                     sku.insurance_data.base_total
                                                                                 )}
                                                                             </span>
                                                                         </div>
                                                                     </div>
-                                                                    {Array.isArray(sku.insurance_data.addons) &&
-                                                                        sku.insurance_data.addons.length > 0 && (
-                                                                            <div className="pt-2 border-t border-dashed border-white/10 space-y-1">
-                                                                                {sku.insurance_data.addons.map(
-                                                                                    (addon: any) => (
-                                                                                        <div
-                                                                                            key={
-                                                                                                addon.id || addon.label
-                                                                                            }
-                                                                                            className="flex justify-between items-center text-[9px]"
-                                                                                        >
-                                                                                            <span className="text-slate-500">
-                                                                                                {addon.label ||
-                                                                                                    addon.id}
-                                                                                            </span>
-                                                                                            <span className="text-slate-300 font-mono">
-                                                                                                {formatMoney(
-                                                                                                    addon.total ??
-                                                                                                        addon.price
-                                                                                                )}
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    )
-                                                                                )}
-                                                                            </div>
-                                                                        )}
                                                                 </div>
-                                                                <div className="absolute -top-1 right-8 w-2 h-2 bg-[#15191e] border-l border-t border-white/10 rotate-45" />
+                                                                {/* Triangle pointer */}
+                                                                <div className="absolute -top-1 right-4 w-2 h-2 bg-[#0d1117] border-l border-t border-white/10 rotate-45" />
                                                             </div>
                                                         )}
                                                     </td>
                                                     {!isAums && (
                                                         <td className="px-2 py-1 text-right">
                                                             <span className="font-bold text-[11px] text-slate-400 dark:text-slate-500">
-                                                                {sku.onRoad ? `₹${sku.onRoad.toLocaleString()}` : '—'}
+                                                                {sku.onRoad
+                                                                    ? `₹${Math.round(sku.onRoad).toLocaleString()}`
+                                                                    : '—'}
                                                             </span>
                                                         </td>
                                                     )}
@@ -2047,8 +2200,8 @@ export default function PricingLedgerTable({
                                                                             <Zap size={12} />
                                                                         )}
                                                                         {isSave
-                                                                            ? `₹${Math.abs(delta).toLocaleString()}`
-                                                                            : `-₹${Math.abs(delta).toLocaleString()}`}
+                                                                            ? `₹${Math.round(Math.abs(delta)).toLocaleString()}`
+                                                                            : `-₹${Math.round(Math.abs(delta)).toLocaleString()}`}
                                                                     </div>
                                                                 );
                                                             })()}
@@ -2062,9 +2215,9 @@ export default function PricingLedgerTable({
                                                     <span className="font-bold text-[11px] text-emerald-700 dark:text-emerald-400 tracking-tight">
                                                         {activeCategory === 'vehicles'
                                                             ? sku.onRoad
-                                                                ? `₹${sku.onRoad.toLocaleString()}`
+                                                                ? `₹${Math.round(sku.onRoad).toLocaleString()}`
                                                                 : '—'
-                                                            : `₹${sku.exShowroom.toLocaleString()}`}
+                                                            : `₹${Math.round(sku.exShowroom).toLocaleString()}`}
                                                     </span>
                                                 ) : (
                                                     <div className="flex items-center justify-end gap-1">
@@ -2084,9 +2237,11 @@ export default function PricingLedgerTable({
                                                             value={
                                                                 editingOfferSkuId === sku.id
                                                                     ? editingOfferValue
-                                                                    : activeCategory === 'vehicles'
-                                                                      ? (sku.onRoad || 0) + offerDelta
-                                                                      : sku.exShowroom + offerDelta
+                                                                    : Math.round(
+                                                                          activeCategory === 'vehicles'
+                                                                              ? (sku.onRoad || 0) + offerDelta
+                                                                              : sku.exShowroom + offerDelta
+                                                                      )
                                                             }
                                                             readOnly={!canEdit}
                                                             title={
@@ -2095,10 +2250,11 @@ export default function PricingLedgerTable({
                                                                     : "Dealer's Final Price for this item. Delta range: -25000 to +25000."
                                                             }
                                                             onFocus={() => {
-                                                                const displayVal =
+                                                                const displayVal = Math.round(
                                                                     activeCategory === 'vehicles'
                                                                         ? (sku.onRoad || 0) + offerDelta
-                                                                        : sku.exShowroom + offerDelta;
+                                                                        : sku.exShowroom + offerDelta
+                                                                );
                                                                 setEditingOfferSkuId(sku.id);
                                                                 setEditingOfferValue(String(displayVal));
                                                             }}
@@ -2109,11 +2265,14 @@ export default function PricingLedgerTable({
                                                             }}
                                                             onBlur={() => {
                                                                 if (editingOfferSkuId === sku.id) {
-                                                                    const enteredPrice = Number(editingOfferValue);
-                                                                    const base =
+                                                                    const enteredPrice = Math.round(
+                                                                        Number(editingOfferValue)
+                                                                    );
+                                                                    const base = Math.round(
                                                                         activeCategory === 'vehicles'
                                                                             ? sku.onRoad || 0
-                                                                            : sku.exShowroom;
+                                                                            : sku.exShowroom
+                                                                    );
                                                                     const newDelta = enteredPrice - base;
                                                                     onUpdateOffer(sku.id, newDelta);
                                                                     setEditingOfferSkuId(null);
@@ -2170,7 +2329,7 @@ export default function PricingLedgerTable({
                                                         return (
                                                             <div
                                                                 className={`inline-flex items-center gap-1 font-black text-xs ${isDiscount ? 'text-emerald-600' : 'text-rose-600'}`}
-                                                                title={`Auto-calculated: On-road (₹${onRoadBase.toLocaleString()}) - Offer Price = ${delta > 0 ? '-' : '+'}₹${Math.abs(delta).toLocaleString()}`}
+                                                                title={`Auto-calculated: On-road (₹${Math.round(onRoadBase).toLocaleString()}) - Offer Price = ${delta > 0 ? '-' : '+'}₹${Math.round(Math.abs(delta)).toLocaleString()}`}
                                                             >
                                                                 {isDiscount ? (
                                                                     <Sparkles size={12} />
@@ -2178,8 +2337,8 @@ export default function PricingLedgerTable({
                                                                     <Zap size={12} />
                                                                 )}
                                                                 {isDiscount
-                                                                    ? `-₹${Math.abs(delta).toLocaleString()}`
-                                                                    : `+₹${Math.abs(delta).toLocaleString()}`}
+                                                                    ? `-₹${Math.round(Math.abs(delta)).toLocaleString()}`
+                                                                    : `+₹${Math.round(Math.abs(delta)).toLocaleString()}`}
                                                             </div>
                                                         );
                                                     })()}

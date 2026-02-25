@@ -532,19 +532,27 @@ export async function fetchPublishedPricing(
     };
     const addons = buildInsuranceAddons(priceRow);
 
-    const odTotal = toNumber(priceRow.ins_own_damage_total_amount || priceRow.ins_own_damage_premium_amount);
-    const tpTotal = toNumber(priceRow.ins_liability_only_total_amount || priceRow.ins_liability_only_premium_amount);
-    const grossInsurance =
+    const odTotal = Math.round(
+        toNumber(priceRow.ins_own_damage_total_amount || priceRow.ins_own_damage_premium_amount)
+    );
+    const tpTotal = Math.round(
+        toNumber(priceRow.ins_liability_only_total_amount || priceRow.ins_liability_only_premium_amount)
+    );
+    const grossInsurance = Math.round(
         toNumber(priceRow.ins_gross_premium) ||
-        toNumber(priceRow.ins_sum_mandatory_insurance) + toNumber(priceRow.ins_sum_mandatory_insurance_gst_amount);
+            toNumber(priceRow.ins_sum_mandatory_insurance) + toNumber(priceRow.ins_sum_mandatory_insurance_gst_amount)
+    );
 
-    const selectedRtoTotal = rtoByType[defaultRtoType as keyof typeof rtoByType]?.total || rtoByType.STATE.total || 0;
-    const onRoadPrice =
-        toNumber(priceRow.on_road_price) || toNumber(priceRow.ex_showroom) + selectedRtoTotal + grossInsurance;
+    const selectedRtoTotal = Math.round(
+        rtoByType[defaultRtoType as keyof typeof rtoByType]?.total || rtoByType.STATE.total || 0
+    );
+    const onRoadPrice = Math.round(
+        toNumber(priceRow.on_road_price) || toNumber(priceRow.ex_showroom) + selectedRtoTotal + grossInsurance
+    );
 
     const snapshot: SotPricingSnapshot = {
         vehicle_color_id: priceRow.sku_id,
-        ex_showroom_price: toNumber(priceRow.ex_showroom),
+        ex_showroom_price: Math.round(toNumber(priceRow.ex_showroom)),
         rto_total: selectedRtoTotal,
         insurance_total: grossInsurance,
         on_road_price: onRoadPrice,
@@ -558,15 +566,15 @@ export async function fetchPublishedPricing(
             base_total: grossInsurance,
             od: {
                 total: odTotal,
-                base: toNumber(priceRow.ins_own_damage_premium_amount),
-                gst: toNumber(priceRow.ins_own_damage_gst_amount),
+                base: Math.round(toNumber(priceRow.ins_own_damage_premium_amount)),
+                gst: Math.round(toNumber(priceRow.ins_own_damage_gst_amount)),
             },
             tp: {
                 total: tpTotal,
-                base: toNumber(priceRow.ins_liability_only_premium_amount),
-                gst: toNumber(priceRow.ins_liability_only_gst_amount),
+                base: Math.round(toNumber(priceRow.ins_liability_only_premium_amount)),
+                gst: Math.round(toNumber(priceRow.ins_liability_only_gst_amount)),
             },
-            pa: toNumber(priceRow.addon_personal_accident_cover_total_amount),
+            pa: Math.round(toNumber(priceRow.addon_personal_accident_cover_total_amount)),
             addons,
             gst_rate: toNumber(priceRow.ins_gst_rate || 18),
         },
@@ -1012,10 +1020,10 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
             stand_alarm: variant?.stand_alarm ?? null,
             pass_light: variant?.pass_light ?? null,
             killswitch: variant?.killswitch ?? null,
-            ex_showroom: price?.ex_showroom ?? null,
-            on_road_price: price?.on_road_price ?? null,
-            rto_state_total: price?.rto_total_state ?? null,
-            ins_total: price?.ins_total ?? null,
+            ex_showroom: price?.ex_showroom ? Math.round(price.ex_showroom) : null,
+            on_road_price: price?.on_road_price ? Math.round(price.on_road_price) : null,
+            rto_state_total: price?.rto_total_state ? Math.round(price.rto_total_state) : null,
+            ins_total: price?.ins_total ? Math.round(price.ins_total) : null,
             publish_stage: price?.publish_stage ?? null,
             is_popular: price?.is_popular ?? null,
         } as CatalogSnapshotRow;

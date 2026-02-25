@@ -93,7 +93,7 @@ const variantDefs = [
         specs: {
             ...sharedSpecs,
             braking_system: 'ABS',
-            kerb_weight: 160,
+            kerb_weight: 159,
         },
         colours: [
             { name: 'Lightning Black', price: 126751 },
@@ -108,7 +108,7 @@ const variantDefs = [
         specs: {
             ...sharedSpecs,
             braking_system: 'ABS',
-            kerb_weight: 160,
+            kerb_weight: 159,
         },
         colours: [
             { name: 'Glacier Silver', price: 148115 },
@@ -122,7 +122,7 @@ const variantDefs = [
         specs: {
             ...sharedSpecs,
             braking_system: 'ABS',
-            kerb_weight: 159,
+            kerb_weight: 160,
         },
         colours: [
             { name: 'Midnight Blue', price: 160217 },
