@@ -1464,8 +1464,8 @@ export default function PricingLedgerTable({
                                         );
                                     })}
 
-                                    {/* EX-FACTORY (vehicles only) */}
-                                    {activeCategory === 'vehicles' && (
+                                    {/* EX-FACTORY (AUMS only, vehicles only) */}
+                                    {isAums && activeCategory === 'vehicles' && (
                                         <th className="px-2 py-2.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
                                             <div
                                                 className="flex items-center gap-1 justify-end cursor-pointer hover:text-emerald-600 transition-colors"
@@ -1765,12 +1765,12 @@ export default function PricingLedgerTable({
                                                 </div>
                                             </td>
 
-                                            {/* EX-FACTORY cell (vehicles only, editable) */}
-                                            {activeCategory === 'vehicles' && (
+                                            {/* EX-FACTORY cell (AUMS only, vehicles only, editable) */}
+                                            {isAums && activeCategory === 'vehicles' && (
                                                 <td className="px-2 py-1 text-right">
                                                     <input
                                                         type="number"
-                                                        value={sku.exFactory || sku.exShowroom || 0}
+                                                        value={Math.round(sku.exFactory || sku.exShowroom || 0)}
                                                         readOnly={!canEdit}
                                                         onChange={e => {
                                                             const val = Number(e.target.value);
