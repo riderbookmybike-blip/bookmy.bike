@@ -1466,9 +1466,9 @@ export default function PricingLedgerTable({
 
                                     {/* EX-FACTORY (AUMS only, vehicles only) */}
                                     {isAums && activeCategory === 'vehicles' && (
-                                        <th className="px-2 py-2.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
+                                        <th className="px-2 py-2.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-center whitespace-nowrap">
                                             <div
-                                                className="flex items-center gap-1 justify-end cursor-pointer hover:text-emerald-600 transition-colors"
+                                                className="flex items-center gap-1 justify-center cursor-pointer hover:text-emerald-600 transition-colors"
                                                 onClick={() => handleSort('exShowroom')}
                                             >
                                                 Ex-Factory
@@ -1476,9 +1476,9 @@ export default function PricingLedgerTable({
                                         </th>
                                     )}
 
-                                    <th className="px-3 py-2.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap">
+                                    <th className="px-3 py-2.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-center whitespace-nowrap">
                                         <div
-                                            className="flex items-center gap-1 justify-end cursor-pointer hover:text-emerald-700 transition-colors"
+                                            className="flex items-center gap-1 justify-center cursor-pointer hover:text-emerald-700 transition-colors"
                                             onClick={() => handleSort('exShowroom')}
                                         >
                                             {activeCategory === 'vehicles' ? 'Ex-Showroom' : 'MRP'}{' '}
@@ -1489,10 +1489,10 @@ export default function PricingLedgerTable({
                                     {activeCategory === 'vehicles' ? (
                                         <>
                                             <th
-                                                className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                                className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-center whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
                                                 onClick={() => handleSort('rto')}
                                             >
-                                                <div className="flex items-center justify-end gap-1">
+                                                <div className="flex items-center justify-center gap-1">
                                                     RTO
                                                     <ArrowUpDown
                                                         size={10}
@@ -1501,10 +1501,10 @@ export default function PricingLedgerTable({
                                                 </div>
                                             </th>
                                             <th
-                                                className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                                className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-center whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
                                                 onClick={() => handleSort('insurance')}
                                             >
-                                                <div className="flex items-center justify-end gap-1">
+                                                <div className="flex items-center justify-center gap-1">
                                                     Insurance
                                                     <ArrowUpDown
                                                         size={10}
@@ -1515,10 +1515,10 @@ export default function PricingLedgerTable({
                                         </>
                                     ) : (
                                         <>
-                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
+                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-center">
                                                 Base Price
                                             </th>
-                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-right">
+                                            <th className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 text-center">
                                                 GST (28%)
                                             </th>
                                         </>
@@ -1532,10 +1532,10 @@ export default function PricingLedgerTable({
 
                                     {!isAums && activeCategory === 'vehicles' && (
                                         <th
-                                            className="px-3 py-2.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                            className="px-3 py-2.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-center whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
                                             onClick={() => handleSort('onRoad')}
                                         >
-                                            <div className="flex items-center justify-end gap-1">
+                                            <div className="flex items-center justify-center gap-1">
                                                 On-Road
                                                 <ArrowUpDown
                                                     size={10}
@@ -1547,10 +1547,10 @@ export default function PricingLedgerTable({
 
                                     {activeCategory !== 'vehicles' && (
                                         <th
-                                            className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right cursor-pointer hover:text-emerald-600 transition-colors"
+                                            className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-center cursor-pointer hover:text-emerald-600 transition-colors"
                                             onClick={() => handleSort('offerAmount')}
                                         >
-                                            <div className="flex items-center justify-end gap-1">
+                                            <div className="flex items-center justify-center gap-1">
                                                 Offer (₹)
                                                 <ArrowUpDown
                                                     size={10}
@@ -1561,14 +1561,14 @@ export default function PricingLedgerTable({
                                     )}
 
                                     <th
-                                        className="px-2 py-1.5 text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-right whitespace-nowrap bg-emerald-50/80 dark:bg-emerald-900/20 cursor-pointer hover:text-emerald-700 transition-colors"
+                                        className="px-2 py-1.5 text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b border-emerald-100 dark:border-emerald-900/30 text-center whitespace-nowrap bg-emerald-50/80 dark:bg-emerald-900/20 cursor-pointer hover:text-emerald-700 transition-colors"
                                         onClick={() =>
                                             handleSort(
                                                 activeCategory === 'vehicles' && isAums ? 'onRoad' : 'offerAmount'
                                             )
                                         }
                                     >
-                                        <div className="flex items-center justify-end gap-1">
+                                        <div className="flex items-center justify-center gap-1">
                                             {activeCategory === 'vehicles'
                                                 ? isAums
                                                     ? 'On-Road'
@@ -1588,10 +1588,10 @@ export default function PricingLedgerTable({
 
                                     {!isAums && activeCategory === 'vehicles' && (
                                         <th
-                                            className="px-3 py-2.5 text-[9px] font-black text-emerald-400 uppercase tracking-wider border-b border-white/5 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
+                                            className="px-3 py-2.5 text-[9px] font-black text-emerald-400 uppercase tracking-wider border-b border-white/5 text-center whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors"
                                             onClick={() => handleSort('offerAmount')}
                                         >
-                                            <div className="flex items-center justify-end gap-1">
+                                            <div className="flex items-center justify-center gap-1">
                                                 Delta
                                                 <ArrowUpDown
                                                     size={10}
@@ -1767,7 +1767,7 @@ export default function PricingLedgerTable({
 
                                             {/* EX-FACTORY cell (AUMS only, vehicles only, editable) */}
                                             {isAums && activeCategory === 'vehicles' && (
-                                                <td className="px-2 py-1 text-right">
+                                                <td className="px-2 py-1 text-center">
                                                     <input
                                                         type="number"
                                                         value={Math.round(sku.exFactory || sku.exShowroom || 0)}
@@ -1795,8 +1795,8 @@ export default function PricingLedgerTable({
                                                 </td>
                                             )}
 
-                                            <td className="px-2 py-1 text-right">
-                                                <div className="flex justify-end items-center gap-2">
+                                            <td className="px-2 py-1 text-center">
+                                                <div className="flex justify-center items-center gap-2">
                                                     <input
                                                         type="number"
                                                         value={sku.exShowroom}
@@ -1804,7 +1804,7 @@ export default function PricingLedgerTable({
                                                         onChange={e =>
                                                             isAums && onUpdatePrice(sku.id, Number(e.target.value))
                                                         }
-                                                        className={`w-24 rounded-lg px-2 py-1 text-[10px] font-black text-right transition-all 
+                                                        className={`w-24 rounded-lg px-2 py-1 text-[10px] font-black text-center transition-all 
                                                             ${
                                                                 !isAums || !canEdit
                                                                     ? 'bg-transparent border-transparent text-slate-900 dark:text-slate-100 cursor-default'
@@ -1817,7 +1817,7 @@ export default function PricingLedgerTable({
                                             </td>
                                             {activeCategory === 'vehicles' ? (
                                                 <>
-                                                    <td className="px-3 py-1.5 text-right relative group/rto">
+                                                    <td className="px-3 py-1.5 text-center relative group/rto">
                                                         <span
                                                             className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.rto_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
                                                         >
@@ -1980,7 +1980,7 @@ export default function PricingLedgerTable({
                                                             </div>
                                                         )}
                                                     </td>
-                                                    <td className="px-3 py-1.5 text-right relative group/ins">
+                                                    <td className="px-3 py-1.5 text-center relative group/ins">
                                                         <span
                                                             className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.insurance_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
                                                         >
@@ -2127,7 +2127,7 @@ export default function PricingLedgerTable({
                                                         )}
                                                     </td>
                                                     {!isAums && (
-                                                        <td className="px-2 py-1 text-right">
+                                                        <td className="px-2 py-1 text-center">
                                                             <span className="font-bold text-[11px] text-slate-400 dark:text-slate-500">
                                                                 {sku.onRoad
                                                                     ? `₹${Math.round(sku.onRoad).toLocaleString()}`
@@ -2138,7 +2138,7 @@ export default function PricingLedgerTable({
                                                 </>
                                             ) : (
                                                 <>
-                                                    <td className="px-2 py-1 text-right">
+                                                    <td className="px-2 py-1 text-center">
                                                         <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">
                                                             ₹
                                                             {basePrice.toLocaleString(undefined, {
@@ -2146,7 +2146,7 @@ export default function PricingLedgerTable({
                                                             })}
                                                         </span>
                                                     </td>
-                                                    <td className="px-2 py-1 text-right">
+                                                    <td className="px-2 py-1 text-center">
                                                         <span className="font-bold text-[11px] text-slate-500 dark:text-slate-400">
                                                             ₹
                                                             {totalGst.toLocaleString(undefined, {
@@ -2180,7 +2180,7 @@ export default function PricingLedgerTable({
                                                         </select>
                                                     </td>
                                                     {!isAums && (
-                                                        <td className="px-2 py-1 text-right">
+                                                        <td className="px-2 py-1 text-center">
                                                             {(() => {
                                                                 const delta = offerDelta;
                                                                 if (delta === 0)
@@ -2210,7 +2210,7 @@ export default function PricingLedgerTable({
                                                 </>
                                             )}
 
-                                            <td className="px-3 py-1.5 text-right bg-emerald-50/20 dark:bg-emerald-900/10">
+                                            <td className="px-3 py-1.5 text-center bg-emerald-50/20 dark:bg-emerald-900/10">
                                                 {isAums ? (
                                                     <span className="font-bold text-[11px] text-emerald-700 dark:text-emerald-400 tracking-tight">
                                                         {activeCategory === 'vehicles'
@@ -2220,7 +2220,7 @@ export default function PricingLedgerTable({
                                                             : `₹${Math.round(sku.exShowroom).toLocaleString()}`}
                                                     </span>
                                                 ) : (
-                                                    <div className="flex items-center justify-end gap-1">
+                                                    <div className="flex items-center justify-center gap-1">
                                                         <input
                                                             type="number"
                                                             step={1}
@@ -2283,7 +2283,7 @@ export default function PricingLedgerTable({
                                                                     (e.target as HTMLInputElement).blur();
                                                                 }
                                                             }}
-                                                            className={`w-24 rounded-lg px-2 py-1 text-[10px] font-bold text-right outline-none transition-all
+                                                            className={`w-24 rounded-lg px-2 py-1 text-[10px] font-bold text-center outline-none transition-all
                                                                 ${
                                                                     !canEdit
                                                                         ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
@@ -2313,7 +2313,7 @@ export default function PricingLedgerTable({
                                             </td>
 
                                             {!isAums && activeCategory === 'vehicles' && (
-                                                <td className="px-2 py-1 text-right">
+                                                <td className="px-2 py-1 text-center">
                                                     {(() => {
                                                         // Delta = OnRoad (AUMS base) - OfferOnRoad (dealer input)
                                                         // Auto-calculated, read-only

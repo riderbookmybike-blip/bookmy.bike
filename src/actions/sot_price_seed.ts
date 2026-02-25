@@ -64,6 +64,7 @@ export async function sot_price_seed(rows: SotPriceSeedRow[]): Promise<SotPriceS
     const deduped = Array.from(
         new Map(normalized.map(row => [`${row.sku_id}::${row.state_code}`, row])).values()
     ) as SotPriceSeedRow[];
+    const skuIds = Array.from(new Set(deduped.map(row => row.sku_id)));
 
     const upsertPayload = deduped.map(row => ({
         id: crypto.randomUUID(),
@@ -113,16 +114,44 @@ export async function sot_price_seed(rows: SotPriceSeedRow[]): Promise<SotPriceS
         calculated += calcResult.totalPublished;
     }
 
+    const skuHsnMap = new Map<string, string>();
+    if (skuIds.length > 0) {
+        const { data: skuRows, error: skuLookupError } = await (adminClient as any)
+            .from('cat_skus')
+            .select('id, model:cat_models!model_id(hsn_code)')
+            .in('id', skuIds);
+
+        if (skuLookupError) {
+            errors.push(`Failed to resolve SKU model HSN codes: ${skuLookupError.message}`);
+        } else {
+            for (const row of skuRows || []) {
+                const skuId = String((row as any)?.id || '');
+                const hsn = String((row as any)?.model?.hsn_code || '').trim();
+                if (skuId && hsn) {
+                    skuHsnMap.set(skuId, hsn);
+                }
+            }
+        }
+    }
+
     // Preserve caller-supplied stage/popular flags after engine run.
     // publishPrices currently stamps publish_stage='PUBLISHED' internally.
     for (const row of deduped) {
+        const modelHsnCode = skuHsnMap.get(row.sku_id);
+        const metadataPayload: Record<string, any> = {
+            publish_stage: row.publish_stage || 'DRAFT',
+            is_popular: row.is_popular || false,
+            ins_own_damage_tenure_years: 1,
+            ins_liability_only_tenure_years: 5,
+            updated_at: new Date().toISOString(),
+        };
+        if (modelHsnCode) {
+            metadataPayload.ins_hsn_code = modelHsnCode;
+        }
+
         const { error: metadataError } = await adminClient
             .from('cat_price_state_mh')
-            .update({
-                publish_stage: row.publish_stage || 'DRAFT',
-                is_popular: row.is_popular || false,
-                updated_at: new Date().toISOString(),
-            })
+            .update(metadataPayload)
             .eq('sku_id', row.sku_id)
             .eq('state_code', row.state_code);
 
