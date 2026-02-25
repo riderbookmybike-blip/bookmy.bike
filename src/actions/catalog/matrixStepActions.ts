@@ -3,7 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { getAuthUser } from '@/lib/auth/resolver';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
-import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
+import { sot_price_seed } from '@/actions/sot_price_seed';
 
 type MatrixStatePriceInput = {
     state_code: string;
@@ -82,34 +82,16 @@ export async function saveMatrixSkuEditor(input: SaveMatrixSkuInput): Promise<Sa
 
         if (statePriceMap.size > 0) {
             const rows = Array.from(statePriceMap.entries()).map(([stateCode, exShowroom]) => ({
-                id: crypto.randomUUID(),
                 sku_id: skuId,
                 state_code: stateCode,
-                ex_factory: exShowroom,
-                ex_factory_gst_amount: 0,
-                logistics_charges: 0,
-                logistics_charges_gst_amount: 0,
                 ex_showroom: exShowroom,
                 publish_stage: 'DRAFT',
+                is_popular: false,
             }));
 
-            const { error: pricingError } = await adminClient
-                .from('cat_price_state_mh')
-                .upsert(rows, { onConflict: 'sku_id,state_code' });
-
-            if (pricingError) {
-                return { success: false, error: pricingError.message };
-            }
-
-            // SOT: whenever ex-showroom is seeded/updated, run price engine to persist RTO/insurance accurately.
-            for (const [stateCode, exShowroom] of statePriceMap.entries()) {
-                const calcResult = await calculatePricingBySkuIds([{ skuId, exShowroom }], stateCode);
-                if (!calcResult.success) {
-                    return {
-                        success: false,
-                        error: `Price engine calculation failed for ${stateCode}: ${calcResult.errors.join(', ')}`,
-                    };
-                }
+            const seedResult = await sot_price_seed(rows);
+            if (!seedResult.success) {
+                return { success: false, error: seedResult.errors.join(' | ') || 'Price seed failed' };
             }
         }
 

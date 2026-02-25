@@ -1,7 +1,7 @@
 'use server';
 
 import { adminClient } from '@/lib/supabase/admin';
-import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
+import { sot_price_seed } from '@/actions/sot_price_seed';
 
 // ============================================================
 // Types
@@ -629,15 +629,17 @@ export async function upsertPricing(payload: {
 
     if (error) throw new Error(`upsertPricing failed: ${error.message}`);
 
-    // SOT: ex-showroom seed/update must flow through price engine for accurate RTO + insurance.
-    if (payload.ex_showroom > 0) {
-        const calcResult = await calculatePricingBySkuIds(
-            [{ skuId: payload.sku_id, exShowroom: payload.ex_showroom }],
-            payload.state_code
-        );
-        if (!calcResult.success) {
-            throw new Error(`upsertPricing price engine failed: ${calcResult.errors.join(', ')}`);
-        }
+    const seedResult = await sot_price_seed([
+        {
+            sku_id: payload.sku_id,
+            state_code: payload.state_code,
+            ex_showroom: payload.ex_showroom,
+            publish_stage: payload.publish_stage || 'DRAFT',
+            is_popular: payload.is_popular || false,
+        },
+    ]);
+    if (!seedResult.success) {
+        throw new Error(`upsertPricing price engine failed: ${seedResult.errors.join(', ')}`);
     }
 
     return data;

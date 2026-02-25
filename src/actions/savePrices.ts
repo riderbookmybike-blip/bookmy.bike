@@ -6,6 +6,7 @@ import { revalidateTag } from 'next/cache';
 import { CACHE_TAGS, districtTag } from '@/lib/cache/tags';
 import { getAuthUser } from '@/lib/auth/resolver';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { sot_price_seed } from '@/actions/sot_price_seed';
 
 interface PricePayload {
     vehicle_color_id: string; // SKU id (cat_skus.id). Legacy column name.
@@ -40,35 +41,28 @@ export async function savePrices(
         // Upsert prices using adminClient (bypasses RLS)
         if (prices.length > 0) {
             const allowedStages = new Set(['DRAFT', 'UNDER_REVIEW', 'PUBLISHED', 'LIVE', 'INACTIVE']);
-
-            for (const p of prices) {
+            const seedRows = prices.map(p => {
                 const resolvedStage =
                     p.publish_stage && allowedStages.has(p.publish_stage.trim().toUpperCase())
                         ? p.publish_stage.trim().toUpperCase()
                         : 'DRAFT';
 
-                // SOT: Save to dedicated state-level table with flat columns
-                const { error: priceError } = await adminClient.from('cat_price_state_mh').upsert(
-                    {
-                        id: crypto.randomUUID(),
-                        sku_id: p.vehicle_color_id,
-                        state_code: p.state_code,
-                        ex_factory: p.ex_showroom_price,
-                        ex_factory_gst_amount: 0,
-                        logistics_charges: 0,
-                        logistics_charges_gst_amount: 0,
-                        ex_showroom: p.ex_showroom_price,
-                        publish_stage: resolvedStage,
-                        is_popular: p.is_popular || false,
-                    },
-                    { onConflict: 'sku_id,state_code' }
-                );
+                return {
+                    sku_id: p.vehicle_color_id,
+                    state_code: p.state_code,
+                    ex_showroom: p.ex_showroom_price,
+                    publish_stage: resolvedStage,
+                    is_popular: p.is_popular || false,
+                };
+            });
 
-                if (priceError) {
-                    console.error('[savePrices] cat_price_state_mh upsert error:', priceError);
-                    return { success: false, error: priceError.message };
-                }
+            const seedResult = await sot_price_seed(seedRows);
+            if (!seedResult.success) {
+                console.error('[savePrices] sot_price_seed failed:', seedResult.errors);
+                return { success: false, error: seedResult.errors.join(' | ') || 'Price seed failed' };
+            }
 
+            for (const p of prices) {
                 // Update color metadata in cat_skus if provided
                 if (p.color_name || p.hex_primary || p.hex_secondary || p.finish) {
                     const { error: skuUpdateError } = await adminClient
@@ -86,8 +80,6 @@ export async function savePrices(
                         // We don't fail the whole operation if just color metadata fails to sync
                     }
                 }
-
-                // Canonical pricing source is cat_price_state_mh (column-based state table).
             }
 
             // Push Invalidation: Trigger revalidation for each unique district
