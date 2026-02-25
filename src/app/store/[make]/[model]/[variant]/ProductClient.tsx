@@ -14,6 +14,7 @@ import { useDealerSession } from '@/hooks/useDealerSession';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
+import { useTenant } from '@/lib/tenant/tenantContext';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -92,6 +93,7 @@ export default function ProductClient({
     const { availableCoins, isLoggedIn } = useOClubWallet();
     const { dealerId: sessionDealerId } = useDealerSession();
     const { device } = useBreakpoint(initialDevice);
+    const { memberships } = useTenant();
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
     const { trackEvent } = useAnalytics();
     const activeSkuRef = useRef<string | null>(null);
@@ -113,17 +115,56 @@ export default function ProductClient({
     }, [device]);
 
     useEffect(() => {
-        const checkUser = async () => {
+        let active = true;
+        const checkTeamMembership = async () => {
             const supabase = createClient();
             const {
                 data: { user },
             } = await supabase.auth.getUser();
-            if (user?.email?.endsWith('@bookmy.bike')) {
-                setIsTeamMember(true);
+            if (!user) {
+                if (active) setIsTeamMember(false);
+                return;
+            }
+
+            const contextDealerMembership = (memberships || []).some((m: any) => {
+                if (String(m?.status || '').toUpperCase() !== 'ACTIVE') return false;
+                const type = String(m?.tenants?.type || '').toUpperCase();
+                return type === 'DEALER' || type === 'DEALERSHIP' || type === 'BANK';
+            });
+
+            let dbDealerMembership = false;
+            if (!contextDealerMembership) {
+                const { data: dbMemberships } = await supabase
+                    .from('memberships')
+                    .select('status, tenants!inner(type)')
+                    .eq('user_id', user.id)
+                    .eq('status', 'ACTIVE');
+
+                dbDealerMembership = (dbMemberships || []).some((m: any) => {
+                    const type = String(m?.tenants?.type || '').toUpperCase();
+                    return type === 'DEALER' || type === 'DEALERSHIP' || type === 'BANK';
+                });
+            }
+
+            const { data: memberProfile } = await supabase
+                .from('id_members')
+                .select('role')
+                .eq('id', user.id)
+                .maybeSingle();
+            const role = String(memberProfile?.role || '').toUpperCase();
+            const roleSignalsStaff = !!role && !['MEMBER', 'BMB_USER', 'CUSTOMER'].includes(role);
+            const emailSignalsStaff = user.email?.endsWith('@bookmy.bike') || false;
+
+            if (active) {
+                setIsTeamMember(contextDealerMembership || dbDealerMembership || roleSignalsStaff || emailSignalsStaff);
             }
         };
-        checkUser();
-    }, []);
+
+        void checkTeamMembership();
+        return () => {
+            active = false;
+        };
+    }, [memberships]);
 
     useEffect(() => {
         if (leadIdFromUrl) {
@@ -783,7 +824,7 @@ export default function ProductClient({
 
     const handlers = {
         handleColorChange: setSelectedColor,
-        handleShareQuote,
+        handleShareQuote: shouldForcePhoneCapture ? () => setShowQuoteSuccess(true) : handleShareQuote,
         handleSaveQuote:
             shouldForcePhoneCapture || !leadIdFromUrl ? () => setShowQuoteSuccess(true) : handleConfirmQuote,
         handleBookingRequest: shouldForcePhoneCapture
@@ -895,6 +936,7 @@ export default function ProductClient({
                 commercials={buildCommercials()}
                 quoteTenantId={quoteTenantId}
                 source={leadIdFromUrl ? 'LEADS' : 'STORE_PDP'}
+                forceStaffMode={isTeamMember}
             />
 
             <EmailUpdateModal
