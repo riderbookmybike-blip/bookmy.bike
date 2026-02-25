@@ -1993,79 +1993,49 @@ export default function PricingLedgerTable({
 
                                                                     {/* OD Section */}
                                                                     <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                                                                        <div className="flex items-center justify-between mb-2">
+                                                                        <div className="flex items-center justify-between">
                                                                             <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">
                                                                                 Own Damage (OD)
                                                                             </span>
-                                                                            <span className="text-[11px] font-black tabular-nums text-emerald-600">
-                                                                                {formatMoney(
-                                                                                    (sku.insurance_data.od?.base || 0) +
-                                                                                        (sku.insurance_data.od?.gst ||
-                                                                                            0)
-                                                                                )}
+                                                                            <span
+                                                                                className={`text-[11px] font-black tabular-nums ${sku.insurance_data.od ? 'text-emerald-600' : 'text-slate-400'}`}
+                                                                            >
+                                                                                {sku.insurance_data.od
+                                                                                    ? formatMoney(sku.insurance_data.od)
+                                                                                    : '—'}
                                                                             </span>
-                                                                        </div>
-                                                                        <div className="pt-1.5 border-t border-dashed border-slate-200 space-y-1">
-                                                                            <div className="flex justify-between items-center text-[9px]">
-                                                                                <span className="text-slate-500">
-                                                                                    Premium
-                                                                                </span>
-                                                                                <span className="text-slate-700 font-mono tabular-nums">
-                                                                                    {formatMoney(
-                                                                                        sku.insurance_data.od?.base
-                                                                                    )}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="flex justify-between items-center text-[9px]">
-                                                                                <span className="text-slate-500">
-                                                                                    GST
-                                                                                </span>
-                                                                                <span className="text-slate-700 font-mono tabular-nums">
-                                                                                    {formatMoney(
-                                                                                        sku.insurance_data.od?.gst
-                                                                                    )}
-                                                                                </span>
-                                                                            </div>
                                                                         </div>
                                                                     </div>
 
                                                                     {/* TP Section */}
                                                                     <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                                                                        <div className="flex items-center justify-between mb-2">
+                                                                        <div className="flex items-center justify-between">
                                                                             <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">
                                                                                 Third Party (TP)
                                                                             </span>
-                                                                            <span className="text-[11px] font-black tabular-nums text-emerald-600">
-                                                                                {formatMoney(
-                                                                                    (sku.insurance_data.tp?.base || 0) +
-                                                                                        (sku.insurance_data.tp?.gst ||
-                                                                                            0)
-                                                                                )}
+                                                                            <span
+                                                                                className={`text-[11px] font-black tabular-nums ${sku.insurance_data.tp ? 'text-emerald-600' : 'text-slate-400'}`}
+                                                                            >
+                                                                                {sku.insurance_data.tp
+                                                                                    ? formatMoney(sku.insurance_data.tp)
+                                                                                    : '—'}
                                                                             </span>
                                                                         </div>
-                                                                        <div className="pt-1.5 border-t border-dashed border-slate-200 space-y-1">
-                                                                            <div className="flex justify-between items-center text-[9px]">
-                                                                                <span className="text-slate-500">
-                                                                                    Premium
+                                                                    </div>
+
+                                                                    {/* PA Section */}
+                                                                    {sku.insurance_data.pa > 0 && (
+                                                                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                                                                            <div className="flex items-center justify-between">
+                                                                                <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">
+                                                                                    Personal Accident (PA)
                                                                                 </span>
-                                                                                <span className="text-slate-700 font-mono tabular-nums">
-                                                                                    {formatMoney(
-                                                                                        sku.insurance_data.tp?.base
-                                                                                    )}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="flex justify-between items-center text-[9px]">
-                                                                                <span className="text-slate-500">
-                                                                                    GST
-                                                                                </span>
-                                                                                <span className="text-slate-700 font-mono tabular-nums">
-                                                                                    {formatMoney(
-                                                                                        sku.insurance_data.tp?.gst
-                                                                                    )}
+                                                                                <span className="text-[11px] font-black tabular-nums text-emerald-600">
+                                                                                    {formatMoney(sku.insurance_data.pa)}
                                                                                 </span>
                                                                             </div>
                                                                         </div>
-                                                                    </div>
+                                                                    )}
 
                                                                     {/* Addons */}
                                                                     {Array.isArray(sku.insurance_data.addons) &&
