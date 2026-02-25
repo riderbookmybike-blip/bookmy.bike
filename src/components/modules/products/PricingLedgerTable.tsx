@@ -123,8 +123,6 @@ interface PricingLedgerTableProps {
     hasUnsavedChanges?: boolean;
     isSaving?: boolean;
     onSummaryChange?: (summary: { count: number; value: number }) => void;
-    onCalculate?: (selectedIds: string[]) => void;
-    isCalculating?: boolean;
 }
 
 const BrandAvatar = ({ name, logo }: { name: string; logo?: string }) => {
@@ -195,8 +193,6 @@ export default function PricingLedgerTable({
     hasUnsavedChanges,
     isSaving: isParentSaving,
     onSummaryChange,
-    onCalculate,
-    isCalculating,
 }: PricingLedgerTableProps) {
     const router = useRouter();
     const { tenantSlug, tenantName, tenantConfig } = useTenant();
@@ -781,7 +777,9 @@ export default function PricingLedgerTable({
             .map(id => processedSkus.find(s => s.id === id))
             .filter(sku => sku && !canPublish(sku)) as SKUPriceRow[];
         if (invalid.length > 0 && (stage === 'PUBLISHED' || stage === 'LIVE')) {
-            alert('Some selected SKUs are missing RTO/Insurance. Please calculate first.');
+            alert(
+                'Some selected SKUs are missing RTO/Insurance. Edit Ex-Showroom to auto-run price engine, then publish.'
+            );
             return;
         }
         ids.forEach(id => onUpdatePublishStage(id, stage));
@@ -1236,23 +1234,6 @@ export default function PricingLedgerTable({
                                     <Rocket size={12} />
                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
                                         Activate Selected (Live)
-                                    </div>
-                                </button>
-
-                                {/* Calculate */}
-                                <button
-                                    onClick={() => onCalculate?.(Array.from(selectedSkuIds))}
-                                    disabled={selectedSkuIds.size === 0 || isCalculating}
-                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 && !isCalculating ? 'bg-amber-500 text-white shadow-lg shadow-amber-200/50 hover:bg-amber-600 animate-pulse' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
-                                >
-                                    {isCalculating ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-                                    {selectedSkuIds.size > 0 && (
-                                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[7px] font-black text-white ring-1 ring-white dark:ring-slate-900">
-                                            {selectedSkuIds.size}
-                                        </span>
-                                    )}
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                        Calculate RTO & Insurance
                                     </div>
                                 </button>
                             </>
@@ -2266,22 +2247,12 @@ export default function PricingLedgerTable({
                                                                 {displayLabel}
                                                             </button>
                                                             {isAums && !canPublish(sku) && (
-                                                                <button
-                                                                    onClick={e => {
-                                                                        e.stopPropagation();
-                                                                        onCalculate?.([sku.id]);
-                                                                    }}
-                                                                    disabled={isCalculating}
-                                                                    className="ml-2 px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50 no-export"
-                                                                    title="Calculate RTO & Insurance for this item"
+                                                                <span
+                                                                    className="ml-2 px-2 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-[9px] font-black uppercase tracking-widest no-export"
+                                                                    title="Missing RTO/Insurance values. Edit ex-showroom to trigger price engine."
                                                                 >
-                                                                    {isCalculating ? (
-                                                                        <Loader2 size={10} className="animate-spin" />
-                                                                    ) : (
-                                                                        <Zap size={10} />
-                                                                    )}
-                                                                    Needs Calc
-                                                                </button>
+                                                                    Missing Calc
+                                                                </span>
                                                             )}
                                                             {isOpen && (
                                                                 <>

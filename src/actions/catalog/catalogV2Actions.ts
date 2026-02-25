@@ -1,6 +1,7 @@
 'use server';
 
 import { adminClient } from '@/lib/supabase/admin';
+import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
 
 // ============================================================
 // Types
@@ -627,6 +628,18 @@ export async function upsertPricing(payload: {
         .single();
 
     if (error) throw new Error(`upsertPricing failed: ${error.message}`);
+
+    // SOT: ex-showroom seed/update must flow through price engine for accurate RTO + insurance.
+    if (payload.ex_showroom > 0) {
+        const calcResult = await calculatePricingBySkuIds(
+            [{ skuId: payload.sku_id, exShowroom: payload.ex_showroom }],
+            payload.state_code
+        );
+        if (!calcResult.success) {
+            throw new Error(`upsertPricing price engine failed: ${calcResult.errors.join(', ')}`);
+        }
+    }
+
     return data;
 }
 

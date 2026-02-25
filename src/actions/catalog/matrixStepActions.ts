@@ -3,6 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { getAuthUser } from '@/lib/auth/resolver';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
 
 type MatrixStatePriceInput = {
     state_code: string;
@@ -98,6 +99,17 @@ export async function saveMatrixSkuEditor(input: SaveMatrixSkuInput): Promise<Sa
 
             if (pricingError) {
                 return { success: false, error: pricingError.message };
+            }
+
+            // SOT: whenever ex-showroom is seeded/updated, run price engine to persist RTO/insurance accurately.
+            for (const [stateCode, exShowroom] of statePriceMap.entries()) {
+                const calcResult = await calculatePricingBySkuIds([{ skuId, exShowroom }], stateCode);
+                if (!calcResult.success) {
+                    return {
+                        success: false,
+                        error: `Price engine calculation failed for ${stateCode}: ${calcResult.errors.join(', ')}`,
+                    };
+                }
             }
         }
 

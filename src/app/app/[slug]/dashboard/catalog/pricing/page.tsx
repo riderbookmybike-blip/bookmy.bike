@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -116,7 +116,8 @@ export default function PricingPage() {
             setSelectedVariant('ALL');
         }
     };
-    const [isPublishing, setIsPublishing] = useState(false);
+    const realtimeCalcTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+    const realtimeCalcSeqRef = useRef<Record<string, number>>({});
 
     // Sync filters to URL when they change (persist across reloads)
     useEffect(() => {
@@ -146,6 +147,13 @@ export default function PricingPage() {
             fetchSKUsAndPrices();
         }
     }, [selectedStateId]);
+
+    useEffect(() => {
+        return () => {
+            Object.values(realtimeCalcTimersRef.current).forEach(timer => clearTimeout(timer));
+            realtimeCalcTimersRef.current = {};
+        };
+    }, []);
 
     // Auto-Save Logic (5 seconds debounce)
     useEffect(() => {
@@ -417,8 +425,143 @@ export default function PricingPage() {
         }
     };
 
+    const syncPricingSnapshotForSku = useCallback(
+        async (skuId: string, stateCode: string) => {
+            const { data } = await supabase
+                .from('cat_price_state_mh')
+                .select(
+                    `
+                    sku_id,
+                    on_road_price,
+                    rto_default_type,
+                    rto_total_state, rto_total_bh, rto_total_company,
+                    ins_od_total:ins_own_damage_total_amount,
+                    ins_tp_total:ins_liability_only_total_amount,
+                    ins_total:ins_gross_premium,
+                    addon_pa_total:addon_personal_accident_cover_total_amount
+                    `
+                )
+                .eq('sku_id', skuId)
+                .eq('state_code', stateCode)
+                .maybeSingle();
+
+            if (!data) return;
+
+            setSkus(prev =>
+                prev.map(s =>
+                    s.id === skuId
+                        ? {
+                              ...s,
+                              rto: Number((data as any).rto_total_state || 0),
+                              insurance: Number((data as any).ins_total || 0),
+                              onRoad: Number((data as any).on_road_price || s.exShowroom || 0),
+                              rto_data: {
+                                  STATE: Number((data as any).rto_total_state || 0),
+                                  BH: Number((data as any).rto_total_bh || 0),
+                                  COMPANY: Number((data as any).rto_total_company || 0),
+                                  default: (data as any).rto_default_type || 'STATE',
+                              },
+                              insurance_data: {
+                                  base_total: Number((data as any).ins_total || 0),
+                                  od: Number((data as any).ins_od_total || 0),
+                                  tp: Number((data as any).ins_tp_total || 0),
+                                  pa: Number((data as any).addon_pa_total || 0),
+                              },
+                          }
+                        : s
+                )
+            );
+        },
+        [supabase]
+    );
+
+    const runPriceEngineCalculation = useCallback(
+        async (inputs: Array<{ skuId: string; exShowroom: number }>, stateCode: string): Promise<boolean> => {
+            if (tenantSlug !== 'aums') return true;
+
+            const normalized = inputs
+                .filter(item => !!item?.skuId && Number(item.exShowroom) > 0)
+                .map(item => ({ skuId: item.skuId, exShowroom: Number(item.exShowroom) }));
+            const deduped = Array.from(new Map(normalized.map(i => [i.skuId, i])).values());
+
+            if (deduped.length === 0) return true;
+
+            const result = await calculatePricingBySkuIds(deduped, stateCode);
+            if (!result.success) {
+                console.error('[Pricing Realtime] Engine failed:', result.errors.join(' | '));
+                return false;
+            }
+
+            await Promise.all(deduped.map(item => syncPricingSnapshotForSku(item.skuId, stateCode)));
+            return true;
+        },
+        [tenantSlug, syncPricingSnapshotForSku]
+    );
+
+    const scheduleRealtimePriceEngine = useCallback(
+        (skuId: string, exShowroom: number) => {
+            if (tenantSlug !== 'aums') return;
+            const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode;
+            if (!activeStateCode) return;
+
+            if (realtimeCalcTimersRef.current[skuId]) {
+                clearTimeout(realtimeCalcTimersRef.current[skuId]);
+            }
+
+            if (!(exShowroom > 0)) {
+                setSkus(prev =>
+                    prev.map(s =>
+                        s.id === skuId
+                            ? {
+                                  ...s,
+                                  rto: 0,
+                                  insurance: 0,
+                                  onRoad: Number(s.exShowroom || 0),
+                                  rto_data: {
+                                      STATE: 0,
+                                      BH: 0,
+                                      COMPANY: 0,
+                                      default: 'STATE',
+                                  },
+                                  insurance_data: {
+                                      base_total: 0,
+                                      od: 0,
+                                      tp: 0,
+                                      pa: 0,
+                                  },
+                              }
+                            : s
+                    )
+                );
+                return;
+            }
+
+            realtimeCalcTimersRef.current[skuId] = setTimeout(async () => {
+                const seq = (realtimeCalcSeqRef.current[skuId] || 0) + 1;
+                realtimeCalcSeqRef.current[skuId] = seq;
+
+                try {
+                    const result = await calculatePricingBySkuIds([{ skuId, exShowroom }], activeStateCode);
+                    if (!result.success) {
+                        console.error('[Pricing Realtime] Engine failed:', result.errors.join(' | '));
+                        return;
+                    }
+                    if (realtimeCalcSeqRef.current[skuId] !== seq) return;
+                    await syncPricingSnapshotForSku(skuId, activeStateCode);
+                } catch (err) {
+                    console.error('[Pricing Realtime] Unexpected failure:', err);
+                } finally {
+                    delete realtimeCalcTimersRef.current[skuId];
+                }
+            }, 600);
+        },
+        [selectedStateId, states, tenantSlug, syncPricingSnapshotForSku]
+    );
+
     const handleUpdatePrice = (skuId: string, price: number) => {
-        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, exShowroom: price } : s)));
+        const safePrice = Number.isFinite(price) && price > 0 ? Math.round(price) : 0;
+        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, exShowroom: safePrice } : s)));
+        scheduleRealtimePriceEngine(skuId, safePrice);
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
@@ -489,7 +632,9 @@ export default function PricingPage() {
     };
 
     const handleBulkUpdate = (ids: string[], price: number) => {
-        setSkus(prev => prev.map(s => (ids.includes(s.id) ? { ...s, exShowroom: price } : s)));
+        const safePrice = Number.isFinite(price) && price > 0 ? Math.round(price) : 0;
+        setSkus(prev => prev.map(s => (ids.includes(s.id) ? { ...s, exShowroom: safePrice } : s)));
+        ids.forEach(id => scheduleRealtimePriceEngine(id, safePrice));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
@@ -508,6 +653,25 @@ export default function PricingPage() {
                     s.isPopular !== s.originalIsPopular ||
                     s.publishStage !== s.originalPublishStage
             );
+
+            const changedExShowroomInputs = changedPriceRows
+                .filter(s => s.exShowroom !== s.originalExShowroom && Number(s.exShowroom) > 0)
+                .map(s => ({ skuId: s.id, exShowroom: Number(s.exShowroom) }));
+
+            if (changedExShowroomInputs.length > 0) {
+                for (const item of changedExShowroomInputs) {
+                    const timer = realtimeCalcTimersRef.current[item.skuId];
+                    if (timer) {
+                        clearTimeout(timer);
+                        delete realtimeCalcTimersRef.current[item.skuId];
+                    }
+                }
+                const engineOk = await runPriceEngineCalculation(changedExShowroomInputs, activeStateCode);
+                if (!engineOk) {
+                    alert('Price engine calculation failed for one or more edited SKUs. Save aborted.');
+                    return;
+                }
+            }
 
             const pricePayload = changedPriceRows
                 .map(s => {
@@ -619,84 +783,6 @@ export default function PricingPage() {
                     console.warn('Audit log failed:', e);
                 }
             }
-        }
-    };
-
-    // AUMS-only: Calculate RTO/Insurance for SELECTED SKUs only
-    const handleCalculate = async (selectedIds: string[]) => {
-        if (tenantSlug !== 'aums') return;
-
-        const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode;
-        if (!activeStateCode) {
-            alert('Please select a state first');
-            return;
-        }
-
-        // Filter to only selected SKUs with valid ex-showroom prices
-        const vehicleSkuIds = skus.filter(s => selectedIds.includes(s.id) && s.exShowroom > 0).map(s => s.id);
-
-        if (vehicleSkuIds.length === 0) {
-            alert('No valid SKUs selected. Please select SKUs with prices first.');
-            return;
-        }
-
-        setIsPublishing(true);
-        try {
-            const calcInputs = skus
-                .filter(s => selectedIds.includes(s.id) && s.exShowroom > 0)
-                .map(s => ({ skuId: s.id, exShowroom: s.exShowroom }));
-            const result = await calculatePricingBySkuIds(calcInputs, activeStateCode);
-
-            if (result.success) {
-                const publishedIds = result.results
-                    .filter(r => r.success)
-                    .map(r => r.skuId)
-                    .join(', ');
-                alert(
-                    `Calculated ${result.totalPublished} SKUs. RTO and Insurance values updated.\n\nSKU IDs: ${publishedIds}`
-                );
-                // AUMS: Force publish_stage to UNDER_REVIEW for recalculated SKUs (manual publish required)
-                setSkus(prev =>
-                    prev.map(s =>
-                        selectedIds.includes(s.id)
-                            ? {
-                                  ...s,
-                                  publishStage: 'UNDER_REVIEW',
-                                  originalPublishStage: 'UNDER_REVIEW',
-                                  displayState: 'In Review',
-                              }
-                            : s
-                    )
-                );
-                // Refresh data to show updated RTO/Insurance
-                await fetchSKUsAndPrices();
-                try {
-                    const {
-                        data: { user },
-                    } = await supabase.auth.getUser();
-                    if (user?.id && tenantId) {
-                        await supabase.from('audit_logs').insert({
-                            tenant_id: tenantId,
-                            actor_id: user.id,
-                            action: 'PRICING_RECALCULATED',
-                            entity_type: 'PRICING_LEDGER',
-                            entity_id: activeStateCode,
-                            metadata: {
-                                state_code: activeStateCode,
-                                sku_ids: vehicleSkuIds,
-                            },
-                        });
-                    }
-                } catch (e) {
-                    console.warn('Audit log failed:', e);
-                }
-            } else {
-                alert(`Calculate failed: ${result.errors.join(', ')}`);
-            }
-        } catch (err) {
-            alert(`Calculate error: ${String(err)}`);
-        } finally {
-            setIsPublishing(false);
         }
     };
 
@@ -1059,8 +1145,6 @@ export default function PricingPage() {
                             onUpdatePopular={handleUpdatePopular}
                             onBulkUpdate={handleBulkUpdate}
                             onSaveAll={handleSaveAll}
-                            onCalculate={handleCalculate}
-                            isCalculating={isPublishing}
                             states={states}
                             selectedStateId={selectedStateId}
                             onStateChange={setSelectedStateId}
