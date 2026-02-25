@@ -1818,10 +1818,10 @@ export default function PricingLedgerTable({
                                                             {sku.rto ? `₹${Math.round(sku.rto).toLocaleString()}` : '—'}
                                                         </span>
                                                         {sku.rto_data && (
-                                                            <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[260px] p-3.5 rounded-xl bg-[#0d1117] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover/rto:opacity-100 group-hover/rto:visible transition-all duration-200 pointer-events-none text-left">
+                                                            <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[260px] p-3.5 rounded-xl bg-white border border-slate-200 shadow-[0_8px_32px_rgba(0,0,0,0.12)] opacity-0 invisible group-hover/rto:opacity-100 group-hover/rto:visible transition-all duration-200 pointer-events-none text-left">
                                                                 <div className="space-y-2.5">
-                                                                    <div className="pb-2 border-b border-white/5">
-                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-0.5">
+                                                                    <div className="pb-2 border-b border-slate-100">
+                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">
                                                                             Registration Options
                                                                         </p>
                                                                     </div>
@@ -1853,19 +1853,19 @@ export default function PricingLedgerTable({
                                                                             return (
                                                                                 <div
                                                                                     key={opt.key}
-                                                                                    className="bg-white/[0.04] p-2.5 rounded-lg border border-white/[0.06] hover:border-white/10 transition-colors"
+                                                                                    className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors"
                                                                                 >
                                                                                     <div className="flex items-center justify-between gap-4 mb-2">
                                                                                         <div className="flex flex-col">
-                                                                                            <span className="text-[10px] font-bold text-white/90 uppercase tracking-tight">
+                                                                                            <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">
                                                                                                 {opt.label}
                                                                                             </span>
-                                                                                            <span className="text-[8px] text-slate-500">
+                                                                                            <span className="text-[8px] text-slate-400">
                                                                                                 {opt.desc}
                                                                                             </span>
                                                                                         </div>
                                                                                         <span
-                                                                                            className={`text-[11px] font-black tabular-nums ${detail?.total ? 'text-emerald-400' : 'text-slate-600'}`}
+                                                                                            className={`text-[11px] font-black tabular-nums ${detail?.total ? 'text-emerald-600' : 'text-slate-400'}`}
                                                                                         >
                                                                                             {detail?.total
                                                                                                 ? formatMoney(
@@ -1875,7 +1875,7 @@ export default function PricingLedgerTable({
                                                                                         </span>
                                                                                     </div>
                                                                                     {breakdown && (
-                                                                                        <div className="pt-2 border-t border-dashed border-white/[0.06] space-y-1">
+                                                                                        <div className="pt-2 border-t border-dashed border-slate-200 space-y-1">
                                                                                             {[
                                                                                                 {
                                                                                                     l: 'Road Tax',
@@ -1911,7 +1911,7 @@ export default function PricingLedgerTable({
                                                                                                         <span className="text-slate-500">
                                                                                                             {item.l}
                                                                                                         </span>
-                                                                                                        <span className="text-slate-300 font-mono tabular-nums">
+                                                                                                        <span className="text-slate-700 font-mono tabular-nums">
                                                                                                             {formatMoney(
                                                                                                                 item.v
                                                                                                             )}
@@ -1921,7 +1921,7 @@ export default function PricingLedgerTable({
                                                                                         </div>
                                                                                     )}
                                                                                     {!breakdown && detail?.fees && (
-                                                                                        <div className="pt-2 border-t border-dashed border-white/[0.06] space-y-1">
+                                                                                        <div className="pt-2 border-t border-dashed border-slate-200 space-y-1">
                                                                                             {detail.fees.map(
                                                                                                 (
                                                                                                     item: any,
@@ -1934,7 +1934,7 @@ export default function PricingLedgerTable({
                                                                                                         <span className="text-slate-500">
                                                                                                             {item.label}
                                                                                                         </span>
-                                                                                                        <span className="text-slate-300 font-mono tabular-nums">
+                                                                                                        <span className="text-slate-700 font-mono tabular-nums">
                                                                                                             {formatMoney(
                                                                                                                 item.amount
                                                                                                             )}
@@ -1954,7 +1954,7 @@ export default function PricingLedgerTable({
                                                                                                         <span className="text-slate-500">
                                                                                                             {item.label}
                                                                                                         </span>
-                                                                                                        <span className="text-slate-300 font-mono tabular-nums">
+                                                                                                        <span className="text-slate-700 font-mono tabular-nums">
                                                                                                             {formatMoney(
                                                                                                                 item.amount
                                                                                                             )}
@@ -1970,7 +1970,7 @@ export default function PricingLedgerTable({
                                                                     </div>
                                                                 </div>
                                                                 {/* Triangle pointer */}
-                                                                <div className="absolute -top-1 right-4 w-2 h-2 bg-[#0d1117] border-l border-t border-white/10 rotate-45" />
+                                                                <div className="absolute -top-1 right-4 w-2 h-2 bg-white border-l border-t border-slate-200 rotate-45" />
                                                             </div>
                                                         )}
                                                     </td>
@@ -1983,21 +1983,21 @@ export default function PricingLedgerTable({
                                                                 : '—'}
                                                         </span>
                                                         {sku.insurance_data && (
-                                                            <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[280px] p-3.5 rounded-xl bg-[#0d1117] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover/ins:opacity-100 group-hover/ins:visible transition-all duration-200 pointer-events-none text-left">
+                                                            <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[280px] p-3.5 rounded-xl bg-white border border-slate-200 shadow-[0_8px_32px_rgba(0,0,0,0.12)] opacity-0 invisible group-hover/ins:opacity-100 group-hover/ins:visible transition-all duration-200 pointer-events-none text-left">
                                                                 <div className="space-y-2.5">
-                                                                    <div className="pb-2 border-b border-white/5">
-                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-0.5">
+                                                                    <div className="pb-2 border-b border-slate-100">
+                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">
                                                                             Insurance Breakdown
                                                                         </p>
                                                                     </div>
 
                                                                     {/* OD Section */}
-                                                                    <div className="bg-white/[0.04] p-2.5 rounded-lg border border-white/[0.06]">
+                                                                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                                                                         <div className="flex items-center justify-between mb-2">
-                                                                            <span className="text-[10px] font-bold text-white/90 uppercase tracking-tight">
+                                                                            <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">
                                                                                 Own Damage (OD)
                                                                             </span>
-                                                                            <span className="text-[11px] font-black tabular-nums text-emerald-400">
+                                                                            <span className="text-[11px] font-black tabular-nums text-emerald-600">
                                                                                 {formatMoney(
                                                                                     (sku.insurance_data.od?.base || 0) +
                                                                                         (sku.insurance_data.od?.gst ||
@@ -2005,12 +2005,12 @@ export default function PricingLedgerTable({
                                                                                 )}
                                                                             </span>
                                                                         </div>
-                                                                        <div className="pt-1.5 border-t border-dashed border-white/[0.06] space-y-1">
+                                                                        <div className="pt-1.5 border-t border-dashed border-slate-200 space-y-1">
                                                                             <div className="flex justify-between items-center text-[9px]">
                                                                                 <span className="text-slate-500">
                                                                                     Premium
                                                                                 </span>
-                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                <span className="text-slate-700 font-mono tabular-nums">
                                                                                     {formatMoney(
                                                                                         sku.insurance_data.od?.base
                                                                                     )}
@@ -2020,7 +2020,7 @@ export default function PricingLedgerTable({
                                                                                 <span className="text-slate-500">
                                                                                     GST
                                                                                 </span>
-                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                <span className="text-slate-700 font-mono tabular-nums">
                                                                                     {formatMoney(
                                                                                         sku.insurance_data.od?.gst
                                                                                     )}
@@ -2030,12 +2030,12 @@ export default function PricingLedgerTable({
                                                                     </div>
 
                                                                     {/* TP Section */}
-                                                                    <div className="bg-white/[0.04] p-2.5 rounded-lg border border-white/[0.06]">
+                                                                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                                                                         <div className="flex items-center justify-between mb-2">
-                                                                            <span className="text-[10px] font-bold text-white/90 uppercase tracking-tight">
+                                                                            <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">
                                                                                 Third Party (TP)
                                                                             </span>
-                                                                            <span className="text-[11px] font-black tabular-nums text-emerald-400">
+                                                                            <span className="text-[11px] font-black tabular-nums text-emerald-600">
                                                                                 {formatMoney(
                                                                                     (sku.insurance_data.tp?.base || 0) +
                                                                                         (sku.insurance_data.tp?.gst ||
@@ -2043,12 +2043,12 @@ export default function PricingLedgerTable({
                                                                                 )}
                                                                             </span>
                                                                         </div>
-                                                                        <div className="pt-1.5 border-t border-dashed border-white/[0.06] space-y-1">
+                                                                        <div className="pt-1.5 border-t border-dashed border-slate-200 space-y-1">
                                                                             <div className="flex justify-between items-center text-[9px]">
                                                                                 <span className="text-slate-500">
                                                                                     Premium
                                                                                 </span>
-                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                <span className="text-slate-700 font-mono tabular-nums">
                                                                                     {formatMoney(
                                                                                         sku.insurance_data.tp?.base
                                                                                     )}
@@ -2058,7 +2058,7 @@ export default function PricingLedgerTable({
                                                                                 <span className="text-slate-500">
                                                                                     GST
                                                                                 </span>
-                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                <span className="text-slate-700 font-mono tabular-nums">
                                                                                     {formatMoney(
                                                                                         sku.insurance_data.tp?.gst
                                                                                     )}
@@ -2070,8 +2070,8 @@ export default function PricingLedgerTable({
                                                                     {/* Addons */}
                                                                     {Array.isArray(sku.insurance_data.addons) &&
                                                                         sku.insurance_data.addons.length > 0 && (
-                                                                            <div className="bg-white/[0.04] p-2.5 rounded-lg border border-white/[0.06]">
-                                                                                <p className="text-[9px] font-bold text-white/70 uppercase tracking-tight mb-1.5">
+                                                                            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                                                                                <p className="text-[9px] font-bold text-slate-600 uppercase tracking-tight mb-1.5">
                                                                                     Add-ons
                                                                                 </p>
                                                                                 <div className="space-y-1">
@@ -2088,7 +2088,7 @@ export default function PricingLedgerTable({
                                                                                                     {addon.label ||
                                                                                                         addon.id}
                                                                                                 </span>
-                                                                                                <span className="text-slate-300 font-mono tabular-nums">
+                                                                                                <span className="text-slate-700 font-mono tabular-nums">
                                                                                                     {formatMoney(
                                                                                                         addon.total ??
                                                                                                             addon.price
@@ -2102,12 +2102,12 @@ export default function PricingLedgerTable({
                                                                         )}
 
                                                                     {/* Grand Total */}
-                                                                    <div className="pt-2.5 border-t border-white/10">
+                                                                    <div className="pt-2.5 border-t border-slate-200">
                                                                         <div className="flex justify-between items-center">
-                                                                            <span className="text-[10px] font-black text-white/80 uppercase tracking-tight">
+                                                                            <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight">
                                                                                 Gross Premium
                                                                             </span>
-                                                                            <span className="text-[12px] font-black text-emerald-400 font-mono tabular-nums">
+                                                                            <span className="text-[12px] font-black text-emerald-600 font-mono tabular-nums">
                                                                                 {formatMoney(
                                                                                     sku.insurance_data.base_total
                                                                                 )}
@@ -2116,7 +2116,7 @@ export default function PricingLedgerTable({
                                                                     </div>
                                                                 </div>
                                                                 {/* Triangle pointer */}
-                                                                <div className="absolute -top-1 right-4 w-2 h-2 bg-[#0d1117] border-l border-t border-white/10 rotate-45" />
+                                                                <div className="absolute -top-1 right-4 w-2 h-2 bg-white border-l border-t border-slate-200 rotate-45" />
                                                             </div>
                                                         )}
                                                     </td>
