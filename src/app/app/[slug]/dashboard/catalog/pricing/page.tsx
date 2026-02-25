@@ -241,7 +241,15 @@ export default function PricingPage() {
                         rto_total_state, rto_total_bh, rto_total_company,
                         ins_od_base:ins_own_damage_premium_amount, ins_od_total:ins_own_damage_total_amount, ins_tp_base:ins_liability_only_premium_amount, ins_tp_total:ins_liability_only_total_amount,
                         ins_sum_mandatory_insurance, ins_sum_mandatory_insurance_gst_amount, ins_total:ins_gross_premium, ins_gst_rate,
-                        addon_pa_amount:addon_personal_accident_cover_amount, addon_pa_gstamount:addon_personal_accident_cover_gst_amount, addon_pa_total:addon_personal_accident_cover_total_amount,
+                        addon_pa_amount:addon_personal_accident_cover_amount, addon_pa_gst:addon_personal_accident_cover_gst_amount, addon_pa_total:addon_personal_accident_cover_total_amount,
+                        addon_zerodep_amount:addon_zero_depreciation_amount, addon_zerodep_gst:addon_zero_depreciation_gst_amount, addon_zerodep_total:addon_zero_depreciation_total_amount,
+                        addon_rti_amount:addon_return_to_invoice_amount, addon_rti_gst:addon_return_to_invoice_gst_amount, addon_rti_total:addon_return_to_invoice_total_amount,
+                        addon_consumables_amount:addon_consumables_cover_amount, addon_consumables_gst:addon_consumables_cover_gst_amount, addon_consumables_total:addon_consumables_cover_total_amount,
+                        addon_engine_amount:addon_engine_protector_amount, addon_engine_gst:addon_engine_protector_gst_amount, addon_engine_total:addon_engine_protector_total_amount,
+                        addon_rsa_amount:addon_roadside_assistance_amount, addon_rsa_gst:addon_roadside_assistance_gst_amount, addon_rsa_total:addon_roadside_assistance_total_amount,
+                        addon_keyprotect_amount:addon_key_protect_amount, addon_keyprotect_gst:addon_key_protect_gst_amount, addon_keyprotect_total:addon_key_protect_total_amount,
+                        addon_tyreprotect_amount:addon_tyre_protect_amount, addon_tyreprotect_gst:addon_tyre_protect_gst_amount, addon_tyreprotect_total:addon_tyre_protect_total_amount,
+                        addon_pillion_amount:addon_pillion_cover_amount, addon_pillion_gst:addon_pillion_cover_gst_amount, addon_pillion_total:addon_pillion_cover_total_amount,
                         publish_stage, is_popular, published_at, published_by, updated_at
                         `
                     )
@@ -308,15 +316,44 @@ export default function PricingPage() {
                         default: row.rto_default_type || 'STATE',
                     },
                     insurance: Number(row.ins_total) || 0,
-                    insurance_data: {
-                        base_total:
-                            Number(row.ins_total || 0) ||
-                            Number(row.ins_sum_mandatory_insurance || 0) +
-                                Number(row.ins_sum_mandatory_insurance_gst_amount || 0),
-                        od: Number(row.ins_od_total || 0),
-                        tp: Number(row.ins_tp_total || 0),
-                        pa: Number(row.addon_pa_total ?? 0),
-                    },
+                    insurance_data: (() => {
+                        const odBase = Number(row.ins_od_base || 0);
+                        const odGst = Number(row.ins_od_total || 0) - odBase;
+                        const tpBase = Number(row.ins_tp_base || 0);
+                        const tpGst = Number(row.ins_tp_total || 0) - tpBase;
+                        const ADDON_MAP = [
+                            { key: 'pa', label: 'Personal Accident (PA)' },
+                            { key: 'zerodep', label: 'Zero Depreciation' },
+                            { key: 'rti', label: 'Return to Invoice' },
+                            { key: 'consumables', label: 'Consumables Cover' },
+                            { key: 'engine', label: 'Engine Protector' },
+                            { key: 'rsa', label: 'Roadside Assistance' },
+                            { key: 'keyprotect', label: 'Key Protect' },
+                            { key: 'tyreprotect', label: 'Tyre Protect' },
+                            { key: 'pillion', label: 'Pillion Cover' },
+                        ];
+                        const addons = ADDON_MAP.map(a => {
+                            const total = Number(row[`addon_${a.key}_total`] ?? 0);
+                            if (total <= 0) return null;
+                            return {
+                                id: a.key,
+                                label: a.label,
+                                amount: Number(row[`addon_${a.key}_amount`] ?? 0),
+                                gst: Number(row[`addon_${a.key}_gst`] ?? 0),
+                                total,
+                            };
+                        }).filter(Boolean);
+                        return {
+                            base_total:
+                                Number(row.ins_total || 0) ||
+                                Number(row.ins_sum_mandatory_insurance || 0) +
+                                    Number(row.ins_sum_mandatory_insurance_gst_amount || 0),
+                            gst_rate: Number(row.ins_gst_rate || 18),
+                            od: { base: odBase, gst: Math.max(0, odGst), total: Number(row.ins_od_total || 0) },
+                            tp: { base: tpBase, gst: Math.max(0, tpGst), total: Number(row.ins_tp_total || 0) },
+                            addons,
+                        };
+                    })(),
                     onRoad: Number(row.on_road_price) || 0,
                     district: 'ALL',
                     publishedAt: row.published_at,
@@ -443,10 +480,18 @@ export default function PricingPage() {
                     on_road_price,
                     rto_default_type,
                     rto_total_state, rto_total_bh, rto_total_company,
-                    ins_od_total:ins_own_damage_total_amount,
-                    ins_tp_total:ins_liability_only_total_amount,
-                    ins_total:ins_gross_premium,
-                    addon_pa_total:addon_personal_accident_cover_total_amount
+                    ins_od_base:ins_own_damage_premium_amount, ins_od_total:ins_own_damage_total_amount,
+                    ins_tp_base:ins_liability_only_premium_amount, ins_tp_total:ins_liability_only_total_amount,
+                    ins_total:ins_gross_premium, ins_gst_rate,
+                    addon_pa_amount:addon_personal_accident_cover_amount, addon_pa_gst:addon_personal_accident_cover_gst_amount, addon_pa_total:addon_personal_accident_cover_total_amount,
+                    addon_zerodep_amount:addon_zero_depreciation_amount, addon_zerodep_gst:addon_zero_depreciation_gst_amount, addon_zerodep_total:addon_zero_depreciation_total_amount,
+                    addon_rti_amount:addon_return_to_invoice_amount, addon_rti_gst:addon_return_to_invoice_gst_amount, addon_rti_total:addon_return_to_invoice_total_amount,
+                    addon_consumables_amount:addon_consumables_cover_amount, addon_consumables_gst:addon_consumables_cover_gst_amount, addon_consumables_total:addon_consumables_cover_total_amount,
+                    addon_engine_amount:addon_engine_protector_amount, addon_engine_gst:addon_engine_protector_gst_amount, addon_engine_total:addon_engine_protector_total_amount,
+                    addon_rsa_amount:addon_roadside_assistance_amount, addon_rsa_gst:addon_roadside_assistance_gst_amount, addon_rsa_total:addon_roadside_assistance_total_amount,
+                    addon_keyprotect_amount:addon_key_protect_amount, addon_keyprotect_gst:addon_key_protect_gst_amount, addon_keyprotect_total:addon_key_protect_total_amount,
+                    addon_tyreprotect_amount:addon_tyre_protect_amount, addon_tyreprotect_gst:addon_tyre_protect_gst_amount, addon_tyreprotect_total:addon_tyre_protect_total_amount,
+                    addon_pillion_amount:addon_pillion_cover_amount, addon_pillion_gst:addon_pillion_cover_gst_amount, addon_pillion_total:addon_pillion_cover_total_amount
                     `
                 )
                 .eq('sku_id', skuId)
@@ -454,26 +499,54 @@ export default function PricingPage() {
                 .maybeSingle();
 
             if (!data) return;
+            const d = data as any;
+            const ADDON_MAP_RT = [
+                { key: 'pa', label: 'Personal Accident (PA)' },
+                { key: 'zerodep', label: 'Zero Depreciation' },
+                { key: 'rti', label: 'Return to Invoice' },
+                { key: 'consumables', label: 'Consumables Cover' },
+                { key: 'engine', label: 'Engine Protector' },
+                { key: 'rsa', label: 'Roadside Assistance' },
+                { key: 'keyprotect', label: 'Key Protect' },
+                { key: 'tyreprotect', label: 'Tyre Protect' },
+                { key: 'pillion', label: 'Pillion Cover' },
+            ];
+            const rtAddons = ADDON_MAP_RT.map(a => {
+                const total = Number(d[`addon_${a.key}_total`] ?? 0);
+                if (total <= 0) return null;
+                return {
+                    id: a.key,
+                    label: a.label,
+                    amount: Number(d[`addon_${a.key}_amount`] ?? 0),
+                    gst: Number(d[`addon_${a.key}_gst`] ?? 0),
+                    total,
+                };
+            }).filter(Boolean);
+            const odBase = Number(d.ins_od_base || 0);
+            const odTotal = Number(d.ins_od_total || 0);
+            const tpBase = Number(d.ins_tp_base || 0);
+            const tpTotal = Number(d.ins_tp_total || 0);
 
             setSkus(prev =>
                 prev.map(s =>
                     s.id === skuId
                         ? {
                               ...s,
-                              rto: Number((data as any).rto_total_state || 0),
-                              insurance: Number((data as any).ins_total || 0),
-                              onRoad: Number((data as any).on_road_price || s.exShowroom || 0),
+                              rto: Number(d.rto_total_state || 0),
+                              insurance: Number(d.ins_total || 0),
+                              onRoad: Number(d.on_road_price || s.exShowroom || 0),
                               rto_data: {
-                                  STATE: Number((data as any).rto_total_state || 0),
-                                  BH: Number((data as any).rto_total_bh || 0),
-                                  COMPANY: Number((data as any).rto_total_company || 0),
-                                  default: (data as any).rto_default_type || 'STATE',
+                                  STATE: Number(d.rto_total_state || 0),
+                                  BH: Number(d.rto_total_bh || 0),
+                                  COMPANY: Number(d.rto_total_company || 0),
+                                  default: d.rto_default_type || 'STATE',
                               },
                               insurance_data: {
-                                  base_total: Number((data as any).ins_total || 0),
-                                  od: Number((data as any).ins_od_total || 0),
-                                  tp: Number((data as any).ins_tp_total || 0),
-                                  pa: Number((data as any).addon_pa_total || 0),
+                                  base_total: Number(d.ins_total || 0),
+                                  gst_rate: Number(d.ins_gst_rate || 18),
+                                  od: { base: odBase, gst: Math.max(0, odTotal - odBase), total: odTotal },
+                                  tp: { base: tpBase, gst: Math.max(0, tpTotal - tpBase), total: tpTotal },
+                                  addons: rtAddons,
                               },
                           }
                         : s
@@ -533,9 +606,10 @@ export default function PricingPage() {
                                   },
                                   insurance_data: {
                                       base_total: 0,
-                                      od: 0,
-                                      tp: 0,
-                                      pa: 0,
+                                      gst_rate: 18,
+                                      od: { base: 0, gst: 0, total: 0 },
+                                      tp: { base: 0, gst: 0, total: 0 },
+                                      addons: [],
                                   },
                               }
                             : s

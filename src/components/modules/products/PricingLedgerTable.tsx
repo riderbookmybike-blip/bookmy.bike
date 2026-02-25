@@ -33,6 +33,8 @@ import {
     Layers,
     Rocket,
     XCircle,
+    Shield,
+    Lock,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -1983,108 +1985,319 @@ export default function PricingLedgerTable({
                                                                 : '—'}
                                                         </span>
                                                         {sku.insurance_data && (
-                                                            <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[280px] p-3.5 rounded-xl bg-white border border-slate-200 shadow-[0_8px_32px_rgba(0,0,0,0.12)] opacity-0 invisible group-hover/ins:opacity-100 group-hover/ins:visible transition-all duration-200 pointer-events-none text-left">
-                                                                <div className="space-y-2.5">
-                                                                    <div className="pb-2 border-b border-slate-100">
-                                                                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">
+                                                            <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[300px] max-w-[340px] rounded-xl bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.12)] ring-1 ring-black/5 opacity-0 invisible group-hover/ins:opacity-100 group-hover/ins:visible transition-all duration-200 pointer-events-none text-left overflow-hidden">
+                                                                {/* Header */}
+                                                                <div className="bg-white/80 px-3 py-2 border-b border-slate-100 flex items-center gap-2">
+                                                                    <div className="bg-blue-600 p-1 rounded-md shadow-md shadow-blue-500/20 text-white shrink-0">
+                                                                        <Shield size={10} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-black text-slate-900 text-[9px] tracking-tight italic uppercase">
                                                                             Insurance Breakdown
                                                                         </p>
+                                                                        <p className="text-[6px] text-slate-400 font-black uppercase tracking-widest">
+                                                                            Snapshot
+                                                                        </p>
                                                                     </div>
+                                                                </div>
 
-                                                                    {/* OD Section */}
-                                                                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                                                                        <div className="flex items-center justify-between">
-                                                                            <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">
-                                                                                Own Damage (OD)
+                                                                <div className="p-3 space-y-2.5">
+                                                                    {/* ═══ MANDATORY: OD + TP ═══ */}
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-[7px] font-black text-white bg-slate-800 px-1.5 py-px rounded uppercase tracking-widest">
+                                                                                Mandatory
                                                                             </span>
-                                                                            <span
-                                                                                className={`text-[11px] font-black tabular-nums ${sku.insurance_data.od ? 'text-emerald-600' : 'text-slate-400'}`}
-                                                                            >
-                                                                                {sku.insurance_data.od
-                                                                                    ? formatMoney(sku.insurance_data.od)
-                                                                                    : '—'}
-                                                                            </span>
+                                                                            <div className="flex-1 h-px bg-slate-200" />
                                                                         </div>
-                                                                    </div>
 
-                                                                    {/* TP Section */}
-                                                                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                                                                        <div className="flex items-center justify-between">
-                                                                            <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">
-                                                                                Third Party (TP)
-                                                                            </span>
-                                                                            <span
-                                                                                className={`text-[11px] font-black tabular-nums ${sku.insurance_data.tp ? 'text-emerald-600' : 'text-slate-400'}`}
-                                                                            >
-                                                                                {sku.insurance_data.tp
-                                                                                    ? formatMoney(sku.insurance_data.tp)
-                                                                                    : '—'}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* PA Section */}
-                                                                    {sku.insurance_data.pa > 0 && (
-                                                                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                                                                            <div className="flex items-center justify-between">
-                                                                                <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">
-                                                                                    Personal Accident (PA)
+                                                                        {/* OD */}
+                                                                        <div className="space-y-1 pl-1">
+                                                                            <div className="flex items-center gap-1">
+                                                                                <Shield
+                                                                                    size={9}
+                                                                                    className="text-blue-500"
+                                                                                />
+                                                                                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">
+                                                                                    OD
                                                                                 </span>
-                                                                                <span className="text-[11px] font-black tabular-nums text-emerald-600">
-                                                                                    {formatMoney(sku.insurance_data.pa)}
+                                                                            </div>
+                                                                            {sku.insurance_data.od?.total > 0 ? (
+                                                                                <>
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <p className="text-[9px] font-black text-slate-700 uppercase italic tracking-tighter">
+                                                                                            Premium
+                                                                                        </p>
+                                                                                        <p className="font-mono font-black text-[9px] text-slate-800">
+                                                                                            ₹
+                                                                                            {Math.round(
+                                                                                                sku.insurance_data.od
+                                                                                                    .base
+                                                                                            ).toLocaleString()}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <p className="text-[9px] font-black text-slate-700 uppercase italic tracking-tighter">
+                                                                                            GST
+                                                                                        </p>
+                                                                                        <p className="font-mono font-black text-[9px] text-slate-800">
+                                                                                            ₹
+                                                                                            {Math.round(
+                                                                                                sku.insurance_data.od
+                                                                                                    .gst
+                                                                                            ).toLocaleString()}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="flex justify-between border-t border-dashed border-slate-200 pt-0.5">
+                                                                                        <p className="text-[7px] font-black text-blue-600 uppercase tracking-tighter">
+                                                                                            Net OD
+                                                                                        </p>
+                                                                                        <p className="font-mono font-black text-[9px] text-blue-600">
+                                                                                            ₹
+                                                                                            {Math.round(
+                                                                                                sku.insurance_data.od
+                                                                                                    .total
+                                                                                            ).toLocaleString()}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </>
+                                                                            ) : (
+                                                                                <p className="text-[9px] font-bold text-slate-400 italic">
+                                                                                    —
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* TP */}
+                                                                        <div className="space-y-1 pl-1">
+                                                                            <div className="flex items-center gap-1">
+                                                                                <Lock
+                                                                                    size={9}
+                                                                                    className="text-indigo-500"
+                                                                                />
+                                                                                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">
+                                                                                    TP
+                                                                                </span>
+                                                                            </div>
+                                                                            {sku.insurance_data.tp?.total > 0 ? (
+                                                                                <>
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <p className="text-[9px] font-black text-slate-700 uppercase italic tracking-tighter">
+                                                                                            Premium
+                                                                                        </p>
+                                                                                        <p className="font-mono font-black text-[9px] text-slate-800">
+                                                                                            ₹
+                                                                                            {Math.round(
+                                                                                                sku.insurance_data.tp
+                                                                                                    .base
+                                                                                            ).toLocaleString()}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <p className="text-[9px] font-black text-slate-700 uppercase italic tracking-tighter">
+                                                                                            GST
+                                                                                        </p>
+                                                                                        <p className="font-mono font-black text-[9px] text-slate-800">
+                                                                                            ₹
+                                                                                            {Math.round(
+                                                                                                sku.insurance_data.tp
+                                                                                                    .gst
+                                                                                            ).toLocaleString()}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="flex justify-between border-t border-dashed border-slate-200 pt-0.5">
+                                                                                        <p className="text-[7px] font-black text-indigo-600 uppercase tracking-tighter">
+                                                                                            Net TP
+                                                                                        </p>
+                                                                                        <p className="font-mono font-black text-[9px] text-indigo-600">
+                                                                                            ₹
+                                                                                            {Math.round(
+                                                                                                sku.insurance_data.tp
+                                                                                                    .total
+                                                                                            ).toLocaleString()}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </>
+                                                                            ) : (
+                                                                                <p className="text-[9px] font-bold text-slate-400 italic">
+                                                                                    —
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Mandatory Subtotal */}
+                                                                        <div className="bg-slate-50 rounded-lg px-2.5 py-1.5 space-y-0.5 border border-slate-100">
+                                                                            <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                                                                                <span>OD + TP</span>
+                                                                                <span>
+                                                                                    ₹
+                                                                                    {Math.round(
+                                                                                        (sku.insurance_data.od?.base ||
+                                                                                            0) +
+                                                                                            (sku.insurance_data.tp
+                                                                                                ?.base || 0)
+                                                                                    ).toLocaleString()}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex justify-between text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                                                                <span>
+                                                                                    GST (
+                                                                                    {sku.insurance_data.gst_rate || 18}
+                                                                                    %)
+                                                                                </span>
+                                                                                <span>
+                                                                                    ₹
+                                                                                    {Math.round(
+                                                                                        (sku.insurance_data.od?.gst ||
+                                                                                            0) +
+                                                                                            (sku.insurance_data.tp
+                                                                                                ?.gst || 0)
+                                                                                    ).toLocaleString()}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex justify-between text-[10px] font-black text-slate-900 uppercase tracking-tight border-t border-slate-200 pt-1 mt-0.5">
+                                                                                <span>Net Premium</span>
+                                                                                <span className="font-mono">
+                                                                                    ₹
+                                                                                    {Math.round(
+                                                                                        sku.insurance_data.base_total
+                                                                                    ).toLocaleString()}
                                                                                 </span>
                                                                             </div>
                                                                         </div>
-                                                                    )}
+                                                                    </div>
 
-                                                                    {/* Addons */}
+                                                                    {/* ═══ OPTIONAL: Add-ons ═══ */}
                                                                     {Array.isArray(sku.insurance_data.addons) &&
                                                                         sku.insurance_data.addons.length > 0 && (
-                                                                            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                                                                                <p className="text-[9px] font-bold text-slate-600 uppercase tracking-tight mb-1.5">
-                                                                                    Add-ons
-                                                                                </p>
-                                                                                <div className="space-y-1">
-                                                                                    {sku.insurance_data.addons.map(
-                                                                                        (addon: any) => (
-                                                                                            <div
-                                                                                                key={
-                                                                                                    addon.id ||
-                                                                                                    addon.label
-                                                                                                }
-                                                                                                className="flex justify-between items-center text-[9px]"
-                                                                                            >
-                                                                                                <span className="text-slate-500">
+                                                                            <div className="space-y-1.5">
+                                                                                <div className="flex items-center gap-1">
+                                                                                    <span className="text-[7px] font-black text-white bg-amber-500 px-1.5 py-px rounded uppercase tracking-widest">
+                                                                                        Optional
+                                                                                    </span>
+                                                                                    <Zap
+                                                                                        size={9}
+                                                                                        className="text-amber-500"
+                                                                                    />
+                                                                                    <div className="flex-1 h-px bg-slate-200" />
+                                                                                    <span className="text-[7px] font-black text-slate-400">
+                                                                                        {
+                                                                                            sku.insurance_data.addons
+                                                                                                .length
+                                                                                        }
+                                                                                    </span>
+                                                                                </div>
+                                                                                {sku.insurance_data.addons.map(
+                                                                                    (addon: any) => (
+                                                                                        <div
+                                                                                            key={
+                                                                                                addon.id || addon.label
+                                                                                            }
+                                                                                            className="flex items-center gap-1.5 px-2 py-1 rounded-lg border bg-amber-50/50 border-amber-200"
+                                                                                        >
+                                                                                            <div className="flex-1 min-w-0">
+                                                                                                <p className="text-[9px] font-black text-slate-700 uppercase italic tracking-tighter leading-tight truncate">
                                                                                                     {addon.label ||
                                                                                                         addon.id}
-                                                                                                </span>
-                                                                                                <span className="text-slate-700 font-mono tabular-nums">
-                                                                                                    {formatMoney(
-                                                                                                        addon.total ??
-                                                                                                            addon.price
-                                                                                                    )}
-                                                                                                </span>
+                                                                                                </p>
                                                                                             </div>
-                                                                                        )
-                                                                                    )}
+                                                                                            <div className="text-right shrink-0">
+                                                                                                <p className="font-mono font-black text-[9px] text-slate-800 leading-none">
+                                                                                                    ₹
+                                                                                                    {Math.round(
+                                                                                                        addon.total
+                                                                                                    ).toLocaleString()}
+                                                                                                </p>
+                                                                                                <p className="text-[6px] font-bold text-slate-400 font-mono">
+                                                                                                    ₹
+                                                                                                    {Math.round(
+                                                                                                        addon.amount
+                                                                                                    ).toLocaleString()}
+                                                                                                    +₹
+                                                                                                    {Math.round(
+                                                                                                        addon.gst
+                                                                                                    ).toLocaleString()}
+                                                                                                </p>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )
+                                                                                )}
+                                                                                <div className="flex justify-between px-2 text-[8px] font-black text-amber-600 uppercase tracking-widest">
+                                                                                    <span>Add-ons Total</span>
+                                                                                    <span className="font-mono">
+                                                                                        ₹
+                                                                                        {Math.round(
+                                                                                            sku.insurance_data.addons.reduce(
+                                                                                                (s: number, a: any) =>
+                                                                                                    s + (a.total || 0),
+                                                                                                0
+                                                                                            )
+                                                                                        ).toLocaleString()}
+                                                                                    </span>
                                                                                 </div>
                                                                             </div>
                                                                         )}
+                                                                </div>
 
-                                                                    {/* Grand Total */}
-                                                                    <div className="pt-2.5 border-t border-slate-200">
-                                                                        <div className="flex justify-between items-center">
-                                                                            <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight">
+                                                                {/* ═══ PAYABLE — sticky footer ═══ */}
+                                                                <div className="bg-white border-t border-blue-100 px-3 py-2">
+                                                                    <div className="flex items-center gap-3 text-[7px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                                                                        <span>
+                                                                            Mandatory ₹
+                                                                            {Math.round(
+                                                                                sku.insurance_data.base_total
+                                                                            ).toLocaleString()}
+                                                                        </span>
+                                                                        {Array.isArray(sku.insurance_data.addons) &&
+                                                                            sku.insurance_data.addons.length > 0 && (
+                                                                                <>
+                                                                                    <span>+</span>
+                                                                                    <span>
+                                                                                        Add-ons(
+                                                                                        {
+                                                                                            sku.insurance_data.addons
+                                                                                                .length
+                                                                                        }
+                                                                                        ) ₹
+                                                                                        {Math.round(
+                                                                                            sku.insurance_data.addons.reduce(
+                                                                                                (s: number, a: any) =>
+                                                                                                    s + (a.total || 0),
+                                                                                                0
+                                                                                            )
+                                                                                        ).toLocaleString()}
+                                                                                    </span>
+                                                                                </>
+                                                                            )}
+                                                                    </div>
+                                                                    <div className="flex justify-between items-end">
+                                                                        <div>
+                                                                            <p className="text-[6px] font-black text-blue-600 uppercase tracking-widest">
                                                                                 Gross Premium
-                                                                            </span>
-                                                                            <span className="text-[12px] font-black text-emerald-600 font-mono tabular-nums">
-                                                                                {formatMoney(
-                                                                                    sku.insurance_data.base_total
-                                                                                )}
-                                                                            </span>
+                                                                            </p>
+                                                                            <p className="text-sm font-black tracking-tighter italic leading-none text-slate-900">
+                                                                                ₹
+                                                                                {Math.round(
+                                                                                    sku.insurance_data.base_total +
+                                                                                        (Array.isArray(
+                                                                                            sku.insurance_data.addons
+                                                                                        )
+                                                                                            ? sku.insurance_data.addons.reduce(
+                                                                                                  (s: number, a: any) =>
+                                                                                                      s +
+                                                                                                      (a.total || 0),
+                                                                                                  0
+                                                                                              )
+                                                                                            : 0)
+                                                                                ).toLocaleString()}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="px-2 py-0.5 bg-emerald-50 rounded-full border border-emerald-200 text-[6px] font-black uppercase tracking-widest text-emerald-600">
+                                                                            Published
                                                                         </div>
                                                                     </div>
                                                                 </div>
+
                                                                 {/* Triangle pointer */}
                                                                 <div className="absolute -top-1 right-4 w-2 h-2 bg-white border-l border-t border-slate-200 rotate-45" />
                                                             </div>
