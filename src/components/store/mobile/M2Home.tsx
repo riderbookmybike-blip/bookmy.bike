@@ -21,6 +21,7 @@ import {
     TrendingUp,
     Users,
     Award,
+    ChevronDown,
 } from 'lucide-react';
 
 import { CATEGORIES, MARKET_METRICS } from '@/config/market';
@@ -119,7 +120,12 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
     const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
     const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
     const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
-    const trendingItems = React.useMemo(() => selectTrendingModels((items && items.length > 0 ? items : initialItems) || [], 3), [items, initialItems]);
+    const { device } = useBreakpoint();
+    const isPhone = device === 'phone';
+    const trendingItems = React.useMemo(
+        () => selectTrendingModels((items && items.length > 0 ? items : initialItems) || [], isPhone ? 3 : 6),
+        [items, initialItems, isPhone]
+    );
     const withLead = React.useCallback(
         (href: string) => {
             if (!leadId) return href;
@@ -137,8 +143,6 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
 
     const [activeTestimonial, setActiveTestimonial] = useState(0);
     const [failedImageKeys, setFailedImageKeys] = useState<Set<string>>(new Set());
-    const { device } = useBreakpoint();
-    const isPhone = device === 'phone';
 
     // Feature hooks
     const { user } = useAuth();
@@ -187,7 +191,7 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
             ...DEFAULT_SERVICE_CITIES.filter(city => city.toLowerCase() !== normalized),
         ].slice(0, 8);
     }, [primaryServiceLocation]);
-    const riderName = user?.user_metadata?.first_name || 'Rider';
+    const riderName = user?.user_metadata?.full_name?.split(' ')[0] || user?.user_metadata?.first_name || 'Rider';
     const isReturningUser = !!user;
 
     // Calculate real-time EMI
@@ -216,7 +220,7 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                         fill
                         className="object-cover object-[80%_center] md:object-center"
                         priority
-                        unoptimized
+                        sizes="100vw"
                     />
                     {/* Immersive Dark Overlay for Text Readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -325,27 +329,38 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                         </Link>
                     </motion.div>
 
-                    {/* Stat Ticker */}
+                    {/* Stat Ticker — Glassmorphic */}
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 1.2 }}
-                        className="flex items-center justify-center flex-wrap gap-x-2.5 md:gap-x-4 gap-y-1 mt-6 md:mt-8"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.2, duration: 0.6 }}
+                        className="inline-flex items-center justify-center gap-x-4 md:gap-x-6 px-5 py-2.5 md:px-8 md:py-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md mt-6 md:mt-8"
                     >
                         {[
-                            `${skuCount || '130'}+ MODELS`,
-                            `${MARKET_METRICS.avgSavings?.toUpperCase()} AVG SAVINGS`,
-                            '4-HOUR DELIVERY',
+                            `${skuCount || '130'}+ Models`,
+                            `${MARKET_METRICS.avgSavings} Avg Savings`,
+                            '4-Hour Delivery',
                         ].map((stat: string, i: number) => (
-                            <div key={stat} className="flex items-center gap-2.5">
-                                {i > 0 && <span className="text-white/20 text-[10px] leading-none">&bull;</span>}
-                                <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.15em] text-white drop-shadow-sm">
+                            <div key={stat} className="flex items-center gap-3 md:gap-4">
+                                {i > 0 && <span className="text-white/20">|</span>}
+                                <span className="text-[10px] md:text-xs font-bold uppercase tracking-[0.12em] text-white/80">
                                     {stat}
                                 </span>
                             </div>
                         ))}
                     </motion.div>
                 </div>
+
+                {/* Scroll Indicator */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, y: [0, 8, 0] }}
+                    transition={{ opacity: { delay: 2 }, y: { repeat: Infinity, duration: 2, ease: 'easeInOut' } }}
+                    className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1"
+                >
+                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/40">Scroll</span>
+                    <ChevronDown size={16} className="text-white/40" />
+                </motion.div>
             </section>
 
             {/* ══════════════════════════════════════════════
@@ -374,7 +389,7 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                         </span>
                     </h2>
 
-                    <div className="flex flex-col md:flex-row gap-3 md:gap-4">
+                    <div className="flex flex-col md:grid md:grid-cols-3 gap-3 md:gap-5">
                         {CATEGORIES.map((cat, i) => {
                             const count = items?.filter(item => item.bodyType === cat.bodyType).length ?? 0;
                             return (
@@ -388,18 +403,18 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                                 >
                                     <Link
                                         href={withLead(cat.link)}
-                                        className="group flex items-center gap-4 p-4 md:p-5 rounded-2xl border border-slate-100 bg-white shadow-sm active:scale-[0.98] hover:bg-slate-50 hover:border-slate-200 transition-all font-bold"
+                                        className="group flex items-center md:flex-col md:items-start gap-4 p-4 md:p-6 rounded-2xl border border-slate-100 bg-white shadow-sm active:scale-[0.98] hover:bg-slate-50 hover:border-slate-200 hover:shadow-md transition-all font-bold"
                                     >
                                         {/* Vehicle Image */}
                                         <div
-                                            className={`relative w-24 h-16 rounded-xl overflow-hidden flex-none bg-gradient-to-br ${cat.color} to-transparent`}
+                                            className={`relative w-24 h-16 md:w-full md:h-28 rounded-xl overflow-hidden flex-none bg-gradient-to-br ${cat.color} to-transparent`}
                                         >
                                             <Image
                                                 src={cat.img}
                                                 alt={cat.title}
                                                 width={96}
                                                 height={64}
-                                                className="object-contain drop-shadow-lg"
+                                                className="object-contain drop-shadow-lg md:w-full md:h-full"
                                             />
                                         </div>
 
@@ -462,7 +477,7 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 md:gap-5 pb-4 max-w-[1440px] mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 md:gap-6 pb-4 max-w-[1440px] mx-auto">
                         {trendingItems.map((item: any) =>
                             isPhone ? (
                                 <CompactProductCard
@@ -493,6 +508,11 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                 </section>
             )}
 
+            {/* ── Gold accent divider ── */}
+            <div className="page-container">
+                <div className="max-w-[1440px] mx-auto h-px bg-gradient-to-r from-transparent via-[#FFD700]/30 to-transparent" />
+            </div>
+
             {/* ══════════════════════════════════════════════
                 SECTION 4: TRUST SIGNALS
             ══════════════════════════════════════════════ */}
@@ -504,11 +524,11 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                         { icon: Zap, label: 'Instant Finance', desc: 'Approvals in 60 seconds' },
                         { icon: MapPin, label: 'Regional Focus', desc: 'Optimized for Maharashtra' },
                     ].map((item, i) => (
-                        <div key={i} className="flex flex-col gap-3 group">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-slate-100 bg-slate-50 group-hover:scale-110 group-hover:border-slate-200 transition-all">
+                        <div key={i} className="flex flex-col gap-3 group cursor-default">
+                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center border border-slate-100 bg-slate-50 group-hover:scale-110 group-hover:border-slate-200 group-hover:shadow-[0_0_20px_rgba(255,215,0,0.15)] transition-all duration-300">
                                 <item.icon
                                     size={20}
-                                    className="text-slate-400 group-hover:text-slate-900 transition-colors"
+                                    className="text-slate-400 group-hover:text-slate-900 transition-colors duration-300"
                                 />
                             </div>
                             <div>
@@ -522,10 +542,15 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                 </div>
             </section>
 
+            {/* ── Gold accent divider ── */}
+            <div className="page-container">
+                <div className="max-w-[1440px] mx-auto h-px bg-gradient-to-r from-transparent via-[#FFD700]/30 to-transparent" />
+            </div>
+
             {/* ══════════════════════════════════════════════
                 SECTION 5: HOW IT WORKS
             ══════════════════════════════════════════════ */}
-            <section className="py-20 md:py-32 border-t border-slate-100 bg-white overflow-hidden page-container">
+            <section className="py-20 md:py-32 bg-gradient-to-b from-slate-50 to-white overflow-hidden page-container">
                 <div className="max-w-[1440px] mx-auto flex flex-col items-center">
                     <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 mb-2">The Process</p>
                     <h2 className="text-2xl md:text-4xl font-black tracking-tight text-center mb-12 md:mb-20 text-slate-900">
@@ -540,37 +565,40 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                         </span>
                     </h2>
 
-                    <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+                    <div className="relative flex flex-col md:flex-row gap-4 md:gap-0">
+                        {/* Desktop connecting line */}
+                        <div className="hidden md:block absolute top-[40px] left-[16.6%] right-[16.6%] h-[2px] bg-gradient-to-r from-violet-300/40 via-amber-300/40 to-emerald-300/40" />
+
                         {[
                             {
                                 step: '01',
                                 title: 'Select',
                                 desc: 'Browse 130+ models with live regional on-road prices. Filter by type, budget, or brand.',
                                 icon: Sparkles,
-                                accent: 'from-violet-500/30 to-violet-500/5',
+                                glowColor: 'rgba(139,92,246,0.2)',
                             },
                             {
                                 step: '02',
                                 title: 'Quote',
                                 desc: 'Get an instant on-road quote with zero hidden charges. Compare EMIs across banks.',
                                 icon: Shield,
-                                accent: 'from-amber-400/30 to-amber-400/5',
+                                glowColor: 'rgba(255,215,0,0.2)',
                             },
                             {
                                 step: '03',
                                 title: 'Ride',
                                 desc: 'Digital documentation. 4-hour doorstep delivery. Start riding the same day.',
                                 icon: Bike,
-                                accent: 'from-emerald-500/30 to-emerald-500/5',
+                                glowColor: 'rgba(16,185,129,0.2)',
                             },
                         ].map((step, i) => (
                             <motion.div
                                 key={step.step}
-                                initial={{ opacity: 0, x: -20 }}
-                                whileInView={{ opacity: 1, x: 0 }}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, margin: '-40px' }}
-                                transition={{ delay: i * 0.12 }}
-                                className="relative flex flex-col items-center text-center gap-4 p-5 md:p-6 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md active:scale-[0.98] hover:border-slate-200 transition-all group"
+                                transition={{ delay: i * 0.15 }}
+                                className="relative flex-1 flex flex-col items-center text-center gap-4 p-5 md:p-8 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-lg active:scale-[0.98] hover:border-slate-200 transition-all duration-300 group md:mx-3"
                             >
                                 {/* Number & Icon */}
                                 <div className="flex-none flex flex-col items-center gap-2">
@@ -578,6 +606,11 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                                         className="relative w-16 md:w-20 h-16 md:h-20 flex items-center justify-center rounded-3xl border border-slate-100 bg-slate-50 mb-6 group-hover:scale-110 group-hover:border-slate-200 transition-all duration-500 overflow-hidden"
                                         style={{ boxShadow: `0 10px 40px -10px rgba(0,0,0,0.05)` }}
                                     >
+                                        {/* Hover glow */}
+                                        <div
+                                            className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                                            style={{ boxShadow: `0 0 30px ${step.glowColor}` }}
+                                        />
                                         <span
                                             className="text-2xl md:text-3xl font-black italic tracking-tighter opacity-10 absolute -right-2 -bottom-2"
                                             style={{ color: GOLD_INT }}
@@ -626,6 +659,9 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                     <div className="grid grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-4">
                         {brands.slice(0, 12).map((brand: any, i: number) => {
                             const color = BRAND_COLORS[brand.name.toUpperCase()] || '#ffffff';
+                            const modelCount =
+                                items?.filter((item: any) => item.brandName?.toUpperCase() === brand.name.toUpperCase())
+                                    .length ?? 0;
                             return (
                                 <motion.div
                                     key={brand.id}
@@ -636,10 +672,10 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                                 >
                                     <Link
                                         href={withLead(`/store/catalog?brand=${brand.name.toUpperCase()}`)}
-                                        className="flex flex-col items-center gap-2 py-4 rounded-2xl border border-slate-100 bg-white shadow-sm active:scale-[0.93] hover:border-slate-200 transition-all"
+                                        className="group flex flex-col items-center gap-2 py-4 rounded-2xl border border-slate-100 bg-white shadow-sm active:scale-[0.93] hover:border-slate-200 hover:shadow-md transition-all duration-300"
                                     >
                                         <div
-                                            className="w-11 h-11 rounded-full flex items-center justify-center border border-slate-100"
+                                            className="w-11 h-11 rounded-full flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform duration-300"
                                             style={{ backgroundColor: color + '10' }}
                                         >
                                             {brand.brand_logos?.icon || brand.logo_svg ? (
@@ -660,6 +696,11 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                                         <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 text-center leading-tight">
                                             {brand.name}
                                         </span>
+                                        {modelCount > 0 && (
+                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                                                {modelCount} {modelCount === 1 ? 'model' : 'models'}
+                                            </span>
+                                        )}
                                     </Link>
                                 </motion.div>
                             );
@@ -668,13 +709,20 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                 </div>
             </section>
 
+            {/* ── Gold accent divider ── */}
+            <div className="page-container">
+                <div className="max-w-[1440px] mx-auto h-px bg-gradient-to-r from-transparent via-[#FFD700]/30 to-transparent" />
+            </div>
+
             {/* ══════════════════════════════════════════════
                 SECTION 7: SOCIAL PROOF — TESTIMONIALS
             ══════════════════════════════════════════════ */}
-            <section className="py-20 md:py-32 bg-slate-50 border-y border-slate-100">
+            <section className="py-20 md:py-32 bg-gradient-to-b from-white via-slate-50 to-white">
                 <div className="page-container">
                     <div className="max-w-[1440px] mx-auto">
-                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 mb-1">Real Stories</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 mb-1">
+                            Real Stories
+                        </p>
                         <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-6 md:mb-8 text-slate-900">
                             Riders
                             <span
@@ -741,8 +789,9 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                                         className="transition-all"
                                     >
                                         <div
-                                            className={`rounded-full transition-all duration-300 ${i === activeTestimonial ? 'w-6 h-1.5' : 'w-1.5 h-1.5 bg-slate-200'
-                                                }`}
+                                            className={`rounded-full transition-all duration-300 ${
+                                                i === activeTestimonial ? 'w-6 h-1.5' : 'w-1.5 h-1.5 bg-slate-200'
+                                            }`}
                                             style={i === activeTestimonial ? { background: GOLD } : undefined}
                                         />
                                     </button>
@@ -755,7 +804,7 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                             {TESTIMONIALS.map((t, i) => (
                                 <div
                                     key={i}
-                                    className="flex flex-col gap-4 p-6 rounded-3xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow"
+                                    className="flex flex-col gap-4 p-6 rounded-3xl border border-slate-100 bg-white shadow-sm hover:shadow-lg hover:border-slate-200 hover:-translate-y-1 transition-all duration-300"
                                 >
                                     <div className="flex gap-1">
                                         {Array.from({ length: t.rating }).map((_, j) => (
@@ -792,7 +841,9 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                                     key={i}
                                     className="flex flex-col items-center py-4 rounded-2xl border border-slate-100 bg-white shadow-sm"
                                 >
-                                    <span className="text-base md:text-lg font-black text-slate-900">{metric.value}</span>
+                                    <span className="text-base md:text-lg font-black text-slate-900">
+                                        {metric.value}
+                                    </span>
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">
                                         {metric.label}
                                     </span>
@@ -806,6 +857,11 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
             {/* ══════════════════════════════════════════════
                 SECTION 8: SERVICE AREAS
             ══════════════════════════════════════════════ */}
+            {/* ── Gold accent divider ── */}
+            <div className="page-container">
+                <div className="max-w-[1440px] mx-auto h-px bg-gradient-to-r from-transparent via-[#FFD700]/30 to-transparent" />
+            </div>
+
             <section className="py-20 md:py-28 bg-white page-container">
                 <div className="max-w-[1440px] mx-auto">
                     <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 mb-1">
@@ -823,18 +879,34 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                         </span>
                     </h2>
 
-                    <div className="flex flex-wrap gap-2">
-                        {serviceCities.map(city => (
-                            <div
+                    <div className="flex flex-wrap md:grid md:grid-cols-4 gap-2 md:gap-3">
+                        {serviceCities.map((city, ci) => (
+                            <motion.div
                                 key={city}
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                initial={{ opacity: 0, y: 10 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: ci * 0.05 }}
+                                className="flex items-center gap-3 px-4 py-3 md:py-4 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all duration-300 group"
                             >
-                                <MapPin size={10} className="text-slate-400" />
-                                <span className="text-[11px] font-bold text-slate-600">{city}</span>
-                            </div>
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-slate-100 group-hover:border-slate-200 transition-colors shrink-0">
+                                    <MapPin
+                                        size={14}
+                                        className="text-slate-400 group-hover:text-slate-600 transition-colors"
+                                    />
+                                </div>
+                                <div className="min-w-0">
+                                    <span className="text-xs font-black text-slate-700 uppercase tracking-wide block">
+                                        {city}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                        Same-day delivery
+                                    </span>
+                                </div>
+                            </motion.div>
                         ))}
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-4 font-bold uppercase tracking-wider">
+                    <p className="text-[11px] text-slate-400 mt-6 font-bold uppercase tracking-wider">
                         Expanding to more cities soon. Enter your pincode to check availability.
                     </p>
                 </div>
@@ -843,10 +915,10 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
             {/* ══════════════════════════════════════════════
                 SECTION 9: FINAL CTA — BOOKING STRIP
             ══════════════════════════════════════════════ */}
-            <section className="relative py-14 md:py-20 lg:py-24 page-container overflow-hidden">
+            <section className="relative py-14 md:py-20 lg:py-24 page-container overflow-hidden bg-gradient-to-b from-amber-50/60 via-white to-white">
                 {/* Background glow */}
                 <div
-                    className="absolute inset-0 opacity-20"
+                    className="absolute inset-0 opacity-10"
                     style={{
                         background: `radial-gradient(circle at 50% 80%, ${GOLD}, transparent 60%)`,
                     }}
@@ -855,9 +927,10 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                 <div className="relative z-10 flex flex-col items-center text-center gap-5 max-w-xl mx-auto">
                     <motion.h1
                         initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
                         transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                        className="text-[42px] md:text-7xl lg:text-9xl font-black tracking-tighter leading-[0.9] text-white"
+                        className="text-[42px] md:text-7xl lg:text-9xl font-black tracking-tighter leading-[0.9] text-slate-900"
                     >
                         Find your
                         <br />
@@ -893,7 +966,6 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
                     </div>
                 </div>
             </section>
-
         </div>
     );
 }

@@ -124,7 +124,7 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
 
     const pathname = usePathname();
     const isLandingPage = pathname === '/store' || pathname === '/' || pathname?.match(/^\/d[2-8]$/);
-    const hideFooter = pathname === '/' || Boolean(pathname?.match(/^\/d[2-8]$/));
+    const hideFooter = isPhone && (pathname === '/' || Boolean(pathname?.match(/^\/d[2-8]$/)));
 
     return (
         <FavoritesProvider>

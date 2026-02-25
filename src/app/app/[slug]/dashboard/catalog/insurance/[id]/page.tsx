@@ -16,6 +16,7 @@ import InsurancePreview from '@/components/catalog/insurance/InsurancePreview';
 import { Save, ChevronLeft, Calculator, Sparkles, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import DataSourceIndicator from '@/components/dev/DataSourceIndicator';
+import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
 
 const COLUMNS = [
     { key: 'insurerName', header: 'Insurer / Rule', width: '70%' },
@@ -85,6 +86,16 @@ const buildAddonColumnsSql = (addonSlugs: string[]): string => {
         ].join('\n    ');
     });
     return `ALTER TABLE public.cat_price_state_mh\n${lines.map(x => `    ${x}`).join(',\n')};`;
+};
+
+const REPRICE_BATCH_SIZE = 40;
+
+const chunkSkuIds = (skuIds: string[], batchSize: number): string[][] => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < skuIds.length; i += batchSize) {
+        chunks.push(skuIds.slice(i, i + batchSize));
+    }
+    return chunks;
 };
 
 export default function InsuranceDetailPage() {
@@ -216,7 +227,77 @@ export default function InsuranceDetailPage() {
         const { error } = await supabase.from('cat_ins_rules').upsert(dbPayload as any);
 
         if (!error) {
-            alert('Insurance Rule Saved Successfully to Database!');
+            setLoading(true);
+            let syncSummary = 'No published rows found for auto-reprice.';
+
+            try {
+                const ruleStateCode = String(rule.stateCode || 'ALL')
+                    .trim()
+                    .toUpperCase();
+                const statesToSync: string[] =
+                    ruleStateCode === 'ALL'
+                        ? Array.from(
+                              new Set(
+                                  (
+                                      (
+                                          (await supabase
+                                              .from('cat_price_state_mh')
+                                              .select('state_code')
+                                              .eq('publish_stage', 'PUBLISHED')) as any
+                                      )?.data || []
+                                  )
+                                      .map((row: any) => String(row?.state_code || '').toUpperCase())
+                                      .filter((value: string) => value.length > 0)
+                              )
+                          )
+                        : [ruleStateCode];
+
+                let totalCandidates = 0;
+                let totalPublished = 0;
+                const syncErrors: string[] = [];
+
+                for (const stateCode of statesToSync) {
+                    const { data: skuRows, error: skuError } = await supabase
+                        .from('cat_price_state_mh')
+                        .select('sku_id')
+                        .eq('state_code', stateCode)
+                        .eq('publish_stage', 'PUBLISHED');
+
+                    if (skuError) {
+                        syncErrors.push(`${stateCode}: ${skuError.message}`);
+                        continue;
+                    }
+
+                    const skuIds = Array.from(
+                        new Set((skuRows || []).map((row: any) => String(row?.sku_id || '')).filter(Boolean))
+                    );
+                    if (skuIds.length === 0) continue;
+
+                    totalCandidates += skuIds.length;
+
+                    for (const batch of chunkSkuIds(skuIds, REPRICE_BATCH_SIZE)) {
+                        const result = await calculatePricingBySkuIds(batch, stateCode);
+                        totalPublished += result.totalPublished;
+                        if (result.errors.length > 0) {
+                            syncErrors.push(`${stateCode}: ${result.errors.join('; ')}`);
+                        }
+                    }
+                }
+
+                if (totalCandidates > 0) {
+                    syncSummary = `Repriced ${totalPublished}/${totalCandidates} published SKUs across ${statesToSync.length} state(s).`;
+                }
+
+                if (syncErrors.length > 0) {
+                    syncSummary += `\nWarnings: ${syncErrors.slice(0, 3).join(' | ')}`;
+                }
+            } catch (syncError) {
+                syncSummary = `Rule saved, but auto-reprice failed: ${syncError instanceof Error ? syncError.message : String(syncError)}`;
+            } finally {
+                setLoading(false);
+            }
+
+            alert(`Insurance Rule Saved Successfully to Database!\n\n${syncSummary}`);
             setIsEditing(false);
             setIsDirty(false);
             router.push(tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/insurance` : '/dashboard/catalog/insurance');

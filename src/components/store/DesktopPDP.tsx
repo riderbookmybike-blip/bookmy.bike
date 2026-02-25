@@ -1076,6 +1076,10 @@ export function DesktopPDP({
                     handleBookingRequest={handleBookingRequest}
                     serviceability={serviceability}
                     isGated={isGated}
+                    accessoriesCount={selectedAccessories.length}
+                    accessoriesTotal={accessoriesPrice}
+                    insuranceTotal={baseInsurance + insuranceAddonsPrice}
+                    insuranceAddonsCount={selectedInsuranceAddons.length}
                 />
             </div>
         </div>

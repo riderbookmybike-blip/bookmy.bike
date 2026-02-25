@@ -1568,3 +1568,46 @@ export async function bookingShortageCheck(bookingId: string) {
         return { status: 'ERROR', message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
+
+// =============================================================================
+// Cancel Request — transitions status to CANCELLED
+// =============================================================================
+
+export async function cancelRequest(requestId: string): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        const { data: request, error: fetchErr } = await adminClient
+            .from('inv_requests')
+            .select('status')
+            .eq('id', requestId)
+            .single();
+
+        if (fetchErr || !request) {
+            return { success: false, message: 'Requisition not found' };
+        }
+
+        if (request.status === 'RECEIVED') {
+            return { success: false, message: 'Cannot cancel a fully received requisition' };
+        }
+
+        if (request.status === 'CANCELLED') {
+            return { success: true, message: 'Requisition is already cancelled' };
+        }
+
+        const { error: updateErr } = await adminClient
+            .from('inv_requests')
+            .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+            .eq('id', requestId);
+
+        if (updateErr) {
+            return { success: false, message: updateErr.message || 'Failed to cancel requisition' };
+        }
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, message: 'Requisition cancelled successfully' };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
+    }
+}

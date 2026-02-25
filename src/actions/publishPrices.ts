@@ -275,7 +275,7 @@ interface InsuranceJSON {
     net_premium: number; // OD base + TP base (before GST)
     gst: number; // Total GST on OD + TP
     base_total: number; // net_premium + gst
-    pa: number; // Personal Accident cover total
+    pa: number; // Personal Accident cover base premium (pre-GST)
     addons: InsuranceAddonJSON[];
 }
 
@@ -415,9 +415,9 @@ async function calculateInsurance(
                 result.odTotal +
                 result.tpTotal +
                 Math.round((result.odTotal + result.tpTotal) * (rule.gstPercentage / 100)),
-            // pa = Personal Accident cover total (from addons)
+            // pa = Personal Accident cover base premium (from addons)
             pa:
-                addons.find(a => a.id.includes('pa') || a.label.toLowerCase().includes('personal accident'))?.total ||
+                addons.find(a => a.id.includes('pa') || a.label.toLowerCase().includes('personal accident'))?.price ||
                 0,
             addons,
         },
@@ -528,9 +528,20 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
             const exShowroomTotal = round2(exShowroom);
             const exShowroomBasic = round2(exShowroomTotal / (1 + gstRatePercent / 100));
             const exShowroomGstAmount = round2(exShowroomTotal - exShowroomBasic);
-            const paBaseAmount = Number(insuranceResult.json.pa || 0);
-            const paGstAmount = round2((paBaseAmount * Number(insuranceResult.json.gst_rate || 0)) / 100);
-            const paTotalAmount = round2(paBaseAmount + paGstAmount);
+            const paAddon = (insuranceResult.json.addons || []).find(
+                addon =>
+                    String(addon?.id || '')
+                        .toLowerCase()
+                        .includes('pa') ||
+                    String(addon?.label || '')
+                        .toLowerCase()
+                        .includes('personal accident')
+            );
+            const paBaseAmount = round2(Number(paAddon?.price ?? insuranceResult.json.pa ?? 0));
+            const paGstAmount = round2(
+                Number(paAddon?.gst ?? (paBaseAmount * Number(insuranceResult.json.gst_rate || 0)) / 100)
+            );
+            const paTotalAmount = round2(Number(paAddon?.total ?? paBaseAmount + paGstAmount));
 
             const stateCess = Number(rtoResult.json.STATE.cessAmount || 0);
             const bhCess = Number(rtoResult.json.BH.cessAmount || 0);
@@ -622,6 +633,7 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                     is_popular: priceRow?.is_popular ?? false,
                     published_at: new Date().toISOString(),
                     published_by: user.id,
+                    updated_at: new Date().toISOString(),
                 },
                 { onConflict: 'sku_id,state_code' }
             );

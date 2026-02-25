@@ -31,11 +31,9 @@ export const M2Footer = () => {
             ],
         },
         {
-            title: 'Top Brands',
-            links: [
-                ...brands.slice(0, 6).map(b => ({ label: b.name, href: `/store/${b.slug || slugify(b.name)}` })),
-                { label: 'View All Brands', href: '/store/catalog', highlight: true },
-            ],
+            title: 'Brands',
+            links: [...brands.map(b => ({ label: b.name, href: `/store/${b.slug || slugify(b.name)}` }))],
+            twoCol: true,
         },
         {
             title: 'Ecosystem',
@@ -115,7 +113,9 @@ export const M2Footer = () => {
 
                                     {/* Content - Static on Desktop, Animated on Mobile */}
                                     <div className="hidden lg:block">
-                                        <ul className="flex flex-col gap-3">
+                                        <ul
+                                            className={`flex flex-col gap-3 ${(section as any).twoCol ? 'grid grid-cols-2 gap-x-6 gap-y-2.5' : ''}`}
+                                        >
                                             {section.links.map((link, i) => (
                                                 <li key={i}>
                                                     <Link
@@ -142,7 +142,9 @@ export const M2Footer = () => {
                                                     exit={{ height: 0, opacity: 0 }}
                                                     transition={{ duration: 0.3, ease: 'easeInOut' }}
                                                 >
-                                                    <ul className="flex flex-col gap-3 px-4 pb-5 pt-1">
+                                                    <ul
+                                                        className={`flex flex-col gap-3 px-4 pb-5 pt-1 ${(section as any).twoCol ? 'grid grid-cols-2 gap-x-4 gap-y-2.5' : ''}`}
+                                                    >
                                                         {section.links.map((link, i) => (
                                                             <li key={i}>
                                                                 <Link
