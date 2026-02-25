@@ -1698,13 +1698,7 @@ export default function PricingLedgerTable({
                                         });
                                         return `${day} ${mon}, ${time}`;
                                     })();
-                                    const updatedByName = (() => {
-                                        const full = sku.updatedByName || '';
-                                        if (!full) return '—';
-                                        const parts = full.trim().split(/\s+/);
-                                        if (parts.length <= 1) return full;
-                                        return `${parts[0]} ${parts[parts.length - 1][0]}.`;
-                                    })();
+                                    const updatedByName = sku.updatedByName || '—';
 
                                     return (
                                         <tr
