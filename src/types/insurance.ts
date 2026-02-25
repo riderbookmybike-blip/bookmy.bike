@@ -22,6 +22,23 @@ export interface InsuranceRuleTenureConfig {
     addons: TenureConfig;
 }
 
+export type DiscountPayoutScope = 'ALL' | 'BRAND' | 'VEHICLE_TYPE' | 'MODEL';
+export type DiscountPayoutVehicleType = 'SCOOTER' | 'MOTORCYCLE' | 'EV';
+export type DiscountPayoutBasis = 'NET_PREMIUM' | 'GROSS_PREMIUM' | 'OD_NET';
+
+export interface DiscountPayoutEntry {
+    id: string;
+    scope: DiscountPayoutScope;
+    brandId?: string;
+    brandName?: string;
+    vehicleType?: DiscountPayoutVehicleType;
+    modelId?: string;
+    modelName?: string;
+    odDiscount: number;
+    payoutPercent: number;
+    payoutBasis: DiscountPayoutBasis;
+}
+
 export interface InsuranceRule {
     id: string;
     displayId?: string; // Standard 9-char random ID
@@ -45,6 +62,7 @@ export interface InsuranceRule {
     // NCB & Discounts (applied to OD)
     ncbPercentage?: number; // No Claim Bonus — 0, 20, 25, 35, 45, 50
     discountPercentage?: number; // Voluntary/other discount on OD
+    discountPayoutConfig?: DiscountPayoutEntry[];
 
     // Tenure Configuration
     tenureConfig?: InsuranceRuleTenureConfig;

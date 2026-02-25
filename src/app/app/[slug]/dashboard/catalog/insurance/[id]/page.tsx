@@ -8,15 +8,14 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter, useParams } from 'next/navigation';
 import { usePermission } from '@/hooks/usePermission';
 import type { Json } from '@/types/supabase';
-import { InsuranceRule } from '@/types/insurance';
-import { FormulaComponent } from '@/types/registration';
+import { DiscountPayoutEntry, InsuranceRule } from '@/types/insurance';
 import InsuranceOverview from '@/components/catalog/insurance/InsuranceOverview';
 import InsuranceFormulaBuilder from '@/components/catalog/insurance/InsuranceFormulaBuilder';
 import InsurancePreview from '@/components/catalog/insurance/InsurancePreview';
-import { Save, ChevronLeft, Calculator, Sparkles, Loader2 } from 'lucide-react';
+import InsuranceDiscountPayout from '@/components/catalog/insurance/InsuranceDiscountPayout';
+import { Save, ChevronLeft, Calculator, Sparkles, Loader2, Percent } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import DataSourceIndicator from '@/components/dev/DataSourceIndicator';
-import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
 
 const COLUMNS = [
     { key: 'insurerName', header: 'Insurer / Rule', width: '70%' },
@@ -29,6 +28,44 @@ const DEFAULT_TENURE_CONFIG = {
     od: { min: 1, max: 5, default: 1, allowed: [1] },
     tp: { min: 1, max: 5, default: 5, allowed: [5] },
     addons: { min: 1, max: 5, default: 1, allowed: [1], linkedTo: 'OD' as const },
+};
+
+const normalizeDiscountPayoutConfig = (input: unknown): DiscountPayoutEntry[] => {
+    if (!Array.isArray(input)) return [];
+
+    const allowedScopes = new Set(['ALL', 'BRAND', 'VEHICLE_TYPE', 'MODEL']);
+    const allowedBasis = new Set(['NET_PREMIUM', 'GROSS_PREMIUM', 'OD_NET']);
+    const allowedVehicleTypes = new Set(['SCOOTER', 'MOTORCYCLE', 'EV']);
+
+    return input
+        .map((raw: any) => {
+            const scope = String(raw?.scope || '').toUpperCase();
+            const payoutBasis = String(raw?.payoutBasis || '').toUpperCase();
+            const vehicleTypeRaw = raw?.vehicleType ? String(raw.vehicleType).toUpperCase() : undefined;
+            const odDiscount = Number(raw?.odDiscount);
+            const payoutPercent = Number(raw?.payoutPercent);
+
+            if (!allowedScopes.has(scope)) return null;
+            if (!allowedBasis.has(payoutBasis)) return null;
+            if (!Number.isFinite(odDiscount) || !Number.isFinite(payoutPercent)) return null;
+
+            return {
+                id: raw?.id ? String(raw.id) : crypto.randomUUID(),
+                scope: scope as DiscountPayoutEntry['scope'],
+                brandId: raw?.brandId ? String(raw.brandId) : undefined,
+                brandName: raw?.brandName ? String(raw.brandName) : undefined,
+                vehicleType:
+                    vehicleTypeRaw && allowedVehicleTypes.has(vehicleTypeRaw)
+                        ? (vehicleTypeRaw as DiscountPayoutEntry['vehicleType'])
+                        : undefined,
+                modelId: raw?.modelId ? String(raw.modelId) : undefined,
+                modelName: raw?.modelName ? String(raw.modelName) : undefined,
+                odDiscount,
+                payoutPercent,
+                payoutBasis: payoutBasis as DiscountPayoutEntry['payoutBasis'],
+            } as DiscountPayoutEntry;
+        })
+        .filter((entry): entry is DiscountPayoutEntry => !!entry);
 };
 
 const mapDbToFrontend = (d: any): InsuranceRule => ({
@@ -45,6 +82,9 @@ const mapDbToFrontend = (d: any): InsuranceRule => ({
     odComponents: d.od_components || [],
     tpComponents: d.tp_components || [],
     addons: d.addons || [],
+    ncbPercentage: d.ncb_percentage != null ? Number(d.ncb_percentage) : 0,
+    discountPercentage: d.discount_percentage != null ? Number(d.discount_percentage) : 0,
+    discountPayoutConfig: normalizeDiscountPayoutConfig(d.discount_payout_config),
     tenureConfig: d.tenure_config || DEFAULT_TENURE_CONFIG,
     version: d.version || 1,
     lastUpdated: d.updated_at,
@@ -63,40 +103,13 @@ const mapFrontendToDb = (r: InsuranceRule) => ({
     od_components: r.odComponents as unknown as Json,
     tp_components: r.tpComponents as unknown as Json,
     addons: r.addons as unknown as Json,
+    ncb_percentage: r.ncbPercentage ?? 0,
+    discount_percentage: r.discountPercentage ?? 0,
+    discount_payout_config: (r.discountPayoutConfig || []) as unknown as Json,
     tenure_config: (r.tenureConfig || DEFAULT_TENURE_CONFIG) as unknown as Json,
     version: r.version,
     updated_at: new Date().toISOString(),
 });
-
-const slugifyAddonLabel = (label: string): string =>
-    label
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '')
-        .replace(/^addon/, '')
-        .trim();
-
-const buildAddonColumnsSql = (addonSlugs: string[]): string => {
-    if (addonSlugs.length === 0) return '-- No new addon columns required.';
-    const lines = addonSlugs.map(slug => {
-        return [
-            `ADD COLUMN IF NOT EXISTS addon_${slug}_amount numeric(12,2),`,
-            `ADD COLUMN IF NOT EXISTS addon_${slug}_gst_amount numeric(12,2),`,
-            `ADD COLUMN IF NOT EXISTS addon_${slug}_total_amount numeric(12,2),`,
-            `ADD COLUMN IF NOT EXISTS addon_${slug}_default boolean`,
-        ].join('\n    ');
-    });
-    return `ALTER TABLE public.cat_price_state_mh\n${lines.map(x => `    ${x}`).join(',\n')};`;
-};
-
-const REPRICE_BATCH_SIZE = 40;
-
-const chunkSkuIds = (skuIds: string[], batchSize: number): string[][] => {
-    const chunks: string[][] = [];
-    for (let i = 0; i < skuIds.length; i += batchSize) {
-        chunks.push(skuIds.slice(i, i + batchSize));
-    }
-    return chunks;
-};
 
 export default function InsuranceDetailPage() {
     const params = useParams();
@@ -114,26 +127,13 @@ export default function InsuranceDetailPage() {
     const canEdit = can('catalog-insurance', id === 'new' ? 'create' : 'edit') || isPrivilegedRole;
 
     const [loading, setLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('Overview');
     const [isMounted, setIsMounted] = useState(false);
     const [rule, setRule] = useState<InsuranceRule | null>(null);
     const [isCalcValid, setIsCalcValid] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
-    const knownAddonSlugs = new Set([
-        'zerodepreciation',
-        'personal_accident_cover',
-        'personalaccidentpacover',
-        'pa',
-        'returntoinvoicerti',
-        'return_to_invoice',
-        'consumablescover',
-        'consumables',
-        'engineprotection',
-        'engine_protection',
-        'roadsideassistancersa',
-        'roadside_assistance',
-    ]);
 
     useEffect(() => {
         setIsMounted(true);
@@ -173,6 +173,9 @@ export default function InsuranceDetailPage() {
                 odComponents: [],
                 tpComponents: [],
                 addons: [],
+                ncbPercentage: 0,
+                discountPercentage: 0,
+                discountPayoutConfig: [],
                 version: 1,
                 lastUpdated: new Date().toISOString(),
             });
@@ -198,112 +201,36 @@ export default function InsuranceDetailPage() {
     }, [isDirty, isMounted]);
 
     const handleSave = async () => {
-        if (!rule) return;
+        if (!rule || isSaving) return;
         if (!isCalcValid && activeTab === 'Premium Studio') {
             alert('Calculation check failed. Please verify in the preview before saving.');
             return;
         }
 
-        const supabase = createClient();
-        const addonSlugs = (rule.addons || [])
-            .map((a: FormulaComponent) => slugifyAddonLabel(String(a?.label || '')))
-            .filter(Boolean);
-        const uniqueAddonSlugs = Array.from(new Set(addonSlugs));
-        const newAddonSlugs = uniqueAddonSlugs.filter(slug => !knownAddonSlugs.has(slug));
+        setIsSaving(true);
+        try {
+            const supabase = createClient();
+            const dbPayload = mapFrontendToDb(rule);
 
-        if (newAddonSlugs.length > 0) {
-            const sql = buildAddonColumnsSql(newAddonSlugs);
-            console.info('[Insurance Addon Schema Required] New addon columns migration SQL:\n', sql);
-            const proceed = window.confirm(
-                `New addons detected: ${newAddonSlugs.join(', ')}.\n\n` +
-                    'cat_price_state_mh migration required before publish. SQL template printed in browser console.\n\n' +
-                    'Save rule anyway?'
-            );
-            if (!proceed) return;
-        }
+            const { error } = await supabase.from('cat_ins_rules').upsert(dbPayload as any);
 
-        const dbPayload = mapFrontendToDb(rule);
-
-        const { error } = await supabase.from('cat_ins_rules').upsert(dbPayload as any);
-
-        if (!error) {
-            setLoading(true);
-            let syncSummary = 'No published rows found for auto-reprice.';
-
-            try {
-                const ruleStateCode = String(rule.stateCode || 'ALL')
-                    .trim()
-                    .toUpperCase();
-                const statesToSync: string[] =
-                    ruleStateCode === 'ALL'
-                        ? Array.from(
-                              new Set(
-                                  (
-                                      (
-                                          (await supabase
-                                              .from('cat_price_state_mh')
-                                              .select('state_code')
-                                              .eq('publish_stage', 'PUBLISHED')) as any
-                                      )?.data || []
-                                  )
-                                      .map((row: any) => String(row?.state_code || '').toUpperCase())
-                                      .filter((value: string) => value.length > 0)
-                              )
-                          )
-                        : [ruleStateCode];
-
-                let totalCandidates = 0;
-                let totalPublished = 0;
-                const syncErrors: string[] = [];
-
-                for (const stateCode of statesToSync) {
-                    const { data: skuRows, error: skuError } = await supabase
-                        .from('cat_price_state_mh')
-                        .select('sku_id')
-                        .eq('state_code', stateCode)
-                        .eq('publish_stage', 'PUBLISHED');
-
-                    if (skuError) {
-                        syncErrors.push(`${stateCode}: ${skuError.message}`);
-                        continue;
-                    }
-
-                    const skuIds = Array.from(
-                        new Set((skuRows || []).map((row: any) => String(row?.sku_id || '')).filter(Boolean))
-                    );
-                    if (skuIds.length === 0) continue;
-
-                    totalCandidates += skuIds.length;
-
-                    for (const batch of chunkSkuIds(skuIds, REPRICE_BATCH_SIZE)) {
-                        const result = await calculatePricingBySkuIds(batch, stateCode);
-                        totalPublished += result.totalPublished;
-                        if (result.errors.length > 0) {
-                            syncErrors.push(`${stateCode}: ${result.errors.join('; ')}`);
-                        }
-                    }
-                }
-
-                if (totalCandidates > 0) {
-                    syncSummary = `Repriced ${totalPublished}/${totalCandidates} published SKUs across ${statesToSync.length} state(s).`;
-                }
-
-                if (syncErrors.length > 0) {
-                    syncSummary += `\nWarnings: ${syncErrors.slice(0, 3).join(' | ')}`;
-                }
-            } catch (syncError) {
-                syncSummary = `Rule saved, but auto-reprice failed: ${syncError instanceof Error ? syncError.message : String(syncError)}`;
-            } finally {
-                setLoading(false);
+            if (!error) {
+                alert(
+                    'Insurance Rule Saved Successfully to Database!\n\n' +
+                        'SOT: This Formula Studio updates only cat_ins_rules. ' +
+                        'Premium rows in cat_price_state_mh are updated only by the AUMS Price Engine.'
+                );
+                setIsEditing(false);
+                setIsDirty(false);
+                router.push(
+                    tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/insurance` : '/dashboard/catalog/insurance'
+                );
+            } else {
+                console.error('Save error', error);
+                alert(`Failed to save: ${error.message}`);
             }
-
-            alert(`Insurance Rule Saved Successfully to Database!\n\n${syncSummary}`);
-            setIsEditing(false);
-            setIsDirty(false);
-            router.push(tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/insurance` : '/dashboard/catalog/insurance');
-        } else {
-            console.error('Save error', error);
-            alert(`Failed to save: ${error.message}`);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -366,9 +293,11 @@ export default function InsuranceDetailPage() {
                             {canEdit && isEditing && (
                                 <button
                                     onClick={handleSave}
+                                    disabled={isSaving}
                                     className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2 border border-white/10"
                                 >
-                                    <Save size={14} /> Save Rule
+                                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                    {isSaving ? 'Saving...' : 'Save Rule'}
                                 </button>
                             )}
                         </div>
@@ -376,7 +305,7 @@ export default function InsuranceDetailPage() {
 
                     {/* Tabs */}
                     <div className="flex items-center gap-1 px-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 flex-shrink-0">
-                        {['Overview', 'Premium Studio'].map(tab => (
+                        {['Overview', 'Premium Studio', 'Discount & Payout'].map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -388,10 +317,17 @@ export default function InsuranceDetailPage() {
                             >
                                 <div className="flex items-center gap-1.5">
                                     {tab === 'Premium Studio' && <Calculator size={12} />}
+                                    {tab === 'Discount & Payout' && <Percent size={12} />}
                                     {tab}
                                 </div>
                             </button>
                         ))}
+                    </div>
+                    <div className="px-6 py-2 border-b border-slate-100 dark:border-white/5 bg-amber-50/50 dark:bg-amber-500/10">
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+                            SOT: Formula Studio edits only insurance rules. Premium publish/reprice happens only via
+                            AUMS Price Engine.
+                        </p>
                     </div>
 
                     {/* Content Area */}
@@ -454,6 +390,19 @@ export default function InsuranceDetailPage() {
                                         <InsurancePreview rule={rule} onValidCalculation={setIsCalcValid} />
                                     </div>
                                 </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'Discount & Payout' && (
+                            <div className="p-6">
+                                <InsuranceDiscountPayout
+                                    entries={rule.discountPayoutConfig || []}
+                                    onChange={entries => {
+                                        setRule({ ...rule, discountPayoutConfig: entries });
+                                        setIsDirty(true);
+                                    }}
+                                    readOnly={!canEdit || !isEditing}
+                                />
                             </div>
                         )}
                     </div>

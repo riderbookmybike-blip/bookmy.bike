@@ -339,12 +339,15 @@ export type Database = {
                 Row: {
                     addons: Json;
                     created_at: string | null;
+                    discount_percentage: number | null;
+                    discount_payout_config: Json | null;
                     display_id: string | null;
                     effective_from: string | null;
                     gst_percentage: number | null;
                     id: string;
                     idv_percentage: number | null;
                     insurer_name: string;
+                    ncb_percentage: number | null;
                     od_components: Json;
                     rule_name: string;
                     state_code: string;
@@ -358,12 +361,15 @@ export type Database = {
                 Insert: {
                     addons?: Json;
                     created_at?: string | null;
+                    discount_percentage?: number | null;
+                    discount_payout_config?: Json | null;
                     display_id?: string | null;
                     effective_from?: string | null;
                     gst_percentage?: number | null;
                     id?: string;
                     idv_percentage?: number | null;
                     insurer_name: string;
+                    ncb_percentage?: number | null;
                     od_components?: Json;
                     rule_name: string;
                     state_code?: string;
@@ -377,12 +383,15 @@ export type Database = {
                 Update: {
                     addons?: Json;
                     created_at?: string | null;
+                    discount_percentage?: number | null;
+                    discount_payout_config?: Json | null;
                     display_id?: string | null;
                     effective_from?: string | null;
                     gst_percentage?: number | null;
                     id?: string;
                     idv_percentage?: number | null;
                     insurer_name?: string;
+                    ncb_percentage?: number | null;
                     od_components?: Json;
                     rule_name?: string;
                     state_code?: string;

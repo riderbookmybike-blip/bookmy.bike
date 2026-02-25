@@ -630,10 +630,12 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                         // Known mapping: addon label/id → DB column base key
                         const ADDON_COLUMN_MAP: Record<string, string> = {
                             personal_accident_cover: 'personal_accident_cover',
+                            personal_accident_pa_cover: 'personal_accident_cover',
                             'personal_accident_(pa)_cover': 'personal_accident_cover',
                             pa_cover: 'personal_accident_cover',
                             pa: 'personal_accident_cover',
                             zero_depreciation: 'zero_depreciation',
+                            return_to_invoice_rti: 'return_to_invoice',
                             'return_to_invoice_(rti)': 'return_to_invoice',
                             return_to_invoice: 'return_to_invoice',
                             rti: 'return_to_invoice',
@@ -641,6 +643,7 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                             consumables: 'consumables_cover',
                             engine_protection: 'engine_protector',
                             engine_protector: 'engine_protector',
+                            roadside_assistance_rsa: 'roadside_assistance',
                             'roadside_assistance_(rsa)': 'roadside_assistance',
                             roadside_assistance: 'roadside_assistance',
                             rsa: 'roadside_assistance',
@@ -649,10 +652,13 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                             pillion_cover: 'pillion_cover',
                         };
                         for (const addon of insuranceResult.json.addons || []) {
-                            const rawKey = String(addon.id || addon.label || '')
+                            const rawKey = String(addon.label || addon.id || '')
                                 .toLowerCase()
                                 .replace(/[^a-z0-9_]+/g, '_')
                                 .replace(/^_|_$/g, '');
+                            const isUuidLikeRawKey =
+                                /^[0-9a-f]{8}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{12}$/.test(rawKey);
+                            if (isUuidLikeRawKey) continue;
                             const colKey = ADDON_COLUMN_MAP[rawKey] || rawKey;
                             if (!colKey) continue;
                             addonCols[`addon_${colKey}_amount`] = round2(addon.price || 0);

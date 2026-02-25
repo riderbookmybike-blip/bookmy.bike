@@ -46,16 +46,19 @@ export default function InsurancePreview({ rule, onValidCalculation }: Insurance
 
     const handleCalculate = () => {
         try {
+            const fallbackEntry = (rule.discountPayoutConfig || []).find(entry => entry.scope === 'ALL');
+            const effectiveRule = fallbackEntry ? { ...rule, discountPercentage: fallbackEntry.odDiscount } : rule;
+
             const ctx: InsuranceCalculationContext = {
                 exShowroom: inputs.exShowroom,
                 engineCc: inputs.engineCc,
                 fuelType: inputs.fuelType,
                 customIdv: inputs.customIdv,
-                odTenure: (rule.tenureConfig?.od?.default || 1) as 1 | 3 | 5,
-                tpTenure: (rule.tenureConfig?.tp?.default || 5) as 1 | 5,
+                odTenure: (effectiveRule.tenureConfig?.od?.default || 1) as 1 | 3 | 5,
+                tpTenure: (effectiveRule.tenureConfig?.tp?.default || 5) as 1 | 5,
             };
 
-            const res = calculateInsurance(rule, ctx);
+            const res = calculateInsurance(effectiveRule, ctx);
             setResult(res);
             onValidCalculation(true);
         } catch (e) {
