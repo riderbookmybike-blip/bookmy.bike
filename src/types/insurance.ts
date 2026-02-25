@@ -42,6 +42,10 @@ export interface InsuranceRule {
 
     gstPercentage: number; // usually 18
 
+    // NCB & Discounts (applied to OD)
+    ncbPercentage?: number; // No Claim Bonus — 0, 20, 25, 35, 45, 50
+    discountPercentage?: number; // Voluntary/other discount on OD
+
     // Tenure Configuration
     tenureConfig?: InsuranceRuleTenureConfig;
 
@@ -77,6 +81,10 @@ export interface InsuranceCalculationResult {
     netPremium: number;
     gstAmount: number;
     totalPremium: number;
+
+    // NCB & Discount breakdown
+    ncbDiscount?: number;
+    discountAmount?: number;
 
     ruleId: string;
 

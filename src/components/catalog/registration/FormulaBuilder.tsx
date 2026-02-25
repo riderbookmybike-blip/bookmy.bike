@@ -7,6 +7,7 @@ import {
     Trash2,
     Check,
     ChevronDown,
+    ChevronUp,
     ChevronRight,
     Plus,
     GripVertical,
@@ -244,6 +245,9 @@ export const FormulaBlock = ({
     defaultSlabValueType = 'PERCENTAGE',
     forceEdit = false,
     isDragging,
+    headerPrefix,
+    headerSuffix,
+    headerIcon,
 }: {
     component: FormulaComponent;
     onChange: (c: FormulaComponent) => void;
@@ -257,8 +261,11 @@ export const FormulaBlock = ({
     defaultSlabValueType?: 'PERCENTAGE' | 'FIXED';
     forceEdit?: boolean;
     isDragging?: boolean;
+    headerPrefix?: React.ReactNode;
+    headerSuffix?: React.ReactNode;
+    headerIcon?: React.ReactNode;
 }) => {
-    const [expanded, setExpanded] = useState(true);
+    const [expanded, setExpanded] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const effectiveReadOnly = readOnly || (!forceEdit && !isEditing);
 
@@ -318,7 +325,7 @@ export const FormulaBlock = ({
         >
             {/* Header */}
             <div
-                className={`flex items-center gap-4 px-4 py-3 cursor-pointer group/header ${headerColor} rounded-t-2xl border-b ${borderColor} transition-colors ${isDragging ? 'bg-blue-50/50' : ''}`}
+                className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer group/header ${headerColor} rounded-t-2xl border-b ${borderColor} transition-colors ${isDragging ? 'bg-blue-50/50' : ''}`}
                 onClick={() => setExpanded(!expanded)}
             >
                 {/* Drag Handle */}
@@ -331,20 +338,26 @@ export const FormulaBlock = ({
                     </div>
                 )}
 
-                <button className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
-                    {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                </button>
-
-                <div className="flex items-center gap-2 flex-1">
-                    {component.type === 'PERCENTAGE' && !isTaxOnTax && <Percent size={18} className={iconColor} />}
-                    {component.type === 'PERCENTAGE' && isTaxOnTax && <Layers size={18} className={iconColor} />}
-                    {component.type === 'FIXED' && <Banknote size={18} className={iconColor} />}
-                    {component.type === 'CONDITIONAL' && <GitBranch size={18} className={iconColor} />}
-                    {component.type === 'SWITCH' && <GitBranch size={18} className={iconColor} />}
-                    {component.type === 'SLAB' && <Table size={18} className={iconColor} />}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {headerIcon ? (
+                        headerIcon
+                    ) : (
+                        <>
+                            {component.type === 'PERCENTAGE' && !isTaxOnTax && (
+                                <Percent size={16} className={iconColor} />
+                            )}
+                            {component.type === 'PERCENTAGE' && isTaxOnTax && (
+                                <Layers size={16} className={iconColor} />
+                            )}
+                            {component.type === 'FIXED' && <Banknote size={16} className={iconColor} />}
+                            {component.type === 'CONDITIONAL' && <GitBranch size={16} className={iconColor} />}
+                            {component.type === 'SWITCH' && <GitBranch size={16} className={iconColor} />}
+                            {component.type === 'SLAB' && <Table size={16} className={iconColor} />}
+                        </>
+                    )}
 
                     {effectiveReadOnly ? (
-                        <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
+                        <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight truncate">
                             {component.label}
                         </span>
                     ) : (
@@ -365,7 +378,32 @@ export const FormulaBlock = ({
                             }
                         />
                     )}
+                    {/* Type badge */}
+                    <span
+                        className={`shrink-0 text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md ${
+                            isSlab
+                                ? 'bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-400'
+                                : component.type === 'FIXED'
+                                  ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+                                  : component.type === 'PERCENTAGE' && isTaxOnTax
+                                    ? 'bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400'
+                                    : 'bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400'
+                        }`}
+                    >
+                        {isSlab ? 'TABLE' : component.type === 'FIXED' ? 'FIXED' : isTaxOnTax ? 'CESS' : '% OF IDV'}
+                    </span>
+                    {headerPrefix && (
+                        <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                            {headerPrefix}
+                        </div>
+                    )}
                 </div>
+
+                {headerSuffix && (
+                    <div className="flex items-center gap-1.5 ml-auto mr-2" onClick={e => e.stopPropagation()}>
+                        {headerSuffix}
+                    </div>
+                )}
 
                 {/* Edit Controls */}
                 {!readOnly && (
@@ -471,6 +509,10 @@ export const FormulaBlock = ({
                         )}
                     </div>
                 )}
+
+                <button className="text-slate-400 hover:text-slate-600 transition-colors ml-1 shrink-0">
+                    {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
             </div>
 
             {/* Body */}
@@ -492,10 +534,11 @@ export const FormulaBlock = ({
                                         if (inheritedContext?.fuelType && inheritedContext.fuelType !== fuel)
                                             return null;
 
-                                        const val =
+                                        const rawVal =
                                             component.fuelMatrix?.[fuel as keyof typeof component.fuelMatrix] ??
                                             (fuel === 'PETROL' ? component.percentage : 0) ??
                                             0;
+                                        const val = Number.isFinite(rawVal) ? rawVal : 0;
 
                                         return (
                                             <div key={fuel}>
@@ -550,10 +593,11 @@ export const FormulaBlock = ({
                                     // Context Filter
                                     if (inheritedContext?.fuelType && inheritedContext.fuelType !== fuel) return null;
 
-                                    const val =
+                                    const rawVal =
                                         component.fuelMatrix?.[fuel as keyof typeof component.fuelMatrix] ??
                                         (fuel === 'PETROL' ? component.amount : 0) ??
                                         0;
+                                    const val = Number.isFinite(rawVal) ? rawVal : 0;
 
                                     return (
                                         <div key={fuel}>
@@ -709,21 +753,21 @@ export const FormulaBlock = ({
                                 </div>
                             )}
 
-                            <div className="border border-white/40 dark:border-white/5 rounded-3xl overflow-hidden bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm shadow-inner ring-1 ring-black/5 mt-4">
+                            <div className="border border-white/40 dark:border-white/5 rounded-2xl overflow-hidden bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm shadow-inner ring-1 ring-black/5 mt-2">
                                 <table className="w-full text-sm text-left border-collapse">
-                                    <thead className="bg-slate-100/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-black tracking-widest border-b border-black/5 dark:border-white/5">
+                                    <thead className="bg-slate-100/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 text-[9px] uppercase font-black tracking-widest border-b border-black/5 dark:border-white/5">
                                         <tr>
                                             {!inheritedContext?.fuelType && (
-                                                <th className="px-4 py-3 w-[25%]">Applicable Fuels</th>
+                                                <th className="px-2.5 py-1.5 w-[25%]">Fuels</th>
                                             )}
-                                            <th className="px-3 py-3 w-[20%]">Calculate On</th>
-                                            <th className="px-3 py-3 w-[15%]">Min</th>
-                                            <th className="px-3 py-3 w-[15%]">Max</th>
-                                            <th className="px-3 py-3 w-[10%] text-center">{slabValueLabel}</th>
-                                            <th className="px-3 py-3 w-[10%] text-center border-l border-white/10 bg-orange-500/5">
+                                            <th className="px-2 py-1.5 w-[20%]">Calculate On</th>
+                                            <th className="px-2 py-1.5 w-[15%]">Min</th>
+                                            <th className="px-2 py-1.5 w-[15%]">Max</th>
+                                            <th className="px-2 py-1.5 w-[10%] text-center">{slabValueLabel}</th>
+                                            <th className="px-2 py-1.5 w-[10%] text-center border-l border-white/10 bg-orange-500/5">
                                                 Cess %
                                             </th>
-                                            {!effectiveReadOnly && <th className="px-3 py-3 w-[5%]"></th>}
+                                            {!effectiveReadOnly && <th className="px-1 py-1.5 w-[5%]"></th>}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -749,8 +793,8 @@ export const FormulaBlock = ({
                                                     className="group hover:bg-white/50 dark:hover:bg-white/5 transition-all duration-200"
                                                 >
                                                     {!inheritedContext?.fuelType && (
-                                                        <td className="px-4 py-3">
-                                                            <div className="flex gap-1.5 flex-wrap">
+                                                        <td className="px-2.5 py-1.5">
+                                                            <div className="flex gap-1 flex-wrap">
                                                                 {['PETROL', 'DIESEL', 'EV', 'CNG'].map(fuel => {
                                                                     const active = range.applicableFuels?.includes(
                                                                         fuel as any
@@ -761,7 +805,7 @@ export const FormulaBlock = ({
                                                                             onClick={() =>
                                                                                 !effectiveReadOnly && toggleFuel(fuel)
                                                                             }
-                                                                            className={`text-[10px] font-black px-2 py-1 rounded-lg border-2 transition-all duration-300 ${
+                                                                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border transition-all duration-300 ${
                                                                                 active
                                                                                     ? fuel === 'EV'
                                                                                         ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/30'
@@ -783,9 +827,9 @@ export const FormulaBlock = ({
                                                             </div>
                                                         </td>
                                                     )}
-                                                    <td className="px-3 py-3">
+                                                    <td className="px-2 py-1.5">
                                                         <select
-                                                            className="w-full text-xs bg-white/50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1.5 font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer shadow-sm uppercase italic"
+                                                            className="w-full text-[10px] bg-white/50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-md px-1.5 py-1 font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer shadow-sm uppercase italic"
                                                             value={
                                                                 range.slabBasis || component.slabVariable || 'ENGINE_CC'
                                                             }
@@ -801,19 +845,19 @@ export const FormulaBlock = ({
                                                             <option value="GROSS_VEHICLE_WEIGHT">GVW</option>
                                                         </select>
                                                     </td>
-                                                    <td className="px-3 py-3">
+                                                    <td className="px-2 py-1.5">
                                                         <input
                                                             type="number"
                                                             value={range.min}
                                                             onChange={e =>
                                                                 updateRange({ min: parseFloat(e.target.value) })
                                                             }
-                                                            className="w-full bg-white/50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-lg px-2 py-1.5 text-xs font-black text-slate-900 dark:text-white"
+                                                            className="w-full bg-white/50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-md px-2 py-1 text-xs font-black text-slate-900 dark:text-white"
                                                             placeholder="0"
                                                             readOnly={effectiveReadOnly}
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3">
+                                                    <td className="px-2 py-1.5">
                                                         <input
                                                             type="number"
                                                             value={range.max === null ? '' : range.max}
@@ -823,12 +867,12 @@ export const FormulaBlock = ({
                                                                     max: val === '' ? null : parseFloat(val),
                                                                 });
                                                             }}
-                                                            className="w-full bg-white/50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-lg px-2 py-1.5 text-xs font-black text-slate-900 dark:text-white"
+                                                            className="w-full bg-white/50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-md px-2 py-1 text-xs font-black text-slate-900 dark:text-white"
                                                             placeholder="∞"
                                                             readOnly={effectiveReadOnly}
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 text-center">
+                                                    <td className="px-2 py-1.5 text-center">
                                                         <input
                                                             type="number"
                                                             value={
@@ -852,12 +896,12 @@ export const FormulaBlock = ({
                                                                     });
                                                                 }
                                                             }}
-                                                            className="w-16 bg-blue-50/50 dark:bg-blue-500/10 border-2 border-blue-100 dark:border-blue-500/30 focus:border-blue-600 focus:ring-4 focus:ring-blue-100 rounded-xl px-0 py-2 text-sm font-black text-blue-700 dark:text-blue-300 text-center"
+                                                            className="w-14 bg-blue-50/50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/30 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 rounded-lg px-0 py-1 text-xs font-black text-blue-700 dark:text-blue-300 text-center"
                                                             placeholder="0"
                                                             readOnly={effectiveReadOnly}
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-3 text-center border-l border-orange-200/20 bg-orange-500/[0.02]">
+                                                    <td className="px-2 py-1.5 text-center border-l border-orange-200/20 bg-orange-500/[0.02]">
                                                         <input
                                                             type="number"
                                                             value={range.cessPercentage || ''}
@@ -869,13 +913,13 @@ export const FormulaBlock = ({
                                                                             : parseFloat(e.target.value),
                                                                 })
                                                             }
-                                                            className="w-16 bg-orange-50/50 dark:bg-orange-500/10 border-2 border-orange-100 dark:border-orange-500/30 focus:border-orange-600 focus:ring-4 focus:ring-orange-100 rounded-xl px-0 py-2 text-sm font-black text-orange-700 dark:text-orange-300 text-center"
+                                                            className="w-14 bg-orange-50/50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/30 focus:border-orange-600 focus:ring-2 focus:ring-orange-100 rounded-lg px-0 py-1 text-xs font-black text-orange-700 dark:text-orange-300 text-center"
                                                             placeholder="0"
                                                             readOnly={effectiveReadOnly}
                                                         />
                                                     </td>
                                                     {!effectiveReadOnly && (
-                                                        <td className="px-3 py-3 text-right">
+                                                        <td className="px-1 py-1.5 text-right">
                                                             <button
                                                                 onClick={() => {
                                                                     const newRanges = (component.ranges || []).filter(
@@ -883,9 +927,9 @@ export const FormulaBlock = ({
                                                                     );
                                                                     updateField('ranges', newRanges);
                                                                 }}
-                                                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                                                className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                                             >
-                                                                <Trash2 size={16} />
+                                                                <Trash2 size={13} />
                                                             </button>
                                                         </td>
                                                     )}
@@ -896,14 +940,14 @@ export const FormulaBlock = ({
                                 </table>
 
                                 {!effectiveReadOnly && (
-                                    <div className="p-4 bg-slate-50/30 dark:bg-white/5 border-t border-black/5 dark:border-white/5 flex justify-center">
-                                        <div className="flex flex-wrap items-center gap-3">
+                                    <div className="p-2.5 bg-slate-50/30 dark:bg-white/5 border-t border-black/5 dark:border-white/5 flex justify-center">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <button
                                                 onClick={() => {
                                                     const newRanges = [...(component.ranges || []), createSlabRange()];
                                                     updateField('ranges', newRanges);
                                                 }}
-                                                className="flex items-center gap-2 text-[10px] font-black text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-white dark:hover:bg-white/5 px-6 py-3 rounded-2xl transition-all shadow-sm active:scale-95 uppercase tracking-widest"
+                                                className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-white dark:hover:bg-white/5 px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 uppercase tracking-widest"
                                             >
                                                 <Plus size={12} /> Add Rule Row
                                             </button>
@@ -928,7 +972,7 @@ export const FormulaBlock = ({
                                                     });
                                                     updateField('ranges', [...ranges, nextRange]);
                                                 }}
-                                                className="flex items-center gap-2 text-[10px] font-black text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-white/5 px-6 py-3 rounded-2xl transition-all shadow-sm active:scale-95 uppercase tracking-widest"
+                                                className="flex items-center gap-1.5 text-[9px] font-black text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-white/5 px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 uppercase tracking-widest"
                                             >
                                                 <Plus size={12} /> Add Next Row
                                             </button>

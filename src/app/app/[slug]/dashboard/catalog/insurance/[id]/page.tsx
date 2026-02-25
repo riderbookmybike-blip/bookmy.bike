@@ -336,58 +336,58 @@ export default function InsuranceDetailPage() {
                 {/* Detail View */}
                 <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-950 relative overflow-hidden transition-colors duration-500">
                     {/* Header */}
-                    <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-white/5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-20">
-                        <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/5 flex-shrink-0">
+                        <div className="flex items-center gap-3">
                             <button
-                                className="p-2 -ml-2 text-slate-400 hover:text-blue-600 transition-colors"
+                                className="p-1.5 -ml-1 text-slate-400 hover:text-blue-600 transition-colors"
                                 onClick={handleBack}
                             >
-                                <ChevronLeft size={24} />
+                                <ChevronLeft size={20} />
                             </button>
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase leading-none mb-1">
+                                <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter italic uppercase leading-none">
                                     {rule.ruleName}
                                 </h2>
-                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Sparkles size={10} className="text-blue-500" /> Profiling {rule.displayId || 'NEW'}
+                                <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-1.5 mt-0.5">
+                                    <Sparkles size={9} className="text-blue-500" /> Profiling {rule.displayId || 'NEW'}
                                     <DataSourceIndicator source="LIVE" className="ml-1" />
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                             {canEdit && !isEditing && (
                                 <button
                                     onClick={() => setIsEditing(true)}
-                                    className="px-6 py-2.5 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-500/20 hover:shadow-2xl hover:shadow-slate-500/40 transition-all flex items-center gap-2 border border-white/10"
+                                    className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2 border border-white/10"
                                 >
-                                    <Sparkles size={16} /> Enable Edit
+                                    <Sparkles size={14} /> Enable Edit
                                 </button>
                             )}
                             {canEdit && isEditing && (
                                 <button
                                     onClick={handleSave}
-                                    className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-500/20 hover:shadow-2xl hover:shadow-blue-500/40 transition-all flex items-center gap-2 border border-white/10"
+                                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2 border border-white/10"
                                 >
-                                    <Save size={16} /> Save Rule
+                                    <Save size={14} /> Save Rule
                                 </button>
                             )}
                         </div>
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex items-center gap-1 px-8 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 flex-shrink-0">
+                    <div className="flex items-center gap-1 px-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 flex-shrink-0">
                         {['Overview', 'Premium Studio'].map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
+                                className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
                                     activeTab === tab
                                         ? 'border-blue-600 text-blue-600'
                                         : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                                 }`}
                             >
-                                <div className="flex items-center gap-2">
-                                    {tab === 'Premium Studio' && <Calculator size={14} />}
+                                <div className="flex items-center gap-1.5">
+                                    {tab === 'Premium Studio' && <Calculator size={12} />}
                                     {tab}
                                 </div>
                             </button>
@@ -410,35 +410,27 @@ export default function InsuranceDetailPage() {
                         )}
 
                         {activeTab === 'Premium Studio' && (
-                            <div className="p-8">
-                                <div className="grid grid-cols-12 gap-8 items-start">
-                                    <div className="col-span-12 xl:col-span-7 space-y-6">
-                                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-800 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden group">
-                                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
-                                            <div className="relative flex gap-4">
-                                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md shrink-0">
-                                                    <Sparkles size={24} />
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-sm font-black uppercase tracking-widest mb-1 italic">
-                                                        Policy Logic Editor
-                                                    </h4>
-                                                    <p className="text-[11px] text-white/80 font-medium tracking-wide leading-relaxed">
-                                                        Configure OD rates as percentage of IDV, TP premiums as slab
-                                                        tables, and optional add-on covers.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-
+                            <div className="p-4">
+                                <div className="grid grid-cols-12 gap-4">
+                                    <div className="col-span-12 xl:col-span-7 space-y-2">
                                         <InsuranceFormulaBuilder
                                             odComponents={rule.odComponents}
                                             tpComponents={rule.tpComponents}
                                             addons={rule.addons}
                                             idvPercentage={rule.idvPercentage}
+                                            ncbPercentage={rule.ncbPercentage ?? 0}
+                                            discountPercentage={rule.discountPercentage ?? 0}
                                             tenureConfig={rule.tenureConfig}
                                             onIdvChange={val => {
                                                 setRule({ ...rule, idvPercentage: val });
+                                                setIsDirty(true);
+                                            }}
+                                            onNcbChange={val => {
+                                                setRule({ ...rule, ncbPercentage: val });
+                                                setIsDirty(true);
+                                            }}
+                                            onDiscountChange={val => {
+                                                setRule({ ...rule, discountPercentage: val });
                                                 setIsDirty(true);
                                             }}
                                             onTenureChange={config => {
@@ -458,7 +450,7 @@ export default function InsuranceDetailPage() {
                                         />
                                     </div>
 
-                                    <div className="col-span-12 xl:col-span-5 sticky top-8">
+                                    <div className="col-span-12 xl:col-span-5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-120px)]">
                                         <InsurancePreview rule={rule} onValidCalculation={setIsCalcValid} />
                                     </div>
                                 </div>

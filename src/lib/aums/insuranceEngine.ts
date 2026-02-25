@@ -197,13 +197,22 @@ export const calculateInsurance = (
 
     const addonBreakdown: CalculationResultItem[] = [];
     const netOdAndTp = [...odBreakdown, ...tpBreakdown];
+
+    // Per-year amounts (before tenure multiplication) — must be computed before addon eval
+    const odPerYearGross = odBreakdown.reduce((sum, i) => sum + i.amount, 0);
+    const tpPerYear = tpBreakdown.reduce((sum, i) => sum + i.amount, 0);
+
+    // NCB & Discount deductions (applied to OD only)
+    const ncbPct = context.ncbPercentage ?? rule.ncbPercentage ?? 0;
+    const discountPct = rule.discountPercentage ?? 0;
+    const ncbDiscount = applyRounding(odPerYearGross * (ncbPct / 100));
+    const discountAmount = applyRounding(odPerYearGross * (discountPct / 100));
+    const odPerYear = Math.max(0, odPerYearGross - ncbDiscount - discountAmount);
+
     rule.addons.forEach(comp => {
-        addonBreakdown.push(...evaluateInsuranceComponent(comp, context, idv, netOdAndTp, odPerYear));
+        addonBreakdown.push(...evaluateInsuranceComponent(comp, context, idv, netOdAndTp, odPerYearGross));
     });
 
-    // Per-year amounts (before tenure multiplication)
-    const odPerYear = odBreakdown.reduce((sum, i) => sum + i.amount, 0);
-    const tpPerYear = tpBreakdown.reduce((sum, i) => sum + i.amount, 0);
     const addonsPerYear = addonBreakdown.reduce((sum, i) => sum + i.amount, 0);
 
     // Apply tenure multipliers
@@ -226,6 +235,8 @@ export const calculateInsurance = (
         netPremium,
         gstAmount,
         totalPremium,
+        ncbDiscount: ncbDiscount * odTenure,
+        discountAmount: discountAmount * odTenure,
         ruleId: rule.id,
         // Include tenure info for transparency
         tenures: { od: odTenure, tp: tpTenure, addons: addonTenure },
