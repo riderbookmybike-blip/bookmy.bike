@@ -404,6 +404,7 @@ export const FormulaBlock = ({
                                         >
                                             <option value="EX_SHOWROOM">Ex-Showroom</option>
                                             <option value="IDV">IDV Basis</option>
+                                            <option value="OD_PREMIUM">OD Premium</option>
                                             <option value="INVOICE_BASE">Invoice</option>
                                             <option value="PREVIOUS_TAX_TOTAL">Accumulated</option>
                                             <option value="TARGET_COMPONENT">Specific Charge</option>

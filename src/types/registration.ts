@@ -11,7 +11,8 @@ export type FormulaVariable =
     | 'GROSS_VEHICLE_WEIGHT'
     | 'PREVIOUS_TAX_TOTAL'
     | 'TARGET_COMPONENT'
-    | 'IDV';
+    | 'IDV'
+    | 'OD_PREMIUM'; // Own Damage premium total (for addon calculations)
 
 export type Operator = 'EQUALS' | 'NOT_EQUALS' | 'GREATER_THAN' | 'LESS_THAN' | 'GREATER_EQUALS' | 'LESS_EQUALS';
 

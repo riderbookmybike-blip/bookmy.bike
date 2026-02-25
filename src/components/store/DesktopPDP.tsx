@@ -1080,6 +1080,7 @@ export function DesktopPDP({
                     accessoriesTotal={accessoriesPrice}
                     insuranceTotal={baseInsurance + insuranceAddonsPrice}
                     insuranceAddonsCount={selectedInsuranceAddons.length}
+                    onOpenVideo={() => setIsVideoOpen(true)}
                 />
             </div>
         </div>

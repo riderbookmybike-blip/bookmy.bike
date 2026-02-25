@@ -77,7 +77,8 @@ const evaluateInsuranceComponent = (
     comp: FormulaComponent,
     ctx: InsuranceCalculationContext,
     idv: number,
-    accumulatedResults: CalculationResultItem[] = []
+    accumulatedResults: CalculationResultItem[] = [],
+    odTotal: number = 0
 ): CalculationResultItem[] => {
     // Create a pseudo CalculationContext for generic formula evaluation
     const pseudoCtx: CalculationContext = {
@@ -103,8 +104,21 @@ const evaluateInsuranceComponent = (
 
     if (comp.type === 'PERCENTAGE') {
         const isIdvBasis = comp.basis === 'IDV' || !comp.basis;
-        const basisValue = isIdvBasis ? idv : comp.basis === 'EX_SHOWROOM' ? ctx.exShowroom : runningTotal;
-        const basisLabel = isIdvBasis ? 'IDV' : comp.basis === 'EX_SHOWROOM' ? 'Ex-Showroom' : 'Running Total';
+        const isOdBasis = comp.basis === 'OD_PREMIUM';
+        const basisValue = isOdBasis
+            ? odTotal
+            : isIdvBasis
+              ? idv
+              : comp.basis === 'EX_SHOWROOM'
+                ? ctx.exShowroom
+                : runningTotal;
+        const basisLabel = isOdBasis
+            ? 'OD Premium'
+            : isIdvBasis
+              ? 'IDV'
+              : comp.basis === 'EX_SHOWROOM'
+                ? 'Ex-Showroom'
+                : 'Running Total';
 
         const pct = getMatrixValue(comp, comp.percentage || 0, ctx.fuelType);
         const rawAmt = basisValue * (pct / 100);
@@ -184,7 +198,7 @@ export const calculateInsurance = (
     const addonBreakdown: CalculationResultItem[] = [];
     const netOdAndTp = [...odBreakdown, ...tpBreakdown];
     rule.addons.forEach(comp => {
-        addonBreakdown.push(...evaluateInsuranceComponent(comp, context, idv, netOdAndTp));
+        addonBreakdown.push(...evaluateInsuranceComponent(comp, context, idv, netOdAndTp, odPerYear));
     });
 
     // Per-year amounts (before tenure multiplication)

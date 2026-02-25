@@ -624,10 +624,44 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                         Number(insuranceResult.json.od.gst) +
                         Number(insuranceResult.json.tp.gst),
                     ins_gst_rate: Number(insuranceResult.json.gst_rate),
-                    addon_personal_accident_cover_amount: paBaseAmount,
-                    addon_personal_accident_cover_gst_amount: paGstAmount,
-                    addon_personal_accident_cover_total_amount: paTotalAmount,
-                    addon_personal_accident_cover_default: false,
+                    // Dynamic addon columns — write ALL addons from engine result
+                    ...(() => {
+                        const addonCols: Record<string, any> = {};
+                        // Known mapping: addon label/id → DB column base key
+                        const ADDON_COLUMN_MAP: Record<string, string> = {
+                            personal_accident_cover: 'personal_accident_cover',
+                            'personal_accident_(pa)_cover': 'personal_accident_cover',
+                            pa_cover: 'personal_accident_cover',
+                            pa: 'personal_accident_cover',
+                            zero_depreciation: 'zero_depreciation',
+                            'return_to_invoice_(rti)': 'return_to_invoice',
+                            return_to_invoice: 'return_to_invoice',
+                            rti: 'return_to_invoice',
+                            consumables_cover: 'consumables_cover',
+                            consumables: 'consumables_cover',
+                            engine_protection: 'engine_protector',
+                            engine_protector: 'engine_protector',
+                            'roadside_assistance_(rsa)': 'roadside_assistance',
+                            roadside_assistance: 'roadside_assistance',
+                            rsa: 'roadside_assistance',
+                            key_protect: 'key_protect',
+                            tyre_protect: 'tyre_protect',
+                            pillion_cover: 'pillion_cover',
+                        };
+                        for (const addon of insuranceResult.json.addons || []) {
+                            const rawKey = String(addon.id || addon.label || '')
+                                .toLowerCase()
+                                .replace(/[^a-z0-9_]+/g, '_')
+                                .replace(/^_|_$/g, '');
+                            const colKey = ADDON_COLUMN_MAP[rawKey] || rawKey;
+                            if (!colKey) continue;
+                            addonCols[`addon_${colKey}_amount`] = round2(addon.price || 0);
+                            addonCols[`addon_${colKey}_gst_amount`] = round2(addon.gst || 0);
+                            addonCols[`addon_${colKey}_total_amount`] = round2(addon.total || 0);
+                            addonCols[`addon_${colKey}_default`] = addon.default ?? false;
+                        }
+                        return addonCols;
+                    })(),
                     // Status & Audit
                     publish_stage: 'PUBLISHED',
                     is_popular: priceRow?.is_popular ?? false,
