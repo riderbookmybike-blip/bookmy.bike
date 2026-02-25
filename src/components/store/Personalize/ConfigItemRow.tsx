@@ -83,11 +83,11 @@ export default function ConfigItemRow({
                                 <span
                                     className={`text-sm font-black font-mono ${isSelected ? 'text-brand-primary' : 'text-slate-900'}`}
                                 >
-                                    ₹{finalPrice.toLocaleString()}
+                                    ₹{Math.round(finalPrice).toLocaleString()}
                                 </span>
                                 {item.discountPrice && item.discountPrice > 0 && (
                                     <span className="text-[10px] text-slate-400 line-through font-bold">
-                                        ₹{item.price.toLocaleString()}
+                                        ₹{Math.round(item.price).toLocaleString()}
                                     </span>
                                 )}
                             </div>
@@ -143,7 +143,7 @@ export default function ConfigItemRow({
                                             {b.label || b.name}
                                         </span>
                                         <span className="text-[10px] font-black text-white">
-                                            ₹{(b.amount || b.value || 0).toLocaleString()}
+                                            ₹{Math.round(b.amount || b.value || 0).toLocaleString()}
                                         </span>
                                     </div>
                                 ))}

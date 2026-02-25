@@ -1759,7 +1759,15 @@ export async function createLeadAction(data: {
         // console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
 
         // Guardrail: staff should not accidentally create a lead mapped to their own team profile.
-        if (authUser?.id && customerId === authUser.id && (actorIsStaff || isStaffContextSource(data.source))) {
+        // Allow marketplace quick-quote/test paths, while keeping CRM/staff flows protected.
+        const isMarketplaceQuickQuote = normalizedSource === 'PDP_QUICK_QUOTE' || normalizedSource === 'STORE_PDP';
+        if (
+            isStrict &&
+            authUser?.id &&
+            customerId === authUser.id &&
+            (actorIsStaff || isStaffContextSource(data.source)) &&
+            !isMarketplaceQuickQuote
+        ) {
             return {
                 success: false,
                 message:

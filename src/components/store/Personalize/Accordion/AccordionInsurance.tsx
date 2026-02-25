@@ -144,12 +144,12 @@ export default function AccordionInsurance({
                             >
                                 {item.price === 0 && isSelected
                                     ? 'FREE'
-                                    : `₹${Number(item.price || 0).toLocaleString()}`}
+                                    : `₹${Math.round(Number(item.price || 0)).toLocaleString()}`}
                             </span>
                             {item.originalPrice && (
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                     <span className="text-[10px] text-slate-400 line-through tabular-nums">
-                                        ₹{item.originalPrice.toLocaleString()}
+                                        ₹{Math.round(item.originalPrice).toLocaleString()}
                                     </span>
                                     {item.savingsPct && (
                                         <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
