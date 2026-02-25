@@ -69,6 +69,8 @@ export function CompactProductCard({
 
     const bcoinAdjustment = isShowingEffectivePrice ? coinPricing.discount || 0 : 0;
     const displayPrice = Math.max(0, baseDisplayPrice - bcoinAdjustment);
+    const formatRoundedPrice = (value: number | null | undefined) =>
+        Math.ceil(Number(value) || 0).toLocaleString('en-IN');
 
     // EMI
     const activeTenure = tenure || 36;
@@ -183,7 +185,7 @@ export function CompactProductCard({
                         </div>
                         <div className="flex items-center gap-2">
                             <p className="text-[18px] font-black text-slate-900 leading-none">
-                                ₹{(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString('en-IN')}
+                                ₹{formatRoundedPrice(v.price?.onRoad || v.price?.exShowroom || 0)}
                             </p>
                             <div className="flex items-center gap-1 bg-[#F4B000]/10 px-1.5 py-0.5 rounded border border-[#F4B000]/20 relative group/bcoin">
                                 <Logo variant="icon" size={8} />
@@ -269,7 +271,7 @@ export function CompactProductCard({
                             </div>
                             <div className="flex items-baseline mb-1">
                                 <span className="text-[18px] font-black text-emerald-500 italic leading-none">
-                                    ₹{emiValue.toLocaleString('en-IN')}
+                                    ₹{formatRoundedPrice(emiValue)}
                                 </span>
                                 <span className="text-slate-200 text-sm font-light select-none mx-1">/</span>
                                 <span className="text-[12px] font-bold text-emerald-500/80 italic leading-none">
@@ -278,7 +280,7 @@ export function CompactProductCard({
                             </div>
                             <div className="flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
                                 <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest leading-none">
-                                    Downpayment ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                    Downpayment ₹{formatRoundedPrice(downpayment || 0)}
                                 </span>
                                 {onEditDownpayment && (
                                     <button

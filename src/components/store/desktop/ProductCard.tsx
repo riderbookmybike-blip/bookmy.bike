@@ -253,6 +253,8 @@ export const ProductCard = ({
     const onRoad = v.price?.onRoad || 0;
     const offerPrice = v.price?.offerPrice || basePrice;
     const offerDeltaForParity = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
+    const formatRoundedPrice = (value: number | null | undefined) =>
+        Math.ceil(Number(value) || 0).toLocaleString('en-IN');
 
     // SSPP v1: B-Coin Integration
     const params = useSearchParams();
@@ -479,7 +481,7 @@ export const ProductCard = ({
                             <p
                                 className={`text-sm font-black ${netImpact >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
                             >
-                                {netImpact !== 0 ? `₹${Math.abs(netImpact).toLocaleString('en-IN')}` : 'No Change'}
+                                {netImpact !== 0 ? `₹${formatRoundedPrice(Math.abs(netImpact))}` : 'No Change'}
                             </p>
                         </div>
                     </div>
@@ -493,7 +495,7 @@ export const ProductCard = ({
                                 <div className="flex flex-col">
                                     <div className="flex items-baseline gap-3">
                                         <span className="text-3xl font-black text-slate-900 leading-none tracking-tight">
-                                            ₹{baseOnRoadPrice.toLocaleString('en-IN')}
+                                            ₹{formatRoundedPrice(baseOnRoadPrice)}
                                         </span>
                                         {bestOffer ? (
                                             <div className="flex flex-col items-start leading-none">
@@ -518,7 +520,7 @@ export const ProductCard = ({
                                             v.price?.onRoad && (
                                                 <div className="flex flex-col">
                                                     <span className="text-[10px] font-bold text-slate-400 line-through">
-                                                        ₹{v.price.onRoad.toLocaleString('en-IN')}
+                                                        ₹{formatRoundedPrice(v.price.onRoad)}
                                                     </span>
                                                     {(priceSourceLabel || v.price.pricingSource) && (
                                                         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
@@ -536,7 +538,7 @@ export const ProductCard = ({
                                 <div className="h-10 relative">
                                     <div className="flex flex-col">
                                         <p className="text-3xl font-black text-brand-primary drop-shadow-[0_0_8px_rgba(244,176,0,0.2)] leading-none">
-                                            {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
+                                            {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
                                         </p>
                                         <div className="flex items-center gap-1.5 mt-2">
                                             <p className="text-sm font-black text-slate-500 uppercase leading-none">
@@ -568,7 +570,7 @@ export const ProductCard = ({
                                         <p className="leading-relaxed">
                                             EMI on{' '}
                                             <span className="font-bold text-green-400">
-                                                ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                                ₹{formatRoundedPrice(downpayment || 0)}
                                             </span>{' '}
                                             downpayment at{' '}
                                             <span className="font-bold text-green-400">{tenure} months</span>
@@ -669,7 +671,7 @@ export const ProductCard = ({
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] border border-emerald-400/30 transition-all hover:scale-105">
                             <Sparkles size={10} className="fill-white text-white" />
                             <span className="text-[10px] font-black uppercase tracking-wider">
-                                Save ₹{v.price.discount?.toLocaleString('en-IN')}
+                                Save ₹{formatRoundedPrice(v.price.discount)}
                             </span>
                         </div>
                     )}
@@ -678,7 +680,7 @@ export const ProductCard = ({
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 text-white rounded-xl shadow-[0_4px_12px_rgba(244,63,94,0.3)] border border-rose-400/30 transition-all hover:scale-105">
                             <Zap size={10} className="fill-white text-white" />
                             <span className="text-[10px] font-black uppercase tracking-wider">
-                                Surge ₹{Math.abs(v.price.discount || 0).toLocaleString('en-IN')}
+                                Surge ₹{formatRoundedPrice(Math.abs(v.price.discount || 0))}
                             </span>
                         </div>
                     )}
@@ -764,8 +766,7 @@ export const ProductCard = ({
                             )}
                         </motion.div>
                         <span className="text-[10px] font-black uppercase tracking-wider relative z-10">
-                            {bestOffer.price < 0 ? 'SAVE' : 'SURGE'} ₹
-                            {Math.abs(bestOffer.price).toLocaleString('en-IN')}
+                            {bestOffer.price < 0 ? 'SAVE' : 'SURGE'} ₹{formatRoundedPrice(Math.abs(bestOffer.price))}
                         </span>
                         {/* Shimmer Effect */}
                         <div className="absolute inset-0 w-full h-full overflow-hidden rounded-xl pointer-events-none">
@@ -917,7 +918,7 @@ export const ProductCard = ({
                                             On-Road
                                         </span>
                                         <span className="font-black text-slate-800 tabular-nums">
-                                            {onRoad > 0 ? `₹${onRoad.toLocaleString('en-IN')}` : '—'}
+                                            {onRoad > 0 ? `₹${formatRoundedPrice(onRoad)}` : '—'}
                                         </span>
                                     </div>
                                     {onRoad > 0 && onRoad > offerPrice && (
@@ -926,7 +927,7 @@ export const ProductCard = ({
                                                 Discount
                                             </span>
                                             <span className="font-black text-rose-500 tabular-nums">
-                                                −₹{Math.max(0, onRoad - offerPrice).toLocaleString('en-IN')}
+                                                −₹{formatRoundedPrice(Math.max(0, onRoad - offerPrice))}
                                             </span>
                                         </div>
                                     )}
@@ -936,7 +937,7 @@ export const ProductCard = ({
                                                 B-Coin Adj
                                             </span>
                                             <span className="font-black text-brand-primary tabular-nums">
-                                                −₹{bcoinAdjustment.toLocaleString('en-IN')}
+                                                −₹{formatRoundedPrice(bcoinAdjustment)}
                                             </span>
                                         </div>
                                     )}
@@ -948,7 +949,7 @@ export const ProductCard = ({
                                             Total Offer
                                         </span>
                                         <span className="text-[13px] font-black text-slate-900 tabular-nums">
-                                            ₹{effectiveOfferPrice.toLocaleString('en-IN')}
+                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
                                         </span>
                                     </div>
 
@@ -982,13 +983,12 @@ export const ProductCard = ({
                                 <span
                                     className={`${showOnRoadStrike ? 'text-lg md:text-xl font-normal line-through text-slate-800' : 'text-[22px] md:text-3xl font-black'} italic text-slate-900 leading-none`}
                                 >
-                                    ₹
-                                    {(showOnRoadStrike ? baseOnRoadPrice : effectiveOfferPrice).toLocaleString('en-IN')}
+                                    ₹{formatRoundedPrice(showOnRoadStrike ? baseOnRoadPrice : effectiveOfferPrice)}
                                 </span>
                                 {showOnRoadStrike && (
                                     <div className="flex items-center">
                                         <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
-                                            ₹{effectiveOfferPrice.toLocaleString('en-IN')}
+                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
                                         </span>
                                     </div>
                                 )}
@@ -1044,7 +1044,7 @@ export const ProductCard = ({
                                     <p className="leading-relaxed">
                                         Based on{' '}
                                         <span className="font-black text-emerald-400">
-                                            ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                            ₹{formatRoundedPrice(downpayment || 0)}
                                         </span>{' '}
                                         downpayment at{' '}
                                         <span className="font-black text-emerald-400">{tenure} months</span>
@@ -1063,7 +1063,7 @@ export const ProductCard = ({
                                 <span
                                     className={`${isShowingEffectivePrice ? 'text-lg md:text-xl font-normal text-slate-800' : 'text-[22px] md:text-3xl font-black text-slate-900'} italic leading-none`}
                                 >
-                                    ₹{(downpayment || 0).toLocaleString('en-IN')}
+                                    ₹{formatRoundedPrice(downpayment || 0)}
                                 </span>
                                 {onEditDownpayment && (
                                     <button
@@ -1084,7 +1084,7 @@ export const ProductCard = ({
                                 <span
                                     className={`text-[22px] md:text-3xl font-black ${isShowingEffectivePrice ? 'text-brand-primary' : 'text-slate-900'} italic leading-none`}
                                 >
-                                    {emiValue !== null ? `₹${emiValue.toLocaleString('en-IN')}` : '—'}
+                                    {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
                                 </span>
                                 <div className="flex items-center gap-1.5 pl-0.5 mt-1">
                                     <span className="text-base md:text-lg font-bold italic text-slate-600 leading-none">
