@@ -228,9 +228,19 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
 
     const handleConfirmBooking = async () => {
         const result = await createBookingFromQuote(quoteId);
+        const requisition = (result as any).requisition;
 
         if (result.success && (result as any).data?.id) {
-            toast.success('Sales order created');
+            if (requisition?.status === 'CREATED') {
+                toast.success(
+                    `Sales order created · Requisition ${requisition.display_id || requisition.request_id} auto-created`
+                );
+            } else {
+                toast.success('Sales order created');
+                if (requisition?.status === 'ERROR') {
+                    toast.warning('Sales order created, but requisition auto-check failed. Please verify inventory.');
+                }
+            }
             onRefresh?.();
             if (slug) {
                 window.location.href = `/app/${slug}/sales-orders/${(result as any).data.id}?stage=BOOKING`;

@@ -3050,6 +3050,20 @@ export async function createBookingFromQuote(quoteId: string) {
         }
 
         const bookingIdValue = bookingId as string;
+        let requisitionResult:
+            | {
+                  status: 'CREATED';
+                  request_id: string;
+                  display_id?: string;
+              }
+            | {
+                  status: 'NONE';
+              }
+            | {
+                  status: 'ERROR';
+                  message?: string;
+              } = { status: 'NONE' };
+
         const { data: booking, error: bookingError } = await adminClient
             .from('crm_bookings')
             .select('*')
@@ -3067,17 +3081,25 @@ export async function createBookingFromQuote(quoteId: string) {
             const { bookingShortageCheck } = await import('@/actions/inventory');
             const shortageResult = await bookingShortageCheck(bookingIdValue);
             if (shortageResult.status === 'SHORTAGE_CREATED') {
-                // console.log(`[createBookingFromQuote] Shortage detected → request ${shortageResult.request_id}`);
+                requisitionResult = {
+                    status: 'CREATED',
+                    request_id: shortageResult.request_id,
+                    display_id: shortageResult.display_id,
+                };
+            }
+            if (shortageResult.status === 'ERROR') {
+                requisitionResult = { status: 'ERROR', message: shortageResult.message };
             }
         } catch (shortageErr) {
             // Non-blocking: booking succeeds even if shortage check fails
             console.error('[createBookingFromQuote] Shortage check failed (non-blocking):', shortageErr);
+            requisitionResult = { status: 'ERROR', message: getErrorMessage(shortageErr) || 'Shortage check failed' };
         }
 
         revalidatePath('/app/[slug]/sales-orders');
         revalidatePath('/profile');
 
-        return { success: true, data: booking };
+        return { success: true, data: booking, requisition: requisitionResult };
     } catch (err: unknown) {
         console.error('[createBookingFromQuote] CRITICAL CRASH:', err);
         return { success: false, message: `Server Error: ${getErrorMessage(err) || String(err)}` };
