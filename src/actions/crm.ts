@@ -1092,6 +1092,16 @@ async function updateCrmLeadCompat(
     payload: Record<string, any>,
     updatedAtIso?: string
 ): Promise<{ success: boolean; message?: string }> {
+    const toErrMsg = (err: unknown) => {
+        if (!err) return 'Unknown error';
+        if (typeof err === 'string') return err;
+        if (err instanceof Error) return err.message;
+        if (typeof err === 'object' && 'message' in (err as Record<string, unknown>)) {
+            return String((err as Record<string, unknown>).message || 'Unknown error');
+        }
+        return String(err);
+    };
+
     const withUpdatedAt = {
         ...payload,
         updated_at: updatedAtIso || new Date().toISOString(),
@@ -1105,14 +1115,14 @@ async function updateCrmLeadCompat(
         return { success: true };
     }
 
-    const errMsg = String(firstAttempt.getErrorMessage(error) || '');
+    const errMsg = String(toErrMsg(firstAttempt.error) || '');
     const isUpdatedAtSchemaIssue =
         errMsg.includes("'updated_at'") ||
         errMsg.toLowerCase().includes('updated_at column') ||
         errMsg.toLowerCase().includes('schema cache');
 
     if (!isUpdatedAtSchemaIssue) {
-        return { success: false, message: firstAttempt.getErrorMessage(error) };
+        return { success: false, message: toErrMsg(firstAttempt.error) };
     }
 
     const fallbackAttempt = await adminClient
@@ -1120,7 +1130,7 @@ async function updateCrmLeadCompat(
         .update(payload as any)
         .eq('id', leadId);
     if (fallbackAttempt.error) {
-        return { success: false, message: fallbackAttempt.getErrorMessage(error) };
+        return { success: false, message: toErrMsg(fallbackAttempt.error) };
     }
 
     return { success: true };
@@ -1883,7 +1893,9 @@ export async function createLeadAction(data: {
         }>;
 
         const existingLead = data.selected_dealer_id
-            ? candidateLeads.find(l => l.selected_dealer_tenant_id === data.selected_dealer_id) || null
+            ? candidateLeads.find(l => l.selected_dealer_tenant_id === data.selected_dealer_id) ||
+              candidateLeads[0] ||
+              null
             : candidateLeads[0] || null;
 
         if (existingLead) {
@@ -2095,11 +2107,15 @@ export async function createLeadAction(data: {
             actorTenantId: effectiveOwnerId || null,
         });
 
-        // Fire-and-forget SMS notification to customer
-        sendStoreVisitSms({
-            phone: data.customer_phone,
-            name: data.customer_name,
-        }).catch(err => console.error('[SMS] Lead creation SMS failed:', err));
+        // PDP quick-quote flows immediately create a quote that sends the same SMS.
+        // Skip lead-level SMS there to avoid MSG91 duplicate rejection (error 311).
+        const shouldSendLeadSms = normalizedSource !== 'PDP_QUICK_QUOTE' && normalizedSource !== 'STORE_PDP';
+        if (shouldSendLeadSms) {
+            sendStoreVisitSms({
+                phone: data.customer_phone,
+                name: data.customer_name,
+            }).catch(err => console.error('[SMS] Lead creation SMS failed:', err));
+        }
 
         // console.log('[DEBUG] Lead created successfully:', lead.id);
         revalidatePath('/app/[slug]/leads', 'page');
@@ -2317,6 +2333,14 @@ export async function getBookingsForMember(memberId: string) {
 import { getAuthUser } from '@/lib/auth/resolver';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 
+type QuoteSmsStatus = {
+    attempted: boolean;
+    state: 'SENT' | 'FAILED' | 'SKIPPED';
+    message?: string;
+    reason?: string;
+    phone?: string;
+};
+
 export async function createQuoteAction(data: {
     tenant_id?: string;
     lead_id?: string;
@@ -2327,7 +2351,7 @@ export async function createQuoteAction(data: {
     commercials: Record<string, any>;
     store_url?: string;
     source?: 'STORE_PDP' | 'LEADS';
-}): Promise<{ success: boolean; data?: any; message?: string }> {
+}): Promise<{ success: boolean; data?: any; message?: string; smsStatus?: QuoteSmsStatus }> {
     const user = await getAuthUser();
     const isGuestMarketplaceQuote = !user && data.source === 'STORE_PDP' && !!data.lead_id;
     if (!user && !isGuestMarketplaceQuote) {
@@ -2359,18 +2383,24 @@ export async function createQuoteAction(data: {
     // Prefer explicit member_id or lead-linked customer_id (avoid using staff auth IDs)
     let memberId: string | null = data.member_id || null;
     let leadReferrerId: string | null = null;
+    let leadCustomerPhone: string | null = null;
+    let leadCustomerName: string | null = null;
 
     const comms: any = normalizeCommercialsPayload(data.commercials);
 
     if (data.lead_id) {
         const { data: lead } = await supabase
             .from('crm_leads')
-            .select('customer_id, referred_by_id, selected_dealer_tenant_id, owner_tenant_id')
+            .select(
+                'customer_id, customer_name, customer_phone, referred_by_id, selected_dealer_tenant_id, owner_tenant_id'
+            )
             .eq('is_deleted', false)
             .eq('id', data.lead_id)
             .maybeSingle();
 
         if (lead) {
+            leadCustomerPhone = lead.customer_phone || null;
+            leadCustomerName = lead.customer_name || null;
             if (!resolvedTenantId) {
                 resolvedTenantId = lead.selected_dealer_tenant_id || lead.owner_tenant_id || null;
             }
@@ -2622,28 +2652,99 @@ export async function createQuoteAction(data: {
     revalidatePath('/app/[slug]/quotes');
     revalidatePath('/profile'); // Transaction Registry
 
-    // Fire-and-forget SMS to customer on marketplace quote/share flows
-    const smsStoreUrl = typeof data.store_url === 'string' ? data.store_url.trim() : '';
-    const shouldSendQuoteSms = Boolean(memberId && data.source === 'STORE_PDP');
+    // Quote-share SMS status is awaited so UI and timeline stay deterministic.
+    let smsStatus: QuoteSmsStatus = {
+        attempted: false,
+        state: 'SKIPPED',
+        reason: 'SOURCE_NOT_ELIGIBLE',
+    };
+
+    // SMS on PDP quote-share flows (customer + team-led PDP).
+    // Build the quote dossier URL.
+    // DLT CTA Whitelist has Dynamic URL: https://www.bookmy.bike/?
+    // URL MUST use www. prefix and query-param format (not path) to match the whitelisted CTA.
+    const dossierUrl = quote.display_id
+        ? `https://www.bookmy.bike/?q=${quote.display_id}`
+        : (typeof data.store_url === 'string' ? data.store_url.trim() : '') || `https://www.bookmy.bike/`;
+    const shouldSendQuoteSms = data.source === 'STORE_PDP' || data.source === 'LEADS';
     if (shouldSendQuoteSms) {
-        adminClient
-            .from('id_members')
-            .select('full_name, primary_phone')
-            .eq('id', memberId)
-            .maybeSingle()
-            .then(({ data: member }) => {
-                if (member?.primary_phone) {
-                    sendStoreVisitSms({
-                        phone: member.primary_phone,
-                        name: member.full_name || 'Customer',
-                        storeUrl: smsStoreUrl || undefined,
-                    }).catch(err => console.error('[SMS] Quote creation SMS failed:', err));
+        smsStatus = { attempted: true, state: 'SKIPPED', reason: 'PENDING_RESOLUTION' };
+        try {
+            let phone = leadCustomerPhone;
+            let name = leadCustomerName || 'Customer';
+
+            if (memberId) {
+                const { data: member } = await adminClient
+                    .from('id_members')
+                    .select('full_name, primary_phone, whatsapp')
+                    .eq('id', memberId)
+                    .maybeSingle();
+                phone = member?.primary_phone || member?.whatsapp || phone;
+                name = member?.full_name || name;
+            }
+
+            if (!phone) {
+                smsStatus = {
+                    attempted: true,
+                    state: 'SKIPPED',
+                    reason: 'NO_RECIPIENT_PHONE',
+                };
+                console.warn('[SMS] Quote SMS skipped: recipient phone unavailable', {
+                    quoteId: quote.id,
+                    leadId: data.lead_id || null,
+                    memberId: memberId || null,
+                });
+                await logQuoteEvent(quote.id, 'Quote SMS Skipped', 'System', 'team', {
+                    source: 'MSG91',
+                    reason: 'NO_RECIPIENT_PHONE',
+                });
+            } else {
+                const smsResult = await sendStoreVisitSms({
+                    phone,
+                    name,
+                    storeUrl: dossierUrl,
+                });
+
+                if (smsResult.success) {
+                    smsStatus = {
+                        attempted: true,
+                        state: 'SENT',
+                        message: smsResult.message || 'SENT',
+                        phone,
+                    };
+                    await logQuoteEvent(quote.id, 'Quote SMS Sent', 'System', 'team', {
+                        source: 'MSG91',
+                        status: smsResult.message || 'SENT',
+                    });
+                } else {
+                    smsStatus = {
+                        attempted: true,
+                        state: 'FAILED',
+                        reason: smsResult.message || 'SEND_FAILED',
+                        phone,
+                    };
+                    await logQuoteEvent(quote.id, 'Quote SMS Failed', 'System', 'team', {
+                        source: 'MSG91',
+                        reason: smsResult.message || 'SEND_FAILED',
+                    });
                 }
-            })
-            .catch(err => console.error('[SMS] Member lookup for SMS failed:', err));
+            }
+        } catch (err) {
+            const reason = err instanceof Error ? err.message : 'UNHANDLED_SMS_ERROR';
+            smsStatus = {
+                attempted: true,
+                state: 'FAILED',
+                reason,
+            };
+            console.error('[SMS] Quote creation SMS failed:', err);
+            await logQuoteEvent(quote.id, 'Quote SMS Failed', 'System', 'team', {
+                source: 'MSG91',
+                reason,
+            });
+        }
     }
 
-    return { success: true, data: quote };
+    return { success: true, data: quote, smsStatus };
 }
 
 export async function acceptQuoteAction(id: string): Promise<{ success: boolean; message?: string }> {
@@ -4214,6 +4315,7 @@ export async function getQuoteById(
                 price: a.discountPrice || a.price || 0,
                 basePrice: a.price || 0,
                 discountPrice: a.discountPrice || null,
+                image: a.image || a.image_url || null,
                 qty: Number(a.qty || 1),
                 selected: true,
             })),
@@ -5286,8 +5388,19 @@ export async function getQuoteByDisplayId(
 ): Promise<{ success: boolean; data?: any; error?: string }> {
     // We use adminClient to allow public dossier access via valid displayId without login barriers
     const supabase = adminClient;
+    const rawDisplayId = String(displayId || '').trim();
+    const normalizedDisplayId = rawDisplayId.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const dashedDisplayId =
+        normalizedDisplayId.length >= 6 ? (normalizedDisplayId.match(/.{1,3}/g)?.join('-') ?? normalizedDisplayId) : '';
+    const displayIdCandidates = Array.from(
+        new Set([rawDisplayId, rawDisplayId.toUpperCase(), normalizedDisplayId, dashedDisplayId].filter(Boolean))
+    );
 
-    const { data: quote, error } = await supabase
+    if (displayIdCandidates.length === 0) {
+        return { success: false, error: 'Quote not found' };
+    }
+
+    const { data: quotes, error } = await supabase
         .from('crm_quotes')
         .select(
             `
@@ -5296,15 +5409,17 @@ export async function getQuoteByDisplayId(
             lead:crm_leads!quotes_lead_id_fkey (*)
         `
         )
-        .eq('display_id', displayId)
+        .in('display_id', displayIdCandidates)
         .eq('is_deleted', false)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
     if (error) {
         console.error('getQuoteByDisplayId Error:', error);
         return { success: false, error: JSON.stringify(error) };
     }
 
+    const quote = Array.isArray(quotes) && quotes.length > 0 ? quotes[0] : null;
     if (!quote) {
         return { success: false, error: 'Quote not found' };
     }

@@ -124,6 +124,7 @@ const OptionRow = ({
     description,
     isMandatory,
     breakdown,
+    image,
 }: {
     label: React.ReactNode;
     price?: number | null;
@@ -131,20 +132,29 @@ const OptionRow = ({
     description?: React.ReactNode;
     isMandatory?: boolean;
     breakdown?: { label: string; amount: number }[];
+    image?: string | null;
 }) => (
     <div className="border border-slate-100 rounded-xl overflow-hidden bg-white">
         <div className="flex items-start justify-between gap-3 px-4 py-2.5">
             <div className="flex items-start gap-2 min-w-0">
-                <div
-                    className={cn(
-                        'mt-0.5 w-4 h-4 rounded-full flex items-center justify-center border',
-                        selected
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                            : 'bg-slate-50 border-slate-200 text-slate-300'
-                    )}
-                >
-                    {selected ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
-                </div>
+                {image ? (
+                    <img
+                        src={image}
+                        alt=""
+                        className="mt-0.5 w-9 h-9 rounded-lg object-contain bg-slate-50 border border-slate-100 shrink-0"
+                    />
+                ) : (
+                    <div
+                        className={cn(
+                            'mt-0.5 w-4 h-4 rounded-full flex items-center justify-center border',
+                            selected
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                                : 'bg-slate-50 border-slate-200 text-slate-300'
+                        )}
+                    >
+                        {selected ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                    </div>
+                )}
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">{label}</span>
@@ -152,11 +162,6 @@ const OptionRow = ({
                         {selected && (
                             <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
                                 Included
-                            </span>
-                        )}
-                        {!selected && (
-                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-200">
-                                Not Included
                             </span>
                         )}
                     </div>
@@ -293,6 +298,74 @@ const formatSpecValue = (val: any, suffix?: string) => {
     }
     return text;
 };
+
+/**
+ * Format accessory label for dossier display.
+ * Raw: "CRASH GUARD PREMIUM MILD STEEL (BLACK) FOR ACTIVA / HONDA PREMIUM MILD STEEL (BLACK)"
+ * Output: Line 1 = Product group (bold), Line 2 = Variant details
+ */
+function formatAccessoryLabel(raw: string): React.ReactNode {
+    if (!raw) return 'Accessory';
+    const cleaned = raw.trim();
+
+    // Split on " / " — take only the first part (product info), discard brand part
+    const productPart = cleaned.split(/\s*\/\s*/)[0] || cleaned;
+
+    // Remove "FOR {MODEL}" suffix — brand/model shown separately
+    const withoutFor = productPart.replace(/\s+FOR\s+.+$/i, '').trim();
+
+    // Known product groups for first-line extraction
+    const knownGroups = [
+        'CRASH GUARD',
+        'SIDE STAND',
+        'SEAT COVER',
+        'HELMET OPEN FACE',
+        'HELMET FULL FACE',
+        'HELMET',
+        'FLOOR MATTE',
+        'FLOOR MAT',
+        'PARKING COVER',
+        'HSRP FRAME PAIR',
+        'HSRP FRAME',
+        'BODY COVER',
+        'LEG GUARD',
+        'TANK PAD',
+        'SAREE GUARD',
+    ];
+
+    const upper = withoutFor.toUpperCase();
+    const matchedGroup = knownGroups.find(g => upper.startsWith(g));
+    let groupName: string;
+    let variantDesc: string;
+
+    if (matchedGroup) {
+        groupName = matchedGroup;
+        variantDesc = withoutFor.slice(matchedGroup.length).trim();
+    } else {
+        const words = withoutFor.split(/\s+/);
+        groupName = words.slice(0, 2).join(' ');
+        variantDesc = words.slice(2).join(' ');
+    }
+
+    // Title case
+    const titleCase = (s: string) =>
+        s
+            .toLowerCase()
+            .replace(/\b\w/g, c => c.toUpperCase())
+            .replace(/\(([a-z])/gi, (_, c) => `(${c.toUpperCase()}`);
+
+    return (
+        <span>
+            <span className="font-bold">{titleCase(groupName)}</span>
+            {variantDesc && (
+                <>
+                    <br />
+                    <span className="text-[9px] text-slate-400">{titleCase(variantDesc)}</span>
+                </>
+            )}
+        </span>
+    );
+}
 
 /**
  * Utility to determine if text should be black or white based on background color luminance
@@ -943,22 +1016,155 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-body">
                         <div className="space-y-2">
-                            {(optionAccessories.length > 0 ? optionAccessories : accessories).length > 0 ? (
-                                <div className="space-y-2 p-2">
-                                    {(optionAccessories.length > 0 ? optionAccessories : accessories).map(
-                                        (item: any, idx: number) => (
-                                            <OptionRow
-                                                key={item.id || idx}
-                                                label={item.description || item.displayName || item.name}
-                                                price={toNumber(item.discountPrice ?? item.price ?? item.amount, 0)}
-                                                selected={selectedAccessoryIds.has(String(item.id))}
-                                                description={item.brand ? `Brand: ${item.brand}` : undefined}
-                                                isMandatory={item.isMandatory || item.inclusionType === 'MANDATORY'}
-                                            />
-                                        )
-                                    )}
-                                </div>
-                            ) : (
+                            {(() => {
+                                const allItems = [...(optionAccessories.length > 0 ? optionAccessories : accessories)];
+                                if (allItems.length === 0) return null;
+
+                                // Extract product group key from name
+                                const KNOWN_GROUPS = [
+                                    'CRASH GUARD',
+                                    'SIDE STAND',
+                                    'SEAT COVER',
+                                    'HELMET',
+                                    'FLOOR MATTE',
+                                    'FLOOR MAT',
+                                    'PARKING COVER',
+                                    'HSRP FRAME PAIR',
+                                    'HSRP FRAME',
+                                    'BODY COVER',
+                                    'LEG GUARD',
+                                    'TANK PAD',
+                                    'SAREE GUARD',
+                                ];
+                                const getGroup = (item: any) => {
+                                    const raw = (item.description || item.displayName || item.name || '').trim();
+                                    const productPart = raw.split(/\s*\/\s*/)[0] || raw;
+                                    const withoutFor = productPart.replace(/\s+FOR\s+.+$/i, '').trim();
+                                    const upper = withoutFor.toUpperCase();
+                                    const match = KNOWN_GROUPS.find(g => upper.startsWith(g));
+                                    return match || upper.split(/\s+/).slice(0, 2).join(' ');
+                                };
+
+                                // Group items by product
+                                const groups = new Map<string, any[]>();
+                                allItems.forEach((item: any) => {
+                                    const key = getGroup(item);
+                                    if (!groups.has(key)) groups.set(key, []);
+                                    groups.get(key)!.push(item);
+                                });
+
+                                // Sort: groups with selected items first
+                                const sortedGroups = [...groups.entries()].sort(([, aItems], [, bItems]) => {
+                                    const aHasSelected = aItems.some((i: any) => selectedAccessoryIds.has(String(i.id)))
+                                        ? 0
+                                        : 1;
+                                    const bHasSelected = bItems.some((i: any) => selectedAccessoryIds.has(String(i.id)))
+                                        ? 0
+                                        : 1;
+                                    return aHasSelected - bHasSelected;
+                                });
+
+                                const titleCase = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+
+                                return (
+                                    <div className="space-y-4 p-2">
+                                        {sortedGroups.map(([groupKey, items]) => {
+                                            const hasSelected = items.some((i: any) =>
+                                                selectedAccessoryIds.has(String(i.id))
+                                            );
+                                            return (
+                                                <div
+                                                    key={groupKey}
+                                                    className="border border-slate-100 rounded-xl overflow-hidden"
+                                                >
+                                                    {/* Group header */}
+                                                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                                            {titleCase(groupKey)}
+                                                        </span>
+                                                        {items.length > 1 && (
+                                                            <span className="text-[8px] text-slate-400">
+                                                                {items.length} options
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {/* Variants */}
+                                                    <div className="divide-y divide-slate-50">
+                                                        {items.map((item: any, idx: number) => {
+                                                            const isSelected = selectedAccessoryIds.has(
+                                                                String(item.id)
+                                                            );
+                                                            const isSwap =
+                                                                !isSelected && hasSelected && items.length > 1;
+                                                            return (
+                                                                <div
+                                                                    key={item.id || idx}
+                                                                    className="flex items-center justify-between gap-3 px-4 py-2"
+                                                                >
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        {item.image || item.image_url ? (
+                                                                            <img
+                                                                                src={item.image || item.image_url}
+                                                                                alt=""
+                                                                                className="w-8 h-8 rounded-lg object-contain bg-slate-50 border border-slate-100 shrink-0"
+                                                                            />
+                                                                        ) : (
+                                                                            <div
+                                                                                className={cn(
+                                                                                    'w-3 h-3 rounded-full border shrink-0',
+                                                                                    isSelected
+                                                                                        ? 'bg-emerald-100 border-emerald-300'
+                                                                                        : 'bg-slate-50 border-slate-200'
+                                                                                )}
+                                                                            />
+                                                                        )}
+                                                                        <div className="min-w-0">
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <span className="text-[10px] font-bold text-slate-700">
+                                                                                    {formatAccessoryLabel(
+                                                                                        item.description ||
+                                                                                            item.displayName ||
+                                                                                            item.name
+                                                                                    )}
+                                                                                </span>
+                                                                                {isSelected && (
+                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
+                                                                                        Included
+                                                                                    </span>
+                                                                                )}
+                                                                                {isSwap && (
+                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200">
+                                                                                        Swap
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            {item.brand && (
+                                                                                <div className="text-[8px] text-slate-400">
+                                                                                    {item.brand}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-[10px] font-black text-slate-900 tabular-nums shrink-0">
+                                                                        {formatCurrency(
+                                                                            toNumber(
+                                                                                item.discountPrice ??
+                                                                                    item.price ??
+                                                                                    item.amount,
+                                                                                0
+                                                                            )
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })() || (
                                 <div className="h-full flex items-center justify-center border-4 border-dashed border-slate-100 rounded-[3rem]">
                                     <span className="text-slate-300 uppercase text-[10px] font-black tracking-widest">
                                         No Accessories Available

@@ -2,6 +2,14 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { resolveCookieDomain } from '@/lib/supabase/cookieDomain';
 
+function normalizeDisplayIdParam(value: string | null): string {
+    if (!value) return '';
+    return value
+        .trim()
+        .replace(/[^a-zA-Z0-9-]/g, '')
+        .toUpperCase();
+}
+
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const host = request.headers.get('host') || '';
@@ -17,6 +25,20 @@ export async function proxy(request: NextRequest) {
             status: 403,
             headers: { 'Content-Type': 'application/json' },
         });
+    }
+
+    // A-bis. SMS DOSSIER LINK REDIRECT
+    // SMS uses `www.bookmy.bike/?q=DISPLAY_ID` (DLT CTA whitelist format).
+    // Redirect to actual dossier route `/q/DISPLAY_ID`.
+    if (pathname === '/') {
+        const rawQ = request.nextUrl.searchParams.get('q');
+        const displayId = normalizeDisplayIdParam(rawQ);
+        if (displayId.length > 3) {
+            const url = request.nextUrl.clone();
+            url.pathname = `/q/${encodeURIComponent(displayId)}`;
+            url.searchParams.delete('q');
+            return NextResponse.redirect(url, 302);
+        }
     }
 
     // B. PUBLIC/STATIC ASSETS -> PASS
@@ -42,6 +64,11 @@ export async function proxy(request: NextRequest) {
             url.searchParams.set('color', color);
             return NextResponse.redirect(url, 308);
         }
+    }
+
+    // Dossier is intentionally public (quote links must open without login).
+    if (pathname === '/q' || pathname.startsWith('/q/')) {
+        return NextResponse.next();
     }
 
     const response = NextResponse.next();

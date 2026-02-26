@@ -8,13 +8,17 @@
  * DLT Template ID: 1707177194090847238
  *
  * ENV required:
- *   MSG91_AUTH_KEY         — your MSG91 auth key
- *   MSG91_SMS_TEMPLATE_ID  — MSG91 template/flow ID (default: 699dba0a261146848a022ba2)
- *   STORE_URL              — e.g. https://bookmy.bike/store  (fallback used if absent)
+ *   MSG91_AUTH_KEY             — your MSG91 auth key
+ *   MSG91_SMS_TEMPLATE_ID      — MSG91 template/flow ID (default: 699dba0a261146848a022ba2)
+ *   MSG91_DLT_TEMPLATE_ID      — DLT registered template ID (default: 1707177194090847238)
+ *   STORE_URL                  — e.g. https://bookmy.bike/store  (fallback used if absent)
  */
 
 const FLOW_API_URL = 'https://control.msg91.com/api/v5/flow/';
 const DEFAULT_SMS_TEMPLATE_ID = '699dba0a261146848a022ba2';
+const DEFAULT_DLT_TEMPLATE_ID = '1707177194090847238';
+const SMS_DEDUPE_WINDOW_MS = 11_000;
+const recentSmsRequests = new Map<string, number>();
 
 /**
  * Sends the store-visit SMS to a customer.
@@ -34,6 +38,7 @@ export async function sendStoreVisitSms({
 }): Promise<{ success: boolean; message?: string }> {
     const authKey = process.env.MSG91_AUTH_KEY;
     const templateId = process.env.MSG91_SMS_TEMPLATE_ID || DEFAULT_SMS_TEMPLATE_ID;
+    const dltTemplateId = process.env.MSG91_DLT_TEMPLATE_ID || DEFAULT_DLT_TEMPLATE_ID;
 
     if (!authKey || !templateId) {
         console.warn('[SMS] MSG91_AUTH_KEY or MSG91_SMS_TEMPLATE_ID not configured. Skipping SMS.');
@@ -49,22 +54,47 @@ export async function sendStoreVisitSms({
     }
     const mobile = `91${tenDigit}`;
 
-    // Resolve store URL
-    const url = storeUrl || process.env.STORE_URL || 'https://bookmy.bike/store';
+    // Use first name only to stay within DLT character limits
+    const fullName = (name || '').trim();
+    const firstName = fullName.split(/\s+/)[0] || 'Customer';
+    const safeName = firstName.length > 30 ? firstName.slice(0, 30) : firstName;
+    // DLT Variable 2 is registered as URL type — must include https://
+    const url = (storeUrl || '').trim() || (process.env.STORE_URL || '').trim() || 'https://bookmy.bike/store';
+
+    // Prevent duplicate sends within MSG91's duplicate detection window.
+    const dedupeKey = `${templateId}:${mobile}:${safeName}:${url}`;
+    const now = Date.now();
+    for (const [key, ts] of recentSmsRequests) {
+        if (now - ts > SMS_DEDUPE_WINDOW_MS * 2) recentSmsRequests.delete(key);
+    }
+    const lastSentAt = recentSmsRequests.get(dedupeKey);
+    if (lastSentAt && now - lastSentAt < SMS_DEDUPE_WINDOW_MS) {
+        console.warn(`[SMS] Duplicate SMS suppressed for ${mobile}`);
+        return { success: true, message: 'Duplicate SMS suppressed' };
+    }
+    recentSmsRequests.set(dedupeKey, now);
 
     // MSG91 Flow API payload
-    // The template has two ##var## placeholders:
-    //   1st = customer name
-    //   2nd = store URL
+    // The template has ##var1## and ##var2## placeholders:
+    //   var1 = customer name
+    //   var2 = store/dossier URL
     const payload = {
         flow_id: templateId,
         sender: 'AAPLI',
+        template_id: dltTemplateId,
         mobiles: mobile,
-        VAR1: name || 'Customer',
-        VAR2: url,
+        var1: safeName,
+        var2: url,
     };
 
     try {
+        console.log('[SMS] Payload →', {
+            mobile,
+            name: safeName,
+            url,
+            flow_id: templateId,
+            dlt_template_id: dltTemplateId,
+        });
         const res = await fetch(FLOW_API_URL, {
             method: 'POST',
             headers: {

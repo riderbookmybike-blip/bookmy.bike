@@ -153,7 +153,7 @@ export const CATALOG_SKU_SELECT = `
     ),
     accessory_variant:cat_variants_accessory!accessory_variant_id (
         id, name, slug, status,
-        material, weight, finish
+        material, weight, finish, image_url
     ),
     service_variant:cat_variants_service!service_variant_id (
         id, name, slug, status,
@@ -877,7 +877,7 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
             ),
             accessory_variant:cat_variants_accessory!accessory_variant_id (
                 id, name, slug, status,
-                material, weight, finish
+                material, weight, finish, image_url
             ),
             service_variant:cat_variants_service!service_variant_id (
                 id, name, slug, status,
