@@ -1048,102 +1048,8 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 3 - Service & Warranty */}
+            {/* Page 3 - Finance Scheme */}
             <section id="dossier-page-3" className="a4-page relative overflow-hidden bg-white">
-                <div
-                    className="absolute left-0 top-0 bottom-0 w-2"
-                    style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
-                />
-                <div
-                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
-                    style={{
-                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
-                    }}
-                />
-                <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
-                    <div className="a4-header">
-                        <PageHeader
-                            title="Service & Warranty"
-                            subtitle="Maintenance protocols and extended protection."
-                            iconColor="#8b5cf6"
-                            icon={Settings2}
-                        />
-                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
-                            Quote: {formatDisplayId(quote.display_id)}
-                        </div>
-                    </div>
-                    <div className="a4-body">
-                        {/* Service Packages */}
-                        <div className="space-y-2 p-2">
-                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                                Service Packages
-                            </div>
-                            {(optionServices.length > 0 ? optionServices : services).length > 0 ? (
-                                (optionServices.length > 0 ? optionServices : services).map((svc: any, idx: number) => (
-                                    <OptionRow
-                                        key={svc.id || idx}
-                                        label={svc.name}
-                                        price={toNumber(svc.discountPrice ?? svc.price, 0)}
-                                        selected={selectedServiceIds.has(String(svc.id))}
-                                        description={svc.description}
-                                        isMandatory={svc.isMandatory}
-                                    />
-                                ))
-                            ) : (
-                                <div className="px-8 py-3 text-zinc-300 text-[10px] uppercase italic text-center">
-                                    No services available
-                                </div>
-                            )}
-                        </div>
-                        {/* Warranty */}
-                        <div className="space-y-2 p-2 mt-2 border-t border-zinc-100">
-                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                                Warranty
-                            </div>
-                            {warrantyOptions.length > 0 ? (
-                                warrantyOptions.map((w: any, idx: number) => (
-                                    <OptionRow
-                                        key={w.id || idx}
-                                        label={w.name || w.label || 'Extended Warranty'}
-                                        price={toNumber(w.discountPrice ?? w.price ?? w.amount, 0)}
-                                        selected={
-                                            warrantyHasSelection
-                                                ? selectedWarrantyIds.has(String(w.id || w.name || w.label || ''))
-                                                : true
-                                        }
-                                        description={w.description}
-                                        isMandatory
-                                        breakdown={w.breakdown}
-                                    />
-                                ))
-                            ) : (
-                                <div className="px-8 py-3 text-zinc-400 text-[10px] uppercase italic text-center">
-                                    Standard Warranty Active
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="a4-footer">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 3 of 12</span>
-                            <div
-                                className="w-1 h-1 rounded-full"
-                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
-                            />
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Service & Warranty
-                            </span>
-                        </div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
-                            {formatDisplayId(quote.display_id)}
-                        </div>
-                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
-                    </div>
-                </div>
-            </section>
-
-            {/* Page 4 - Finance Scheme */}
-            <section id="dossier-page-4" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1302,7 +1208,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>{' '}
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 4 of 12</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 3 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -1317,8 +1223,8 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 5 - Accessories */}
-            <section id="dossier-page-5" className="a4-page relative overflow-hidden bg-white">
+            {/* Page 4 - Accessories */}
+            <section id="dossier-page-4" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1502,7 +1408,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 5 of 12</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 4 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -1517,8 +1423,8 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 6 - Insurance */}
-            <section id="dossier-page-6" className="a4-page relative overflow-hidden bg-white">
+            {/* Page 5 - Insurance */}
+            <section id="dossier-page-5" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1608,7 +1514,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 6 of 12</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 5 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -1623,8 +1529,8 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 7 - Registration (RTO) */}
-            <section id="dossier-page-7" className="a4-page relative overflow-hidden bg-white">
+            {/* Page 6 - Registration (RTO) */}
+            <section id="dossier-page-6" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1808,12 +1714,106 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 7 of 12</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 6 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
                             />
                             <span className="text-[10px] uppercase tracking-widest text-slate-400">Registration</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
+                    </div>
+                </div>
+            </section>
+
+            {/* Page 7 - Service & Warranty */}
+            <section id="dossier-page-7" className="a4-page relative overflow-hidden bg-white">
+                <div
+                    className="absolute left-0 top-0 bottom-0 w-2"
+                    style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
+                    }}
+                />
+                <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
+                    <div className="a4-header">
+                        <PageHeader
+                            title="Service & Warranty"
+                            subtitle="Maintenance protocols and extended protection."
+                            iconColor="#8b5cf6"
+                            icon={Settings2}
+                        />
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            Quote: {formatDisplayId(quote.display_id)}
+                        </div>
+                    </div>
+                    <div className="a4-body">
+                        {/* Service Packages */}
+                        <div className="space-y-2 p-2">
+                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                Service Packages
+                            </div>
+                            {(optionServices.length > 0 ? optionServices : services).length > 0 ? (
+                                (optionServices.length > 0 ? optionServices : services).map((svc: any, idx: number) => (
+                                    <OptionRow
+                                        key={svc.id || idx}
+                                        label={svc.name}
+                                        price={toNumber(svc.discountPrice ?? svc.price, 0)}
+                                        selected={selectedServiceIds.has(String(svc.id))}
+                                        description={svc.description}
+                                        isMandatory={svc.isMandatory}
+                                    />
+                                ))
+                            ) : (
+                                <div className="px-8 py-3 text-zinc-300 text-[10px] uppercase italic text-center">
+                                    No services available
+                                </div>
+                            )}
+                        </div>
+                        {/* Warranty */}
+                        <div className="space-y-2 p-2 mt-2 border-t border-zinc-100">
+                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                Warranty
+                            </div>
+                            {warrantyOptions.length > 0 ? (
+                                warrantyOptions.map((w: any, idx: number) => (
+                                    <OptionRow
+                                        key={w.id || idx}
+                                        label={w.name || w.label || 'Extended Warranty'}
+                                        price={toNumber(w.discountPrice ?? w.price ?? w.amount, 0)}
+                                        selected={
+                                            warrantyHasSelection
+                                                ? selectedWarrantyIds.has(String(w.id || w.name || w.label || ''))
+                                                : true
+                                        }
+                                        description={w.description}
+                                        isMandatory
+                                        breakdown={w.breakdown}
+                                    />
+                                ))
+                            ) : (
+                                <div className="px-8 py-3 text-zinc-400 text-[10px] uppercase italic text-center">
+                                    Standard Warranty Active
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="a4-footer">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 7 of 12</span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                                Service & Warranty
+                            </span>
                         </div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
