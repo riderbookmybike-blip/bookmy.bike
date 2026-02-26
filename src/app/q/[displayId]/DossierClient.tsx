@@ -1200,7 +1200,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                                     <span
                                                         className={`text-[10px] w-[55px] text-center ${isSelected ? 'font-black text-white' : 'font-semibold text-slate-600'}`}
                                                     >
-                                                        {t}mo
+                                                        {t} months
                                                     </span>
                                                     <span
                                                         className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-semibold text-white' : 'text-slate-500'}`}
