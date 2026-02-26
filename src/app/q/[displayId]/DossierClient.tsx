@@ -1064,7 +1064,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
                         <PageHeader
-                            title="Finance"
+                            title="Finance Schemes"
                             subtitle="Estimated EMI across all available tenures."
                             iconColor="#6366f1"
                             icon={CreditCard}
@@ -1240,7 +1240,9 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
                             />
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Finance</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                                Finance Schemes
+                            </span>
                         </div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
@@ -1265,7 +1267,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
                         <PageHeader
-                            title="Summary"
+                            title="Finance Summary"
                             subtitle="Finance application overview and settlement details."
                             iconColor="#6366f1"
                             icon={TrendingUp}
@@ -1415,7 +1417,9 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
                             />
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Summary</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                                Finance Summary
+                            </span>
                         </div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
