@@ -6454,6 +6454,27 @@ export async function getQuoteByDisplayId(
     const pdpInsuranceAddons = [...mappedJsonAddons, ...missingRuleAddons];
     const alternativeVariantId = identity.variantId || quote.variant_id || '';
 
+    // Final fallback: construct /media/{brand}/{model}/{variant}/{color}/side.webp
+    // This mirrors the static image convention in /public/media/
+    if (!resolvedImageUrl) {
+        const slugify = (s: string) =>
+            (s || '')
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+        const brandSlug = slugify(productMake);
+        const modelSlug = slugify(productModel);
+        const variantSlug = slugify(productVariant);
+        const colorSlug = slugify(commercials.color_name || commercials.color || vehicleSpecs?.color_name || '');
+
+        if (brandSlug && modelSlug && variantSlug && colorSlug) {
+            resolvedImageUrl = `/media/${brandSlug}/${modelSlug}/${variantSlug}/${colorSlug}/side.webp`;
+        } else if (brandSlug && modelSlug && variantSlug) {
+            resolvedImageUrl = `/media/${brandSlug}/${modelSlug}/${variantSlug}/side.webp`;
+        }
+    }
+
     return {
         success: true,
         data: {

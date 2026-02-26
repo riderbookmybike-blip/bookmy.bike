@@ -548,7 +548,7 @@ export default function ProductClient({
             color_name: colorName,
             color_hex: resolvedColor?.hexCode || resolvedColor?.hex || resolvedColor?.hex_primary,
             color_is_default: (data.colors || []).length <= 1,
-            image_url: resolvedColor?.imageUrl || resolvedColor?.image_url || product.imageUrl,
+            image_url: resolvedColor?.imageUrl || resolvedColor?.image_url || resolvedColor?.image || product.imageUrl,
             ex_showroom: baseExShowroom,
             grand_total: totalOnRoad,
             finance: {
