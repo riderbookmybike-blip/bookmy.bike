@@ -839,7 +839,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                     Ref: {formatDisplayId(quote.display_id)}
                                 </div>
                                 <div className="h-4 w-px bg-slate-100" />
-                                <div className="text-[10px] uppercase tracking-widest text-slate-400">Page 1 of 13</div>
+                                <div className="text-[10px] uppercase tracking-widest text-slate-400">Page 1 of 12</div>
                             </div>
                             <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                         </div>
@@ -1031,7 +1031,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>{' '}
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 2 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 2 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -1208,7 +1208,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>{' '}
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 3 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 3 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -1408,7 +1408,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 4 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 4 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -1514,7 +1514,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 5 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 5 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -1714,7 +1714,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 6 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 6 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -1729,7 +1729,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 7 - Service Packages */}
+            {/* Page 7 - Service & Warranty */}
             <section id="dossier-page-7" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
@@ -1744,8 +1744,8 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
                     <div className="a4-header">
                         <PageHeader
-                            title="Service Packages"
-                            subtitle="Maintenance architecture and protocols."
+                            title="Service & Warranty"
+                            subtitle="Maintenance protocols and extended protection."
                             iconColor="#8b5cf6"
                             icon={Settings2}
                         />
@@ -1754,7 +1754,11 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         </div>
                     </div>
                     <div className="a4-body">
+                        {/* Service Packages */}
                         <div className="space-y-2 p-2">
+                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                Service Packages
+                            </div>
                             {(optionServices.length > 0 ? optionServices : services).length > 0 ? (
                                 (optionServices.length > 0 ? optionServices : services).map((svc: any, idx: number) => (
                                     <OptionRow
@@ -1767,55 +1771,16 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                     />
                                 ))
                             ) : (
-                                <div className="px-8 py-4 text-zinc-300 text-[10px] uppercase italic text-center">
+                                <div className="px-8 py-3 text-zinc-300 text-[10px] uppercase italic text-center">
                                     No services available
                                 </div>
                             )}
                         </div>
-                    </div>
-                    <div className="a4-footer">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 7 of 13</span>
-                            <div
-                                className="w-1 h-1 rounded-full"
-                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
-                            />
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Service</span>
-                        </div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
-                            {formatDisplayId(quote.display_id)}
-                        </div>
-                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
-                    </div>
-                </div>
-            </section>
-
-            {/* Page 8 - Warranty */}
-            <section id="dossier-page-8" className="a4-page relative overflow-hidden bg-white">
-                <div
-                    className="absolute left-0 top-0 bottom-0 w-2"
-                    style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
-                />
-                <div
-                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
-                    style={{
-                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}33, transparent)`,
-                    }}
-                />
-                <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
-                    <div className="a4-header">
-                        <PageHeader
-                            title="Warranty"
-                            subtitle="Extended protection and asset security."
-                            iconColor="#ec4899"
-                            icon={CheckCircle2}
-                        />
-                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
-                            Quote: {formatDisplayId(quote.display_id)}
-                        </div>
-                    </div>
-                    <div className="a4-body">
-                        <div className="space-y-2 p-2">
+                        {/* Warranty */}
+                        <div className="space-y-2 p-2 mt-2 border-t border-zinc-100">
+                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                Warranty
+                            </div>
                             {warrantyOptions.length > 0 ? (
                                 warrantyOptions.map((w: any, idx: number) => (
                                     <OptionRow
@@ -1833,7 +1798,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                     />
                                 ))
                             ) : (
-                                <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
+                                <div className="px-8 py-3 text-zinc-400 text-[10px] uppercase italic text-center">
                                     Standard Warranty Active
                                 </div>
                             )}
@@ -1841,12 +1806,14 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 8 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 7 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
                             />
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Warranty</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                                Service & Warranty
+                            </span>
                         </div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
@@ -1856,8 +1823,8 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 9 - Engine & Performance */}
-            <section id="dossier-page-9" className="a4-page relative overflow-hidden bg-white">
+            {/* Page 8 - Engine & Performance */}
+            <section id="dossier-page-8" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1921,7 +1888,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 9 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 8 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -1936,8 +1903,8 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 10 - Dimension & Chassis */}
-            <section id="dossier-page-10" className="a4-page relative overflow-hidden bg-white">
+            {/* Page 9 - Dimension & Chassis */}
+            <section id="dossier-page-9" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2006,7 +1973,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 10 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 9 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -2021,8 +1988,8 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 11 - Brakes & Safety */}
-            <section id="dossier-page-11" className="a4-page relative overflow-hidden bg-white">
+            {/* Page 10 - Brakes & Safety */}
+            <section id="dossier-page-10" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2077,7 +2044,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 11 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 10 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -2092,8 +2059,8 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 12 - Features & Tech */}
-            <section id="dossier-page-12" className="a4-page relative overflow-hidden bg-white">
+            {/* Page 11 - Features & Tech */}
+            <section id="dossier-page-11" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2137,7 +2104,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 12 of 13</span>
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Page 11 of 12</span>
                             <div
                                 className="w-1 h-1 rounded-full"
                                 style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
@@ -2152,11 +2119,9 @@ export default function DossierClient({ quote }: DossierClientProps) {
                 </div>
             </section>
 
-            {/* Page 13 - Reach Us */}
-
-            {/* Page 13 - Reach Us */}
+            {/* Page 12 - Reach Us */}
             <section
-                id="dossier-page-13"
+                id="dossier-page-12"
                 className="a4-page relative overflow-hidden"
                 style={{ backgroundColor: '#FAFAFA' }}
             >
@@ -2231,7 +2196,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             </span>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className="text-[10px] uppercase tracking-widest text-slate-400">Page 13 of 13</div>
+                            <div className="text-[10px] uppercase tracking-widest text-slate-400">Page 12 of 12</div>
                             <FooterPrintButton onClick={handlePrint} />
                         </div>
                     </div>
