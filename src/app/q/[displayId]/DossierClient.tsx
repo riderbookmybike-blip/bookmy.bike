@@ -1087,40 +1087,42 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 <div className="space-y-4">
                                     {/* Selected Plan — accent hero card matching DossierGroup style */}
                                     <div
-                                        className="p-5 rounded-2xl border"
+                                        className="rounded-2xl border overflow-hidden"
                                         style={{
-                                            backgroundColor: `${quote?.vehicle?.hexCode || '#F4B000'}12`,
                                             borderColor: `${quote?.vehicle?.hexCode || '#F4B000'}30`,
                                         }}
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <div>
+                                        <div className="grid grid-cols-3">
+                                            <div
+                                                className="px-4 py-4"
+                                                style={{
+                                                    backgroundColor: `${quote?.vehicle?.hexCode || '#F4B000'}12`,
+                                                }}
+                                            >
                                                 <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                                                    Selected Plan · {selectedTenure} Months
+                                                    Selected Plan · {selectedTenure}mo
                                                 </div>
-                                                <div className="text-xl font-black text-slate-900">
+                                                <div className="text-lg font-black text-slate-900">
                                                     {formatCurrency(selectedEmi)}
-                                                    <span className="text-xs font-medium text-slate-400 ml-1">
-                                                        /month
+                                                    <span className="text-[9px] font-medium text-slate-400 ml-0.5">
+                                                        /mo
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-6">
-                                                <div className="text-right">
-                                                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-                                                        Loan
-                                                    </div>
-                                                    <div className="text-sm font-black text-slate-800">
-                                                        {formatCurrency(loanAmount)}
-                                                    </div>
+                                            <div className="px-4 py-4 border-l border-zinc-100 bg-zinc-50">
+                                                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                                    Loan Amount
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-                                                        Down Payment
-                                                    </div>
-                                                    <div className="text-sm font-black text-slate-800">
-                                                        {formatCurrency(downPayment)}
-                                                    </div>
+                                                <div className="text-lg font-black text-slate-800">
+                                                    {formatCurrency(loanAmount)}
+                                                </div>
+                                            </div>
+                                            <div className="px-4 py-4 border-l border-zinc-100 bg-zinc-50">
+                                                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                                    Down Payment
+                                                </div>
+                                                <div className="text-lg font-black text-slate-800">
+                                                    {formatCurrency(downPayment)}
                                                 </div>
                                             </div>
                                         </div>
