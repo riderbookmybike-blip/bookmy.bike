@@ -1078,7 +1078,9 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             const downPayment = toNumber(quote.finance?.downPayment, 0);
                             const loanAmount = Math.max(0, offerOnRoad - downPayment);
                             const selectedTenure = Number(quote.finance?.tenureMonths || quote.finance?.tenure || 36);
-                            const TENURES = [3, 6, 9, 12, 18, 24, 30, 36, 42, 48, 54, 60];
+                            const TENURES = Object.keys(EMI_FACTORS)
+                                .map(Number)
+                                .sort((a, b) => a - b);
                             const selectedFactor = EMI_FACTORS[selectedTenure] ?? EMI_FACTORS[36];
                             const selectedEmi = Math.round(loanAmount * selectedFactor);
                             const selectedTotal = selectedEmi * selectedTenure;
