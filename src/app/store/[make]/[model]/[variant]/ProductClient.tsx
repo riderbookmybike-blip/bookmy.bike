@@ -647,6 +647,21 @@ export default function ProductClient({
         };
     };
 
+    const notifySmsStatus = (smsStatus?: { state?: string; reason?: string; message?: string }) => {
+        if (!smsStatus) return;
+        if (smsStatus.state === 'SENT') {
+            toast.success('Quote shared on SMS');
+            return;
+        }
+        if (smsStatus.state === 'FAILED') {
+            toast.warning(`Quote created, SMS failed (${smsStatus.reason || 'SEND_FAILED'})`);
+            return;
+        }
+        if (smsStatus.state === 'SKIPPED') {
+            toast.warning(`Quote created, SMS skipped (${smsStatus.reason || 'SKIPPED'})`);
+        }
+    };
+
     const handleConfirmQuote = async () => {
         if (!leadContext) return;
         if (!colorSkuId) {
@@ -668,6 +683,7 @@ export default function ProductClient({
 
             if (result?.success) {
                 toast.success(`Quote saved for ${leadContext.name}`);
+                notifySmsStatus(result?.smsStatus);
                 router.back(); // Go back to leads
             } else {
                 console.error('Server reported failure saving quote in PDP:', result);
@@ -752,6 +768,7 @@ export default function ProductClient({
                         if (quoteResult?.success) {
                             const displayId = quoteResult.data?.display_id || quoteResult.data?.id;
                             toast.success(`Quote ${displayId} created successfully! 🎉`);
+                            notifySmsStatus((quoteResult as any)?.smsStatus);
                             // Optionally redirect to quotes page or show success message
                             router.push('/profile?tab=quotes');
                             return;

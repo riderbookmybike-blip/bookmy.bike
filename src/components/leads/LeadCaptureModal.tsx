@@ -1,13 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, CheckCircle, Loader2, Briefcase, ChevronRight, Phone, User, MapPin, Coins } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import {
+    X,
+    CheckCircle,
+    Loader2,
+    Briefcase,
+    ChevronRight,
+    Phone,
+    User,
+    MapPin,
+    Coins,
+    MessageCircle,
+    Send,
+} from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useDealerSession } from '@/hooks/useDealerSession';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
 import { normalizePhone, formatPhone, isValidPhone } from '@/lib/utils/phoneUtils';
-import { checkExistingCustomer, createQuoteAction, createLeadAction } from '@/actions/crm';
+import {
+    checkExistingCustomer,
+    createQuoteAction,
+    createLeadAction,
+    shareQuoteViaSms,
+    shareQuoteViaWhatsApp,
+} from '@/actions/crm';
 import { ensureMemberByPhone } from '@/actions/teamActions';
 import { OCLUB_SIGNUP_BONUS, OCLUB_COIN_VALUE, discountForCoins, computeOClubPricing } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
@@ -55,6 +73,10 @@ export function LeadCaptureModal({
     const [error, setError] = useState<string | null>(null);
     const [memberId, setMemberId] = useState<string | null>(null);
     const [quoteId, setQuoteId] = useState<string | null>(null);
+    const [quoteUuid, setQuoteUuid] = useState<string | null>(null);
+    const [submitStage, setSubmitStage] = useState<string | null>(null);
+    const [smsFeedback, setSmsFeedback] = useState<string | null>(null);
+    const [shareStatus, setShareStatus] = useState<'idle' | 'sending-wa' | 'sending-sms' | 'sent'>('idle');
 
     // B-coin state
     const [customerCoins, setCustomerCoins] = useState<number | null>(null);
@@ -87,6 +109,10 @@ export function LeadCaptureModal({
             setMemberId(null);
             setSuccess(false);
             setQuoteId(null);
+            setQuoteUuid(null);
+            setSubmitStage(null);
+            setShareStatus('idle');
+            setSmsFeedback(null);
             setAutoPhoneLoaded(false);
             setCustomerCoins(null);
             setIsNewCustomer(false);
@@ -182,6 +208,7 @@ export function LeadCaptureModal({
                 }
 
                 // Create lead and quote
+                setSubmitStage('QUOTE GENERATING');
                 const leadResult = await createLeadAction({
                     customer_name: existingUser.name || 'Unknown',
                     customer_phone: cleanPhone,
@@ -195,8 +222,10 @@ export function LeadCaptureModal({
                 });
 
                 if (leadResult.success && (leadResult as any).leadId) {
+                    setSubmitStage('SHARING QUOTE');
                     await handleCreateQuote((leadResult as any).leadId, walletCoins || 0, false);
                 } else {
+                    setSubmitStage(null);
                     setError(leadResult.message || 'Failed to create lead. Please try again.');
                 }
             } else {
@@ -211,9 +240,11 @@ export function LeadCaptureModal({
                 } else {
                     setStep('DETAILS');
                 }
+                setSubmitStage(null);
             }
         } catch (err) {
             console.error('Phone lookup error:', err);
+            setSubmitStage(null);
             setError(toUiError(err, 'System error during lookup. Please try again.'));
         } finally {
             setIsSubmitting(false);
@@ -300,6 +331,7 @@ export function LeadCaptureModal({
 
         setIsSubmitting(true);
         try {
+            setSubmitStage('QUOTE GENERATING');
             const leadResult = await createLeadAction({
                 customer_name: name,
                 customer_phone: phone,
@@ -314,13 +346,16 @@ export function LeadCaptureModal({
             });
 
             if (leadResult.success && (leadResult as any).leadId) {
+                setSubmitStage('SHARING QUOTE');
                 const coinsToUse = isNewCustomer ? OCLUB_SIGNUP_BONUS : customerCoins || 0;
                 await handleCreateQuote((leadResult as any).leadId, coinsToUse, isNewCustomer);
             } else {
+                setSubmitStage(null);
                 setError(leadResult.message || 'Failed to save details');
             }
         } catch (err) {
             console.error('Detail submission error:', err);
+            setSubmitStage(null);
             setError(toUiError(err, 'Network error. Please try again.'));
         } finally {
             setIsSubmitting(false);
@@ -356,6 +391,7 @@ export function LeadCaptureModal({
         const storeUrl = typeof window !== 'undefined' ? window.location.href : undefined;
 
         try {
+            setSubmitStage('SHARING QUOTE');
             const result = await createQuoteAction({
                 tenant_id: effectiveTenantId,
                 lead_id: lId,
@@ -368,15 +404,21 @@ export function LeadCaptureModal({
 
             if (result.success) {
                 const displayId = result.data?.display_id || result.data?.displayId || result.data?.id || null;
+                const uuid = result.data?.id || null;
+                setSmsFeedback('Quote created — share it!');
+                setSubmitStage('QUOTE SAVED');
                 setQuoteId(displayId);
+                setQuoteUuid(uuid);
                 setError(null);
                 setSuccess(true);
             } else {
                 console.error('Server reported failure creating quote in modal:', result);
+                setSubmitStage(null);
                 setError(result.message || 'Quote generation failed. Please try again.');
             }
         } catch (err) {
             console.error('Quote creation error:', err);
+            setSubmitStage(null);
             setError('Quote generation failed due to a system error. Please try again.');
         }
     }
@@ -393,38 +435,104 @@ export function LeadCaptureModal({
                 </button>
 
                 {success ? (
-                    <div className="text-center py-10 space-y-8 animate-in zoom-in-95 duration-500">
-                        <div className="relative w-32 h-32 mx-auto">
+                    <div className="text-center py-8 space-y-6 animate-in zoom-in-95 duration-500">
+                        <div className="relative w-24 h-24 mx-auto">
                             <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
-                            <div className="relative w-32 h-32 bg-emerald-50 dark:bg-emerald-950/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 border-4 border-emerald-500/30">
-                                <CheckCircle className="w-16 h-16" />
+                            <div className="relative w-24 h-24 bg-emerald-50 dark:bg-emerald-950/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 border-4 border-emerald-500/30">
+                                <CheckCircle className="w-12 h-12" />
                             </div>
                         </div>
-                        <div className="space-y-3">
-                            <h3 className="text-4xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-tight">
-                                EXCLUSIVE DEAL
-                                <br />
-                                LOCKED!
+                        <div className="space-y-2">
+                            <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-tight">
+                                QUOTE SAVED!
                             </h3>
-                            <p className="inline-block px-4 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-500 rounded-full">
-                                Priority Callback Initiated
-                            </p>
                             {quoteId && (
-                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
-                                    Quote ID: <span className="text-slate-900 dark:text-white">{quoteId}</span>
+                                <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
+                                    ID: <span className="text-slate-900 dark:text-white">{quoteId}</span>
+                                </p>
+                            )}
+                            {smsFeedback && (
+                                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400">
+                                    {smsFeedback}
                                 </p>
                             )}
                         </div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-                            Our dealer partner has received your configuration for the{' '}
-                            <span className="text-slate-900 dark:text-white font-bold">{productName}</span>. You'll
-                            receive a VIP call within 30 minutes.
-                        </p>
+
+                        {/* Share Buttons */}
+                        {quoteUuid && shareStatus !== 'sent' && (
+                            <div className="space-y-3">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                    Share Quote with Customer
+                                </p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={async () => {
+                                            setShareStatus('sending-wa');
+                                            const result = await shareQuoteViaWhatsApp(quoteUuid);
+                                            if (result.success) {
+                                                setShareStatus('sent');
+                                                setSmsFeedback('Shared via WhatsApp ✅');
+                                                toast.success('Quote sent via WhatsApp!');
+                                            } else {
+                                                setShareStatus('idle');
+                                                toast.error(result.error || 'WhatsApp send failed');
+                                            }
+                                        }}
+                                        disabled={shareStatus !== 'idle'}
+                                        className="flex-1 py-4 bg-[#25D366] hover:bg-[#20BD5A] disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg shadow-[#25D366]/20 disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.97] text-sm"
+                                    >
+                                        {shareStatus === 'sending-wa' ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <MessageCircle className="w-5 h-5" />
+                                                WhatsApp
+                                            </>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            setShareStatus('sending-sms');
+                                            const result = await shareQuoteViaSms(quoteUuid);
+                                            if (result.success) {
+                                                setShareStatus('sent');
+                                                setSmsFeedback('Shared via SMS ✅');
+                                                toast.success('Quote sent via SMS!');
+                                            } else {
+                                                setShareStatus('idle');
+                                                toast.error(result.error || 'SMS send failed');
+                                            }
+                                        }}
+                                        disabled={shareStatus !== 'idle'}
+                                        className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg shadow-blue-600/20 disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.97] text-sm"
+                                    >
+                                        {shareStatus === 'sending-sms' ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <Send className="w-5 h-5" />
+                                                SMS
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Sent confirmation */}
+                        {shareStatus === 'sent' && (
+                            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl">
+                                <p className="text-xs font-black uppercase tracking-[0.15em] text-emerald-600">
+                                    ✅ Quote Shared Successfully
+                                </p>
+                            </div>
+                        )}
+
                         <button
                             onClick={onClose}
-                            className="w-full py-5 bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-black uppercase italic tracking-widest rounded-3xl hover:translate-y-[-2px] active:translate-y-[1px] transition-all shadow-xl shadow-slate-900/20 dark:shadow-white/10"
+                            className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-black uppercase italic tracking-widest rounded-3xl hover:translate-y-[-2px] active:translate-y-[1px] transition-all shadow-xl shadow-slate-900/20 dark:shadow-white/10 text-sm"
                         >
-                            Back to Gallery
+                            {shareStatus === 'sent' ? 'Done' : 'Close'}
                         </button>
                     </div>
                 ) : (
@@ -468,6 +576,11 @@ export function LeadCaptureModal({
                                 {error}
                             </div>
                         )}
+                        {isSubmitting && submitStage && (
+                            <div className="p-3 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-black uppercase tracking-[0.18em] rounded-2xl text-center animate-in fade-in duration-300">
+                                {submitStage}
+                            </div>
+                        )}
 
                         {step === 'PHONE' ? (
                             <form onSubmit={handlePhoneSubmit} className="space-y-6">
@@ -501,7 +614,10 @@ export function LeadCaptureModal({
                                     className="w-full group py-5 bg-brand-primary hover:bg-[#E0A200] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-black disabled:text-slate-400 font-black uppercase italic tracking-widest rounded-3xl transition-all shadow-xl shadow-brand-primary/20 disabled:shadow-none flex items-center justify-center gap-4 active:scale-[0.98]"
                                 >
                                     {isSubmitting ? (
-                                        <Loader2 className="w-6 h-6 animate-spin text-black" />
+                                        <>
+                                            <Loader2 className="w-6 h-6 animate-spin text-black" />
+                                            <span>{submitStage || 'Processing'}</span>
+                                        </>
                                     ) : (
                                         <>
                                             Continue
@@ -656,7 +772,14 @@ export function LeadCaptureModal({
                                         disabled={isSubmitting}
                                         className="flex-1 py-5 bg-brand-primary hover:bg-[#E0A200] text-black font-black uppercase italic tracking-widest rounded-3xl transition-all shadow-xl shadow-brand-primary/20 active:scale-[0.98] flex items-center justify-center gap-3"
                                     >
-                                        {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Create Quote'}
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 className="w-6 h-6 animate-spin" />
+                                                <span>{submitStage || 'Processing'}</span>
+                                            </>
+                                        ) : (
+                                            'Create Quote'
+                                        )}
                                     </button>
                                 </div>
                             </form>

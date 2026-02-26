@@ -2652,99 +2652,10 @@ export async function createQuoteAction(data: {
     revalidatePath('/app/[slug]/quotes');
     revalidatePath('/profile'); // Transaction Registry
 
-    // Quote-share SMS status is awaited so UI and timeline stay deterministic.
-    let smsStatus: QuoteSmsStatus = {
-        attempted: false,
-        state: 'SKIPPED',
-        reason: 'SOURCE_NOT_ELIGIBLE',
-    };
+    // Messaging is NOT auto-triggered on quote creation.
+    // Team member explicitly chooses to share via WhatsApp or SMS after quote is saved.
 
-    // SMS on PDP quote-share flows (customer + team-led PDP).
-    // Build the quote dossier URL.
-    // DLT CTA Whitelist has Dynamic URL: https://www.bookmy.bike/?
-    // URL MUST use www. prefix and query-param format (not path) to match the whitelisted CTA.
-    const dossierUrl = quote.display_id
-        ? `https://www.bookmy.bike/?q=${quote.display_id}`
-        : (typeof data.store_url === 'string' ? data.store_url.trim() : '') || `https://www.bookmy.bike/`;
-    const shouldSendQuoteSms = data.source === 'STORE_PDP' || data.source === 'LEADS';
-    if (shouldSendQuoteSms) {
-        smsStatus = { attempted: true, state: 'SKIPPED', reason: 'PENDING_RESOLUTION' };
-        try {
-            let phone = leadCustomerPhone;
-            let name = leadCustomerName || 'Customer';
-
-            if (memberId) {
-                const { data: member } = await adminClient
-                    .from('id_members')
-                    .select('full_name, primary_phone, whatsapp')
-                    .eq('id', memberId)
-                    .maybeSingle();
-                phone = member?.primary_phone || member?.whatsapp || phone;
-                name = member?.full_name || name;
-            }
-
-            if (!phone) {
-                smsStatus = {
-                    attempted: true,
-                    state: 'SKIPPED',
-                    reason: 'NO_RECIPIENT_PHONE',
-                };
-                console.warn('[SMS] Quote SMS skipped: recipient phone unavailable', {
-                    quoteId: quote.id,
-                    leadId: data.lead_id || null,
-                    memberId: memberId || null,
-                });
-                await logQuoteEvent(quote.id, 'Quote SMS Skipped', 'System', 'team', {
-                    source: 'MSG91',
-                    reason: 'NO_RECIPIENT_PHONE',
-                });
-            } else {
-                const smsResult = await sendStoreVisitSms({
-                    phone,
-                    name,
-                    storeUrl: dossierUrl,
-                });
-
-                if (smsResult.success) {
-                    smsStatus = {
-                        attempted: true,
-                        state: 'SENT',
-                        message: smsResult.message || 'SENT',
-                        phone,
-                    };
-                    await logQuoteEvent(quote.id, 'Quote SMS Sent', 'System', 'team', {
-                        source: 'MSG91',
-                        status: smsResult.message || 'SENT',
-                    });
-                } else {
-                    smsStatus = {
-                        attempted: true,
-                        state: 'FAILED',
-                        reason: smsResult.message || 'SEND_FAILED',
-                        phone,
-                    };
-                    await logQuoteEvent(quote.id, 'Quote SMS Failed', 'System', 'team', {
-                        source: 'MSG91',
-                        reason: smsResult.message || 'SEND_FAILED',
-                    });
-                }
-            }
-        } catch (err) {
-            const reason = err instanceof Error ? err.message : 'UNHANDLED_SMS_ERROR';
-            smsStatus = {
-                attempted: true,
-                state: 'FAILED',
-                reason,
-            };
-            console.error('[SMS] Quote creation SMS failed:', err);
-            await logQuoteEvent(quote.id, 'Quote SMS Failed', 'System', 'team', {
-                source: 'MSG91',
-                reason,
-            });
-        }
-    }
-
-    return { success: true, data: quote, smsStatus };
+    return { success: true, data: quote };
 }
 
 export async function acceptQuoteAction(id: string): Promise<{ success: boolean; message?: string }> {
@@ -5314,8 +5225,227 @@ export async function sendQuoteToCustomer(quoteId: string): Promise<{ success: b
     // Log timeline event
     await logQuoteEvent(quoteId, 'Quote Sent to Customer', 'Team Member', 'team', { source: 'CRM' });
 
+    // Send WhatsApp template (fire-and-forget, don't block the response)
+    (async () => {
+        try {
+            const { sendQuoteDossierWhatsApp } = await import('@/lib/sms/msg91-whatsapp');
+
+            // Fetch quote with customer and pricing data
+            const { data: quoteData } = await supabase
+                .from('crm_quotes')
+                .select(
+                    `
+                    *, display_id, on_road_price, ex_showroom_price, rto_amount, insurance_amount, accessories_amount,
+                    manager_discount, commercials,
+                    customer:customer_id(full_name, primary_phone, whatsapp),
+                    lead:lead_id(customer_name, customer_phone)
+                `
+                )
+                .eq('id', quoteId)
+                .single();
+
+            if (!quoteData) return;
+
+            const q = quoteData as any;
+            const commercials = q.commercials || {};
+            const pricingSnapshot = commercials.pricing_snapshot || {};
+            const phone = q.customer?.primary_phone || q.customer?.whatsapp || q.lead?.customer_phone;
+            if (!phone) return;
+
+            const fmt = (n: number) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
+            const displayId = q.display_id ? formatDisplayId(q.display_id) : quoteId.slice(0, 8);
+            const exShowroom = q.ex_showroom_price || commercials.base_price || 0;
+            const rto = q.rto_amount || pricingSnapshot.rto_total || 0;
+            const insurance = q.insurance_amount || pricingSnapshot.insurance_total || 0;
+            const accessories = q.accessories_amount || pricingSnapshot.accessories_total || 0;
+            const services = pricingSnapshot.services_total || 0;
+            const platformDiscount =
+                Math.abs(Number(pricingSnapshot.platform_discount || 0)) +
+                Math.abs(Number(pricingSnapshot.dealer_discount || 0));
+            const managerDiscount = q.manager_discount || 0;
+            const totalDiscount = platformDiscount + managerDiscount;
+            const onRoad = q.on_road_price || commercials.grand_total || 0;
+            const dossierUrl = `https://bookmy.bike/q/${displayId}`;
+
+            await sendQuoteDossierWhatsApp({
+                phone,
+                brand: commercials.brand || '',
+                model: commercials.model || '',
+                variant: commercials.variant || '',
+                color: commercials.color_name || commercials.color || '',
+                quoteId: displayId,
+                exShowroom: fmt(exShowroom),
+                rto: fmt(rto),
+                insurance: fmt(insurance),
+                accessories: fmt(accessories),
+                services: fmt(services),
+                warranty: fmt(0),
+                oCircleDiscount: totalDiscount > 0 ? `-${fmt(totalDiscount)}` : fmt(0),
+                onRoadPrice: fmt(onRoad),
+                youSave: totalDiscount > 0 ? fmt(totalDiscount) : fmt(0),
+                oCircleCoins: Math.round(onRoad / 10).toLocaleString('en-IN'),
+                dossierUrl,
+            });
+
+            await logQuoteEvent(quoteId, 'Quote WhatsApp Sent', 'System', 'team', {
+                source: 'MSG91_WHATSAPP',
+                phone,
+                template: 'bike_quote_summary',
+            });
+        } catch (err) {
+            console.error('[WhatsApp] sendQuoteToCustomer WhatsApp failed:', err);
+        }
+    })();
+
     revalidatePath('/app/[slug]/quotes');
     return { success: true };
+}
+
+/**
+ * Share a quote via SMS (explicit user action).
+ * Sends the dossier link via MSG91 SMS Flow API.
+ */
+export async function shareQuoteViaSms(quoteId: string): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    try {
+        const { data: quoteData } = await supabase
+            .from('crm_quotes')
+            .select(
+                `
+                *, display_id, commercials,
+                customer:customer_id(full_name, primary_phone, whatsapp),
+                lead:lead_id(customer_name, customer_phone)
+            `
+            )
+            .eq('id', quoteId)
+            .single();
+
+        if (!quoteData) return { success: false, error: 'Quote not found' };
+
+        const q = quoteData as any;
+        const phone = q.customer?.primary_phone || q.customer?.whatsapp || q.lead?.customer_phone;
+        const name = q.customer?.full_name || q.lead?.customer_name || 'Customer';
+
+        if (!phone) return { success: false, error: 'No recipient phone number' };
+
+        const displayId = q.display_id ? formatDisplayId(q.display_id) : quoteId.slice(0, 8);
+        const dossierUrl = `https://www.bookmy.bike/?q=${q.display_id || displayId}`;
+
+        const result = await sendStoreVisitSms({ phone, name, storeUrl: dossierUrl });
+
+        if (result.success) {
+            await logQuoteEvent(quoteId, 'Quote SMS Sent', 'Team Member', 'team', {
+                source: 'MSG91_SMS',
+                phone,
+            });
+            // Update status to SENT if still DRAFT
+            await supabase
+                .from('crm_quotes')
+                .update({ status: 'SENT', updated_at: new Date().toISOString() })
+                .eq('id', quoteId)
+                .in('status', ['DRAFT']);
+
+            revalidatePath('/app/[slug]/quotes');
+            return { success: true };
+        }
+
+        return { success: false, error: result.message || 'SMS send failed' };
+    } catch (err) {
+        console.error('[SMS] shareQuoteViaSms failed:', err);
+        return { success: false, error: err instanceof Error ? err.message : 'SMS send failed' };
+    }
+}
+
+/**
+ * Share a quote via WhatsApp (explicit user action).
+ * Sends the bike_quote_summary template via MSG91 WhatsApp API.
+ */
+export async function shareQuoteViaWhatsApp(quoteId: string): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    try {
+        const { sendQuoteDossierWhatsApp } = await import('@/lib/sms/msg91-whatsapp');
+
+        const { data: quoteData } = await supabase
+            .from('crm_quotes')
+            .select(
+                `
+                *, display_id, on_road_price, ex_showroom_price, rto_amount, insurance_amount, accessories_amount,
+                manager_discount, commercials,
+                customer:customer_id(full_name, primary_phone, whatsapp),
+                lead:lead_id(customer_name, customer_phone)
+            `
+            )
+            .eq('id', quoteId)
+            .single();
+
+        if (!quoteData) return { success: false, error: 'Quote not found' };
+
+        const q = quoteData as any;
+        const commercials = q.commercials || {};
+        const pricingSnapshot = commercials.pricing_snapshot || {};
+        const phone = q.customer?.primary_phone || q.customer?.whatsapp || q.lead?.customer_phone;
+
+        if (!phone) return { success: false, error: 'No recipient phone number' };
+
+        const fmt = (n: number) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
+        const displayId = q.display_id ? formatDisplayId(q.display_id) : quoteId.slice(0, 8);
+        const exShowroom = q.ex_showroom_price || commercials.base_price || 0;
+        const rto = q.rto_amount || pricingSnapshot.rto_total || 0;
+        const insurance = q.insurance_amount || pricingSnapshot.insurance_total || 0;
+        const accessories = q.accessories_amount || pricingSnapshot.accessories_total || 0;
+        const services = pricingSnapshot.services_total || 0;
+        const platformDiscount =
+            Math.abs(Number(pricingSnapshot.platform_discount || 0)) +
+            Math.abs(Number(pricingSnapshot.dealer_discount || 0));
+        const managerDiscount = q.manager_discount || 0;
+        const totalDiscount = platformDiscount + managerDiscount;
+        const onRoad = q.on_road_price || commercials.grand_total || 0;
+        const dossierUrl = `https://bookmy.bike/q/${displayId}`;
+
+        const result = await sendQuoteDossierWhatsApp({
+            phone,
+            brand: commercials.brand || '',
+            model: commercials.model || '',
+            variant: commercials.variant || '',
+            color: commercials.color_name || commercials.color || '',
+            quoteId: displayId,
+            exShowroom: fmt(exShowroom),
+            rto: fmt(rto),
+            insurance: fmt(insurance),
+            accessories: fmt(accessories),
+            services: fmt(services),
+            warranty: fmt(0),
+            oCircleDiscount: totalDiscount > 0 ? `-${fmt(totalDiscount)}` : fmt(0),
+            onRoadPrice: fmt(onRoad),
+            youSave: totalDiscount > 0 ? fmt(totalDiscount) : fmt(0),
+            oCircleCoins: Math.round(onRoad / 10).toLocaleString('en-IN'),
+            dossierUrl,
+        });
+
+        if (result.success) {
+            await logQuoteEvent(quoteId, 'Quote WhatsApp Sent', 'Team Member', 'team', {
+                source: 'MSG91_WHATSAPP',
+                template: 'bike_quote_summary',
+                phone,
+            });
+            // Update status to SENT if still DRAFT
+            await supabase
+                .from('crm_quotes')
+                .update({ status: 'SENT', updated_at: new Date().toISOString() })
+                .eq('id', quoteId)
+                .in('status', ['DRAFT']);
+
+            revalidatePath('/app/[slug]/quotes');
+            return { success: true };
+        }
+
+        return { success: false, error: result.message || 'WhatsApp send failed' };
+    } catch (err) {
+        console.error('[WhatsApp] shareQuoteViaWhatsApp failed:', err);
+        return { success: false, error: err instanceof Error ? err.message : 'WhatsApp send failed' };
+    }
 }
 
 export async function getQuoteMarketplaceUrl(
@@ -5937,6 +6067,24 @@ export async function getQuoteByDisplayId(
     const dealerId =
         pricingSnapshot?.dealer?.id || pricingSnapshot?.dealer_id || commercials?.dealer_id || quote.studio_id || null;
 
+    // Fetch dealership location for dossier display
+    let dealerLocationData: { district: string; state: string; name: string } | null = null;
+    const tenantIdForLocation = quote.tenant_id || dealerId;
+    if (tenantIdForLocation) {
+        const { data: tenantRow } = await supabase
+            .from('id_tenants')
+            .select('name, location, pincode')
+            .eq('id', tenantIdForLocation)
+            .maybeSingle();
+        if (tenantRow) {
+            dealerLocationData = {
+                district: (tenantRow as any).location || '',
+                state: stateCode === 'MH' ? 'Maharashtra' : stateCode || '',
+                name: (tenantRow as any).name || '',
+            };
+        }
+    }
+
     // PDP Options: Accessories + Services
     const { data: accessorySkus } = await (supabase as any)
         .from('cat_skus')
@@ -6408,6 +6556,7 @@ export async function getQuoteByDisplayId(
                 allInsuranceAddons: pricingSnapshot?.insurance_addons || [],
                 allOffers: pricingSnapshot?.offers || [],
                 dealer: pricingSnapshot?.dealer || null,
+                dealerLocation: dealerLocationData || null,
             },
             finance: activeFinance
                 ? {

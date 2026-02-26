@@ -4,6 +4,7 @@ import React, { useCallback, useState } from 'react';
 import { Logo } from '@/components/brand/Logo';
 import { generatePremiumPDF } from '@/utils/pdfGenerator';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
+import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import {
     ShieldCheck,
     Zap,
@@ -34,6 +35,11 @@ import {
     Wrench,
     Droplets,
     CarFront,
+    Crown,
+    Gift,
+    BadgePercent,
+    TrendingDown,
+    IndianRupee,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -226,71 +232,102 @@ const OptionRow = ({
     </div>
 );
 
-const FooterPrintButton = ({ onClick }: { onClick: () => void }) => (
-    <button
-        onClick={onClick}
-        className="no-print w-8 h-8 rounded-full border border-slate-200 bg-white/80 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-white transition"
-        title="Download PDF"
-        aria-label="Download PDF"
-    >
-        <Download size={14} className="mx-auto" />
-    </button>
+const FooterPrintButton = ({ onClick, onWhatsApp }: { onClick: () => void; onWhatsApp?: () => void }) => (
+    <div className="no-print flex items-center gap-2">
+        {onWhatsApp && (
+            <button
+                onClick={onWhatsApp}
+                className="w-8 h-8 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 hover:text-white hover:bg-emerald-500 hover:border-emerald-500 transition"
+                title="Share on WhatsApp"
+                aria-label="Share on WhatsApp"
+            >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 mx-auto">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+            </button>
+        )}
+        <button
+            onClick={onClick}
+            className="w-8 h-8 rounded-full border border-slate-200 bg-white/80 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-white transition"
+            title="Download PDF"
+            aria-label="Download PDF"
+        >
+            <Download size={14} className="mx-auto" />
+        </button>
+    </div>
 );
 
 const DossierGroup = ({
     title,
     total,
     icon: Icon,
+    subtitle,
+    iconColor,
     children,
     quote,
 }: {
     title: React.ReactNode;
     icon: any;
     total?: React.ReactNode;
+    subtitle?: string;
+    iconColor?: string;
     children?: React.ReactNode;
     quote: any;
-}) => (
-    <div className="border-b border-slate-100 last:border-0 bg-white">
-        <div className="w-full flex items-center justify-between py-3 px-6 relative overflow-hidden bg-white">
-            <div className="flex items-center gap-3">
-                <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border"
-                    style={{
-                        backgroundColor: quote?.vehicle?.hexCode ? `${quote.vehicle.hexCode}1A` : '#f8fafc',
-                        borderColor: quote?.vehicle?.hexCode ? `${quote.vehicle.hexCode}33` : '#e2e8f0',
-                        color: quote?.vehicle?.hexCode || '#64748B',
-                    }}
-                >
-                    <Icon size={16} />
+}) => {
+    const color = iconColor || getSafeAccentColor(quote?.vehicle?.hexCode);
+    return (
+        <div className="border-b border-slate-100 last:border-0 bg-white">
+            <div className="w-full flex items-center justify-between py-3 px-6 relative overflow-hidden bg-white">
+                <div className="flex items-center gap-3">
+                    <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border"
+                        style={{
+                            backgroundColor: `${color}1A`,
+                            borderColor: `${color}33`,
+                            color: color,
+                        }}
+                    >
+                        <Icon size={16} />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-900 tracking-tight">{title}</span>
+                        {subtitle && (
+                            <span className="text-[9px] text-slate-400 font-medium leading-tight mt-0.5">
+                                {subtitle}
+                            </span>
+                        )}
+                    </div>
                 </div>
-                <span className="text-xs font-bold text-slate-900 uppercase tracking-tight">{title}</span>
+                {total !== undefined && (
+                    <div className="flex items-center gap-4">
+                        <span className="text-xs font-black text-slate-900 tabular-nums font-mono">
+                            {typeof total === 'number' ? formatCurrency(total) : total}
+                        </span>
+                    </div>
+                )}
             </div>
-            {total !== undefined && (
-                <div className="flex items-center gap-4">
-                    <span className="text-xs font-black text-slate-900 tabular-nums font-mono">
-                        {typeof total === 'number' ? formatCurrency(total) : total}
-                    </span>
-                </div>
-            )}
+            <div className="bg-slate-50/20">{children}</div>
         </div>
-        <div className="bg-slate-50/20">{children}</div>
-    </div>
-);
+    );
+};
 
 const PageHeader = ({
     title,
     subtitle,
     accentColor,
+    iconColor,
     icon: Icon,
 }: {
     title: string;
     subtitle?: string;
     accentColor?: string;
+    iconColor?: string;
     icon?: any;
 }) => {
-    const badgeBg = accentColor ? `${accentColor}1A` : 'rgba(244, 176, 0, 0.12)';
-    const badgeBorder = accentColor ? `${accentColor}33` : 'rgba(244, 176, 0, 0.35)';
-    const badgeColor = accentColor || '#F4B000';
+    const color = iconColor || getSafeAccentColor(accentColor);
+    const badgeBg = `${color}1A`;
+    const badgeBorder = `${color}33`;
+    const badgeColor = color;
     return (
         <div className="space-y-2">
             <div className="flex items-center gap-3">
@@ -417,6 +454,23 @@ const getContrastColor = (hex: string) => {
     return luminance > 0.6 ? '#000000' : '#FFFFFF';
 };
 
+/**
+ * Returns a safe accent color for text on light backgrounds.
+ * If the vehicle hexCode is too light (would be invisible on white),
+ * falls back to brand default accent (#F4B000).
+ */
+const getSafeAccentColor = (hex: string | undefined | null, fallback = '#F4B000') => {
+    if (!hex) return fallback;
+    const cleanHex = hex.replace('#', '');
+    if (cleanHex.length < 6) return fallback;
+    const r = parseInt(cleanHex.substr(0, 2), 16);
+    const g = parseInt(cleanHex.substr(2, 2), 16);
+    const b = parseInt(cleanHex.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    // If color is too light to read on white, use brand default
+    return luminance > 0.6 ? fallback : hex;
+};
+
 export default function DossierClient({ quote }: DossierClientProps) {
     const pricing = quote.pricing || {};
     const pdpOptions = quote.pdpOptions || {};
@@ -493,6 +547,20 @@ export default function DossierClient({ quote }: DossierClientProps) {
     const selectedRtoType = pricing.rtoType || pricing.rto_type || 'STATE';
     const warrantyOptions = optionWarrantyItems.length > 0 ? optionWarrantyItems : warrantyItems;
 
+    // Resolve dealership location (district, state) from available sources
+    const dealerLocation = {
+        district:
+            pricing.dealerLocation?.district ||
+            pricing.location?.district ||
+            quote.lead?.utm_data?.location_profile?.district ||
+            '',
+        state:
+            pricing.dealerLocation?.state ||
+            pricing.location?.state ||
+            quote.lead?.utm_data?.location_profile?.state ||
+            '',
+    };
+
     const createdDate = quote.created_at ? new Date(quote.created_at) : null;
     const validDate = quote.valid_until ? new Date(quote.valid_until) : null;
 
@@ -523,6 +591,51 @@ export default function DossierClient({ quote }: DossierClientProps) {
             setIsPdfGenerating(false);
         }
     }, [quote.vehicle?.imageUrl, quote.display_id]);
+
+    const handleWhatsAppShare = useCallback(() => {
+        const brand = quote.vehicle?.brand || '';
+        const model = quote.vehicle?.model || '';
+        const variant = quote.vehicle?.variant || '';
+        const color = quote.vehicle?.color || '';
+        const displayId = formatDisplayId(quote.display_id);
+        const f = (n: number) => formatCurrency(n);
+
+        const msg = [
+            `🏍️ *${brand} ${model}*`,
+            `${variant} · ${color}`,
+            ``,
+            `━━━━━━━━━━━━━━━━━`,
+            `📋 *QUOTE: ${displayId}*`,
+            `━━━━━━━━━━━━━━━━━`,
+            ``,
+            `💰 Ex-Showroom       ${f(pricing.exShowroom || 0)}`,
+            `📄 Registration (RTO)  ${f(pricing.rtoTotal || 0)}`,
+            `🛡️ Insurance          ${f(pricing.insuranceTotal || 0)}`,
+            `📦 Accessories        ${f(pricing.accessoriesTotal || 0)}`,
+            `🔧 Services           ${f(pricing.servicesTotal || 0)}`,
+            `🎁 Warranty           ${f(0)}`,
+            ...(platformDiscount > 0
+                ? [`👑 O'Circle Privileged  -${f(platformDiscount + (pricing.managerDiscount || 0))}`]
+                : []),
+            ...(studioSurge > 0 ? [`📈 Studio Surge        ${f(studioSurge)}`] : []),
+            ``,
+            `━━━━━━━━━━━━━━━━━`,
+            `✅ *On-Road Price: ${f(offerOnRoad)}*`,
+            ...(deltaIsSaving && deltaAmount > 0 ? [`🎉 *You Save: ${f(deltaAmount)}*`] : []),
+            ...(coinsNeededForPrice
+                ? [`🪙 O'Circle Coins: ${coinsNeededForPrice(offerOnRoad).toLocaleString('en-IN')}`]
+                : []),
+            `━━━━━━━━━━━━━━━━━`,
+            ``,
+            `📱 View Full Dossier:`,
+            `${shareUrl}`,
+            ``,
+            `_Powered by BookMyBike_ 🚀`,
+        ].join('\n');
+
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, '_blank');
+    }, [quote, pricing, shareUrl, offerOnRoad, platformDiscount, studioSurge, deltaIsSaving, deltaAmount]);
 
     return (
         <div className="dossier-stage">
@@ -603,21 +716,24 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                         </div>
                                     )}
                                 </div>
-                                <div className="mt-8 text-center">
-                                    <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tighter italic">
-                                        {quote.vehicle?.brand} {quote.vehicle?.model}
-                                    </h2>
-                                    <div className="flex items-center justify-center gap-4 mt-2">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <div className="mt-8 text-left self-start w-full pl-8">
+                                    <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                                        {quote.vehicle?.brand}
+                                    </div>
+                                    <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tighter italic leading-tight">
+                                        {quote.vehicle?.model}{' '}
+                                        <span className="text-lg font-black text-slate-400 uppercase tracking-widest">
                                             {quote.vehicle?.variant}
                                         </span>
+                                    </h2>
+                                    <div className="flex items-center gap-3 mt-1.5">
                                         <div
                                             className="h-1 w-1 rounded-full"
                                             style={{ backgroundColor: quote?.vehicle?.hexCode || '#FFD700' }}
                                         />
                                         <span
                                             className="text-[10px] font-black uppercase tracking-widest"
-                                            style={{ color: quote?.vehicle?.hexCode || '#F4B000' }}
+                                            style={{ color: getSafeAccentColor(quote?.vehicle?.hexCode) }}
                                         >
                                             {quote.vehicle?.color}
                                         </span>
@@ -633,7 +749,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
                                             On-Road
                                         </div>
-                                        <div className="text-xl font-black text-slate-900">
+                                        <div className="text-xl font-black italic text-slate-900">
                                             {formatCurrency(baseOnRoad)}
                                         </div>
                                     </div>
@@ -655,9 +771,18 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                         </div>
                                         <div
                                             className="text-4xl font-black italic tracking-tighter"
-                                            style={{ color: quote?.vehicle?.hexCode || '#F4B000' }}
+                                            style={{ color: getSafeAccentColor(quote?.vehicle?.hexCode) }}
                                         >
                                             {formatCurrency(offerOnRoad)}
+                                        </div>
+                                        <div className="mt-1 flex items-center gap-1">
+                                            <Logo variant="icon" size={10} />
+                                            <span
+                                                className="text-[10px] font-black italic tabular-nums"
+                                                style={{ color: getSafeAccentColor(quote?.vehicle?.hexCode) }}
+                                            >
+                                                {coinsNeededForPrice(offerOnRoad).toLocaleString()}
+                                            </span>
                                         </div>
                                     </div>
 
@@ -680,12 +805,16 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                             {deltaIsSaving && (
                                                 <Sparkles
                                                     size={14}
-                                                    style={{ color: quote?.vehicle?.hexCode || '#10B981' }}
+                                                    style={{
+                                                        color: getSafeAccentColor(quote?.vehicle?.hexCode, '#10B981'),
+                                                    }}
                                                 />
                                             )}
                                             <div
-                                                className="text-xl font-black"
-                                                style={{ color: quote?.vehicle?.hexCode || '#64748B' }}
+                                                className="text-xl font-black italic"
+                                                style={{
+                                                    color: getSafeAccentColor(quote?.vehicle?.hexCode, '#64748B'),
+                                                }}
                                             >
                                                 {deltaIsSaving ? '-' : '+'}
                                                 {formatCurrency(deltaAmount)}
@@ -712,7 +841,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 <div className="h-4 w-px bg-slate-100" />
                                 <div className="text-[10px] uppercase tracking-widest text-slate-400">Page 1 of 13</div>
                             </div>
-                            <FooterPrintButton onClick={handlePrint} />
+                            <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                         </div>
                     </div>
                 </div>
@@ -735,7 +864,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Pricing"
                             subtitle="Transparent breakup as seen on PDP and CRM."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#3b82f6"
                             icon={CreditCard}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -746,72 +875,124 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="space-y-4">
                             <DossierGroup
                                 quote={quote}
-                                title="EX-SHOWROOM PRICE"
-                                icon={Package}
+                                title="Ex-Showroom Price"
+                                icon={IndianRupee}
+                                iconColor="#3b82f6"
+                                subtitle={
+                                    [dealerLocation.district, dealerLocation.state].filter(Boolean).join(', ') ||
+                                    quote.vehicle?.brand + ' Authorized Price'
+                                }
                                 total={pricing.exShowroom}
                             ></DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
-                                title="REGISTRATION (RTO)"
-                                icon={Milestone}
+                                title="Registration (RTO)"
+                                icon={FileText}
+                                iconColor="#6366f1"
+                                subtitle={`${selectedRtoType === 'BH' ? 'Bharat Series (BH)' : selectedRtoType === 'COMPANY' ? 'Company Registration' : dealerLocation.state || 'State'} Registration`}
                                 total={pricing.rtoTotal}
                             ></DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
-                                title="INSURANCE PACKAGE"
+                                title="Insurance Package"
                                 icon={ShieldCheck}
+                                iconColor="#10b981"
+                                subtitle={`Comprehensive OD (1 Year) + TP (5 Years) · ${insuranceAddons.length} addon${insuranceAddons.length !== 1 ? 's' : ''} selected`}
                                 total={pricing.insuranceTotal}
                             ></DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
-                                title="ACCESSORIES"
-                                icon={Settings2}
+                                title="Accessories"
+                                icon={Package}
+                                iconColor="#f59e0b"
+                                subtitle={(() => {
+                                    const names = accessories
+                                        .map((a: any) => {
+                                            const full = a?.name || a?.label || a?.title || '';
+                                            return full.split(/\s+(?:Standard|Universal|Premium|For All)/i)[0].trim();
+                                        })
+                                        .filter(Boolean);
+                                    if (names.length === 0) return 'No accessories selected';
+                                    const shown = names.slice(0, 3).join(', ');
+                                    return names.length > 3 ? `${shown} +${names.length - 3} more` : shown;
+                                })()}
                                 total={pricing.accessoriesTotal}
                             ></DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
-                                title="SERVICES"
-                                icon={Sparkles}
+                                title="Services"
+                                icon={Wrench}
+                                iconColor="#8b5cf6"
+                                subtitle={(() => {
+                                    const names = services
+                                        .map((s: any) => {
+                                            const full = s?.name || s?.label || s?.title || '';
+                                            return full.split(/\s+(?:Standard|Universal|Premium|For All)/i)[0].trim();
+                                        })
+                                        .filter(Boolean);
+                                    if (names.length === 0) return 'No services selected';
+                                    const shown = names.slice(0, 3).join(', ');
+                                    return names.length > 3 ? `${shown} +${names.length - 3} more` : shown;
+                                })()}
                                 total={pricing.servicesTotal}
                             ></DossierGroup>
 
-                            <DossierGroup quote={quote} title="WARRANTY" icon={ShieldCheck} total={0}></DossierGroup>
-
                             <DossierGroup
                                 quote={quote}
-                                title="PLATFORM DISCOUNT"
-                                icon={Zap}
-                                total={platformDiscount}
+                                title="Warranty"
+                                icon={Gift}
+                                iconColor="#ec4899"
+                                subtitle={
+                                    warrantyHasSelection
+                                        ? `${warrantyItems.length} plan${warrantyItems.length !== 1 ? 's' : ''} selected`
+                                        : 'Standard manufacturer warranty'
+                                }
+                                total={0}
                             ></DossierGroup>
 
                             <DossierGroup
                                 quote={quote}
-                                title="STUDIO SURGE CHARGES"
-                                icon={AlertCircle}
+                                title="O'Circle Privileged"
+                                icon={Crown}
+                                iconColor="#F4B000"
+                                subtitle="Exclusive member savings applied"
+                                total={platformDiscount + (pricing.managerDiscount || 0)}
+                            ></DossierGroup>
+
+                            <DossierGroup
+                                quote={quote}
+                                title="Studio Surge Charges"
+                                icon={TrendingUp}
+                                iconColor="#f97316"
+                                subtitle={studioSurge > 0 ? 'Peak season adjustment' : 'No surge applicable'}
                                 total={studioSurge}
                             ></DossierGroup>
 
-                            <DossierGroup
-                                quote={quote}
-                                title="DEALERSHIP DISCOUNT"
-                                icon={AlertCircle}
-                                total={pricing.managerDiscount || 0}
-                            ></DossierGroup>
-
-                            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white">
-                                <div className="flex items-center justify-between px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                        <CheckCircle2 size={14} className="text-emerald-500" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            <div className="border-b border-slate-100 last:border-0 bg-white">
+                                <div className="w-full flex items-center justify-between py-3 px-6 relative overflow-hidden bg-white">
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border"
+                                            style={{
+                                                backgroundColor: '#10b98120',
+                                                borderColor: '#10b98140',
+                                                color: '#10b981',
+                                            }}
+                                        >
+                                            <CheckCircle2 size={16} />
+                                        </div>
+                                        <span className="text-xs font-black text-slate-900 uppercase tracking-tight">
                                             Net Payable Amount
                                         </span>
                                     </div>
-                                    <div className="text-sm font-black text-slate-900 tabular-nums">
-                                        {formatCurrency(pricing.finalTotal || 0)}
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-sm font-black text-slate-900 tabular-nums font-mono">
+                                            {formatCurrency(pricing.finalTotal || 0)}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -862,7 +1043,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -884,7 +1065,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Finance Scheme"
                             subtitle="Finance tab application details from CRM."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#6366f1"
                             icon={TrendingUp}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1022,7 +1203,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -1044,7 +1225,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Accessories"
                             subtitle="Genuine enhancements and protection."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#f59e0b"
                             icon={Settings2}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1222,7 +1403,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -1244,7 +1425,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Insurance"
                             subtitle="Comprehensive protection for your ride."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#10b981"
                             icon={ShieldCheck}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1327,7 +1508,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -1349,7 +1530,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Registration"
                             subtitle="Statutory levies and RTO documentation."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#6366f1"
                             icon={Milestone}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1393,7 +1574,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -1415,7 +1596,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Service Packages"
                             subtitle="Maintenance architecture and protocols."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#8b5cf6"
                             icon={Settings2}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1454,7 +1635,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -1476,7 +1657,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Warranty"
                             subtitle="Extended protection and asset security."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#ec4899"
                             icon={CheckCircle2}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1520,7 +1701,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -1542,7 +1723,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Engine & Performance"
                             subtitle="The heart of the machine."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#ef4444"
                             icon={Zap}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1600,7 +1781,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -1622,7 +1803,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Dimension & Chassis"
                             subtitle="Structural integrity and footprint."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#0ea5e9"
                             icon={Ruler}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1685,7 +1866,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -1707,7 +1888,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Brakes & Safety"
                             subtitle="Protective systems and stopping power."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#f97316"
                             icon={ShieldCheck}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1754,7 +1935,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>
@@ -1776,7 +1957,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <PageHeader
                             title="Features & Tech"
                             subtitle="Digital ecosystem and connectivity."
-                            accentColor={quote?.vehicle?.hexCode}
+                            iconColor="#a855f7"
                             icon={Sparkles}
                         />
                         <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
@@ -1814,7 +1995,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {formatDisplayId(quote.display_id)}
                         </div>
-                        <FooterPrintButton onClick={handlePrint} />
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
                     </div>
                 </div>
             </section>

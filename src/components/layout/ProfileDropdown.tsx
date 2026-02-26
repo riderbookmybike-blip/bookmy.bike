@@ -904,6 +904,8 @@ export function ProfileDropdown({
                                                                                 {isActive ? (
                                                                                     <a
                                                                                         href={dashboardHref}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
                                                                                         onClick={() => setIsOpen(false)}
                                                                                         className="block font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate hover:text-brand-primary transition-colors"
                                                                                     >
@@ -933,6 +935,8 @@ export function ProfileDropdown({
                                                                                 {isActive && (
                                                                                     <a
                                                                                         href={dashboardHref}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
                                                                                         onClick={() => setIsOpen(false)}
                                                                                         className="inline-flex mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-primary transition-colors"
                                                                                     >

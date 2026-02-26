@@ -184,6 +184,7 @@ export default function Sidebar({
                                         // Rewrite URL for Tenant Context
                                         const href = resolveHref(item.href);
                                         const isActive = pathname === href;
+                                        const openInNewTab = item.href === '/dashboard';
                                         const Icon = item.icon;
                                         const iconColor = item.color || iconPalette[itemIndex % iconPalette.length];
 
@@ -191,6 +192,8 @@ export default function Sidebar({
                                             <li key={item.href} className="relative group/item">
                                                 <Link
                                                     href={href}
+                                                    target={openInNewTab ? '_blank' : undefined}
+                                                    rel={openInNewTab ? 'noopener noreferrer' : undefined}
                                                     className={`
                                             relative flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300
                                             ${
@@ -296,11 +299,14 @@ export default function Sidebar({
                                         {section.items.map((item, itemIndex) => {
                                             const href = resolveHref(item.href);
                                             const isActive = pathname === href;
+                                            const openInNewTab = item.href === '/dashboard';
                                             const iconColor = item.color || iconPalette[itemIndex % iconPalette.length];
                                             return (
                                                 <Link
                                                     key={item.href}
                                                     href={href}
+                                                    target={openInNewTab ? '_blank' : undefined}
+                                                    rel={openInNewTab ? 'noopener noreferrer' : undefined}
                                                     onClick={onMobileClose}
                                                     className={`flex items-center gap-3 p-3 rounded-xl text-sm font-extrabold transition-all ${
                                                         isActive
