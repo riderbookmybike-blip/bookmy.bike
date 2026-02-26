@@ -5636,7 +5636,13 @@ export async function getQuoteByDisplayId(
     }
 
     // Resolve SKU image and specs if not in commercials
-    let resolvedImageUrl = commercials.image || commercials.imageUrl || commercials.pricing_snapshot?.imageUrl || null;
+    let resolvedImageUrl =
+        commercials.image_url ||
+        commercials.image ||
+        commercials.imageUrl ||
+        commercials.pricing_snapshot?.imageUrl ||
+        commercials.pricing_snapshot?.image_url ||
+        null;
     if (typeof resolvedImageUrl === 'string') {
         const normalized = resolvedImageUrl.trim().toLowerCase();
         if (!normalized || normalized === 'null' || normalized === 'undefined') {
