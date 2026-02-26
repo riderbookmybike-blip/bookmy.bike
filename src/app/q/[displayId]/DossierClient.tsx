@@ -1077,126 +1077,114 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         {(() => {
                             const downPayment = toNumber(quote.finance?.downPayment, 0);
                             const loanAmount = Math.max(0, offerOnRoad - downPayment);
-                            const selectedTenure = quote.finance?.tenureMonths || quote.finance?.tenure || 36;
+                            const selectedTenure = Number(quote.finance?.tenureMonths || quote.finance?.tenure || 36);
                             const TENURES = [3, 6, 9, 12, 18, 24, 30, 36, 42, 48, 54, 60];
-                            const selectedFactor = EMI_FACTORS[Number(selectedTenure)] ?? EMI_FACTORS[36];
+                            const selectedFactor = EMI_FACTORS[selectedTenure] ?? EMI_FACTORS[36];
                             const selectedEmi = Math.round(loanAmount * selectedFactor);
+                            const selectedTotal = selectedEmi * selectedTenure;
+                            const selectedInterest = Math.max(0, selectedTotal - loanAmount);
                             return (
-                                <div>
-                                    {/* Hero Stats */}
-                                    <div className="flex items-stretch gap-0 mb-4 rounded-lg overflow-hidden border border-zinc-200">
-                                        <div className="flex-1 px-4 py-3 bg-zinc-50 border-r border-zinc-200">
-                                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
-                                                Loan Amount
+                                <div className="space-y-4">
+                                    {/* Selected Plan — accent hero card matching DossierGroup style */}
+                                    <div
+                                        className="p-5 rounded-2xl border"
+                                        style={{
+                                            backgroundColor: `${quote?.vehicle?.hexCode || '#F4B000'}12`,
+                                            borderColor: `${quote?.vehicle?.hexCode || '#F4B000'}30`,
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                                    Selected Plan · {selectedTenure} Months
+                                                </div>
+                                                <div className="text-xl font-black text-slate-900">
+                                                    {formatCurrency(selectedEmi)}
+                                                    <span className="text-xs font-medium text-slate-400 ml-1">
+                                                        /month
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="text-[14px] font-black text-zinc-800">
-                                                {formatCurrency(loanAmount)}
-                                            </div>
-                                        </div>
-                                        <div
-                                            className="flex-1 px-4 py-3 text-white border-r border-zinc-200"
-                                            style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
-                                        >
-                                            <div className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-0.5">
-                                                Selected EMI
-                                            </div>
-                                            <div className="text-[14px] font-black">
-                                                {formatCurrency(selectedEmi)}
-                                                <span className="text-[9px] font-normal opacity-60 ml-1">
-                                                    / {selectedTenure}mo
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex-1 px-4 py-3 bg-zinc-50">
-                                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
-                                                Down Payment
-                                            </div>
-                                            <div className="text-[14px] font-black text-zinc-800">
-                                                {formatCurrency(downPayment)}
+                                            <div className="flex items-center gap-6">
+                                                <div className="text-right">
+                                                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                                                        Loan
+                                                    </div>
+                                                    <div className="text-sm font-black text-slate-800">
+                                                        {formatCurrency(loanAmount)}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                                                        Down Payment
+                                                    </div>
+                                                    <div className="text-sm font-black text-slate-800">
+                                                        {formatCurrency(downPayment)}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* EMI Table */}
-                                    <table className="w-full text-[10px]">
-                                        <thead>
-                                            <tr className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                <th className="py-2 px-3 text-left border-b-2 border-zinc-200">
-                                                    Tenure
-                                                </th>
-                                                <th className="py-2 px-3 text-right border-b-2 border-zinc-200">EMI</th>
-                                                <th className="py-2 px-3 text-right border-b-2 border-zinc-200">
-                                                    Interest
-                                                </th>
-                                                <th className="py-2 px-3 text-right border-b-2 border-zinc-200">
-                                                    Total Cost
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {TENURES.map((t, idx) => {
-                                                const factor = EMI_FACTORS[t] ?? EMI_FACTORS[36];
-                                                const emi = Math.round(loanAmount * factor);
-                                                const totalPaid = emi * t;
-                                                const interest = Math.max(0, totalPaid - loanAmount);
-                                                const isSelected = t === Number(selectedTenure);
-                                                return (
-                                                    <tr
-                                                        key={t}
-                                                        className={
-                                                            isSelected
-                                                                ? 'bg-zinc-900 text-white'
-                                                                : idx % 2 === 0
-                                                                  ? 'bg-white text-zinc-600'
-                                                                  : 'bg-zinc-50/50 text-zinc-600'
-                                                        }
-                                                        style={
-                                                            isSelected
-                                                                ? {
-                                                                      borderLeft: `3px solid ${quote?.vehicle?.hexCode || '#F4B000'}`,
-                                                                  }
-                                                                : undefined
-                                                        }
+                                    {/* All Tenure Options — using DossierGroup */}
+                                    <DossierGroup
+                                        quote={quote}
+                                        title="All Tenure Options"
+                                        icon={TrendingUp}
+                                        iconColor="#6366f1"
+                                    >
+                                        {TENURES.map(t => {
+                                            const factor = EMI_FACTORS[t] ?? EMI_FACTORS[36];
+                                            const emi = Math.round(loanAmount * factor);
+                                            const totalPaid = emi * t;
+                                            const interest = Math.max(0, totalPaid - loanAmount);
+                                            const isSelected = t === selectedTenure;
+                                            return (
+                                                <div
+                                                    key={t}
+                                                    className={`flex items-center justify-between py-2 px-6 ${
+                                                        isSelected
+                                                            ? 'bg-zinc-900 text-white rounded-lg -mx-2 px-8'
+                                                            : 'border-b border-zinc-50'
+                                                    }`}
+                                                    style={
+                                                        isSelected
+                                                            ? {
+                                                                  borderLeft: `3px solid ${quote?.vehicle?.hexCode || '#F4B000'}`,
+                                                              }
+                                                            : undefined
+                                                    }
+                                                >
+                                                    <span
+                                                        className={`text-[10px] ${isSelected ? 'font-black text-white' : 'font-semibold text-slate-600'}`}
                                                     >
-                                                        <td className="py-2 px-3 text-left">
-                                                            <span
-                                                                className={isSelected ? 'font-black' : 'font-semibold'}
-                                                            >
-                                                                {t} months
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-2 px-3 text-right">
-                                                            <span
-                                                                className={
-                                                                    isSelected
-                                                                        ? 'font-black text-[11px]'
-                                                                        : 'font-semibold'
-                                                                }
-                                                            >
-                                                                {formatCurrency(emi)}
-                                                            </span>
-                                                        </td>
-                                                        <td
-                                                            className={`py-2 px-3 text-right ${
-                                                                isSelected ? 'text-green-300' : 'text-red-400'
-                                                            }`}
+                                                        {t} months
+                                                    </span>
+                                                    <div className="flex items-center gap-6">
+                                                        <span
+                                                            className={`text-[10px] tabular-nums font-mono ${isSelected ? 'font-black text-white text-[11px]' : 'font-bold text-slate-700'}`}
+                                                        >
+                                                            {formatCurrency(emi)}/mo
+                                                        </span>
+                                                        <span
+                                                            className={`text-[9px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'text-green-300' : 'text-red-400'}`}
                                                         >
                                                             +{formatCurrency(interest)}
-                                                        </td>
-                                                        <td className="py-2 px-3 text-right">
-                                                            <span className={isSelected ? 'font-black' : 'font-medium'}>
-                                                                {formatCurrency(totalPaid)}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                                                        </span>
+                                                        <span
+                                                            className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-black text-white' : 'font-medium text-slate-500'}`}
+                                                        >
+                                                            {formatCurrency(totalPaid)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </DossierGroup>
 
                                     {/* Footnote */}
-                                    <div className="px-3 pt-3 mt-2 border-t border-zinc-100">
-                                        <div className="text-[8px] text-slate-300 uppercase tracking-widest italic">
+                                    <div className="px-6 py-2">
+                                        <div className="text-[8px] text-slate-300 tracking-widest italic">
                                             * Indicative EMI based on standard flat-rate factors. Actual EMI may vary
                                             based on financier terms.
                                         </div>
