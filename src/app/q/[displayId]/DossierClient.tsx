@@ -1133,6 +1133,24 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                         icon={TrendingUp}
                                         iconColor="#6366f1"
                                     >
+                                        {/* Column Headers */}
+                                        <div className="flex items-center justify-between py-2 px-6 border-b-2 border-zinc-200 mb-1">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px]">
+                                                EMI
+                                            </span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[55px] text-center">
+                                                Tenure
+                                            </span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px] text-right">
+                                                Loan
+                                            </span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px] text-right">
+                                                Interest
+                                            </span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px] text-right">
+                                                Total
+                                            </span>
+                                        </div>
                                         {TENURES.map(t => {
                                             const factor = EMI_FACTORS[t] ?? EMI_FACTORS[36];
                                             const emi = Math.round(loanAmount * factor);
@@ -1156,27 +1174,30 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                                     }
                                                 >
                                                     <span
-                                                        className={`text-[10px] ${isSelected ? 'font-black text-white' : 'font-semibold text-slate-600'}`}
+                                                        className={`text-[10px] tabular-nums font-mono w-[70px] ${isSelected ? 'font-black text-white text-[11px]' : 'font-bold text-slate-700'}`}
                                                     >
-                                                        {t} months
+                                                        {formatCurrency(emi)}
                                                     </span>
-                                                    <div className="flex items-center gap-6">
-                                                        <span
-                                                            className={`text-[10px] tabular-nums font-mono ${isSelected ? 'font-black text-white text-[11px]' : 'font-bold text-slate-700'}`}
-                                                        >
-                                                            {formatCurrency(emi)}/mo
-                                                        </span>
-                                                        <span
-                                                            className={`text-[9px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'text-green-300' : 'text-red-400'}`}
-                                                        >
-                                                            +{formatCurrency(interest)}
-                                                        </span>
-                                                        <span
-                                                            className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-black text-white' : 'font-medium text-slate-500'}`}
-                                                        >
-                                                            {formatCurrency(totalPaid)}
-                                                        </span>
-                                                    </div>
+                                                    <span
+                                                        className={`text-[10px] w-[55px] text-center ${isSelected ? 'font-black text-white' : 'font-semibold text-slate-600'}`}
+                                                    >
+                                                        {t}mo
+                                                    </span>
+                                                    <span
+                                                        className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-semibold text-white' : 'text-slate-500'}`}
+                                                    >
+                                                        {formatCurrency(loanAmount)}
+                                                    </span>
+                                                    <span
+                                                        className={`text-[9px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'text-green-300' : 'text-red-400'}`}
+                                                    >
+                                                        +{formatCurrency(interest)}
+                                                    </span>
+                                                    <span
+                                                        className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-black text-white' : 'font-medium text-slate-500'}`}
+                                                    >
+                                                        {formatCurrency(totalPaid)}
+                                                    </span>
                                                 </div>
                                             );
                                         })}
