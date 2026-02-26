@@ -26,6 +26,7 @@ import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { getEmiFactor } from '@/lib/constants/pricingConstants';
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
     const fullStars = Math.floor(rating);
@@ -290,13 +291,13 @@ export const ProductCard = ({
 
     // Continuous EMI Flip Logic
     // const TENURE_OPTIONS = [12, 24, 36, 48, 60];
-    const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
+
     const activeTenure = tenure || 36;
     const loanAmount = Math.max(0, basePrice - downpayment);
     const emiIsApprox = !cachedScheme?.interestRate;
     const emiValue = (() => {
         if (!cachedScheme?.interestRate) {
-            const factor = EMI_FACTORS[activeTenure] ?? EMI_FACTORS[36];
+            const factor = getEmiFactor(activeTenure);
             return Math.max(0, Math.round(loanAmount * factor));
         }
         const annualRate = cachedScheme.interestRate / 100;

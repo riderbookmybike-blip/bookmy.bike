@@ -5,11 +5,12 @@ import { ArrowRight, CheckCircle2, Flame, Gauge, Plus, Search, ShieldCheck, Spar
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { ProductVariant } from '@/types/productMaster';
 import { formatRating } from '@/utils/formatVehicleSpec';
+import { EMI_FACTORS, getEmiFactor } from '@/lib/constants/pricingConstants';
 
 const MAX_COMPARE = 3;
 const DEFAULT_TENURE = 36;
 const DEFAULT_DOWNPAYMENT_PCT = 0.2;
-const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
+
 const STORAGE_KEY = 'bmb_compare_ids';
 
 type CompareBike = {
@@ -63,7 +64,7 @@ const formatCurrency = (value?: number | null) => {
 const calcApproxEmi = (onRoad: number) => {
     const downpayment = Math.round(onRoad * DEFAULT_DOWNPAYMENT_PCT);
     const loanAmount = Math.max(0, onRoad - downpayment);
-    const factor = EMI_FACTORS[DEFAULT_TENURE] ?? EMI_FACTORS[36];
+    const factor = getEmiFactor(DEFAULT_TENURE);
     return Math.max(0, Math.round(loanAmount * factor));
 };
 

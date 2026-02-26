@@ -9,8 +9,7 @@ import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { coinsNeededForPrice, computeOClubPricing, discountForCoins } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import Image from 'next/image';
-
-const EMI_FACTORS: Record<number, number> = { 12: 0.091, 24: 0.049, 36: 0.035, 48: 0.028, 60: 0.024 };
+import { getEmiFactor } from '@/lib/constants/pricingConstants';
 
 interface CompactProductCardProps {
     v: ProductVariant;
@@ -75,7 +74,7 @@ export function CompactProductCard({
     // EMI
     const activeTenure = tenure || 36;
     const loanAmount = Math.max(0, displayPrice - downpayment);
-    const factor = EMI_FACTORS[activeTenure] ?? EMI_FACTORS[36];
+    const factor = getEmiFactor(activeTenure);
     const emiValue = Math.max(0, Math.round(loanAmount * factor));
 
     const bcoinTotal = coinsNeededForPrice(baseDisplayPrice);
