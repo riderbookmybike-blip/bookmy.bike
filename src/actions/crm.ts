@@ -6165,7 +6165,20 @@ export async function getQuoteByDisplayId(
 
     let pdpInsuranceRequiredItems: any[] = [];
     if (insuranceJson || pricingSnapshot?.insurance_required_items) {
-        pdpInsuranceRequiredItems = pricingSnapshot?.insurance_required_items || [
+        // Back-calculate base & GST from GST-inclusive totals
+        const gstMultiplier = insuranceGstRate / 100;
+        const tpBase =
+            typeof tpData === 'object' && tpData?.base
+                ? Number(tpData.base)
+                : Math.round(tpWithGst / (1 + gstMultiplier));
+        const tpGst = typeof tpData === 'object' && tpData?.gst ? Number(tpData.gst) : tpWithGst - tpBase;
+        const odBase =
+            typeof odData === 'object' && odData?.base
+                ? Number(odData.base)
+                : Math.round(odWithGst / (1 + gstMultiplier));
+        const odGst = typeof odData === 'object' && odData?.gst ? Number(odData.gst) : odWithGst - odBase;
+
+        pdpInsuranceRequiredItems = [
             {
                 id: 'insurance-tp',
                 name: 'Liability Only (5 Years Cover)',
@@ -6173,8 +6186,8 @@ export async function getQuoteByDisplayId(
                 description: 'Mandatory',
                 isMandatory: true,
                 breakdown: [
-                    { label: 'Base Premium', amount: Math.max(0, tpWithGst) },
-                    { label: `GST (${insuranceGstRate}%)`, amount: 0 },
+                    { label: 'Base Premium', amount: tpBase },
+                    { label: `GST (${insuranceGstRate}%)`, amount: tpGst },
                 ],
             },
             {
@@ -6184,8 +6197,8 @@ export async function getQuoteByDisplayId(
                 description: 'Mandatory',
                 isMandatory: true,
                 breakdown: [
-                    { label: 'Base Premium', amount: Math.max(0, odWithGst) },
-                    { label: `GST (${insuranceGstRate}%)`, amount: 0 },
+                    { label: 'Base Premium', amount: odBase },
+                    { label: `GST (${insuranceGstRate}%)`, amount: odGst },
                 ],
             },
         ];

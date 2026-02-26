@@ -28,6 +28,13 @@ import {
     Twitter,
     Linkedin,
     Download,
+    Heart,
+    Shield,
+    FileText,
+    Wrench,
+    Droplets,
+    CarFront,
+    type LucideIcon,
 } from 'lucide-react';
 
 import { formatDisplayId } from '@/utils/displayId';
@@ -37,6 +44,22 @@ import { formatDisplayId } from '@/utils/displayId';
  */
 function cn(...inputs: any[]) {
     return inputs.filter(Boolean).join(' ');
+}
+
+/** Map insurance addon names to Lucide icons by keyword */
+const INSURANCE_ICON_MAP: [RegExp, LucideIcon][] = [
+    [/personal.*accident|pa.*cover/i, Heart],
+    [/zero.*dep/i, Shield],
+    [/return.*invoice|rti/i, FileText],
+    [/engine.*protect/i, Wrench],
+    [/consumable/i, Droplets],
+    [/roadside|rsa/i, CarFront],
+    [/liability|third.*party|tp/i, ShieldCheck],
+    [/comprehensive|own.*damage|od/i, ShieldCheck],
+];
+function resolveInsuranceIcon(name: string): LucideIcon | null {
+    const match = INSURANCE_ICON_MAP.find(([re]) => re.test(name));
+    return match ? match[1] : null;
 }
 
 interface DossierClientProps {
@@ -125,6 +148,7 @@ const OptionRow = ({
     isMandatory,
     breakdown,
     image,
+    icon: IconComponent,
 }: {
     label: React.ReactNode;
     price?: number | null;
@@ -133,6 +157,7 @@ const OptionRow = ({
     isMandatory?: boolean;
     breakdown?: { label: string; amount: number }[];
     image?: string | null;
+    icon?: LucideIcon | null;
 }) => (
     <div className="border border-slate-100 rounded-xl overflow-hidden bg-white">
         <div className="flex items-start justify-between gap-3 px-4 py-2.5">
@@ -143,6 +168,17 @@ const OptionRow = ({
                         alt=""
                         className="mt-0.5 w-9 h-9 rounded-lg object-contain bg-slate-50 border border-slate-100 shrink-0"
                     />
+                ) : IconComponent ? (
+                    <div
+                        className={cn(
+                            'mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            selected
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                : 'bg-slate-50 text-slate-400 border border-slate-200'
+                        )}
+                    >
+                        <IconComponent size={14} />
+                    </div>
                 ) : (
                     <div
                         className={cn(
@@ -177,12 +213,13 @@ const OptionRow = ({
             </div>
         </div>
         {breakdown && breakdown.length > 0 && (
-            <div className="px-6 pb-2 space-y-1">
+            <div className="px-6 pb-2 flex items-center gap-3 flex-wrap text-[9px] text-slate-400">
                 {breakdown.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-[9px] text-slate-400">
+                    <span key={idx} className="flex items-center gap-1">
+                        {idx > 0 && <span className="text-slate-200 mr-1">·</span>}
                         <span>{item.label}</span>
                         <span className="tabular-nums">{formatCurrency(Number(item.amount || 0))}</span>
-                    </div>
+                    </span>
                 ))}
             </div>
         )}
@@ -1237,6 +1274,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                                 description={item.description}
                                                 isMandatory
                                                 breakdown={item.breakdown}
+                                                icon={resolveInsuranceIcon(item.name || item.label || '')}
                                             />
                                         ))
                                     ) : (
@@ -1265,6 +1303,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                                 description={addon.description}
                                                 isMandatory={addon.isMandatory || addon.inclusionType === 'BUNDLE'}
                                                 breakdown={addon.breakdown}
+                                                icon={resolveInsuranceIcon(addon.name || addon.label || '')}
                                             />
                                         ))
                                     ) : (
