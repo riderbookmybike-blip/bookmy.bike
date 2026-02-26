@@ -11,6 +11,7 @@ import { resolveFinanceScheme, ViewerContext } from '@/utils/financeResolver';
 import { BankScheme } from '@/types/bankPartner';
 import { getSitemapData } from '@/lib/server/sitemapFetcher';
 import { isAccessoryCompatible } from '@/lib/catalog/accessoryCompatibility';
+import { IDV_DEPRECIATION_RATE } from '@/lib/constants/pricingConstants';
 import {
     isStoreSotV2Enabled,
     resolveStoreContext,
@@ -802,7 +803,7 @@ export default async function Page({ params, searchParams }: Props) {
             meta: {
                 vehicle_color_id: rec.vehicle_color_id || rec.sku_id || firstSkuId,
                 engine_cc: Number(modelRow?.engine_cc || 0),
-                idv: Math.round(asNumber(rec.ex_showroom_price) * 0.95),
+                idv: Math.round(asNumber(rec.ex_showroom_price) * IDV_DEPRECIATION_RATE),
                 calculated_at: new Date().toISOString(),
             },
             source: 'PUBLISHED_CAT_PRICES',

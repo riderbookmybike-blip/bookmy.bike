@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { CheckCircle2, Shield } from 'lucide-react';
+import { TP_LABEL, TP_SUBTEXT, TP_DETAIL, OD_LABEL, OD_SUBTEXT } from '@/lib/constants/insuranceConstants';
 
 export interface AccordionInsuranceProps {
     insuranceRequiredItems: any[];
@@ -27,16 +28,16 @@ export default function AccordionInsurance({
     const mandatoryItems = [
         {
             id: 'insurance-tp',
-            name: 'Third Party',
-            subtext: 'Liability Only (5 Years Cover)',
-            detail: 'Mandatory by Law',
+            name: TP_LABEL,
+            subtext: TP_SUBTEXT,
+            detail: TP_DETAIL,
             price: insuranceTP,
             isMandatory: true,
         },
         {
             id: 'insurance-od',
-            name: 'Own Damage',
-            subtext: 'Comprehensive (1 Year Cover)',
+            name: OD_LABEL,
+            subtext: OD_SUBTEXT,
             detail: '',
             price: insuranceOD,
             isMandatory: true,

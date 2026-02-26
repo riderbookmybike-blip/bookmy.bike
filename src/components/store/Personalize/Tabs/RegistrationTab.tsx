@@ -17,7 +17,7 @@ export default function RegistrationTab({
     setRegType,
     baseExShowroom,
     rtoOptions,
-    ConfigItemRow
+    ConfigItemRow,
 }: RegistrationTabProps) {
     const TabHeader = ({ icon: Icon, title, subtext }: any) => (
         <div className="flex items-center gap-6 px-4 mb-8">
@@ -37,27 +37,19 @@ export default function RegistrationTab({
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-6 mb-4">{text}</p>
     );
 
-    // Use rtoOptions if available (Calculated), else fallback to old hardcoded
-    const regItems = (rtoOptions && rtoOptions.length > 0) ? rtoOptions : [
-        {
-            id: 'STATE',
-            name: 'State Registration',
-            price: Math.round(baseExShowroom * 0.12),
-            description: 'Standard RTO charges for your state.',
-        },
-        {
-            id: 'BH',
-            name: 'Bharat Series (BH)',
-            price: Math.round(baseExShowroom * 0.08),
-            description: 'For frequent interstate travel.',
-        },
-        {
-            id: 'COMPANY',
-            name: 'Company Registration',
-            price: Math.round(baseExShowroom * 0.2),
-            description: 'Corporate entity registration.',
-        },
-    ];
+    // SOT-only: no fallback
+    const regItems = rtoOptions && rtoOptions.length > 0 ? rtoOptions : [];
+
+    if (regItems.length === 0) {
+        return (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <TabHeader icon={ClipboardList} title="Registration" subtext="Get road-ready" />
+                <p className="text-sm text-slate-400 text-center py-10">
+                    Registration options unavailable for this location.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -67,26 +59,28 @@ export default function RegistrationTab({
                 <SectionLabel text="Most Popular" />
                 <ConfigItemRow
                     item={regItems[0]}
-                    isSelected={regType === 'STATE'}
-                    onToggle={() => setRegType('STATE')}
+                    isSelected={regType === regItems[0].id}
+                    onToggle={() => setRegType(regItems[0].id)}
                     isRadio
                     breakdown={regItems[0].breakdown}
                 />
             </div>
 
-            <div className="space-y-4">
-                <SectionLabel text="Other Options" />
-                {regItems.slice(1).map((item: any) => (
-                    <ConfigItemRow
-                        key={item.id}
-                        item={item}
-                        isSelected={regType === item.id}
-                        onToggle={() => setRegType(item.id as any)}
-                        isRadio
-                        breakdown={item.breakdown}
-                    />
-                ))}
-            </div>
+            {regItems.length > 1 && (
+                <div className="space-y-4">
+                    <SectionLabel text="Other Options" />
+                    {regItems.slice(1).map((item: any) => (
+                        <ConfigItemRow
+                            key={item.id}
+                            item={item}
+                            isSelected={regType === item.id}
+                            onToggle={() => setRegType(item.id as any)}
+                            isRadio
+                            breakdown={item.breakdown}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

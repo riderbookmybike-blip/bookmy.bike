@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { TP_LABEL, TP_SUBTEXT, OD_LABEL, OD_SUBTEXT } from '@/lib/constants/insuranceConstants';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { SchemeCharge, BankScheme } from '@/types/bankPartner';
@@ -3986,13 +3987,13 @@ export default function QuoteEditorTable({
                                                         item =>
                                                             (item.name || item.label || '')
                                                                 .toLowerCase()
-                                                                .includes('liability only')
+                                                                .includes(TP_SUBTEXT.toLowerCase())
                                                     );
                                                     const odItems = (localPricing.insuranceRequiredItems || []).filter(
                                                         item =>
                                                             (item.name || item.label || '')
                                                                 .toLowerCase()
-                                                                .includes('comprehensive')
+                                                                .includes(OD_SUBTEXT.toLowerCase())
                                                     );
                                                     const optionalRequired = (
                                                         localPricing.insuranceRequiredItems || []
@@ -4009,7 +4010,7 @@ export default function QuoteEditorTable({
                                                             {/* THIRD PARTY (BASIC) */}
                                                             <PricingRow
                                                                 isSub
-                                                                label="Third Party (Basic)"
+                                                                label={`${TP_LABEL} (Basic)`}
                                                                 value={
                                                                     isEditable ? (
                                                                         <div className="flex items-center gap-1">
@@ -4071,7 +4072,7 @@ export default function QuoteEditorTable({
                                                             {/* OWN DAMAGE (OD) */}
                                                             <PricingRow
                                                                 isSub
-                                                                label="Own Damage (OD)"
+                                                                label={`${OD_LABEL} (OD)`}
                                                                 value={
                                                                     isEditable ? (
                                                                         <div className="flex items-center gap-1">

@@ -334,13 +334,9 @@ export function computeSpecCategories(variants: ProductVariant[]): SpecCategory[
 
 // ─── Pricing Helpers ─────────────────────────────────────────────
 
-export const EMI_FACTORS: Record<number, number> = {
-    12: 0.091,
-    24: 0.049,
-    36: 0.035,
-    48: 0.028,
-    60: 0.024,
-};
+// Re-export from centralized source
+export { EMI_FACTORS, getEmiFactor } from '@/lib/constants/pricingConstants';
+import { getEmiFactor } from '@/lib/constants/pricingConstants';
 
 export function getDisplayPrice(v: ProductVariant): number {
     return v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
@@ -348,7 +344,7 @@ export function getDisplayPrice(v: ProductVariant): number {
 
 export function getEmi(v: ProductVariant, downpayment = 15000, tenure = 36): number {
     const loan = Math.max(0, getDisplayPrice(v) - downpayment);
-    return Math.max(0, Math.round(loan * (EMI_FACTORS[tenure] ?? EMI_FACTORS[36])));
+    return Math.max(0, Math.round(loan * getEmiFactor(tenure)));
 }
 
 // ─── Unit Maps ───────────────────────────────────────────────────

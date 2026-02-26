@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
+import { IDV_DEPRECIATION_RATE } from '@/lib/constants/pricingConstants';
 
 interface UseDealerContextProps {
     product: any;
@@ -317,7 +318,7 @@ export function useSystemDealerContext({
                                 meta: {
                                     vehicle_color_id: activeSku,
                                     engine_cc: (product.specs as any)?.engine_cc || 110,
-                                    idv: Math.round(Number(priceRow.ex_showroom || 0) * 0.95),
+                                    idv: Math.round(Number(priceRow.ex_showroom || 0) * IDV_DEPRECIATION_RATE),
                                     calculated_at: new Date().toISOString(),
                                 },
                                 rto_breakdown: [],

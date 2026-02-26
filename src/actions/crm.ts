@@ -1,4 +1,5 @@
 'use server';
+import { TP_SUBTEXT, OD_SUBTEXT } from '@/lib/constants/insuranceConstants';
 
 import { createClient } from '@/lib/supabase/server';
 import { adminClient } from '@/lib/supabase/admin';
@@ -5849,7 +5850,7 @@ export async function getQuoteByDisplayId(
         if (typeof val === 'object' && 'total' in val) {
             const b = [
                 { label: 'Road Tax', amount: val.roadTax },
-                { label: 'Reg. Charges', amount: val.registrationCharges },
+                { label: 'Registration Charges', amount: val.registrationCharges || val.registrationFee },
                 { label: 'Smart Card', amount: val.smartCardCharges },
                 { label: 'Hypothecation', amount: val.hypothecationCharges },
                 { label: 'Postal Charges', amount: val.postalCharges },
@@ -6283,37 +6284,30 @@ export async function getQuoteByDisplayId(
 
     // PDP Options: Registration + Insurance
     const rtoJson: any = (highFidelityPricing as any)?.rto;
-    const rtoByType = {
-        STATE: parseRtoData(rtoJson?.STATE),
-        BH: parseRtoData(rtoJson?.BH),
-        COMPANY: parseRtoData(rtoJson?.COMPANY),
-    };
+    const rtoByType: Record<string, ReturnType<typeof parseRtoData>> = {};
+    if (rtoJson && typeof rtoJson === 'object') {
+        for (const key of Object.keys(rtoJson)) {
+            if (key === 'default' || key === 'type') continue;
+            rtoByType[key] = parseRtoData(rtoJson[key]);
+        }
+    }
 
     let pdpRtoOptions: any[] = [];
-    if (rtoJson) {
-        pdpRtoOptions = [
-            {
-                id: 'STATE',
-                name: 'State Registration',
-                price: rtoByType.STATE?.total ?? 0,
-                description: 'Standard RTO charges for your state.',
-                breakdown: rtoByType.STATE?.breakdown || [],
-            },
-            {
-                id: 'BH',
-                name: 'Bharat Series (BH)',
-                price: rtoByType.BH?.total ?? 0,
-                description: 'For frequent interstate travel.',
-                breakdown: rtoByType.BH?.breakdown || [],
-            },
-            {
-                id: 'COMPANY',
-                name: 'Company Registration',
-                price: rtoByType.COMPANY?.total ?? 0,
-                description: 'Corporate entity registration.',
-                breakdown: rtoByType.COMPANY?.breakdown || [],
-            },
-        ];
+    if (Object.keys(rtoByType).length > 0) {
+        pdpRtoOptions = Object.entries(rtoByType)
+            .filter(([, data]) => data !== null)
+            .map(([key, data]) => ({
+                id: key,
+                name:
+                    rtoJson[key]?.name ||
+                    key
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, (s: string) => s.toUpperCase())
+                        .trim(),
+                price: data!.total ?? 0,
+                description: rtoJson[key]?.description || '',
+                breakdown: data!.breakdown || [],
+            }));
     } else if (Array.isArray(pricingSnapshot?.rto_options)) {
         pdpRtoOptions = pricingSnapshot.rto_options;
     }
@@ -6345,7 +6339,7 @@ export async function getQuoteByDisplayId(
         pdpInsuranceRequiredItems = [
             {
                 id: 'insurance-tp',
-                name: 'Liability Only (5 Years Cover)',
+                name: TP_SUBTEXT,
                 price: tpWithGst,
                 description: 'Mandatory',
                 isMandatory: true,
@@ -6356,7 +6350,7 @@ export async function getQuoteByDisplayId(
             },
             {
                 id: 'insurance-od',
-                name: 'Comprehensive (1 Year Cover)',
+                name: OD_SUBTEXT,
                 price: odWithGst,
                 description: 'Mandatory',
                 isMandatory: true,

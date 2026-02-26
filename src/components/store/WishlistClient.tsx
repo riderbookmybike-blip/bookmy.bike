@@ -7,6 +7,7 @@ import { Heart, ArrowRight, Plus, Search, SlidersHorizontal, X, ChevronDown } fr
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { ProductCard } from '@/components/store/desktop/ProductCard';
+import { getEmiFactor } from '@/lib/constants/pricingConstants';
 
 // Filter Group Component (Extracted)
 const FilterGroup = ({ title, options, selectedValues, onToggle, onReset, showReset = false }: any) => {
@@ -171,8 +172,8 @@ export const WishlistClient = () => {
             items.sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
         } else if (sortBy === 'emi') {
             items.sort((a, b) => {
-                const aEmi = Math.round(((a.price?.exShowroom || 0) - downpayment) * 0.035);
-                const bEmi = Math.round(((b.price?.exShowroom || 0) - downpayment) * 0.035);
+                const aEmi = Math.round(((a.price?.exShowroom || 0) - downpayment) * getEmiFactor(tenure));
+                const bEmi = Math.round(((b.price?.exShowroom || 0) - downpayment) * getEmiFactor(tenure));
                 return aEmi - bEmi;
             });
         }
@@ -366,10 +367,7 @@ export const WishlistClient = () => {
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-full">
                             <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
                             <span className="text-[10px] font-bold text-slate-900">{searchQuery}</span>
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="text-slate-400 hover:text-slate-900"
-                            >
+                            <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-900">
                                 <X size={10} />
                             </button>
                         </div>

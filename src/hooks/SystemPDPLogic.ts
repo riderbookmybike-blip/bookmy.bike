@@ -24,6 +24,7 @@ export interface LocalColorConfig {
 import { InsuranceRule } from '@/types/insurance';
 import { Accessory, ServiceOption } from '@/types/store';
 import { BankScheme, BankPartner } from '@/types/bankPartner';
+import { TP_SUBTEXT, OD_SUBTEXT } from '@/lib/constants/insuranceConstants';
 // SOT Phase 3: Rule engine removed, pricing from JSON only
 
 export function useSystemPDPLogic({
@@ -261,7 +262,10 @@ export function useSystemPDPLogic({
                     ? [...dynamicFeeEntries, ...dynamicTaxEntries]
                     : [
                           { label: 'Road Tax', amount: numeric(val.roadTax) },
-                          { label: 'Reg. Charges', amount: numeric(val.registrationCharges) },
+                          {
+                              label: 'Registration Charges',
+                              amount: numeric(val.registrationCharges || val.registrationFee),
+                          },
                           { label: 'Smart Card', amount: numeric(val.smartCardCharges) },
                           { label: 'Hypothecation', amount: numeric(val.hypothecationCharges) },
                           { label: 'Postal Charges', amount: numeric(val.postalCharges) },
@@ -273,59 +277,41 @@ export function useSystemPDPLogic({
         return null;
     };
 
-    const rtoByType = {
-        STATE: parseRtoData(rtoJson?.STATE),
-        BH: parseRtoData(rtoJson?.BH),
-        COMPANY: parseRtoData(rtoJson?.COMPANY),
-    };
-
     // SSPP v2: Server pricing only (SOT JSON!)
-    const rtoBreakdown = pricingReady ? fallbackPricing?.rto_breakdown || [] : [];
+    const rtoByType: Record<string, ReturnType<typeof parseRtoData>> = {};
+    if (rtoJson && typeof rtoJson === 'object') {
+        for (const key of Object.keys(rtoJson)) {
+            if (key === 'default' || key === 'type') continue;
+            rtoByType[key] = parseRtoData(rtoJson[key]);
+        }
+    }
 
-    // Build rtoOptions from JSON values
-    const availableRtoOptions = [];
-
-    // 1. State Registration
-    const stateData = rtoByType.STATE;
-    availableRtoOptions.push({
-        id: 'STATE',
-        name: 'State Registration',
-        price: stateData?.total ?? 0,
-        description: 'Standard RTO charges for your state.',
-        breakdown: stateData?.breakdown || [],
-    });
-
-    // 2. BH Registration
-    const bhData = rtoByType.BH;
-    availableRtoOptions.push({
-        id: 'BH',
-        name: 'Bharat Series (BH)',
-        price: bhData?.total ?? 0, // Should be populated by server now
-        description: 'For frequent interstate travel.',
-        breakdown: bhData?.breakdown || [],
-    });
-
-    // 3. Company Registration
-    const companyData = rtoByType.COMPANY;
-    availableRtoOptions.push({
-        id: 'COMPANY',
-        name: 'Company Registration',
-        price: companyData?.total ?? 0, // Should be populated by server now
-        description: 'Corporate entity registration.',
-        breakdown: companyData?.breakdown || [],
-    });
+    // Build rtoOptions dynamically from SOT JSON keys
+    const availableRtoOptions = Object.entries(rtoByType)
+        .filter(([, data]) => data !== null)
+        .map(([key, data]) => ({
+            id: key,
+            name:
+                rtoJson[key]?.name ||
+                key
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/^./, (ch: string) => ch.toUpperCase())
+                    .trim(),
+            price: data!.total ?? 0,
+            description: rtoJson[key]?.description || '',
+            breakdown: data!.breakdown || [],
+        }));
 
     const rtoOptions = pricingReady ? availableRtoOptions : undefined;
 
     // RE-CALCULATE selectedRtoValue using the defined prices
-    const effectiveRtoValues: Record<string, number> = {
-        STATE: rtoByType.STATE?.total ?? 0,
-        BH: rtoByType.BH?.total ?? 0,
-        COMPANY: rtoByType.COMPANY?.total ?? 0,
-    };
+    const effectiveRtoValues: Record<string, number> = {};
+    for (const [key, data] of Object.entries(rtoByType)) {
+        effectiveRtoValues[key] = data?.total ?? 0;
+    }
 
-    // Get RTO for selected type (fallback to STATE if type unavailable)
-    const selectedRtoValue = effectiveRtoValues[regType] || effectiveRtoValues.STATE || 0;
+    // Get RTO for selected type (fallback to first available type)
+    const selectedRtoValue = effectiveRtoValues[regType] || Object.values(effectiveRtoValues)[0] || 0;
 
     // SSPP v2: Server pricing only (SOT JSON!)
     // Re-assigning rtoEstimates to use the corrected selectedRtoValue
@@ -356,8 +342,8 @@ export function useSystemPDPLogic({
 
     const insuranceBreakdown = pricingReady
         ? fallbackPricing?.insurance_breakdown || [
-              { label: 'Liability Only', amount: tpWithGst, detail: '5Y Cover' },
-              { label: 'Comprehensive', amount: odWithGst, detail: '1Y Cover' },
+              { label: TP_SUBTEXT, amount: tpWithGst, detail: '5Y Cover' },
+              { label: OD_SUBTEXT, amount: odWithGst, detail: '1Y Cover' },
           ]
         : [];
     const otherCharges = 0;
@@ -423,7 +409,7 @@ export function useSystemPDPLogic({
     const insuranceRequiredItems = [
         {
             id: 'insurance-tp',
-            name: 'Liability Only (5 Years Cover)',
+            name: TP_SUBTEXT,
             price: tpWithGst,
             description: 'Mandatory',
             isMandatory: true,
@@ -434,7 +420,7 @@ export function useSystemPDPLogic({
         },
         {
             id: 'insurance-od',
-            name: 'Comprehensive (1 Year Cover)',
+            name: OD_SUBTEXT,
             price: odWithGst,
             description: 'Mandatory',
             isMandatory: true,
@@ -766,7 +752,7 @@ export function useSystemPDPLogic({
             isUnavailable: !hasValidColorSku,
             baseExShowroom,
             rtoEstimates,
-            rtoBreakdown,
+            rtoBreakdown: pricingReady ? availableRtoOptions.find(o => o.id === regType)?.breakdown || [] : [],
             baseInsurance,
             insuranceBreakdown,
             insuranceAddonsPrice,

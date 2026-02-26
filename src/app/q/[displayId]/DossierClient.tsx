@@ -890,7 +890,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 title="Registration (RTO)"
                                 icon={FileText}
                                 iconColor="#6366f1"
-                                subtitle={`${selectedRtoType === 'BH' ? 'Bharat Series (BH)' : selectedRtoType === 'COMPANY' ? 'Company Registration' : dealerLocation.state || 'State'} Registration`}
+                                subtitle={`${(quote as any)?.rtoOptions?.find((o: any) => o.id === selectedRtoType)?.name || selectedRtoType || dealerLocation.state || 'State'} Registration`}
                                 total={pricing.rtoTotal}
                             ></DossierGroup>
 
@@ -1075,7 +1075,12 @@ export default function DossierClient({ quote }: DossierClientProps) {
                     <div className="a4-body">
                         {quote.finance ? (
                             <div className="space-y-6">
-                                <DossierGroup quote={quote} title="Terms & Performance" icon={Activity}>
+                                <DossierGroup
+                                    quote={quote}
+                                    title="Terms & Performance"
+                                    icon={Activity}
+                                    iconColor="#8b5cf6"
+                                >
                                     <DossierRow
                                         label="Financier"
                                         value={quote.finance.bankName || quote.finance.bank || '—'}
@@ -1114,13 +1119,18 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                     />
                                 </DossierGroup>
 
-                                <DossierGroup quote={quote} title="Asset Settlement" icon={Target}>
+                                <DossierGroup quote={quote} title="Asset Settlement" icon={Target} iconColor="#f59e0b">
                                     <DossierRow label="Asset Cost (Net SOT)" value={formatCurrency(baseOnRoad)} />
                                     <DossierRow label="Offer Discount" value={formatCurrency(totalSavings)} isSub />
                                     <DossierRow label="Total Payable" value={formatCurrency(offerOnRoad)} isBold />
                                 </DossierGroup>
 
-                                <DossierGroup quote={quote} title="Finance Pillars" icon={TrendingUp}>
+                                <DossierGroup
+                                    quote={quote}
+                                    title="Finance Pillars"
+                                    icon={TrendingUp}
+                                    iconColor="#10b981"
+                                >
                                     {(() => {
                                         const netLoan =
                                             quote.finance.loanAmount ??
@@ -1148,7 +1158,12 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                     })()}
                                 </DossierGroup>
 
-                                <DossierGroup quote={quote} title="Upfront Obligations" icon={Clock}>
+                                <DossierGroup
+                                    quote={quote}
+                                    title="Upfront Obligations"
+                                    icon={Clock}
+                                    iconColor="#ec4899"
+                                >
                                     <DossierRow
                                         label="Total Upfront Charges"
                                         value={formatCurrency(
@@ -1438,6 +1453,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 quote={quote}
                                 title="Primary Covers"
                                 icon={ShieldCheck}
+                                iconColor="#10b981"
                                 total={pricing.insuranceTotal}
                             >
                                 <div className="space-y-2 p-2">
@@ -1466,7 +1482,7 @@ export default function DossierClient({ quote }: DossierClientProps) {
                                 </div>
                             </DossierGroup>
 
-                            <DossierGroup quote={quote} title="Add-ons" icon={Sparkles}>
+                            <DossierGroup quote={quote} title="Add-ons" icon={Sparkles} iconColor="#f59e0b">
                                 <div className="space-y-2 p-2">
                                     {(optionInsuranceAddons.length > 0 ? optionInsuranceAddons : insuranceAddons)
                                         .length > 0 ? (
@@ -1538,29 +1554,163 @@ export default function DossierClient({ quote }: DossierClientProps) {
                         </div>
                     </div>
                     <div className="a4-body">
-                        <div className="space-y-2 p-2">
-                            {(optionRtoList.length > 0 ? optionRtoList : rtoOptions).length > 0 ? (
-                                (optionRtoList.length > 0 ? optionRtoList : rtoOptions).map(
-                                    (item: any, idx: number) => (
-                                        <OptionRow
-                                            key={item.id || idx}
-                                            label={item.name || item.label || item.type || 'Registration'}
-                                            price={toNumber(item.price ?? item.amount ?? item.total, 0)}
-                                            selected={
-                                                String(selectedRtoType || '').toUpperCase() ===
-                                                String(item.id || item.type || '').toUpperCase()
-                                            }
-                                            description={item.description}
-                                            breakdown={item.breakdown}
-                                        />
-                                    )
-                                )
-                            ) : (
-                                <div className="text-center text-[9px] text-slate-300 uppercase py-2">
-                                    No registration options available
+                        {(() => {
+                            const allItems = optionRtoList.length > 0 ? optionRtoList : rtoOptions;
+                            if (allItems.length === 0) {
+                                return (
+                                    <div className="h-full flex items-center justify-center border-4 border-dashed border-slate-100 rounded-[3rem]">
+                                        <span className="text-slate-300 uppercase text-[10px] font-black tracking-widest">
+                                            No Registration Options Available
+                                        </span>
+                                    </div>
+                                );
+                            }
+                            const selectedItem =
+                                allItems.find(
+                                    (i: any) =>
+                                        String(selectedRtoType || '').toUpperCase() ===
+                                        String(i.id || i.type || '').toUpperCase()
+                                ) || allItems[0];
+                            const breakdown = selectedItem?.breakdown || [];
+                            const variableLabels = new Set([
+                                'Road Tax',
+                                'Road Tax Rate',
+                                'Road Tax Amount',
+                                'Cess',
+                                'Cess Amount',
+                                'Cess Rate',
+                            ]);
+                            const fixedCharges = breakdown.filter((b: any) => !variableLabels.has(b.label));
+                            const cessEntry = breakdown.find(
+                                (b: any) => b.label === 'Cess' || b.label === 'Cess Amount'
+                            );
+
+                            return (
+                                <div className="space-y-4 p-2">
+                                    {/* Group 1: Mandatory Charges — like Accessories "SIDE STAND" group */}
+                                    {fixedCharges.length > 0 && (
+                                        <div className="border border-slate-100 rounded-xl overflow-hidden">
+                                            <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                                    Mandatory Charges
+                                                </span>
+                                                <span className="text-[8px] text-slate-400">
+                                                    {fixedCharges.length} included
+                                                </span>
+                                            </div>
+                                            <div className="divide-y divide-slate-50">
+                                                {fixedCharges.map((b: any, i: number) => (
+                                                    <div
+                                                        key={i}
+                                                        className="flex items-center justify-between gap-3 px-4 py-2.5"
+                                                    >
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <div className="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-300 shrink-0" />
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-[10px] font-bold text-slate-700">
+                                                                        {b.label}
+                                                                    </span>
+                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
+                                                                        Included
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-900 tabular-nums shrink-0">
+                                                            {formatCurrency(toNumber(b.amount, 0))}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Group 2: Road Tax — each option with its own Cess below */}
+                                    <div className="border border-slate-100 rounded-xl overflow-hidden">
+                                        <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                                Road Tax
+                                            </span>
+                                            <span className="text-[8px] text-slate-400">{allItems.length} options</span>
+                                        </div>
+                                        <div className="divide-y divide-slate-50">
+                                            {allItems.map((item: any, idx: number) => {
+                                                const typeId = String(item.id || item.type || '').toUpperCase();
+                                                const isActive = String(selectedRtoType || '').toUpperCase() === typeId;
+                                                const roadTaxBd = item.breakdown || [];
+                                                const rtEntry = roadTaxBd.find(
+                                                    (b: any) => b.label === 'Road Tax' || b.label === 'Road Tax Amount'
+                                                );
+                                                const roadTaxAmount =
+                                                    toNumber(rtEntry?.amount, 0) ||
+                                                    toNumber(item.price ?? item.amount ?? item.total, 0);
+                                                const itemCess = roadTaxBd.find(
+                                                    (b: any) => b.label === 'Cess' || b.label === 'Cess Amount'
+                                                );
+                                                const cessAmount = toNumber(itemCess?.amount, 0);
+                                                const displayRoadTax = roadTaxAmount + cessAmount;
+                                                return (
+                                                    <div key={item.id || idx}>
+                                                        <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <div
+                                                                    className={cn(
+                                                                        'w-3 h-3 rounded-full border shrink-0',
+                                                                        isActive
+                                                                            ? 'bg-emerald-100 border-emerald-300'
+                                                                            : 'bg-slate-50 border-slate-200'
+                                                                    )}
+                                                                />
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-[10px] font-bold text-slate-700">
+                                                                            {item.name ||
+                                                                                item.label ||
+                                                                                item.type ||
+                                                                                'Registration'}
+                                                                        </span>
+                                                                        {isActive && (
+                                                                            <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
+                                                                                Included
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {item.description && (
+                                                                        <div className="text-[8px] text-slate-400">
+                                                                            {item.description}
+                                                                        </div>
+                                                                    )}
+                                                                    {cessAmount > 0 && (
+                                                                        <div className="text-[7.5px] text-slate-400 italic">
+                                                                            inclusive of cess{' '}
+                                                                            {formatCurrency(cessAmount)}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-slate-900 tabular-nums shrink-0">
+                                                                {formatCurrency(displayRoadTax)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Total Registration Footer */}
+                                    <div className="flex items-center justify-between px-4 py-3 bg-slate-50/60 rounded-xl border border-slate-100">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                            Total Registration
+                                        </span>
+                                        <span className="text-sm font-black tabular-nums text-slate-900">
+                                            {formatCurrency(toNumber(selectedItem?.price ?? pricing.rtoTotal, 0))}
+                                        </span>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+                            );
+                        })()}
                     </div>
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">

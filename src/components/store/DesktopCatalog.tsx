@@ -46,6 +46,7 @@ import { CatalogGridSkeleton } from './CatalogSkeleton';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { getSelfMemberLocation, updateSelfMemberLocation } from '@/actions/members';
 import { resolveIpLocation } from '@/actions/resolveIpLocation';
+import { getEmiFactor } from '@/lib/constants/pricingConstants';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
@@ -764,8 +765,8 @@ export const DesktopCatalog = ({
         }
         if (sortBy === 'emi') {
             vehicles.sort((a, b) => {
-                const aEmi = Math.round(((a.price?.exShowroom || 0) - downpayment) * 0.035);
-                const bEmi = Math.round(((b.price?.exShowroom || 0) - downpayment) * 0.035);
+                const aEmi = Math.round(((a.price?.exShowroom || 0) - downpayment) * getEmiFactor(36));
+                const bEmi = Math.round(((b.price?.exShowroom || 0) - downpayment) * getEmiFactor(36));
                 return aEmi - bEmi;
             });
         }

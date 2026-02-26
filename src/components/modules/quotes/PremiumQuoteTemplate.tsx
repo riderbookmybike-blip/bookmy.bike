@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Logo } from '@/components/brand/Logo';
+import { TP_LABEL, OD_LABEL } from '@/lib/constants/insuranceConstants';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import { formatDisplayId } from '@/utils/displayId';
 import {
@@ -814,12 +815,12 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                         >
                             <PDFRow
                                 isSub
-                                label="Third Party Liability"
+                                label={`${TP_LABEL} Liability`}
                                 value={formatCurrency(toNumber(quote?.pricing?.insuranceTP, 0))}
                             />
                             <PDFRow
                                 isSub
-                                label="Own Damage"
+                                label={OD_LABEL}
                                 value={formatCurrency(toNumber(quote?.pricing?.insuranceOD, 0))}
                             />
                         </PDFGroup>

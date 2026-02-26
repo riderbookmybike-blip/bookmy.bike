@@ -8,6 +8,7 @@ import AccordionAccessories from '../Personalize/Accordion/AccordionAccessories'
 import AccordionInsurance from '../Personalize/Accordion/AccordionInsurance';
 import AccordionRegistration from '../Personalize/Accordion/AccordionRegistration';
 import FlatItemList from '../Personalize/Accordion/FlatItemList';
+import { INSURANCE_SUBTITLE } from '@/lib/constants/insuranceConstants';
 
 // ─── Types ────────────────────────────────────────────────
 export interface PdpConfigSectionProps {
@@ -69,42 +70,16 @@ function getConfigCards(data: any) {
         {
             id: 'INSURANCE',
             label: 'Insurance',
-            subtext: '5 Year Liability Only & 1 Year Comprehensive',
+            subtext: INSURANCE_SUBTITLE,
             icon: ShieldCheck,
         },
         {
             id: 'REGISTRATION',
             label: 'Registration',
             subtext: (() => {
-                const stateNames: Record<string, string> = {
-                    MH: 'Maharashtra',
-                    DL: 'Delhi',
-                    KA: 'Karnataka',
-                    TN: 'Tamil Nadu',
-                    UP: 'Uttar Pradesh',
-                    GJ: 'Gujarat',
-                    RJ: 'Rajasthan',
-                    WB: 'West Bengal',
-                    MP: 'Madhya Pradesh',
-                    AP: 'Andhra Pradesh',
-                    TS: 'Telangana',
-                    KL: 'Kerala',
-                    PB: 'Punjab',
-                    HR: 'Haryana',
-                    BR: 'Bihar',
-                    JH: 'Jharkhand',
-                    GA: 'Goa',
-                    OR: 'Odisha',
-                    CG: 'Chhattisgarh',
-                    UK: 'Uttarakhand',
-                    HP: 'Himachal Pradesh',
-                };
-                const code = data.stateCode?.toUpperCase() || '';
-                const fullName = stateNames[code] || '';
-                if (regType === 'STATE' && fullName) return `${fullName} State (${code})`;
-                if (regType === 'BH') return 'Bharat Series (BH)';
-                if (regType === 'COMPANY') return fullName ? `Company ${fullName} (${code})` : 'Company Registration';
-                return regType || 'Choose Type';
+                const rtoOpts = data.rtoOptions || [];
+                const match = rtoOpts.find((o: any) => o.id === regType);
+                return match?.name || regType || 'Choose Type';
             })(),
             icon: ClipboardList,
         },

@@ -41,6 +41,8 @@ import {
     type LucideIcon,
     ChevronLeft,
 } from 'lucide-react';
+import type { ProductVariant } from '@/types/productMaster';
+import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { Logo } from '@/components/brand/Logo';
 import { useSystemCompareLogic } from '@/hooks/useSystemCompareLogic';
 import {
@@ -224,7 +226,10 @@ export function MobileCompare() {
                                         ₹{(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString()}
                                     </p>
                                     <p className="text-[10px] font-bold text-[#F4B000] mt-1 uppercase">
-                                        ₹{Math.round(((v.price?.onRoad || 0) - downpayment) * 0.035).toLocaleString()}
+                                        ₹
+                                        {Math.round(
+                                            ((v.price?.onRoad || 0) - downpayment) * getEmiFactor(tenure)
+                                        ).toLocaleString()}
                                         /mo
                                     </p>
                                 </div>

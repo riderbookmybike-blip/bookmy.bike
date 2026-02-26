@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ProductVariant } from '@/types/productMaster';
+import type { ProductVariant } from '@/types/productMaster';
+import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 
 import { BRANDS as brands } from '@/config/market';
@@ -287,7 +288,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             const basePrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
             const matchesPrice = basePrice <= maxPrice;
 
-            const calculatedEMI = Math.max(0, Math.round((basePrice - downpayment) * 0.035));
+            const calculatedEMI = Math.max(0, Math.round((basePrice - downpayment) * getEmiFactor(tenure)));
             const matchesEMI = calculatedEMI <= maxEMI;
 
             return (

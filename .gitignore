@@ -50,3 +50,4 @@ gen-lang-client-*.json
 # Large PNG binaries (trigger GitHub secret scanning false positives)
 public/media/hero/splendor-plus/images/primary.png
 public/media/hero/splendor-plus-xtec/images/primary.png
+public/media/honda/activa-125/h-smart/rebel-red-metallic/download.png
