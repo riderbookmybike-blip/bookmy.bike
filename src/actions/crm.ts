@@ -5971,7 +5971,10 @@ export async function getQuoteByDisplayId(
         const { data: skuItem } = await (supabase as any)
             .from('cat_skus')
             .select(
-                'id, model_id, vehicle_variant_id, primary_image, gallery_img_1, gallery_img_2, gallery_img_3, gallery_img_4, gallery_img_5, gallery_img_6, video_url_1, video_url_2, hex_primary, color_name, finish'
+                `id, model_id, vehicle_variant_id, colour_id, primary_image,
+                gallery_img_1, gallery_img_2, gallery_img_3, gallery_img_4, gallery_img_5, gallery_img_6,
+                video_url_1, video_url_2, hex_primary, color_name, finish,
+                colour:cat_colours!colour_id(id, primary_image, media_shared, hex_primary, name)`
             )
             .eq('id', itemId)
             .maybeSingle();
@@ -5980,7 +5983,8 @@ export async function getQuoteByDisplayId(
             variantIdForLookup = skuItem.vehicle_variant_id || null;
             modelIdForLookup = skuItem.model_id || null;
 
-            const gallery = [
+            // SOT hierarchy: SKU image first → Colour image (if media_shared)
+            const skuGallery = [
                 skuItem.primary_image,
                 skuItem.gallery_img_1,
                 skuItem.gallery_img_2,
@@ -5990,21 +5994,27 @@ export async function getQuoteByDisplayId(
                 skuItem.gallery_img_6,
             ].filter(Boolean);
 
+            // Colour-level image (shared to SKUs when media_shared = true)
+            const colourImage =
+                skuItem.colour?.primary_image && skuItem.colour?.media_shared ? skuItem.colour.primary_image : null;
+
+            const gallery = skuGallery.length > 0 ? skuGallery : colourImage ? [colourImage] : [];
+
             if (!resolvedImageUrl && gallery.length > 0) {
                 resolvedImageUrl = gallery[0];
             }
 
             skuSpecs = toDefinedObject({
-                hex_primary: skuItem.hex_primary,
-                color_name: skuItem.color_name,
+                hex_primary: skuItem.hex_primary || skuItem.colour?.hex_primary,
+                color_name: skuItem.color_name || skuItem.colour?.name,
                 finish: skuItem.finish,
-                primary_image: skuItem.primary_image,
+                primary_image: skuItem.primary_image || colourImage,
                 gallery: gallery,
                 video_urls: [skuItem.video_url_1, skuItem.video_url_2].filter(Boolean),
             });
 
             if (!itemHex) {
-                itemHex = resolveHex(skuItem.hex_primary) || null;
+                itemHex = resolveHex(skuItem.hex_primary) || resolveHex(skuItem.colour?.hex_primary) || null;
             }
         } else {
             // Fallback: treat item id as vehicle variant id
@@ -6453,27 +6463,6 @@ export async function getQuoteByDisplayId(
     const missingRuleAddons = ruleAddons.filter(a => !jsonAddonIds.has(a.id));
     const pdpInsuranceAddons = [...mappedJsonAddons, ...missingRuleAddons];
     const alternativeVariantId = identity.variantId || quote.variant_id || '';
-
-    // Final fallback: construct /media/{brand}/{model}/{variant}/{color}/side.webp
-    // This mirrors the static image convention in /public/media/
-    if (!resolvedImageUrl) {
-        const slugify = (s: string) =>
-            (s || '')
-                .toLowerCase()
-                .trim()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-|-$/g, '');
-        const brandSlug = slugify(productMake);
-        const modelSlug = slugify(productModel);
-        const variantSlug = slugify(productVariant);
-        const colorSlug = slugify(commercials.color_name || commercials.color || vehicleSpecs?.color_name || '');
-
-        if (brandSlug && modelSlug && variantSlug && colorSlug) {
-            resolvedImageUrl = `/media/${brandSlug}/${modelSlug}/${variantSlug}/${colorSlug}/side.webp`;
-        } else if (brandSlug && modelSlug && variantSlug) {
-            resolvedImageUrl = `/media/${brandSlug}/${modelSlug}/${variantSlug}/side.webp`;
-        }
-    }
 
     return {
         success: true,
