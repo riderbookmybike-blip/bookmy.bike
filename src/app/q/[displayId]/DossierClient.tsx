@@ -1892,12 +1892,12 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             />
                             <DossierRow
                                 label="Max Power"
-                                value={formatSpecValue(specEngine.power ?? specs.power)}
+                                value={formatSpecValue(specEngine.power ?? specs.max_power ?? specs.power)}
                                 isSub
                             />
                             <DossierRow
                                 label="Max Torque"
-                                value={formatSpecValue(specEngine.torque ?? specs.torque)}
+                                value={formatSpecValue(specEngine.torque ?? specs.max_torque ?? specs.torque)}
                                 isSub
                             />
                             <DossierRow
@@ -2054,7 +2054,9 @@ export default function DossierClient({ quote }: DossierClientProps) {
                             />
                             <DossierRow
                                 label="ABS Variant"
-                                value={formatSpecValue(specBrakes.abs ?? specs.abs ?? specs.abs_type)}
+                                value={formatSpecValue(
+                                    specBrakes.abs ?? specs.braking_system ?? specs.abs ?? specs.abs_type
+                                )}
                                 isSub
                             />
                             <DossierRow
