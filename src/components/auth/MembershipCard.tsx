@@ -21,6 +21,8 @@ interface MembershipCardProps {
     validity?: string;
     compact?: boolean;
     wallet?: WalletData | null;
+    showChip?: boolean;
+    interactive?: boolean;
 }
 
 export const MembershipCard: React.FC<MembershipCardProps> = ({
@@ -30,6 +32,8 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
     validity = '13/03/3030',
     compact = false,
     wallet = null,
+    showChip = true,
+    interactive = true,
 }) => {
     const cardRef = useRef<HTMLDivElement>(null);
     const uniqueId = useId().replace(/:/g, '');
@@ -72,8 +76,8 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
     return (
         <div
             className={`perspective-2000 ${compact ? 'py-2' : 'py-20'} w-full flex items-center justify-center pointer-events-auto`}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
+            onMouseMove={interactive ? handleMouseMove : undefined}
+            onMouseLeave={interactive ? handleMouseLeave : undefined}
         >
             <div
                 ref={cardRef}
@@ -109,7 +113,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                             scale: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
                             opacity: { duration: 0.8 },
                         }}
-                        className={`absolute inset-0 rounded-[24px] shadow-[0_45px_100px_-20px_rgba(0,0,0,0.8)] overflow-hidden group transition-shadow duration-500 border border-white/10`}
+                        className="absolute inset-0 rounded-[24px] shadow-[0_45px_100px_-20px_rgba(0,0,0,0.8)] overflow-hidden group transition-shadow duration-500 border border-white/10"
                     >
                         {/* BLACK METAL FINISH */}
                         <div className="absolute inset-0 bg-gradient-to-br from-[#121212] to-[#050505]" />
@@ -162,83 +166,80 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                                 </div>
                             </div>
 
-                            {/* QUANTUM CHIP - HIGH-FIDELITY VECTOR */}
-                            <div className="w-12 h-10 md:w-16 md:h-14 relative rounded-[4px] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
-                                <svg viewBox="0 0 56 44" fill="none" className="w-full h-full block">
-                                    <defs>
-                                        <linearGradient
-                                            id={`chip-base-${uniqueId}`}
-                                            x1="0"
-                                            y1="0"
-                                            x2="56"
-                                            y2="44"
-                                            gradientUnits="userSpaceOnUse"
-                                        >
-                                            <stop offset="0%" stopColor="#FCD34D" />
-                                            <stop offset="40%" stopColor="#F59E0B" />
-                                            <stop offset="70%" stopColor="#D97706" />
-                                            <stop offset="100%" stopColor="#B45309" />
-                                        </linearGradient>
-                                        <linearGradient
-                                            id={`chip-highlight-${uniqueId}`}
-                                            x1="0"
-                                            y1="0"
-                                            x2="0"
-                                            y2="44"
-                                            gradientUnits="userSpaceOnUse"
-                                        >
-                                            <stop offset="0%" stopColor="#fff" stopOpacity="0.4" />
-                                            <stop offset="100%" stopColor="#fff" stopOpacity="0" />
-                                        </linearGradient>
-                                    </defs>
-                                    {/* Base Fill */}
-                                    <rect width="56" height="44" fill={`url(#chip-base-${uniqueId})`} />
-                                    {/* Grid Contacts */}
-                                    <rect
-                                        x="4"
-                                        y="8"
-                                        width="18"
-                                        height="28"
-                                        rx="2"
-                                        fill="none"
-                                        stroke="#78350f"
-                                        strokeWidth="1.5"
-                                    />
-                                    <rect
-                                        x="34"
-                                        y="8"
-                                        width="18"
-                                        height="28"
-                                        rx="2"
-                                        fill="none"
-                                        stroke="#78350f"
-                                        strokeWidth="1.5"
-                                    />
-                                    <line x1="10" y1="8" x2="10" y2="36" stroke="#92400e" strokeWidth="0.5" />
-                                    <line x1="16" y1="8" x2="16" y2="36" stroke="#92400e" strokeWidth="0.5" />
-                                    <line x1="40" y1="8" x2="40" y2="36" stroke="#92400e" strokeWidth="0.5" />
-                                    <line x1="46" y1="8" x2="46" y2="36" stroke="#92400e" strokeWidth="0.5" />
-                                    <line x1="4" y1="16" x2="22" y2="16" stroke="#92400e" strokeWidth="0.5" />
-                                    <line x1="4" y1="22" x2="22" y2="22" stroke="#92400e" strokeWidth="0.5" />
-                                    <line x1="4" y1="28" x2="22" y2="28" stroke="#92400e" strokeWidth="0.5" />
-                                    <line x1="34" y1="16" x2="52" y2="16" stroke="#92400e" strokeWidth="0.5" />
-                                    <line x1="34" y1="22" x2="52" y2="22" stroke="#92400e" strokeWidth="0.5" />
-                                    <line x1="34" y1="28" x2="52" y2="28" stroke="#92400e" strokeWidth="0.5" />
-                                    {/* Central Bridge */}
-                                    <rect
-                                        x="22"
-                                        y="18"
-                                        width="12"
-                                        height="8"
-                                        rx="1"
-                                        fill="none"
-                                        stroke="#78350f"
-                                        strokeWidth="1"
-                                    />
-                                    {/* Sheen */}
-                                    <rect width="56" height="44" fill={`url(#chip-highlight-${uniqueId})`} />
-                                </svg>
-                            </div>
+                            {showChip && (
+                                <div className="w-12 h-10 md:w-16 md:h-14 relative rounded-[4px] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
+                                    <svg viewBox="0 0 56 44" fill="none" className="w-full h-full block">
+                                        <defs>
+                                            <linearGradient
+                                                id={`chip-base-${uniqueId}`}
+                                                x1="0"
+                                                y1="0"
+                                                x2="56"
+                                                y2="44"
+                                                gradientUnits="userSpaceOnUse"
+                                            >
+                                                <stop offset="0%" stopColor="#FCD34D" />
+                                                <stop offset="40%" stopColor="#F59E0B" />
+                                                <stop offset="70%" stopColor="#D97706" />
+                                                <stop offset="100%" stopColor="#B45309" />
+                                            </linearGradient>
+                                            <linearGradient
+                                                id={`chip-highlight-${uniqueId}`}
+                                                x1="0"
+                                                y1="0"
+                                                x2="0"
+                                                y2="44"
+                                                gradientUnits="userSpaceOnUse"
+                                            >
+                                                <stop offset="0%" stopColor="#fff" stopOpacity="0.4" />
+                                                <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+                                            </linearGradient>
+                                        </defs>
+                                        <rect width="56" height="44" fill={`url(#chip-base-${uniqueId})`} />
+                                        <rect
+                                            x="4"
+                                            y="8"
+                                            width="18"
+                                            height="28"
+                                            rx="2"
+                                            fill="none"
+                                            stroke="#78350f"
+                                            strokeWidth="1.5"
+                                        />
+                                        <rect
+                                            x="34"
+                                            y="8"
+                                            width="18"
+                                            height="28"
+                                            rx="2"
+                                            fill="none"
+                                            stroke="#78350f"
+                                            strokeWidth="1.5"
+                                        />
+                                        <line x1="10" y1="8" x2="10" y2="36" stroke="#92400e" strokeWidth="0.5" />
+                                        <line x1="16" y1="8" x2="16" y2="36" stroke="#92400e" strokeWidth="0.5" />
+                                        <line x1="40" y1="8" x2="40" y2="36" stroke="#92400e" strokeWidth="0.5" />
+                                        <line x1="46" y1="8" x2="46" y2="36" stroke="#92400e" strokeWidth="0.5" />
+                                        <line x1="4" y1="16" x2="22" y2="16" stroke="#92400e" strokeWidth="0.5" />
+                                        <line x1="4" y1="22" x2="22" y2="22" stroke="#92400e" strokeWidth="0.5" />
+                                        <line x1="4" y1="28" x2="22" y2="28" stroke="#92400e" strokeWidth="0.5" />
+                                        <line x1="34" y1="16" x2="52" y2="16" stroke="#92400e" strokeWidth="0.5" />
+                                        <line x1="34" y1="22" x2="52" y2="22" stroke="#92400e" strokeWidth="0.5" />
+                                        <line x1="34" y1="28" x2="52" y2="28" stroke="#92400e" strokeWidth="0.5" />
+                                        <rect
+                                            x="22"
+                                            y="18"
+                                            width="12"
+                                            height="8"
+                                            rx="1"
+                                            fill="none"
+                                            stroke="#78350f"
+                                            strokeWidth="1"
+                                        />
+                                        <rect width="56" height="44" fill={`url(#chip-highlight-${uniqueId})`} />
+                                    </svg>
+                                </div>
+                            )}
 
                             <div className="space-y-4 border-t border-white/5 pt-6">
                                 <div className="flex justify-between items-center">

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { MembershipCard } from '@/components/auth/MembershipCard';
+import { OCircleMembershipCard } from '@/components/auth/OCircleMembershipCard';
 import { Zap, Shield, Target } from 'lucide-react';
 import { useI18n } from '@/components/providers/I18nProvider';
 
@@ -168,12 +168,12 @@ export function EliteCircle() {
                                                     transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
                                                     className="flex-1 flex items-center justify-center -mt-4 lg:-mt-8"
                                                 >
-                                                    <div className="w-full max-w-[475px] drop-shadow-[0_40px_80px_rgba(0,0,0,0.7)] group">
-                                                        <MembershipCard
-                                                            name={item.cardData.name}
-                                                            id={item.cardData.id}
+                                                    <div className="w-full drop-shadow-[0_40px_80px_rgba(0,0,0,0.7)] group">
+                                                        <OCircleMembershipCard
+                                                            memberName={item.cardData.name}
+                                                            memberCode={item.cardData.id}
                                                             validity={item.cardData.validity}
-                                                            compact
+                                                            sizePreset="showcase"
                                                         />
                                                     </div>
                                                 </motion.div>

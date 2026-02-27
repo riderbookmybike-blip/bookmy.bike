@@ -39,7 +39,7 @@ import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';
 import { useDealerSession } from '@/hooks/useDealerSession';
-import { MembershipCard, WalletData } from '@/components/auth/MembershipCard';
+import { OCircleMembershipCard, type WalletData } from '@/components/auth/OCircleMembershipCard';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getDefaultAvatar, AVATAR_PRESETS } from '@/lib/avatars';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -82,7 +82,7 @@ export function ProfileDropdown({
     const [memberships, setProfileMemberships] = useState<ProfileMembership[]>([]);
     const [internalOpen, setInternalOpen] = useState(false);
     const [bCoins, setBCoins] = useState<number | null>(null);
-    const [memberCode, setMemberCode] = useState<string>('BMB-000-000');
+    const [memberCode, setMemberCode] = useState<string>('');
     const [walletData, setWalletData] = useState<WalletData | null>(null);
 
     const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -152,13 +152,7 @@ export function ProfileDropdown({
                 .maybeSingle()
                 .then(({ data }) => {
                     if (data?.referral_code) {
-                        const code = data.referral_code.toUpperCase();
-                        // Format as XXX-XXX-XXX if it's 9 chars
-                        if (code.length === 9) {
-                            setMemberCode(`${code.slice(0, 3)}-${code.slice(3, 6)}-${code.slice(6, 9)}`);
-                        } else {
-                            setMemberCode(code);
-                        }
+                        setMemberCode(data.referral_code);
                     }
                 });
         } else {
@@ -727,16 +721,15 @@ export function ProfileDropdown({
                                             {/* O' CIRCLE MEMBERSHIP CARD — Reusable SOT */}
                                             {user && (
                                                 <motion.div variants={itemVariants} className="mt-2">
-                                                    <MembershipCard
-                                                        name={
+                                                    <OCircleMembershipCard
+                                                        memberName={
                                                             user.user_metadata?.full_name ||
                                                             user.user_metadata?.name ||
                                                             'MEMBER'
                                                         }
-                                                        id={memberCode}
-                                                        validity="∞"
-                                                        compact
+                                                        memberCode={memberCode}
                                                         wallet={walletData}
+                                                        sizePreset="sidebar"
                                                     />
                                                 </motion.div>
                                             )}

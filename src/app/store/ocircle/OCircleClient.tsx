@@ -26,7 +26,7 @@ import {
     Landmark,
     Clock,
 } from 'lucide-react';
-import { MembershipCard } from '@/components/auth/MembershipCard';
+import { OCircleMembershipCard } from '@/components/auth/OCircleMembershipCard';
 import { Logo } from '@/components/brand/Logo';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
@@ -330,8 +330,13 @@ export function OCircleClient() {
                                 transition={{ duration: 0.8, delay: 0.2 }}
                                 className="flex items-center justify-center order-1 lg:order-2"
                             >
-                                <div className="w-full max-w-[380px] lg:max-w-[460px] drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
-                                    <MembershipCard name="YOUR NAME HERE" id="BMB-XXX-XXX" validity="∞" compact />
+                                <div className="w-full drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
+                                    <OCircleMembershipCard
+                                        memberName="YOUR NAME HERE"
+                                        memberCode="BMB-XXX-XXX"
+                                        validity="∞"
+                                        sizePreset="hero"
+                                    />
                                 </div>
                             </motion.div>
                         </div>
@@ -351,9 +356,14 @@ export function OCircleClient() {
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.6 }}
-                                className="w-full max-w-[340px] lg:max-w-[380px] shrink-0 drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+                                className="w-full shrink-0 drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
                             >
-                                <MembershipCard name={memberName} id="BMB-XXX-XXX" validity="∞" compact />
+                                <OCircleMembershipCard
+                                    memberName={memberName}
+                                    memberCode="BMB-XXX-XXX"
+                                    validity="∞"
+                                    sizePreset="profile"
+                                />
                             </motion.div>
 
                             {/* Wallet Summary */}
@@ -613,12 +623,12 @@ export function OCircleClient() {
                                                 <div className="px-4 pb-4 space-y-3">
                                                     <p className="text-xs text-white/75 leading-relaxed">{b.desc}</p>
                                                     <div className="flex justify-center">
-                                                        <div className="w-full max-w-[300px] drop-shadow-[0_10px_25px_rgba(0,0,0,0.4)]">
-                                                            <MembershipCard
-                                                                name={b.cardData.name}
-                                                                id={b.cardData.id}
+                                                        <div className="w-full drop-shadow-[0_10px_25px_rgba(0,0,0,0.4)]">
+                                                            <OCircleMembershipCard
+                                                                memberName={b.cardData.name}
+                                                                memberCode={b.cardData.id}
                                                                 validity={b.cardData.validity}
-                                                                compact
+                                                                sizePreset="compact"
                                                             />
                                                         </div>
                                                     </div>
@@ -700,12 +710,12 @@ export function OCircleClient() {
                                 >
                                     <div className="rounded-[1.5rem] border border-white/5 bg-white/[0.02] p-10">
                                         <div className="flex justify-center mb-8">
-                                            <div className="w-full max-w-[380px] drop-shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                                                <MembershipCard
-                                                    name={active.cardData.name}
-                                                    id={active.cardData.id}
+                                            <div className="w-full drop-shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+                                                <OCircleMembershipCard
+                                                    memberName={active.cardData.name}
+                                                    memberCode={active.cardData.id}
                                                     validity={active.cardData.validity}
-                                                    compact
+                                                    sizePreset="profile"
                                                 />
                                             </div>
                                         </div>
