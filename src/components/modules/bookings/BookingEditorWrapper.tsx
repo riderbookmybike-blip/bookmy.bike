@@ -19,7 +19,7 @@ import {
     getBookingsForMember,
     getBookingsForLead,
     getReceiptsForEntity,
-    confirmSalesOrder,
+    confirmBooking,
 } from '@/actions/crm';
 import { getFinanceApplications } from '@/actions/finance';
 import { toast } from 'sonner';
@@ -185,18 +185,18 @@ export default function BookingEditorWrapper({
             bookings={bookings}
             payments={payments}
             onSave={async () => {
-                toast.info('Sales Order is locked. No edits allowed.');
+                toast.info('Booking is locked. No edits allowed.');
             }}
             onSendToCustomer={async () => {}}
             onConfirmBooking={async () => {
                 if (!booking?.id) return;
-                const res = await confirmSalesOrder(booking.id);
+                const res = await confirmBooking(booking.id);
                 if (res.success) {
-                    toast.success('Sales order confirmed');
+                    toast.success('Booking confirmed');
                     await loadBooking();
                     onRefresh?.();
                 } else {
-                    toast.error(res.message || 'Failed to confirm sales order');
+                    toast.error(res.message || 'Failed to confirm booking');
                 }
             }}
             onRefresh={onRefresh}

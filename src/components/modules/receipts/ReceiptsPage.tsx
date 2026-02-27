@@ -142,7 +142,7 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
                 <ModuleLanding
                     title="Receipts"
                     subtitle="Customer Collections"
-                    onNew={() => toast.info('Create Receipt from Sales Order')}
+                    onNew={() => toast.info('Create Receipt from Booking')}
                     searchPlaceholder="Search Receipts..."
                     onSearch={setSearchQuery}
                     statsContent={<StatsHeader stats={stats} />}

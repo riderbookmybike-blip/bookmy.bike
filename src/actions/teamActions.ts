@@ -15,11 +15,11 @@ export async function ensureMemberByPhone(rawPhone: string) {
         return { success: false as const, message: 'Invalid phone number' };
     }
 
-    // 1. Check for existing member by phone
+    // Identity lookup: primary_phone ONLY (see MEMBERSHIP IDENTITY GOVERNANCE in crm.ts)
     const { data: existing } = await adminClient
         .from('id_members')
         .select('id, full_name')
-        .or(`primary_phone.eq.${phone},whatsapp.eq.${phone}`)
+        .eq('primary_phone', phone)
         .maybeSingle();
 
     if (existing?.id) {
@@ -105,11 +105,11 @@ export async function addFinancerExecutive(input: { financerTenantId: string; ph
         return { success: false as const, message: 'Target tenant is not a financer (BANK)' };
     }
 
-    // 2. Resolve member by phone
+    // 2. Resolve member by phone — primary_phone ONLY (see MEMBERSHIP IDENTITY GOVERNANCE in crm.ts)
     const { data: member } = await adminClient
         .from('id_members')
         .select('id, full_name')
-        .or(`primary_phone.eq.${phone},whatsapp.eq.${phone}`)
+        .eq('primary_phone', phone)
         .maybeSingle();
 
     if (!member?.id) {

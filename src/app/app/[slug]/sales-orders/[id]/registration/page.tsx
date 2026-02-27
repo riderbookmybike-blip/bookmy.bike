@@ -2,14 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader2, Truck } from 'lucide-react';
+import { FileCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getBookingById } from '@/actions/crm';
-import { getAllotmentByBooking, upsertAllotment } from '@/actions/allotment';
+import { getRegistrationByBooking, upsertRegistration } from '@/actions/registration';
 import { advanceBookingStage } from '@/actions/bookingStage';
 
-export default function SalesOrderAllotmentPage() {
+export default function BookingRegistrationPage() {
     const params = useParams();
     const bookingId = typeof params?.id === 'string' ? params.id : '';
 
@@ -17,20 +17,19 @@ export default function SalesOrderAllotmentPage() {
     const [saving, setSaving] = useState(false);
     const [booking, setBooking] = useState<any | null>(null);
     const [draft, setDraft] = useState({
-        status: 'NONE' as 'NONE' | 'SOFT_LOCK' | 'HARD_LOCK',
-        vinNumber: '',
-        chassisNumber: '',
-        engineNumber: '',
-        invStockId: '',
+        status: 'PENDING',
+        registrationNumber: '',
+        rtoReceiptNumber: '',
+        registeredAt: '',
     });
 
     const loadData = useCallback(async () => {
         if (!bookingId) return;
         setLoading(true);
         try {
-            const [bookingRes, allotment] = await Promise.all([
+            const [bookingRes, registration] = await Promise.all([
                 getBookingById(bookingId),
-                getAllotmentByBooking(bookingId),
+                getRegistrationByBooking(bookingId),
             ]);
             if (!bookingRes.success || !bookingRes.booking) {
                 toast.error('Booking not found');
@@ -38,18 +37,17 @@ export default function SalesOrderAllotmentPage() {
                 return;
             }
             setBooking(bookingRes.booking as any);
-            if (allotment) {
+            if (registration) {
                 setDraft({
-                    status: (allotment.status || 'NONE') as 'NONE' | 'SOFT_LOCK' | 'HARD_LOCK',
-                    vinNumber: allotment.vin_number || '',
-                    chassisNumber: allotment.chassis_number || '',
-                    engineNumber: allotment.engine_number || '',
-                    invStockId: allotment.inv_stock_id || '',
+                    status: registration.status || 'PENDING',
+                    registrationNumber: registration.registration_number || '',
+                    rtoReceiptNumber: registration.rto_receipt_number || '',
+                    registeredAt: registration.registered_at ? String(registration.registered_at).slice(0, 10) : '',
                 });
             }
         } catch (error) {
-            console.error('[Allotment] load error:', error);
-            toast.error('Failed to load allotment');
+            console.error('[Registration] load error:', error);
+            toast.error('Failed to load registration');
         } finally {
             setLoading(false);
         }
@@ -59,28 +57,28 @@ export default function SalesOrderAllotmentPage() {
         loadData();
     }, [loadData]);
 
-    const saveAllotment = async () => {
+    const saveRegistration = async () => {
         if (!bookingId || !booking?.tenant_id) {
             toast.error('Booking tenant context missing');
             return false;
         }
+
         setSaving(true);
         try {
-            await upsertAllotment({
+            await upsertRegistration({
                 bookingId,
                 tenantId: booking.tenant_id,
-                status: draft.status,
-                vinNumber: draft.vinNumber || undefined,
-                chassisNumber: draft.chassisNumber || undefined,
-                engineNumber: draft.engineNumber || undefined,
-                invStockId: draft.invStockId || undefined,
+                status: draft.status || 'PENDING',
+                registrationNumber: draft.registrationNumber || undefined,
+                rtoReceiptNumber: draft.rtoReceiptNumber || undefined,
+                registeredAt: draft.registeredAt || undefined,
             });
-            toast.success('Allotment saved');
+            toast.success('Registration saved');
             await loadData();
             return true;
         } catch (error) {
-            console.error('[Allotment] save error:', error);
-            toast.error('Failed to save allotment');
+            console.error('[Registration] save error:', error);
+            toast.error('Failed to save registration');
             return false;
         } finally {
             setSaving(false);
@@ -88,9 +86,9 @@ export default function SalesOrderAllotmentPage() {
     };
 
     const moveToStage = async (stage: string) => {
-        const ok = await saveAllotment();
+        const ok = await saveRegistration();
         if (!ok) return;
-        const result = await advanceBookingStage(bookingId, stage, `allotment_updated_to_${stage.toLowerCase()}`);
+        const result = await advanceBookingStage(bookingId, stage, `registration_updated_to_${stage.toLowerCase()}`);
         if (result.success) {
             toast.success(`Moved to ${stage}`);
             await loadData();
@@ -103,7 +101,7 @@ export default function SalesOrderAllotmentPage() {
         return (
             <div className="flex items-center justify-center min-h-[40vh] text-slate-400">
                 <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Loading allotment...
+                Loading registration...
             </div>
         );
     }
@@ -113,18 +111,18 @@ export default function SalesOrderAllotmentPage() {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-xl shadow-indigo-500/10 border border-indigo-500/20">
-                <Truck size={28} />
+        <div className="space-y-6">
+            <div className="w-16 h-16 rounded-[1.5rem] bg-yellow-500/10 flex items-center justify-center text-yellow-600 border border-yellow-500/20">
+                <FileCheck size={28} />
             </div>
 
             <div className="bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/5 rounded-[2rem] p-6 space-y-5">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
-                        Vehicle Allotment
+                        Registration
                     </h2>
                     <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
-                        Assign VIN/chassis/engine and lock stock
+                        RTO status and registration proof
                     </p>
                 </div>
 
@@ -133,90 +131,81 @@ export default function SalesOrderAllotmentPage() {
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</span>
                         <select
                             value={draft.status}
-                            onChange={e => setDraft(prev => ({ ...prev, status: e.target.value as any }))}
+                            onChange={e => setDraft(prev => ({ ...prev, status: e.target.value }))}
                             className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-bold"
                         >
-                            <option value="NONE">NONE</option>
-                            <option value="SOFT_LOCK">SOFT_LOCK</option>
-                            <option value="HARD_LOCK">HARD_LOCK</option>
+                            <option value="PENDING">PENDING</option>
+                            <option value="IN_PROGRESS">IN_PROGRESS</option>
+                            <option value="COMPLETED">COMPLETED</option>
+                            <option value="REJECTED">REJECTED</option>
                         </select>
                     </label>
 
                     <label className="space-y-1">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Inventory Stock ID
+                            Registration Number
                         </span>
                         <input
-                            value={draft.invStockId}
-                            onChange={e => setDraft(prev => ({ ...prev, invStockId: e.target.value }))}
+                            value={draft.registrationNumber}
+                            onChange={e =>
+                                setDraft(prev => ({ ...prev, registrationNumber: e.target.value.toUpperCase() }))
+                            }
                             className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-medium"
-                            placeholder="inv_stock_id"
+                            placeholder="MH01AB1234"
                         />
                     </label>
 
                     <label className="space-y-1">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            VIN Number
+                            RTO Receipt Number
                         </span>
                         <input
-                            value={draft.vinNumber}
-                            onChange={e => setDraft(prev => ({ ...prev, vinNumber: e.target.value }))}
+                            value={draft.rtoReceiptNumber}
+                            onChange={e => setDraft(prev => ({ ...prev, rtoReceiptNumber: e.target.value }))}
                             className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-medium"
-                            placeholder="VIN..."
+                            placeholder="Receipt #"
                         />
                     </label>
 
                     <label className="space-y-1">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Chassis Number
+                            Registered Date
                         </span>
                         <input
-                            value={draft.chassisNumber}
-                            onChange={e => setDraft(prev => ({ ...prev, chassisNumber: e.target.value }))}
+                            type="date"
+                            value={draft.registeredAt}
+                            onChange={e => setDraft(prev => ({ ...prev, registeredAt: e.target.value }))}
                             className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-medium"
-                            placeholder="Chassis..."
-                        />
-                    </label>
-
-                    <label className="space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Engine Number
-                        </span>
-                        <input
-                            value={draft.engineNumber}
-                            onChange={e => setDraft(prev => ({ ...prev, engineNumber: e.target.value }))}
-                            className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-medium"
-                            placeholder="Engine..."
                         />
                     </label>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                    <Button onClick={saveAllotment} disabled={saving} className="rounded-xl">
+                    <Button onClick={saveRegistration} disabled={saving} className="rounded-xl">
                         {saving ? (
                             <>
                                 <Loader2 size={14} className="mr-2 animate-spin" />
                                 Saving...
                             </>
                         ) : (
-                            'Save Allotment'
+                            'Save Registration'
                         )}
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => moveToStage('ALLOTMENT')}
+                        onClick={() => moveToStage('REGISTRATION')}
                         disabled={saving}
                         className="rounded-xl"
                     >
-                        Save + Move to ALLOTMENT
+                        Save + Move to REGISTRATION
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => moveToStage('PDI')}
+                        onClick={() => moveToStage('COMPLIANCE')}
                         disabled={saving}
                         className="rounded-xl"
                     >
-                        Save + Move to PDI
+                        Save + Move to COMPLIANCE
                     </Button>
                 </div>
             </div>

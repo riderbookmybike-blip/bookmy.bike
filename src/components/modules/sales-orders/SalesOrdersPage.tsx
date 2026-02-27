@@ -74,7 +74,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
             setOrders(mapped);
         } catch (error) {
             console.error('Failed to fetch bookings:', error);
-            toast.error('Failed to load sales orders');
+            toast.error('Failed to load bookings');
         } finally {
             setIsLoading(false);
         }
@@ -125,7 +125,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
     );
 
     const stageTitleMap: Record<string, { title: string; subtitle: string }> = {
-        BOOKING: { title: 'Sales Orders', subtitle: 'Booking Pipeline' },
+        BOOKING: { title: 'Bookings', subtitle: 'Booking Pipeline' },
         PAYMENT: { title: 'Payments', subtitle: 'Receipt Workflow' },
         FINANCE: { title: 'Finance', subtitle: 'Loan Processing' },
         ALLOTMENT: { title: 'Allotment', subtitle: 'Vehicle Assignment' },
@@ -137,7 +137,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
         FEEDBACK: { title: 'Feedback', subtitle: 'Post-Delivery Review' },
     };
 
-    const stageTitle = stageTitleMap[stageParam]?.title || 'Sales Orders';
+    const stageTitle = stageTitleMap[stageParam]?.title || 'Bookings';
     const stageSubtitle = stageTitleMap[stageParam]?.subtitle || 'Booking Pipeline';
 
     const statsBase = stageFilteredOrders;
@@ -204,7 +204,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
                 <ModuleLanding
                     title={stageTitle}
                     subtitle={stageSubtitle}
-                    onNew={() => toast.info('Create Sales Order from Quote')}
+                    onNew={() => toast.info('Create Booking from Quote')}
                     searchPlaceholder={`Search ${stageTitle}...`}
                     onSearch={setSearchQuery}
                     statsContent={<StatsHeader stats={stats} device={device} />}

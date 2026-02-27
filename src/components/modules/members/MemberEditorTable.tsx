@@ -540,7 +540,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                 <span className="text-indigo-600">{quoteCount}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span>Sales Orders</span>
+                                <span>Bookings</span>
                                 <span className="text-indigo-600">{bookingCount}</span>
                             </div>
                             <div className="flex items-center justify-between">
@@ -837,7 +837,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                             {bookingCount > 0 && (
                                 <div>
                                     <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 px-1">
-                                        Sales Orders
+                                        Bookings
                                     </div>
                                     <div className="space-y-2">
                                         {profile.bookings.slice(0, 3).map((b: any) => (
@@ -1093,7 +1093,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                     New Transaction <ChevronDown size={14} />
                                 </button>
                                 <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/5 rounded-xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all z-20">
-                                    {['Sales Order', 'Receipt', 'Lead', 'Quote'].map(type => (
+                                    {['Booking', 'Receipt', 'Lead', 'Quote'].map(type => (
                                         <button
                                             key={type}
                                             className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 first:rounded-t-xl last:rounded-b-xl transition-colors"
@@ -1674,7 +1674,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                             </TransactionSection>
 
                             <TransactionSection
-                                title="Sales Orders"
+                                title="Bookings"
                                 count={bookingCount}
                                 expanded={groups.transactionBookings}
                                 onToggle={() => setGroups(g => ({ ...g, transactionBookings: !g.transactionBookings }))}
@@ -1687,7 +1687,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                     Date
                                                 </th>
                                                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Sales Order
+                                                    Booking
                                                 </th>
                                                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                     Status
@@ -1739,7 +1739,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                         colSpan={5}
                                                         className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
                                                     >
-                                                        No sales orders found
+                                                        No bookings found
                                                     </td>
                                                 </tr>
                                             )}
@@ -2064,7 +2064,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
 
                             {/* Booking Documents */}
                             <TransactionSection
-                                title="Sales Order Documents"
+                                title="Booking Documents"
                                 count={bookingCount}
                                 expanded={groups.docBookings}
                                 onToggle={() => setGroups(g => ({ ...g, docBookings: !g.docBookings }))}
@@ -2074,7 +2074,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                         <thead className="bg-slate-50/50 dark:bg-white/[0.02]">
                                             <tr className="border-b border-slate-100 dark:border-white/5">
                                                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Sales Order
+                                                    Booking
                                                 </th>
                                                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                     Date
@@ -2128,7 +2128,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                                         colSpan={5}
                                                         className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
                                                     >
-                                                        No sales orders found
+                                                        No bookings found
                                                     </td>
                                                 </tr>
                                             )}

@@ -233,12 +233,12 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
         if (result.success && (result as any).data?.id) {
             if (requisition?.status === 'CREATED') {
                 toast.success(
-                    `Sales order created · Requisition ${requisition.display_id || requisition.request_id} auto-created`
+                    `Booking created · Requisition ${requisition.display_id || requisition.request_id} auto-created`
                 );
             } else {
-                toast.success('Sales order created');
+                toast.success('Booking created');
                 if (requisition?.status === 'ERROR') {
-                    toast.warning('Sales order created, but requisition auto-check failed. Please verify inventory.');
+                    toast.warning('Booking created, but requisition auto-check failed. Please verify inventory.');
                 }
             }
             onRefresh?.();
@@ -246,7 +246,8 @@ export default function QuoteEditorWrapper({ quoteId, onClose, onRefresh }: Quot
                 window.location.href = `/app/${slug}/sales-orders/${(result as any).data.id}?stage=BOOKING`;
             }
         } else {
-            toast.error(result.message || 'Failed to create sales order');
+            const failureMessage = 'message' in result ? result.message : undefined;
+            toast.error(failureMessage || 'Failed to create booking');
         }
     };
 

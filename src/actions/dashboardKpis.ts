@@ -664,7 +664,7 @@ export async function getDealerDashboardKpis(tenantId: string): Promise<Dashboar
             .select('*', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
             .in('status', ['DRAFT', 'IN_REVIEW', 'SENT']),
-        // Bookings (sales orders with stage BOOKING or later)
+        // Bookings (records with stage BOOKING or later)
         adminClient.from('crm_bookings').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
         adminClient.from('crm_bookings').select('grand_total').eq('tenant_id', tenantId),
         // Deliveries

@@ -15,7 +15,7 @@ export default function SalesOrderList({ orders, selectedId, onSelect }: SalesOr
         <div className="h-full flex flex-col bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-white/10">
             {/* Header / Search */}
             <div className="p-4 border-b border-gray-200 dark:border-white/10 space-y-3">
-                <h2 className="font-bold text-gray-700 dark:text-slate-200">Sales Orders</h2>
+                <h2 className="font-bold text-gray-700 dark:text-slate-200">Bookings</h2>
                 <div className="relative">
                     <Search
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"

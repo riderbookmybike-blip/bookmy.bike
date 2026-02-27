@@ -13,6 +13,10 @@ import {
     Coins,
     MessageCircle,
     Send,
+    UserSearch,
+    Sparkles,
+    UserCircle2,
+    ShieldCheck,
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useDealerSession } from '@/hooks/useDealerSession';
@@ -425,13 +429,16 @@ export function LeadCaptureModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/10 p-8 relative overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[3rem] shadow-[0_25px_60px_rgba(15,23,42,0.15),0_4px_20px_rgba(15,23,42,0.08)] border border-slate-200/80 dark:border-white/10 p-8 md:p-10 relative overflow-hidden">
+                {/* Subtle gradient overlay — matches FloatingCommandBar */}
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,255,255,0.3)_50%,rgba(255,215,0,0.04))]" />
+
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-all active:scale-95"
+                    className="absolute top-6 right-6 z-10 p-2.5 rounded-2xl bg-slate-100/80 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 transition-all active:scale-95 border border-slate-200/50"
                 >
-                    <X className="w-5 h-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-white" />
+                    <X className="w-4 h-4 text-slate-500" />
                 </button>
 
                 {success ? (
@@ -536,11 +543,11 @@ export function LeadCaptureModal({
                         </button>
                     </div>
                 ) : (
-                    <div className="space-y-8">
+                    <div className="relative z-10 space-y-6">
                         {isStaff && step === 'PHONE' && (
-                            <div className="bg-blue-600/5 border border-blue-600/10 rounded-3xl p-5 flex items-center gap-5 animate-in slide-in-from-top-4 duration-500">
-                                <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white flex-shrink-0 shadow-lg shadow-blue-600/20">
-                                    <Briefcase size={24} />
+                            <div className="bg-blue-600/5 border border-blue-600/15 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+                                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white flex-shrink-0 shadow-lg shadow-blue-600/20">
+                                    <Briefcase size={20} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-1 leading-none">
@@ -556,20 +563,67 @@ export function LeadCaptureModal({
                             </div>
                         )}
 
-                        <div className="text-center space-y-2">
-                            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
-                                {step === 'PHONE'
-                                    ? isStaff
-                                        ? 'Identify Customer'
-                                        : 'Get Personal Quote'
-                                    : step === 'PHONE_CONFIRM'
-                                      ? 'Confirm Mobile'
-                                      : 'Complete Profile'}
-                            </h3>
-                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-primary">
-                                {productName}
-                            </p>
+                        {/* TabHeader — matches PDP personalization tabs */}
+                        <div className="flex items-center gap-6 px-1">
+                            <div className="w-14 h-14 bg-brand-primary/10 rounded-2xl flex items-center justify-center border border-brand-primary/30 text-brand-primary shrink-0 shadow-[0_0_20px_rgba(255,215,0,0.15)]">
+                                {step === 'PHONE' ? (
+                                    isStaff ? (
+                                        <UserSearch className="w-8 h-8" />
+                                    ) : (
+                                        <Sparkles className="w-8 h-8" />
+                                    )
+                                ) : step === 'PHONE_CONFIRM' ? (
+                                    <ShieldCheck className="w-8 h-8" />
+                                ) : (
+                                    <UserCircle2 className="w-8 h-8" />
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
+                                    {step === 'PHONE'
+                                        ? isStaff
+                                            ? 'Identify Customer'
+                                            : 'Get Personal Quote'
+                                        : step === 'PHONE_CONFIRM'
+                                          ? 'Confirm Mobile'
+                                          : 'Complete Profile'}
+                                </h3>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1.5">
+                                    {productName}
+                                </p>
+                            </div>
                         </div>
+
+                        {/* Step Progress Indicator */}
+                        <div className="flex items-center gap-2 px-1">
+                            {(['PHONE', ...(isStaff ? ['PHONE_CONFIRM'] : []), 'DETAILS'] as LeadStep[]).map(
+                                (s, idx) => {
+                                    const stepIndex = [
+                                        'PHONE',
+                                        ...(isStaff ? ['PHONE_CONFIRM'] : []),
+                                        'DETAILS',
+                                    ].indexOf(step);
+                                    const thisIndex = idx;
+                                    const isComplete = thisIndex < stepIndex;
+                                    const isCurrent = s === step;
+                                    return (
+                                        <div
+                                            key={s}
+                                            className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                                                isComplete
+                                                    ? 'bg-brand-primary shadow-[0_0_8px_rgba(255,215,0,0.4)]'
+                                                    : isCurrent
+                                                      ? 'bg-brand-primary/40'
+                                                      : 'bg-slate-200 dark:bg-slate-700'
+                                            }`}
+                                        />
+                                    );
+                                }
+                            )}
+                        </div>
+
+                        {/* Separator */}
+                        <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
 
                         {error && (
                             <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl text-center animate-in shake duration-300">
@@ -584,15 +638,12 @@ export function LeadCaptureModal({
 
                         {step === 'PHONE' ? (
                             <form onSubmit={handlePhoneSubmit} className="space-y-6">
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between px-1">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                            {isStaff ? "Customer's Mobile" : 'Confirm Mobile'}
-                                        </label>
-                                        <Phone className="w-3 h-3 text-slate-400" />
-                                    </div>
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                        {isStaff ? "Customer's Mobile" : 'Your Mobile'}
+                                    </p>
                                     <div className="relative group">
-                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 font-black tracking-tighter text-lg select-none">
+                                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
                                             +91
                                         </span>
                                         <input
@@ -602,7 +653,7 @@ export function LeadCaptureModal({
                                             onChange={e => setPhone(normalizeIndianPhone(e.target.value))}
                                             placeholder="00000 00000"
                                             maxLength={10}
-                                            className="w-full pl-16 pr-6 py-5 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 dark:focus:border-brand-primary/30 rounded-3xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-200 dark:placeholder:text-slate-800"
+                                            className="w-full pl-16 pr-6 py-5 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 dark:focus:border-brand-primary/40 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
                                             autoFocus
                                         />
                                     </div>
@@ -611,11 +662,11 @@ export function LeadCaptureModal({
                                 <button
                                     type="submit"
                                     disabled={isSubmitting || !isValidPhone(phone)}
-                                    className="w-full group py-5 bg-brand-primary hover:bg-[#E0A200] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-black disabled:text-slate-400 font-black uppercase italic tracking-widest rounded-3xl transition-all shadow-xl shadow-brand-primary/20 disabled:shadow-none flex items-center justify-center gap-4 active:scale-[0.98]"
+                                    className="w-full group py-5 bg-[#FFD700] hover:bg-[#F4B000] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-slate-900 disabled:text-slate-400 font-black text-xs uppercase tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] hover:-translate-y-0.5"
                                 >
                                     {isSubmitting ? (
                                         <>
-                                            <Loader2 className="w-6 h-6 animate-spin text-black" />
+                                            <Loader2 className="w-5 h-5 animate-spin" />
                                             <span>{submitStage || 'Processing'}</span>
                                         </>
                                     ) : (
@@ -631,15 +682,12 @@ export function LeadCaptureModal({
                                 onSubmit={handlePhoneConfirmSubmit}
                                 className="space-y-6 animate-in slide-in-from-right-4 duration-300"
                             >
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between px-1">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                            Re-enter Mobile
-                                        </label>
-                                        <Phone className="w-3 h-3 text-slate-400" />
-                                    </div>
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                        Re-enter Mobile
+                                    </p>
                                     <div className="relative group">
-                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 font-black tracking-tighter text-lg select-none">
+                                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
                                             +91
                                         </span>
                                         <input
@@ -649,7 +697,7 @@ export function LeadCaptureModal({
                                             onChange={e => setConfirmPhone(normalizeIndianPhone(e.target.value))}
                                             placeholder="Re-enter 10-digit mobile"
                                             maxLength={10}
-                                            className="w-full pl-16 pr-6 py-5 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 dark:focus:border-brand-primary/30 rounded-3xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-200 dark:placeholder:text-slate-800"
+                                            className="w-full pl-16 pr-6 py-5 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 dark:focus:border-brand-primary/40 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
                                             autoFocus
                                         />
                                     </div>
@@ -659,14 +707,14 @@ export function LeadCaptureModal({
                                     <button
                                         type="button"
                                         onClick={() => setStep('PHONE')}
-                                        className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase italic tracking-widest rounded-3xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+                                        className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200/50"
                                     >
                                         Back
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isSubmitting || !isValidPhone(confirmPhone)}
-                                        className="flex-1 py-5 bg-brand-primary hover:bg-[#E0A200] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-black disabled:text-slate-400 font-black uppercase italic tracking-widest rounded-3xl transition-all shadow-xl shadow-brand-primary/20 disabled:shadow-none flex items-center justify-center gap-4 active:scale-[0.98]"
+                                        className="flex-1 py-5 bg-[#FFD700] hover:bg-[#F4B000] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-slate-900 disabled:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] hover:-translate-y-0.5"
                                     >
                                         Continue
                                         <ChevronRight className="w-5 h-5" />
@@ -678,52 +726,43 @@ export function LeadCaptureModal({
                                 onSubmit={handleDetailSubmit}
                                 className="space-y-6 animate-in slide-in-from-right-4 duration-300"
                             >
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between px-1">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                                Full Name
-                                            </label>
-                                            <User className="w-3 h-3 text-slate-400" />
-                                        </div>
+                                <div className="space-y-5">
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                            Full Name
+                                        </p>
                                         <input
                                             type="text"
                                             required
                                             value={name}
                                             onChange={e => setName(e.target.value)}
                                             placeholder="Enter full name"
-                                            className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 rounded-3xl outline-none font-bold text-slate-900 dark:text-white transition-all"
+                                            className="w-full px-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-bold text-slate-900 dark:text-white transition-all placeholder:text-slate-300"
                                             autoFocus
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between px-1">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                                Pincode
-                                            </label>
-                                            <MapPin className="w-3 h-3 text-slate-400" />
-                                        </div>
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                            Pincode
+                                        </p>
                                         <input
                                             type="tel"
                                             required
                                             value={pincode}
                                             onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                             placeholder="6-digit Pincode"
-                                            className="w-full px-6 py-4 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-brand-primary/50 rounded-3xl outline-none font-bold text-slate-900 dark:text-white transition-all tracking-[0.2em]"
+                                            className="w-full px-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-bold text-slate-900 dark:text-white transition-all tracking-[0.2em] placeholder:text-slate-300"
                                         />
                                     </div>
 
                                     {isStaff && (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between px-1">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                                    Referred By (Optional)
-                                                </label>
-                                                <Phone className="w-3 h-3 text-slate-400" />
-                                            </div>
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                                Referred By (Optional)
+                                            </p>
                                             <div className="relative">
-                                                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 font-bold text-sm select-none">
+                                                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-sm select-none z-10">
                                                     +91
                                                 </span>
                                                 <input
@@ -737,21 +776,21 @@ export function LeadCaptureModal({
                                                     onBlur={handleReferralBlur}
                                                     placeholder="Referrer's mobile"
                                                     maxLength={10}
-                                                    className="w-full pl-14 pr-6 py-3.5 bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-indigo-500/50 rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white tracking-wider transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                                    className="w-full pl-14 pr-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-indigo-500/60 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)] rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white tracking-wider transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                                                 />
                                             </div>
                                             {referralResolving && (
-                                                <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-1">
+                                                <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-2">
                                                     <Loader2 className="w-3 h-3 animate-spin" /> Resolving referrer...
                                                 </p>
                                             )}
                                             {referralResolved && (
-                                                <p className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 px-1">
+                                                <p className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 px-2">
                                                     ✓ {referralResolved.name || 'Member'} linked as referrer
                                                 </p>
                                             )}
                                             {referralError && (
-                                                <p className="text-[10px] font-bold text-red-500 px-1">
+                                                <p className="text-[10px] font-bold text-red-500 px-2">
                                                     {referralError}
                                                 </p>
                                             )}
@@ -763,18 +802,18 @@ export function LeadCaptureModal({
                                     <button
                                         type="button"
                                         onClick={() => setStep(isStaff && !memberId ? 'PHONE_CONFIRM' : 'PHONE')}
-                                        className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase italic tracking-widest rounded-3xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+                                        className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200/50"
                                     >
                                         Back
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="flex-1 py-5 bg-brand-primary hover:bg-[#E0A200] text-black font-black uppercase italic tracking-widest rounded-3xl transition-all shadow-xl shadow-brand-primary/20 active:scale-[0.98] flex items-center justify-center gap-3"
+                                        className="flex-1 py-5 bg-[#FFD700] hover:bg-[#F4B000] text-slate-900 font-black uppercase text-xs tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] active:scale-[0.98] hover:-translate-y-0.5 flex items-center justify-center gap-3"
                                     >
                                         {isSubmitting ? (
                                             <>
-                                                <Loader2 className="w-6 h-6 animate-spin" />
+                                                <Loader2 className="w-5 h-5 animate-spin" />
                                                 <span>{submitStage || 'Processing'}</span>
                                             </>
                                         ) : (

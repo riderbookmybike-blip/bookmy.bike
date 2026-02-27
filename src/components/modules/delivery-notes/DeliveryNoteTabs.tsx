@@ -19,7 +19,7 @@ export function DeliveryNoteOverview() {
                             <span className="text-gray-900">28 May 2025</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-gray-500">Sales Order</span>
+                            <span className="text-gray-500">Booking</span>
                             <span className="text-blue-600 cursor-pointer">SO-2025-105</span>
                         </div>
                     </div>
@@ -92,14 +92,16 @@ export function DeliveryNoteDocuments() {
 export function DeliveryNoteActivity() {
     return (
         <div className="space-y-4">
-            {[1, 2, 4].map((i) => (
+            {[1, 2, 4].map(i => (
                 <div key={i} className="flex gap-4">
                     <div className="flex flex-col items-center">
                         <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                         <div className="w-0.5 bg-gray-200 flex-1 my-1"></div>
                     </div>
                     <div className="pb-4">
-                        <p className="text-sm text-gray-900">{i === 1 ? 'Out for Delivery' : (i === 2 ? 'Dispatched from Warehouse' : 'Packing Completed')}</p>
+                        <p className="text-sm text-gray-900">
+                            {i === 1 ? 'Out for Delivery' : i === 2 ? 'Dispatched from Warehouse' : 'Packing Completed'}
+                        </p>
                         <p className="text-xs text-gray-500">{i} day(s) ago</p>
                     </div>
                 </div>

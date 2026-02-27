@@ -15,6 +15,7 @@ import { createOrLinkMember } from './members';
 import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
 import { isAccessoryCompatible } from '@/lib/catalog/accessoryCompatibility';
 import { sendStoreVisitSms } from '@/lib/sms/msg91';
+import { formatDisplayId } from '@/utils/displayId';
 
 const END_CUSTOMER_ROLES = new Set(['bmb_user', 'member', 'customer']);
 const STAFF_SOURCE_HINTS = new Set(['LEADS', 'DEALER_REFERRAL', 'CRM']);
@@ -169,8 +170,18 @@ async function logLeadEvent(input: {
 }
 
 // --- CUSTOMER PROFILES ---
-
-// function getOrCreateCustomerProfile removed - using createOrLinkMember from members.ts instead
+//
+// ┌─────────────────────────────────────────────────────────────────────┐
+// │  MEMBERSHIP IDENTITY GOVERNANCE                                    │
+// │                                                                    │
+// │  Identity resolution is LOCKED to `primary_phone` only.            │
+// │  WhatsApp, Aadhaar, and alternative numbers are informational/     │
+// │  communication-only fields — NEVER used for member lookup.         │
+// │  No membership merging is allowed. One primary phone = one member. │
+// │                                                                    │
+// │  Decision: 2026-02-27 — prevents .maybeSingle() failures from     │
+// │  duplicate records sharing the same whatsapp number.               │
+// └─────────────────────────────────────────────────────────────────────┘
 
 export async function updateMemberProfile(
     memberId: string,
@@ -287,7 +298,7 @@ export async function checkExistingCustomer(phone: string) {
         return { data: null, memberId: null };
     }
 
-    // Search id_members by whatsapp OR primary_phone
+    // Identity lookup: primary_phone ONLY (see MEMBERSHIP IDENTITY GOVERNANCE above)
     const { data: profile, error } = await adminClient
         .from('id_members')
         .select(
@@ -300,7 +311,7 @@ export async function checkExistingCustomer(phone: string) {
             primary_phone
         `
         )
-        .or(`whatsapp.eq.${cleanPhone},primary_phone.eq.${cleanPhone}`)
+        .eq('primary_phone', cleanPhone)
         .maybeSingle();
 
     if (error) {
@@ -449,10 +460,11 @@ async function findLeadReferrerByCodeOrPhone(input: {
     }
 
     if (normalizedPhone && normalizedPhone.length === 10) {
+        // Identity lookup: primary_phone ONLY (see MEMBERSHIP IDENTITY GOVERNANCE)
         const { data } = await adminClient
             .from('id_members')
             .select('id, full_name, referral_code, primary_phone, whatsapp')
-            .or(`primary_phone.eq.${normalizedPhone},whatsapp.eq.${normalizedPhone}`)
+            .eq('primary_phone', normalizedPhone)
             .maybeSingle();
 
         if (data?.id) {
@@ -3166,13 +3178,18 @@ export async function confirmSalesOrder(bookingId: string): Promise<{ success: b
         .eq('id', bookingId);
 
     if (error) {
-        console.error('Confirm Sales Order Error:', error);
+        console.error('Confirm Booking Error:', error);
         return { success: false, message: getErrorMessage(error) };
     }
 
     revalidatePath('/app/[slug]/sales-orders');
     revalidatePath('/profile');
     return { success: true };
+}
+
+// Backward-compatible alias while UI vocabulary migrates to "Booking".
+export async function confirmBooking(bookingId: string): Promise<{ success: boolean; message?: string }> {
+    return confirmSalesOrder(bookingId);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -3985,7 +4002,7 @@ export async function getQuoteById(
                 )
                 .or(
                     Array.from(phoneSearchVariations)
-                        .flatMap(p => [`primary_phone.eq.${p}`, `whatsapp.eq.${p}`])
+                        .map(p => `primary_phone.eq.${p}`) // Identity: primary_phone ONLY (MEMBERSHIP IDENTITY GOVERNANCE)
                         // Escaping commas if necessary, though typical phone chars are safe
                         .join(',')
                 )
@@ -6785,6 +6802,25 @@ export async function getReceiptsForEntity(leadId?: string | null, memberId?: st
         console.error('getReceiptsForEntity Error:', error);
         return [];
     }
+    return data || [];
+}
+
+export async function getReceiptsForBooking(bookingId: string) {
+    if (!bookingId) return [];
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('crm_payments')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('getReceiptsForBooking Error:', error);
+        return [];
+    }
+
     return data || [];
 }
 

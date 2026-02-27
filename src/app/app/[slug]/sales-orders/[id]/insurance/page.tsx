@@ -2,14 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader2, Truck } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getBookingById } from '@/actions/crm';
-import { getAllotmentByBooking, upsertAllotment } from '@/actions/allotment';
+import { getInsuranceByBooking, upsertInsurance } from '@/actions/insurance';
 import { advanceBookingStage } from '@/actions/bookingStage';
 
-export default function SalesOrderAllotmentPage() {
+export default function BookingInsurancePage() {
     const params = useParams();
     const bookingId = typeof params?.id === 'string' ? params.id : '';
 
@@ -17,20 +17,20 @@ export default function SalesOrderAllotmentPage() {
     const [saving, setSaving] = useState(false);
     const [booking, setBooking] = useState<any | null>(null);
     const [draft, setDraft] = useState({
-        status: 'NONE' as 'NONE' | 'SOFT_LOCK' | 'HARD_LOCK',
-        vinNumber: '',
-        chassisNumber: '',
-        engineNumber: '',
-        invStockId: '',
+        providerName: '',
+        policyNumber: '',
+        premiumAmount: '',
+        expiryDate: '',
+        status: 'PENDING',
     });
 
     const loadData = useCallback(async () => {
         if (!bookingId) return;
         setLoading(true);
         try {
-            const [bookingRes, allotment] = await Promise.all([
+            const [bookingRes, insurance] = await Promise.all([
                 getBookingById(bookingId),
-                getAllotmentByBooking(bookingId),
+                getInsuranceByBooking(bookingId),
             ]);
             if (!bookingRes.success || !bookingRes.booking) {
                 toast.error('Booking not found');
@@ -38,18 +38,21 @@ export default function SalesOrderAllotmentPage() {
                 return;
             }
             setBooking(bookingRes.booking as any);
-            if (allotment) {
+            if (insurance) {
                 setDraft({
-                    status: (allotment.status || 'NONE') as 'NONE' | 'SOFT_LOCK' | 'HARD_LOCK',
-                    vinNumber: allotment.vin_number || '',
-                    chassisNumber: allotment.chassis_number || '',
-                    engineNumber: allotment.engine_number || '',
-                    invStockId: allotment.inv_stock_id || '',
+                    providerName: insurance.provider_name || '',
+                    policyNumber: insurance.policy_number || '',
+                    premiumAmount:
+                        insurance.premium_amount === null || insurance.premium_amount === undefined
+                            ? ''
+                            : String(insurance.premium_amount),
+                    expiryDate: insurance.expiry_date ? String(insurance.expiry_date).slice(0, 10) : '',
+                    status: insurance.status || 'PENDING',
                 });
             }
         } catch (error) {
-            console.error('[Allotment] load error:', error);
-            toast.error('Failed to load allotment');
+            console.error('[Insurance] load error:', error);
+            toast.error('Failed to load insurance');
         } finally {
             setLoading(false);
         }
@@ -59,28 +62,29 @@ export default function SalesOrderAllotmentPage() {
         loadData();
     }, [loadData]);
 
-    const saveAllotment = async () => {
+    const saveInsurance = async () => {
         if (!bookingId || !booking?.tenant_id) {
             toast.error('Booking tenant context missing');
             return false;
         }
+
         setSaving(true);
         try {
-            await upsertAllotment({
+            await upsertInsurance({
                 bookingId,
                 tenantId: booking.tenant_id,
-                status: draft.status,
-                vinNumber: draft.vinNumber || undefined,
-                chassisNumber: draft.chassisNumber || undefined,
-                engineNumber: draft.engineNumber || undefined,
-                invStockId: draft.invStockId || undefined,
+                providerName: draft.providerName || undefined,
+                policyNumber: draft.policyNumber || undefined,
+                status: draft.status || 'PENDING',
+                premiumAmount: draft.premiumAmount ? Number(draft.premiumAmount) : undefined,
+                expiryDate: draft.expiryDate || undefined,
             });
-            toast.success('Allotment saved');
+            toast.success('Insurance saved');
             await loadData();
             return true;
         } catch (error) {
-            console.error('[Allotment] save error:', error);
-            toast.error('Failed to save allotment');
+            console.error('[Insurance] save error:', error);
+            toast.error('Failed to save insurance');
             return false;
         } finally {
             setSaving(false);
@@ -88,9 +92,9 @@ export default function SalesOrderAllotmentPage() {
     };
 
     const moveToStage = async (stage: string) => {
-        const ok = await saveAllotment();
+        const ok = await saveInsurance();
         if (!ok) return;
-        const result = await advanceBookingStage(bookingId, stage, `allotment_updated_to_${stage.toLowerCase()}`);
+        const result = await advanceBookingStage(bookingId, stage, `insurance_updated_to_${stage.toLowerCase()}`);
         if (result.success) {
             toast.success(`Moved to ${stage}`);
             await loadData();
@@ -103,7 +107,7 @@ export default function SalesOrderAllotmentPage() {
         return (
             <div className="flex items-center justify-center min-h-[40vh] text-slate-400">
                 <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Loading allotment...
+                Loading insurance...
             </div>
         );
     }
@@ -113,18 +117,18 @@ export default function SalesOrderAllotmentPage() {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-xl shadow-indigo-500/10 border border-indigo-500/20">
-                <Truck size={28} />
+        <div className="space-y-6">
+            <div className="w-16 h-16 rounded-[1.5rem] bg-cyan-500/10 flex items-center justify-center text-cyan-600 border border-cyan-500/20">
+                <ShieldCheck size={28} />
             </div>
 
             <div className="bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/5 rounded-[2rem] p-6 space-y-5">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
-                        Vehicle Allotment
+                        Insurance
                     </h2>
                     <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
-                        Assign VIN/chassis/engine and lock stock
+                        Policy status and insurer details
                     </p>
                 </div>
 
@@ -133,90 +137,92 @@ export default function SalesOrderAllotmentPage() {
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</span>
                         <select
                             value={draft.status}
-                            onChange={e => setDraft(prev => ({ ...prev, status: e.target.value as any }))}
+                            onChange={e => setDraft(prev => ({ ...prev, status: e.target.value }))}
                             className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-bold"
                         >
-                            <option value="NONE">NONE</option>
-                            <option value="SOFT_LOCK">SOFT_LOCK</option>
-                            <option value="HARD_LOCK">HARD_LOCK</option>
+                            <option value="PENDING">PENDING</option>
+                            <option value="ACTIVE">ACTIVE</option>
+                            <option value="EXPIRED">EXPIRED</option>
+                            <option value="CANCELLED">CANCELLED</option>
                         </select>
                     </label>
 
                     <label className="space-y-1">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Inventory Stock ID
+                            Provider Name
                         </span>
                         <input
-                            value={draft.invStockId}
-                            onChange={e => setDraft(prev => ({ ...prev, invStockId: e.target.value }))}
+                            value={draft.providerName}
+                            onChange={e => setDraft(prev => ({ ...prev, providerName: e.target.value }))}
                             className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-medium"
-                            placeholder="inv_stock_id"
+                            placeholder="Insurance company"
                         />
                     </label>
 
                     <label className="space-y-1">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            VIN Number
+                            Policy Number
                         </span>
                         <input
-                            value={draft.vinNumber}
-                            onChange={e => setDraft(prev => ({ ...prev, vinNumber: e.target.value }))}
+                            value={draft.policyNumber}
+                            onChange={e => setDraft(prev => ({ ...prev, policyNumber: e.target.value }))}
                             className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-medium"
-                            placeholder="VIN..."
+                            placeholder="Policy #"
                         />
                     </label>
 
                     <label className="space-y-1">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Chassis Number
+                            Premium Amount
                         </span>
                         <input
-                            value={draft.chassisNumber}
-                            onChange={e => setDraft(prev => ({ ...prev, chassisNumber: e.target.value }))}
+                            type="number"
+                            value={draft.premiumAmount}
+                            onChange={e => setDraft(prev => ({ ...prev, premiumAmount: e.target.value }))}
                             className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-medium"
-                            placeholder="Chassis..."
+                            placeholder="0"
                         />
                     </label>
 
                     <label className="space-y-1">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Engine Number
+                            Expiry Date
                         </span>
                         <input
-                            value={draft.engineNumber}
-                            onChange={e => setDraft(prev => ({ ...prev, engineNumber: e.target.value }))}
+                            type="date"
+                            value={draft.expiryDate}
+                            onChange={e => setDraft(prev => ({ ...prev, expiryDate: e.target.value }))}
                             className="w-full h-11 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 text-sm font-medium"
-                            placeholder="Engine..."
                         />
                     </label>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                    <Button onClick={saveAllotment} disabled={saving} className="rounded-xl">
+                    <Button onClick={saveInsurance} disabled={saving} className="rounded-xl">
                         {saving ? (
                             <>
                                 <Loader2 size={14} className="mr-2 animate-spin" />
                                 Saving...
                             </>
                         ) : (
-                            'Save Allotment'
+                            'Save Insurance'
                         )}
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => moveToStage('ALLOTMENT')}
+                        onClick={() => moveToStage('INSURANCE')}
                         disabled={saving}
                         className="rounded-xl"
                     >
-                        Save + Move to ALLOTMENT
+                        Save + Move to INSURANCE
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => moveToStage('PDI')}
+                        onClick={() => moveToStage('REGISTRATION')}
                         disabled={saving}
                         className="rounded-xl"
                     >
-                        Save + Move to PDI
+                        Save + Move to REGISTRATION
                     </Button>
                 </div>
             </div>

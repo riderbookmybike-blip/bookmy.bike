@@ -2427,7 +2427,7 @@ export default function QuoteEditorTable({
                                         {(mode === 'quote' || mode === 'booking') && (
                                             <DropdownMenuItem onSelect={onConfirmBooking}>
                                                 <CheckCircle2 size={14} className="mr-2" />
-                                                {mode === 'booking' ? 'Confirm Sales Order' : 'Convert to Sales Order'}
+                                                {mode === 'booking' ? 'Confirm Booking' : 'Convert to Booking'}
                                             </DropdownMenuItem>
                                         )}
 
@@ -3541,7 +3541,7 @@ export default function QuoteEditorTable({
                                                 </h3>
                                             </div>
                                             <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                Sales Order
+                                                Booking
                                             </div>
                                         </div>
 

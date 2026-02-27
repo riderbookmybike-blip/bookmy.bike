@@ -836,7 +836,8 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
                 hex_primary,
                 hex_secondary,
                 finish,
-                primary_image
+                primary_image,
+                media_shared
             ),
             model:cat_models!model_id (
                 id,
@@ -849,6 +850,8 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
                 fuel_type,
                 emission_standard,
                 status,
+                primary_image,
+                media_shared,
                 brand:cat_brands!brand_id (
                     id,
                     name,
@@ -933,7 +936,11 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
             hex_secondary: sku.colour?.hex_secondary ?? sku.hex_secondary,
             color_name: sku.colour?.name ?? sku.color_name,
             finish: sku.colour?.finish ?? sku.finish,
-            primary_image: sku.primary_image,
+            primary_image:
+                sku.primary_image ||
+                (sku.colour?.primary_image && sku.colour?.media_shared ? sku.colour.primary_image : null) ||
+                (variant?.primary_image && variant?.media_shared ? variant.primary_image : null) ||
+                (model?.primary_image && model?.media_shared ? model.primary_image : null),
             gallery_img_1: sku.gallery_img_1,
             gallery_img_2: sku.gallery_img_2,
             gallery_img_3: sku.gallery_img_3,

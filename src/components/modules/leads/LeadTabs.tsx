@@ -1006,7 +1006,7 @@ export function LeadBookings({ leadId }: { leadId: string }) {
                 <div className="flex justify-between items-start mb-8">
                     <div>
                         <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">
-                            Active Sales Order
+                            Active Booking
                         </p>
                         <h3 className="text-3xl font-black text-slate-900 dark:text-white italic tracking-tighter">
                             SO-{booking.id.slice(0, 4).toUpperCase()}

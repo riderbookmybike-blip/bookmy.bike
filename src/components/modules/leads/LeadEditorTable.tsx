@@ -1752,7 +1752,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             </TransactionSection>
 
                             <TransactionSection
-                                title="Sales Orders"
+                                title="Bookings"
                                 count={bookingCount}
                                 expanded={groups.transactionBookings}
                                 onToggle={() => setGroups(g => ({ ...g, transactionBookings: !g.transactionBookings }))}
@@ -1765,7 +1765,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                                     Date
                                                 </th>
                                                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Sales Order
+                                                    Booking
                                                 </th>
                                                 <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                     Status
@@ -1817,7 +1817,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                                         colSpan={5}
                                                         className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
                                                     >
-                                                        No sales orders found
+                                                        No bookings found
                                                     </td>
                                                 </tr>
                                             )}

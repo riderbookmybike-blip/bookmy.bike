@@ -81,13 +81,14 @@ export async function advanceBookingStage(
     }
 
     const supabase = await createClient();
+    const targetStage = newStage as Stage;
 
     try {
         // DB function enforces transition matrix + proof checks + event logging atomically.
         const { data, error } = await supabase.rpc('transition_booking_stage', {
             p_booking_id: bookingId,
-            p_to_stage: newStage,
-            p_reason: reason || null,
+            p_to_stage: targetStage,
+            p_reason: reason || undefined,
         });
 
         if (error) {

@@ -49,7 +49,7 @@ export const ROUTE_REGISTRY: Record<string, RegisteredRoute> = {
     'members-main': { path: '/members', label: 'Members', icon: UserCheck },
     'quotes-main': { path: '/quotes', label: 'Quotes', icon: FileText },
     'books-main': { path: '/books', label: 'Books', icon: BookOpen },
-    'sales-orders': { path: '/sales-orders', label: 'Sales Orders', icon: ShoppingCart },
+    'sales-orders': { path: '/sales-orders', label: 'Bookings', icon: ShoppingCart },
 
     // --- ADMIN ---
     'admin-dealers': { path: '/dashboard/dealers', label: 'Dealership Network', icon: Building2 },

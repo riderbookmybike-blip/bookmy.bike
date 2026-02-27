@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { getFinanceApplications, updateFinanceStatus } from '@/actions/finance';
+import { advanceBookingStage } from '@/actions/bookingStage';
 import { toast } from 'sonner';
 
 export default function SalesOrderFinancePage() {
@@ -31,6 +32,7 @@ export default function SalesOrderFinancePage() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [movingStage, setMovingStage] = useState<string | null>(null);
     const [financeApp, setFinanceApp] = useState<any>(null);
     const [draft, setDraft] = useState<any>(null);
 
@@ -113,6 +115,23 @@ export default function SalesOrderFinancePage() {
         }
     }
 
+    async function handleMoveToStage(stage: string) {
+        if (!id) return;
+        setMovingStage(stage);
+        try {
+            const result = await advanceBookingStage(id, stage, `finance_page_move_to_${stage.toLowerCase()}`);
+            if (result.success) {
+                toast.success(`Moved to ${stage}`);
+            } else {
+                toast.error(result.message || result.warning || `Failed to move to ${stage}`);
+            }
+        } catch (err) {
+            toast.error(`Failed to move to ${stage}`);
+        } finally {
+            setMovingStage(null);
+        }
+    }
+
     const SectionHeader = ({ title, icon: Icon, colorClass }: { title: string; icon: any; colorClass: string }) => (
         <div className="flex items-center gap-3 mb-6">
             <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-lg', colorClass)}>
@@ -157,6 +176,25 @@ export default function SalesOrderFinancePage() {
 
     return (
         <div className="flex flex-col gap-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/5 rounded-[1.5rem] p-4 flex flex-wrap gap-2">
+                <Button
+                    variant="outline"
+                    onClick={() => handleMoveToStage('FINANCE')}
+                    disabled={movingStage !== null}
+                    className="rounded-xl"
+                >
+                    {movingStage === 'FINANCE' ? 'Moving...' : 'Move to FINANCE'}
+                </Button>
+                <Button
+                    variant="outline"
+                    onClick={() => handleMoveToStage('ALLOTMENT')}
+                    disabled={movingStage !== null}
+                    className="rounded-xl"
+                >
+                    {movingStage === 'ALLOTMENT' ? 'Moving...' : 'Move to ALLOTMENT'}
+                </Button>
+            </div>
+
             {/* 1. CORE SPECS & STATUS */}
             <div className="bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-8 shadow-sm">
                 <SectionHeader

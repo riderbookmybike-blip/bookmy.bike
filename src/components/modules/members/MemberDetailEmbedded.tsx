@@ -136,7 +136,7 @@ export default function MemberDetailEmbedded({ memberId }: { memberId: string })
                                 New Transaction <ChevronDown size={14} />
                             </button>
                             <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#0f1115] border border-slate-200 dark:border-white/5 rounded-xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover/new:opacity-100 group-hover/new:translate-y-0 group-hover/new:pointer-events-auto transition-all z-20">
-                                {['Sales Order', 'Receipt', 'Lead', 'Quote'].map(type => (
+                                {['Booking', 'Receipt', 'Lead', 'Quote'].map(type => (
                                     <button
                                         key={type}
                                         className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 first:rounded-t-xl last:rounded-b-xl transition-colors"

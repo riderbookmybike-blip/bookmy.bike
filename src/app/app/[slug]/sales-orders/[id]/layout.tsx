@@ -24,6 +24,7 @@ import {
     Truck,
     FileCheck,
     ShieldCheck,
+    ClipboardCheck,
     History,
     StickyNote,
     FileText,
@@ -61,7 +62,7 @@ export default function SalesOrderLayout({ children }: SalesOrderLayoutProps) {
         try {
             const bookingRes = await getBookingById(id);
             if (!bookingRes.success || !bookingRes.booking) {
-                toast.error('Sales Order not found');
+                toast.error('Booking not found');
                 return;
             }
             const b = bookingRes.booking;
@@ -108,16 +109,19 @@ export default function SalesOrderLayout({ children }: SalesOrderLayoutProps) {
 
     if (loading)
         return (
-            <div className="flex items-center justify-center min-h-[60vh] text-slate-400">Loading Order Details...</div>
+            <div className="flex items-center justify-center min-h-[60vh] text-slate-400">
+                Loading Booking Details...
+            </div>
         );
     if (!booking || !quote)
-        return <div className="flex items-center justify-center min-h-[60vh] text-rose-500">Sales Order not found</div>;
+        return <div className="flex items-center justify-center min-h-[60vh] text-rose-500">Booking not found</div>;
 
     const navItems = [
         { label: 'Overview', path: `/app/${slug}/sales-orders/${id}`, icon: ShoppingBag },
         { label: 'Finance', path: `/app/${slug}/sales-orders/${id}/finance`, icon: Landmark },
         { label: 'Receipts', path: `/app/${slug}/sales-orders/${id}/receipt`, icon: CreditCard },
         { label: 'Allotment', path: `/app/${slug}/sales-orders/${id}/allotment`, icon: Truck },
+        { label: 'PDI', path: `/app/${slug}/sales-orders/${id}/pdi`, icon: ClipboardCheck },
         { label: 'Insurance', path: `/app/${slug}/sales-orders/${id}/insurance`, icon: ShieldCheck },
         { label: 'Registration', path: `/app/${slug}/sales-orders/${id}/registration`, icon: FileCheck },
     ];
