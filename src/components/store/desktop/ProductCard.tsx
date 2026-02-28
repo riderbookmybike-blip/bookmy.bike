@@ -927,21 +927,19 @@ export const ProductCard = ({
                             style={{ backfaceVisibility: 'hidden' }}
                         >
                             {/* Left Panel: Downpayment */}
-                            <div className={`${isTv ? 'pr-2.5' : 'pr-4'} flex flex-col items-start`}>
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.1em] italic">
-                                        Downpayment
-                                    </p>
-                                </div>
+                            <div className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}>
+                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1 italic">
+                                    Downpayment
+                                </p>
 
-                                <div className="flex flex-col items-start gap-1">
-                                    <span className="text-[22px] md:text-3xl font-black italic text-slate-900 leading-none">
+                                <div className="flex flex-col items-start gap-0.5">
+                                    <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
                                         ₹{formatRoundedPrice(downpayment || 0)}
                                     </span>
                                     {showBcoinBadge && (
                                         <div className="flex items-center gap-1.5 h-4">
-                                            <Logo variant="icon" size={14} />
-                                            <span className="text-[10px] font-bold italic text-slate-600 leading-none">
+                                            <Logo variant="icon" size={12} />
+                                            <span className="text-[9px] font-bold italic text-slate-500 leading-none">
                                                 {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} Coins
                                             </span>
                                         </div>
@@ -953,19 +951,17 @@ export const ProductCard = ({
                             <div className="w-px h-10 bg-slate-100" />
 
                             {/* Right Panel: EMI */}
-                            <div className={`${isTv ? 'pl-2.5' : 'pl-4'} flex flex-col items-end`}>
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.1em] italic">
-                                        Lowest EMI
-                                    </p>
-                                </div>
+                            <div className={`${isTv ? 'pl-3' : 'pl-5'} flex-1 flex flex-col items-end`}>
+                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1 italic">
+                                    Lowest EMI
+                                </p>
 
-                                <div className="flex flex-col items-end gap-1">
-                                    <span className="text-[22px] md:text-3xl font-black italic text-slate-900 leading-none">
+                                <div className="flex flex-col items-end gap-0.5">
+                                    <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
                                         {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
                                     </span>
                                     <div className="h-4 flex items-center">
-                                        <span className="text-[10px] font-bold text-slate-600 italic leading-none">
+                                        <span className="text-[9px] font-bold text-slate-500 italic leading-none">
                                             x{tenure} months
                                         </span>
                                     </div>
