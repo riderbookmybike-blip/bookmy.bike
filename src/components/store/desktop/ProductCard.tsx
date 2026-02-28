@@ -1119,13 +1119,25 @@ export const ProductCard = ({
                                                                     </span>
                                                                 </div>
 
-                                                                {/* Row 9: O' Circle Privileged (Deduction) */}
-                                                                {tOcircle > 0 && (
+                                                                {/* Row 9: Special Offer (Dealer/Platform Discount) */}
+                                                                {savings > 0 && (
                                                                     <div className="flex justify-between items-center pt-1 mt-1 border-t border-slate-100">
                                                                         <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                                                                            O' Circle Privileged
+                                                                            Special Offer
                                                                         </span>
                                                                         <span className="text-[11px] font-mono font-black text-emerald-600">
+                                                                            -₹{formatRoundedPrice(savings)}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Row 10: O' Circle Privileged (Deduction) */}
+                                                                {tOcircle > 0 && (
+                                                                    <div className="flex justify-between items-center pt-1 mt-1 border-t border-slate-100">
+                                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#F4B000]">
+                                                                            O' Circle Privileged
+                                                                        </span>
+                                                                        <span className="text-[11px] font-mono font-black text-[#F4B000]">
                                                                             -₹{formatRoundedPrice(tOcircle)}
                                                                         </span>
                                                                     </div>
