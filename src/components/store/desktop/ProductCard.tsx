@@ -926,22 +926,21 @@ export const ProductCard = ({
                             className="w-full flex items-center justify-between"
                             style={{ backfaceVisibility: 'hidden' }}
                         >
-                            {/* Left Panel: Offer Price */}
+                            {/* Left Panel: Downpayment */}
                             <div className={`${isTv ? 'pr-2.5' : 'pr-4'} flex flex-col items-start`}>
                                 <div className="relative group/offer flex items-center gap-1.5 mb-1.5">
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.1em] italic">
-                                        On Road
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.1em] italic">
+                                        Downpayment
                                     </p>
                                     <CircleHelp
                                         size={12}
-                                        className="text-slate-400 group-hover/offer:text-brand-primary transition-colors cursor-help shrink-0"
+                                        className="text-slate-400 group-hover/offer:text-emerald-500 transition-colors cursor-help shrink-0"
                                     />
-                                    {/* ... breakdown tooltip ... */}
                                 </div>
 
                                 <div className="flex flex-col gap-1.5">
                                     <span className="text-lg md:text-xl font-black italic text-slate-900 leading-none">
-                                        ₹{formatRoundedPrice(effectiveOfferPrice)}
+                                        ₹{formatRoundedPrice(downpayment || 0)}
                                     </span>
                                     {showBcoinBadge && (
                                         <div className="flex items-center gap-1.5 pl-0.5 mt-1">

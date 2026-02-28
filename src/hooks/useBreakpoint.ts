@@ -8,12 +8,12 @@ import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserA
  * - phone:   ≤767px (or detected handheld phone in desktop-site mode)
  * - tablet:  768–899px
  * - desktop: ≥900px
- * - tv:      TV user-agent
  *
  * SSR-safe: defaults to 'desktop' on server, then hydrates on client
  * with a useEffect guard to prevent layout flash.
  */
-export type DeviceBreakpoint = 'phone' | 'tablet' | 'desktop' | 'tv';
+export type DeviceBreakpoint = 'phone' | 'tablet' | 'desktop';
+type InitialDevice = DeviceBreakpoint | 'tv';
 
 const PHONE_MAX = 767;
 const TABLET_MAX = 899; // 900px+ is Desktop (Sync with tailwind.config.js lg)
@@ -45,7 +45,7 @@ function isLikelyHandheldPhone(): boolean {
 
 function getBreakpoint(): DeviceBreakpoint {
     if (typeof window === 'undefined') return 'desktop';
-    if (isTvUserAgent(window.navigator.userAgent || '')) return 'tv';
+    if (isTvUserAgent(window.navigator.userAgent || '')) return 'desktop';
 
     // Handles desktop-site mode on phones where innerWidth can be inflated.
     if (isLikelyHandheldPhone()) return 'phone';
@@ -56,18 +56,19 @@ function getBreakpoint(): DeviceBreakpoint {
     return 'desktop';
 }
 
-export function useBreakpoint(initialDevice: DeviceBreakpoint = 'desktop'): {
+export function useBreakpoint(initialDevice: InitialDevice = 'desktop'): {
     device: DeviceBreakpoint;
     hydrated: boolean;
 } {
     // SSR-safe: start with initialDevice (from server) to match server render perfectly
-    const [device, setDevice] = useState<DeviceBreakpoint>(initialDevice);
+    const [device, setDevice] = useState<DeviceBreakpoint>(initialDevice === 'tv' ? 'desktop' : initialDevice);
     const [hydrated, setHydrated] = useState(false);
 
     useEffect(() => {
         const applyRootFlags = (resolved: DeviceBreakpoint) => {
+            const isTv = isTvUserAgent(window.navigator.userAgent || '');
             document.documentElement.dataset.device = resolved;
-            document.documentElement.dataset.tv = resolved === 'tv' ? '1' : '0';
+            document.documentElement.dataset.tv = isTv ? '1' : '0';
         };
 
         // Hydrate immediately on mount
