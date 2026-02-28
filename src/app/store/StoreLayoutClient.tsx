@@ -8,6 +8,7 @@ const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { s
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import { usePathname } from 'next/navigation';
 import { ColorProvider } from '@/contexts/ColorContext';
+import { DiscoveryProvider } from '@/contexts/DiscoveryContext';
 import { getSelfMemberLocation } from '@/actions/members';
 import { setLocationCookie } from '@/actions/locationCookie';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -129,46 +130,48 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
     return (
         <FavoritesProvider>
             <ColorProvider>
-                <div
-                    className={`marketplace min-h-screen ${
-                        isLandingPage ? 'bg-white text-black' : 'bg-slate-50 text-slate-900'
-                    } font-sans selection:bg-red-500/30 transition-colors duration-300`}
-                >
-                    <Script
-                        src="https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/3.0.3/js-cloudimage-360-view.min.js"
-                        strategy="afterInteractive"
-                    />
-                    <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
-
-                    {/* Dealership Gate — blocks marketplace for staff without active dealership */}
-                    <DealershipGate />
-
-                    <main
-                        className="flex-1"
-                        style={{
-                            paddingTop: isLandingPage ? '0px' : 'var(--header-h)',
-                            ...(isPhone
-                                ? { paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 16px)' }
-                                : undefined),
-                        }}
+                <DiscoveryProvider>
+                    <div
+                        className={`marketplace min-h-screen ${
+                            isLandingPage ? 'bg-white text-black' : 'bg-slate-50 text-slate-900'
+                        } font-sans selection:bg-red-500/30 transition-colors duration-300`}
                     >
-                        {children}
-                    </main>
+                        <Script
+                            src="https://cdn.scaleflex.it/plugins/js-cloudimage-360-view/3.0.3/js-cloudimage-360-view.min.js"
+                            strategy="afterInteractive"
+                        />
+                        <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
 
-                    {!hideFooter &&
-                        !(
-                            isPhone &&
-                            (pathname?.startsWith('/store/catalog') ||
-                                pathname?.startsWith('/store/ocircle') ||
-                                pathname?.match(/^\/store\/[^/]+\/[^/]+/))
-                        ) && <MarketplaceFooter />}
+                        {/* Dealership Gate — blocks marketplace for staff without active dealership */}
+                        <DealershipGate />
 
-                    {/* Shopper Bottom HUD (phone only) */}
-                    {isPhone && <ShopperBottomNav />}
+                        <main
+                            className="flex-1"
+                            style={{
+                                paddingTop: isLandingPage ? '0px' : 'var(--header-h)',
+                                ...(isPhone
+                                    ? { paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 16px)' }
+                                    : undefined),
+                            }}
+                        >
+                            {children}
+                        </main>
 
-                    {/* Global Login Sidebar */}
-                    <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="RETAIL" />
-                </div>
+                        {!hideFooter &&
+                            !(
+                                isPhone &&
+                                (pathname?.startsWith('/store/catalog') ||
+                                    pathname?.startsWith('/store/ocircle') ||
+                                    pathname?.match(/^\/store\/[^/]+\/[^/]+/))
+                            ) && <MarketplaceFooter />}
+
+                        {/* Shopper Bottom HUD (phone only) */}
+                        {isPhone && <ShopperBottomNav />}
+
+                        {/* Global Login Sidebar */}
+                        <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="RETAIL" />
+                    </div>
+                </DiscoveryProvider>
             </ColorProvider>
         </FavoritesProvider>
     );

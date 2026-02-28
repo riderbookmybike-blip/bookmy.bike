@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { ProductVariant } from '@/types/productMaster';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 import { BRANDS as brands } from '@/config/market';
 export { brands };
@@ -12,6 +13,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const router = useRouter();
+    const { pricingMode, setPricingMode } = useDiscovery();
 
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
     const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
@@ -72,15 +74,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const [maxPrice, setMaxPrice] = useState<number>(1000000); // 10 Lakh default
     const [maxEMI, setMaxEMI] = useState<number>(20000); // 20k default
     const [showOClubOnly, setShowOClubOnly] = useState(false);
-    const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>(() => {
-        const mode = searchParams.get('mode');
-        if (mode === 'cash' || mode === 'finance') return mode;
-        if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('bkmb_pricing_mode');
-            if (stored === 'cash' || stored === 'finance') return stored as 'cash' | 'finance';
-        }
-        return 'finance'; // Default to finance as per previous preference
-    });
+
+    // We no longer manage pricingMode local state here, we use the DiscoveryContext
 
     // Dynamic EMI States
     const [downpayment, _setDownpayment] = useState(() => {
