@@ -14,3 +14,12 @@ export async function isMobileDevice(): Promise<boolean> {
 
     return isHandheldPhoneUserAgent(userAgent);
 }
+
+/**
+ * Returns the resolved device type ('phone' | 'desktop') for SSR.
+ * Ensures TVs and large landscape devices are served the desktop shell.
+ */
+export async function getInitialDeviceType(): Promise<'phone' | 'desktop'> {
+    const isMobile = await isMobileDevice();
+    return isMobile ? 'phone' : 'desktop';
+}

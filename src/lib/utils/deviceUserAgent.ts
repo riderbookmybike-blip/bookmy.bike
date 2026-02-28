@@ -26,6 +26,8 @@ export function isTvUserAgent(userAgent: string): boolean {
 
 export function isHandheldPhoneUserAgent(userAgent: string): boolean {
     if (!userAgent) return false;
+
+    // TVs are NEVER handheld phones (prevents hydration mismatches/forced mobile on TV)
     if (isTvUserAgent(userAgent)) return false;
 
     if (PHONE_USER_AGENT_REGEX.test(userAgent)) return true;
