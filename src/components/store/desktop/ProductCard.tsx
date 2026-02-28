@@ -15,6 +15,7 @@ import {
     Layers,
     GitCompareArrows,
     Pencil,
+    Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -939,8 +940,8 @@ export const ProductCard = ({
                                     {showBcoinBadge && (
                                         <div className="flex items-center gap-1.5 h-4">
                                             <Logo variant="icon" size={12} />
-                                            <span className="text-[9px] font-bold italic text-slate-500 leading-none">
-                                                {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} Coins
+                                            <span className="text-[9px] font-bold italic text-slate-500 uppercase tracking-wider leading-none">
+                                                {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} COINS
                                             </span>
                                         </div>
                                     )}
@@ -960,9 +961,10 @@ export const ProductCard = ({
                                     <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
                                         {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
                                     </span>
-                                    <div className="h-4 flex items-center">
-                                        <span className="text-[9px] font-bold text-slate-500 italic leading-none">
-                                            x{tenure} months
+                                    <div className="h-4 flex items-center gap-1.5">
+                                        <Clock size={11} className="text-slate-400" />
+                                        <span className="text-[9px] font-bold italic text-slate-500 uppercase tracking-wider leading-none">
+                                            {activeTenure} MONTHS
                                         </span>
                                     </div>
                                 </div>
