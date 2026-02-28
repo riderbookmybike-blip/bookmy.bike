@@ -26,7 +26,7 @@ import type { ProductVariant } from '@/types/productMaster';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
-import { coinsNeededForPrice } from '@/lib/oclub/coin';
+import { coinsNeededForPrice, discountForCoins } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
@@ -280,15 +280,16 @@ export const ProductCard = ({
     // SSPP v1: B-Coin Integration
     const params = useSearchParams();
 
-    // bcoinTotal is the alternative currency view (13 Coins = 1000 INR)
+    // bcoinTotal is the alternative currency view (13 Coins = 1000 INR) — SOT: b_coin_valuation_sot.md
     const bcoinTotal = coinsNeededForPrice(offerPrice);
 
-    // Assume standard 13-coin signup bonus (₹1000) for catalog potential if no specific pricing
-    const coinPricing = (v.price as any)?.coinPricing || {
-        discount: 1000,
-        coinsUsed: 13,
-    };
-    const bcoinAdjustment = coinPricing.discount || 0;
+    // O'Circle Privileged discount: based on user's ACTUAL available wallet balance
+    // SOT Rule 2: discount_inr = floor(available_coins / 13) * 1000
+    // e.g. 26 coins → ₹2,000 | 13 coins → ₹1,000 | 0 coins → ₹0
+    const bcoinAdjustment =
+        walletCoins && walletCoins > 0
+            ? discountForCoins(Math.floor(walletCoins / 13) * 13) // round down to nearest 13-coin block
+            : 0;
     const isShowingEffectivePrice = bcoinAdjustment > 0;
     const baseOnRoadPrice = onRoad > 0 ? onRoad : offerPrice;
     const effectiveOfferPrice = Math.max(0, offerPrice - bcoinAdjustment);
