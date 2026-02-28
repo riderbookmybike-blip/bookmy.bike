@@ -12,7 +12,7 @@ import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserA
  * SSR-safe: defaults to 'desktop' on server, then hydrates on client
  * with a useEffect guard to prevent layout flash.
  */
-export type DeviceBreakpoint = 'phone' | 'tablet' | 'desktop' | 'tv';
+export type DeviceBreakpoint = 'phone' | 'tablet' | 'desktop';
 
 const PHONE_MAX = 767;
 const TABLET_MAX = 899; // 900px+ is Desktop (Sync with tailwind.config.js lg)
@@ -71,9 +71,9 @@ function getBreakpoint(): DeviceBreakpoint {
     if (typeof window === 'undefined') return 'desktop';
 
     const ua = window.navigator.userAgent || '';
-    if (isTvUserAgent(ua)) return 'tv';
+    if (isTvUserAgent(ua)) return 'desktop';
 
-    if (isLikelyLeanBackViewport(window.innerWidth, window.innerHeight)) return 'tv';
+    if (isLikelyLeanBackViewport(window.innerWidth, window.innerHeight)) return 'desktop';
 
     // Handles desktop-site mode on phones where innerWidth can be inflated.
     if (isLikelyHandheldPhone()) return 'phone';

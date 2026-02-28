@@ -1,6 +1,6 @@
 import 'server-only';
 import { headers } from 'next/headers';
-import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
+import { isHandheldPhoneUserAgent } from '@/lib/utils/deviceUserAgent';
 
 /**
  * Parses the User-Agent header from the incoming request strictly on the server
@@ -16,14 +16,10 @@ export async function isMobileDevice(): Promise<boolean> {
 }
 
 /**
- * Returns the resolved device type ('phone' | 'desktop' | 'tv') for SSR.
- * Ensures TVs and large landscape devices are served the dedicated shell or optimized desktop.
+ * Returns the resolved device type ('phone' | 'desktop') for SSR.
+ * Ensures TVs and large landscape devices are served the desktop shell.
  */
-export async function getInitialDeviceType(): Promise<'phone' | 'desktop' | 'tv'> {
-    const headersList = await headers();
-    const userAgent = headersList.get('user-agent');
-    if (userAgent && isTvUserAgent(userAgent)) return 'tv';
-
+export async function getInitialDeviceType(): Promise<'phone' | 'desktop'> {
     const isMobile = await isMobileDevice();
     return isMobile ? 'phone' : 'desktop';
 }
