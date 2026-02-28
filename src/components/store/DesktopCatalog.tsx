@@ -1082,32 +1082,25 @@ export const DesktopCatalog = ({
                                     <Menu size={16} />
                                 </button>
 
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 w-full bg-white/70 border border-slate-200 rounded-full px-4 py-2 h-10">
-                                        <Search size={14} className="text-slate-400" />
+                                <div className="flex-none min-w-[200px] lg:min-w-[300px]">
+                                    <div className="flex items-center gap-2 w-full bg-slate-100/50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 h-9 transition-all group focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-primary/10">
+                                        <Search
+                                            size={14}
+                                            className="text-slate-400 group-focus-within:text-brand-primary transition-colors"
+                                        />
                                         <input
                                             type="text"
-                                            placeholder="Search brand, product, variant"
+                                            placeholder="FIND MACHINE..."
                                             value={searchQuery}
                                             onChange={e => setSearchQuery(e.target.value)}
-                                            className="flex-1 min-w-0 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300"
+                                            className="flex-1 min-w-0 bg-transparent text-[10px] font-black tracking-[0.15em] uppercase focus:outline-none placeholder:text-slate-300"
                                         />
                                         {searchQuery && (
                                             <button
                                                 onClick={() => setSearchQuery('')}
-                                                className="flex items-center text-slate-400 hover:text-slate-900"
+                                                className="flex items-center text-slate-300 hover:text-slate-900 transition-colors"
                                             >
                                                 <X size={14} />
-                                            </button>
-                                        )}
-                                        {explodedVariant && (
-                                            <button
-                                                onClick={() => setExplodedVariant(null)}
-                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-600"
-                                                title="Collapse Colors"
-                                            >
-                                                Collapse Colors
-                                                <X size={10} />
                                             </button>
                                         )}
                                     </div>

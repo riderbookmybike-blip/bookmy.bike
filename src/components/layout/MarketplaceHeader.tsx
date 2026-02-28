@@ -22,8 +22,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const pathname = usePathname();
     const { device } = useBreakpoint();
-    const { resultsCount, pricingMode, setPricingMode, locationLabel, showDiscoveryBar, searchQuery, setSearchQuery } =
-        useDiscovery();
+    const { resultsCount, pricingMode, setPricingMode, locationLabel, showDiscoveryBar } = useDiscovery();
     const isPhone = device === 'phone';
     const isDesktopLike = device === 'desktop';
 
@@ -93,20 +92,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                 Prices in <span className="text-slate-900">{locationLabel || '...'}</span>
                             </p>
-                        </div>
-
-                        {/* Compact Search Bar */}
-                        <div className="relative group min-w-[180px] lg:min-w-[240px]">
-                            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-primary transition-colors">
-                                <Search size={14} />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="FIND..."
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                className="w-full bg-slate-100/50 hover:bg-slate-100 border border-slate-200/60 rounded-xl py-1.5 pl-9 pr-3 text-[10px] font-black tracking-widest uppercase focus:bg-white focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all placeholder:text-slate-400"
-                            />
                         </div>
 
                         {/* Finance/Cash Toggle */}
