@@ -303,10 +303,10 @@
     gap: 2rem;
 }
 
-/* 4 columns starts at 900px to accommodate the 960px mock precisely */
+/* Reverting to 3 columns based on user feedback for better breathing room */
 @media (min-width: 900px) {
     [data-tv='1'] .tv-catalog-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
