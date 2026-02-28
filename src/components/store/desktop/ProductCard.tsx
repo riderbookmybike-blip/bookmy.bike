@@ -934,14 +934,14 @@ export const ProductCard = ({
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col items-start">
+                                <div className="flex flex-col items-start gap-1">
                                     <span className="text-[22px] md:text-3xl font-black italic text-slate-900 leading-none">
                                         ₹{formatRoundedPrice(downpayment || 0)}
                                     </span>
                                     {showBcoinBadge && (
-                                        <div className="flex items-center gap-1.5 mt-1">
+                                        <div className="flex items-center gap-1.5 h-4">
                                             <Logo variant="icon" size={14} />
-                                            <span className="text-[10px] font-bold italic text-slate-600">
+                                            <span className="text-[10px] font-bold italic text-slate-600 leading-none">
                                                 {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} Coins
                                             </span>
                                         </div>
@@ -960,12 +960,12 @@ export const ProductCard = ({
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col items-end">
+                                <div className="flex flex-col items-end gap-1">
                                     <span className="text-[22px] md:text-3xl font-black italic text-slate-900 leading-none">
                                         {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
                                     </span>
-                                    <div className="mt-1">
-                                        <span className="text-[10px] font-bold text-slate-600 italic">
+                                    <div className="h-4 flex items-center">
+                                        <span className="text-[10px] font-bold text-slate-600 italic leading-none">
                                             x{tenure} months
                                         </span>
                                     </div>
