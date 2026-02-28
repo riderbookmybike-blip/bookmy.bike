@@ -22,6 +22,8 @@ export interface ProductVariant {
         onRoad: number;
         offerPrice?: number;
         discount?: number;
+        rtoTotal?: number;
+        insuranceTotal?: number;
         pricingSource?: string; // e.g., 'MH', 'KA'
         isEstimate?: boolean; // true if fallback used
         bundleValue?: number; // Value of free bundled accessories

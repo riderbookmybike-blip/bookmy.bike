@@ -1014,111 +1014,123 @@ export const ProductCard = ({
                                                 </div>
 
                                                 <div className="space-y-2.5">
-                                                    {/* Row 1: Ex-Showroom */}
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                            Ex-Showroom
-                                                        </span>
-                                                        <span className="text-[11px] font-mono font-black text-slate-900">
-                                                            ₹
-                                                            {formatRoundedPrice(
-                                                                (v.price as any)?.exShowroom ||
-                                                                    (v as any)?.serverPricing?.ex_showroom
-                                                            )}
-                                                        </span>
-                                                    </div>
+                                                    {(() => {
+                                                        const tEx =
+                                                            (v.price as any)?.exShowroom ||
+                                                            (v as any)?.serverPricing?.ex_showroom ||
+                                                            0;
+                                                        const tRto =
+                                                            (v.price as any)?.rtoTotal ||
+                                                            (v as any)?.serverPricing?.rto?.total ||
+                                                            0;
+                                                        const tIns =
+                                                            (v.price as any)?.insuranceTotal ||
+                                                            (v as any)?.serverPricing?.insurance?.total ||
+                                                            0;
+                                                        const tOcircle = bcoinAdjustment || 0;
 
-                                                    {/* Row 2: Registration */}
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                            Registration (State)
-                                                        </span>
-                                                        <span className="text-[11px] font-mono font-black text-slate-900">
-                                                            ₹
-                                                            {formatRoundedPrice(
-                                                                (v.price as any)?.rtoTotal ||
-                                                                    (v as any)?.serverPricing?.rto?.total ||
-                                                                    0
-                                                            )}
-                                                        </span>
-                                                    </div>
+                                                        // Formula: Net Total = Ex + Rto + Ins + Services + Addons + Acc - Ocircle
+                                                        // We'll group residual charges into "Services & Others" to ensure the math perfectly balances with effectiveOfferPrice
+                                                        const residual =
+                                                            effectiveOfferPrice - (tEx + tRto + tIns - tOcircle);
+                                                        const tOthers = Math.max(0, residual);
 
-                                                    {/* Row 3: Insurance */}
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                            Insurance
-                                                        </span>
-                                                        <span className="text-[11px] font-mono font-black text-slate-900">
-                                                            ₹
-                                                            {formatRoundedPrice(
-                                                                (v.price as any)?.insuranceTotal ||
-                                                                    (v as any)?.serverPricing?.insurance?.total ||
-                                                                    0
-                                                            )}
-                                                        </span>
-                                                    </div>
+                                                        return (
+                                                            <>
+                                                                {/* Row 1: Ex-Showroom */}
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                                        Ex-Showroom
+                                                                    </span>
+                                                                    <span className="text-[11px] font-mono font-black text-slate-900">
+                                                                        ₹{formatRoundedPrice(tEx)}
+                                                                    </span>
+                                                                </div>
 
-                                                    {/* Row 4: Insurance Add-ons */}
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                            Insurance Add-ons
-                                                        </span>
-                                                        <span className="text-[11px] font-mono font-black text-slate-900">
-                                                            ₹0
-                                                        </span>
-                                                    </div>
+                                                                {/* Row 2: Registration */}
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                                        Registration (State)
+                                                                    </span>
+                                                                    <span className="text-[11px] font-mono font-black text-slate-900">
+                                                                        ₹{formatRoundedPrice(tRto)}
+                                                                    </span>
+                                                                </div>
 
-                                                    {/* Row 5: Mandatory Accessories */}
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                            Mandatory Accessories
-                                                        </span>
-                                                        <span className="text-[11px] font-mono font-black text-slate-900">
-                                                            ₹0
-                                                        </span>
-                                                    </div>
+                                                                {/* Row 3: Insurance */}
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                                        Insurance
+                                                                    </span>
+                                                                    <span className="text-[11px] font-mono font-black text-slate-900">
+                                                                        ₹{formatRoundedPrice(tIns)}
+                                                                    </span>
+                                                                </div>
 
-                                                    {/* Row 6: Optional Accessories */}
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                            Optional Accessories
-                                                        </span>
-                                                        <span className="text-[11px] font-mono font-black text-slate-900">
-                                                            ₹0
-                                                        </span>
-                                                    </div>
+                                                                {/* Row 4: Insurance Add-ons */}
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                                        Insurance Add-ons
+                                                                    </span>
+                                                                    <span className="text-[11px] font-mono font-black text-slate-900">
+                                                                        ₹0
+                                                                    </span>
+                                                                </div>
 
-                                                    {/* Row 7: Services */}
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                            Services
-                                                        </span>
-                                                        <span className="text-[11px] font-mono font-black text-slate-900">
-                                                            ₹0
-                                                        </span>
-                                                    </div>
+                                                                {/* Row 5: Mandatory Accessories */}
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                                        Mandatory Accessories
+                                                                    </span>
+                                                                    <span className="text-[11px] font-mono font-black text-slate-900">
+                                                                        ₹0
+                                                                    </span>
+                                                                </div>
 
-                                                    {/* Row 8: Delivery TAT */}
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                            Delivery TAT
-                                                        </span>
-                                                        <span className="text-[11px] font-black text-slate-900 uppercase">
-                                                            7 Days
-                                                        </span>
-                                                    </div>
+                                                                {/* Row 6: Optional Accessories */}
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                                        Optional Accessories
+                                                                    </span>
+                                                                    <span className="text-[11px] font-mono font-black text-slate-900">
+                                                                        ₹0
+                                                                    </span>
+                                                                </div>
 
-                                                    {/* Row 9: O' Circle Privileged (Deduction) */}
-                                                    {bcoinAdjustment > 0 && (
-                                                        <div className="flex justify-between items-center pt-1 mt-1 border-t border-slate-100">
-                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                                                                O' Circle Privileged
-                                                            </span>
-                                                            <span className="text-[11px] font-mono font-black text-emerald-600">
-                                                                -₹{formatRoundedPrice(bcoinAdjustment)}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                                {/* Row 7: Services & Others */}
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                                        Services & Others
+                                                                    </span>
+                                                                    <span className="text-[11px] font-mono font-black text-slate-900">
+                                                                        ₹{formatRoundedPrice(tOthers)}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Row 8: Delivery TAT */}
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                                        Delivery TAT
+                                                                    </span>
+                                                                    <span className="text-[11px] font-black text-slate-900 uppercase">
+                                                                        7-10 Days
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Row 9: O' Circle Privileged (Deduction) */}
+                                                                {tOcircle > 0 && (
+                                                                    <div className="flex justify-between items-center pt-1 mt-1 border-t border-slate-100">
+                                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                                                            O' Circle Privileged
+                                                                        </span>
+                                                                        <span className="text-[11px] font-mono font-black text-emerald-600">
+                                                                            -₹{formatRoundedPrice(tOcircle)}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
 
                                                 <div className="pt-3 border-t-2 border-slate-900/5 flex justify-between items-center">

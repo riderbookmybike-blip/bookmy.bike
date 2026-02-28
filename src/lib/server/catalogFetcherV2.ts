@@ -514,6 +514,8 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 onRoad,
                 offerPrice: dealerDelta !== 0 ? offerPrice : undefined,
                 discount: discount > 0 ? discount : undefined,
+                rtoTotal: primarySku.rto_state_total ?? undefined,
+                insuranceTotal: primarySku.ins_total ?? undefined,
                 totalSavings: totalSavings > 0 ? totalSavings : undefined,
                 pricingSource: 'MH',
             },
@@ -523,13 +525,13 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 availableColors.length > 0
                     ? availableColors
                     : [
-                        {
-                            id: primarySku.sku_id,
-                            name: primarySku.color_name || 'Default',
-                            hexCode: primarySku.hex_primary || '#333333',
-                            imageUrl: primarySku.primary_image || undefined,
-                        },
-                    ],
+                          {
+                              id: primarySku.sku_id,
+                              name: primarySku.color_name || 'Default',
+                              hexCode: primarySku.hex_primary || '#333333',
+                              imageUrl: primarySku.primary_image || undefined,
+                          },
+                      ],
             imageUrl: primarySku.primary_image || '',
             zoomFactor: primarySku.zoom_factor ?? undefined,
             isFlipped: primarySku.is_flipped || undefined,
