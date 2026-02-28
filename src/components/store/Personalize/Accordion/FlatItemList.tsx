@@ -30,8 +30,10 @@ export default function FlatItemList({
         <>
             {items.map((item: any, idx: number) => {
                 const selected = getSelected(item.id);
-                const finalPrice = item.discountPrice > 0 ? item.discountPrice : item.price;
-                const hasDiscount = item.discountPrice > 0 && item.discountPrice < item.price;
+                const finalPrice =
+                    item.discountPrice != null && item.discountPrice >= 0 ? item.discountPrice : item.price;
+                const hasDiscount =
+                    item.discountPrice != null && item.discountPrice >= 0 && item.discountPrice < item.price;
                 const savings = hasDiscount ? item.price - item.discountPrice : 0;
                 const savingsPct = hasDiscount ? Math.round((savings / item.price) * 100) : 0;
 

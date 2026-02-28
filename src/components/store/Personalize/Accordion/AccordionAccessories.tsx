@@ -34,8 +34,9 @@ export default function AccordionAccessories({
         <>
             {sortedAccessories.map((acc: any, idx: number) => {
                 const isSelected = acc.isMandatory || selectedAccessories.includes(acc.id);
-                const finalPrice = acc.discountPrice > 0 ? acc.discountPrice : acc.price;
-                const hasDiscount = acc.discountPrice > 0 && acc.discountPrice < acc.price;
+                const finalPrice = acc.discountPrice != null && acc.discountPrice >= 0 ? acc.discountPrice : acc.price;
+                const hasDiscount =
+                    acc.discountPrice != null && acc.discountPrice >= 0 && acc.discountPrice < acc.price;
                 const savings = hasDiscount ? acc.price - acc.discountPrice : 0;
                 const savingsPct = hasDiscount ? Math.round((savings / acc.price) * 100) : 0;
                 const quantity = isSelected ? quantities[acc.id] || 1 : 0;

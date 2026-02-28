@@ -37,7 +37,8 @@ export default function ConfigItemRow({
     quantity: rawQuantity,
 }: ConfigItemRowProps) {
     const quantity = isSelected ? (rawQuantity ?? 1) : 0;
-    const finalPrice = item.discountPrice && item.discountPrice > 0 ? item.discountPrice : item.price;
+    const finalPrice = item.discountPrice != null && item.discountPrice >= 0 ? item.discountPrice : item.price;
+    const hasDiscount = item.discountPrice != null && item.discountPrice >= 0 && item.discountPrice < item.price;
 
     return (
         <div className="group/item relative h-full">
