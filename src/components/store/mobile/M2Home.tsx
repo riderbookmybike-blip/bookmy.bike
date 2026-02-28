@@ -111,7 +111,15 @@ const DEFAULT_SERVICE_CITIES = [
 /* ═══════════════════════════════════════════════════════════
    M2 HOME — Phone-First Premium Homepage
    ═══════════════════════════════════════════════════════════ */
-export function M2Home({ heroImage, initialItems }: { heroImage?: string; initialItems?: any[] }) {
+export function M2Home({
+    heroImage,
+    initialItems,
+    initialDevice = 'desktop',
+}: {
+    heroImage?: string;
+    initialItems?: any[];
+    initialDevice?: 'phone' | 'desktop';
+}) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
     const { items, skuCount } = useSystemCatalogLogic(leadId || undefined);
@@ -120,7 +128,7 @@ export function M2Home({ heroImage, initialItems }: { heroImage?: string; initia
     const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
     const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
     const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
-    const { device } = useBreakpoint();
+    const { device } = useBreakpoint(initialDevice);
     const isPhone = device === 'phone';
     const trendingItems = React.useMemo(
         () => selectTrendingModels((items && items.length > 0 ? items : initialItems) || [], isPhone ? 3 : 6),

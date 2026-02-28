@@ -8,7 +8,7 @@ export default async function D2Page() {
 
     return (
         <StoreLayoutClient initialDevice={initialDevice}>
-            <M2Home heroImage="/images/m2_hero_rider_v6_hd.jpg" />
+            <M2Home heroImage="/images/m2_hero_rider_v6_hd.jpg" initialDevice={initialDevice} />
         </StoreLayoutClient>
     );
 }

@@ -8,7 +8,7 @@ export default async function D4Page() {
 
     return (
         <StoreLayoutClient initialDevice={initialDevice}>
-            <M2Home heroImage="/images/wp2.jpg" />
+            <M2Home heroImage="/images/wp2.jpg" initialDevice={initialDevice} />
         </StoreLayoutClient>
     );
 }

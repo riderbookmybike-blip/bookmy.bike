@@ -36,6 +36,10 @@ function isLikelyHandheldPhone(): boolean {
     const shortEdge = Math.min(window.screen?.width || window.innerWidth, window.screen?.height || window.innerHeight);
     const hasTouch = (nav.maxTouchPoints || 0) > 0;
     const mobileByScreen = hasTouch && shortEdge <= 600;
+    const likelyLeanBackScreen = !hasTouch && window.innerWidth >= 900;
+
+    // Defensive guard: some TV browsers may set UA-CH mobile=true incorrectly.
+    if (likelyLeanBackScreen && !mobileByUA) return false;
 
     return mobileByUAData || mobileByUA || mobileByScreen;
 }

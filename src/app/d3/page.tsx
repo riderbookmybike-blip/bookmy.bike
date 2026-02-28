@@ -8,7 +8,7 @@ export default async function D3Page() {
 
     return (
         <StoreLayoutClient initialDevice={initialDevice}>
-            <M2Home heroImage="/images/wp1.jpg" />
+            <M2Home heroImage="/images/wp1.jpg" initialDevice={initialDevice} />
         </StoreLayoutClient>
     );
 }
