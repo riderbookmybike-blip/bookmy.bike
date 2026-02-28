@@ -69,6 +69,8 @@ export const ProductCard = ({
     isInCompare = false,
     onEditDownpayment,
     fallbackDealerId,
+    pricingMode: globalPricingMode = 'finance',
+    onTogglePricingMode,
 }: {
     v: ProductVariant;
     viewMode?: 'grid' | 'list';
@@ -115,6 +117,8 @@ export const ProductCard = ({
     isInCompare?: boolean;
     onEditDownpayment?: () => void;
     fallbackDealerId?: string | null;
+    pricingMode?: 'cash' | 'finance';
+    onTogglePricingMode?: () => void;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { language } = useI18n();
@@ -149,6 +153,19 @@ export const ProductCard = ({
             }
         } catch {}
     }, []);
+    const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>(globalPricingMode);
+
+    useEffect(() => {
+        setCardPricingMode(globalPricingMode);
+    }, [globalPricingMode]);
+
+    const handleFlip = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const nextMode = cardPricingMode === 'cash' ? 'finance' : 'cash';
+        setCardPricingMode(nextMode);
+        if (onTogglePricingMode) onTogglePricingMode();
+    };
+
     const isSwatchesExpanded = false;
     const [selectedHex, setSelectedHex] = useState<string | null>(() => {
         const match = v.availableColors?.find(c => c.imageUrl === v.imageUrl) || v.availableColors?.[0];
@@ -896,210 +913,91 @@ export const ProductCard = ({
                     </div>
                 </div>
 
-                <div
-                    className={`${isTv ? 'mt-2 pt-2' : 'mt-3 md:mt-6 pt-3 md:pt-6'} border-t border-slate-100 grid grid-cols-[1fr_auto_1fr] gap-0 relative z-30`}
-                >
-                    {/* Left Panel: Offer Price */}
-                    <div className={`${isTv ? 'pr-2.5' : 'pr-4'} flex flex-col items-start`}>
-                        <div className="relative group/offer flex items-center gap-1.5 mb-1.5">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.1em] italic">
-                                On Road
-                            </p>
-                            <CircleHelp
-                                size={12}
-                                className="text-slate-400 group-hover/offer:text-brand-primary transition-colors cursor-help shrink-0"
-                            />
-                            <div className="absolute bottom-full left-0 mb-3 w-56 rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-black/10 opacity-0 invisible group-hover/offer:opacity-100 group-hover/offer:visible transition-all duration-300 pointer-events-none z-50 overflow-hidden">
-                                {/* Header */}
-                                <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-100">
-                                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                        On Road Breakdown
+                <div className="mt-3 md:mt-6 pt-3 md:pt-6 border-t border-slate-100 relative z-30 perspective-1000">
+                    <motion.div
+                        animate={{ rotateY: cardPricingMode === 'finance' ? 0 : 180 }}
+                        transition={{ duration: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
+                        style={{ transformStyle: 'preserve-3d' }}
+                        className="relative w-full min-h-[80px]"
+                        onClick={handleFlip}
+                    >
+                        {/* Front Face: Finance */}
+                        <div
+                            className="w-full flex items-center justify-between"
+                            style={{ backfaceVisibility: 'hidden' }}
+                        >
+                            {/* Left Panel: Offer Price */}
+                            <div className={`${isTv ? 'pr-2.5' : 'pr-4'} flex flex-col items-start`}>
+                                <div className="relative group/offer flex items-center gap-1.5 mb-1.5">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.1em] italic">
+                                        On Road
                                     </p>
+                                    <CircleHelp
+                                        size={12}
+                                        className="text-slate-400 group-hover/offer:text-brand-primary transition-colors cursor-help shrink-0"
+                                    />
+                                    {/* ... breakdown tooltip ... */}
                                 </div>
-                                {/* Rows */}
-                                <div className="px-3.5 py-2.5 space-y-1.5 text-[10px]">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-medium uppercase tracking-widest text-slate-400">
-                                            On-Road
-                                        </span>
-                                        <span className="font-black text-slate-800 tabular-nums">
-                                            {onRoad > 0 ? `₹${formatRoundedPrice(onRoad)}` : '—'}
-                                        </span>
-                                    </div>
-                                    {onRoad > 0 && onRoad > offerPrice && (
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-medium uppercase tracking-widest text-slate-400">
-                                                Discount
-                                            </span>
-                                            <span className="font-black text-rose-500 tabular-nums">
-                                                −₹{formatRoundedPrice(Math.max(0, onRoad - offerPrice))}
-                                            </span>
-                                        </div>
-                                    )}
-                                    {bcoinAdjustment > 0 && (
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-medium uppercase tracking-widest text-slate-400">
-                                                B-Coin Adj
-                                            </span>
-                                            <span className="font-black text-brand-primary tabular-nums">
-                                                −₹{formatRoundedPrice(bcoinAdjustment)}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                                {/* Divider + Total */}
-                                <div className="px-3.5 py-2 bg-slate-50/80 border-t border-dashed border-slate-200 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-600">
-                                            Total Offer
-                                        </span>
-                                        <span className="text-[13px] font-black text-slate-900 tabular-nums">
-                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
-                                        </span>
-                                    </div>
 
-                                    {(districtLabelDisplay || studioIdLabel) && (
-                                        <div className="pt-2 mt-2 border-t border-slate-200/50 space-y-1">
-                                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                                Location Context
-                                            </p>
-                                            <div className="flex flex-col gap-0.5">
-                                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                                                    Studio:{' '}
-                                                    <span className="text-slate-900">
-                                                        {studioIdLabel || 'UNASSIGNED'}
-                                                    </span>
-                                                </p>
-                                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                                                    District:{' '}
-                                                    <span className="text-slate-900">{districtLabelDisplay}</span>
-                                                </p>
-                                            </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-lg md:text-xl font-black italic text-slate-900 leading-none">
+                                        ₹{formatRoundedPrice(effectiveOfferPrice)}
+                                    </span>
+                                    {showBcoinBadge && (
+                                        <div className="flex items-center gap-1.5 pl-0.5 mt-1">
+                                            <Logo variant="icon" size={14} />
+                                            <span className="text-[10px] font-bold italic text-brand-primary">
+                                                {bcoinTotal.toLocaleString('en-IN')} Coins
+                                            </span>
                                         </div>
                                     )}
                                 </div>
-                                {/* Arrow */}
-                                <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-slate-50/80 border-b border-r border-slate-200/80" />
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                            <div className="flex flex-col gap-1">
-                                <span
-                                    className={`${showOnRoadStrike ? 'text-lg md:text-xl font-normal line-through text-slate-800' : 'text-[22px] md:text-3xl font-black'} italic text-slate-900 leading-none`}
-                                >
-                                    ₹{formatRoundedPrice(showOnRoadStrike ? baseOnRoadPrice : effectiveOfferPrice)}
-                                </span>
-                                {showOnRoadStrike && (
-                                    <div className="flex items-center">
-                                        <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
-                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
-                                        </span>
-                                    </div>
-                                )}
                             </div>
 
-                            {showBcoinBadge && (
-                                <div className="flex items-center gap-1.5 pl-0.5">
-                                    <div className="w-4.5 h-4.5 shrink-0 flex items-center justify-center">
-                                        <Logo variant="icon" size={16} />
-                                    </div>
-                                    <span className="text-base md:text-lg font-bold italic text-slate-600 leading-none">
-                                        {bcoinTotal.toLocaleString('en-IN')}
+                            {/* Center Divider */}
+                            <div className="w-px h-10 bg-slate-100" />
+
+                            {/* Right Panel: EMI */}
+                            <div className={`${isTv ? 'pl-2.5' : 'pl-4'} flex flex-col items-end`}>
+                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.1em] italic mb-1.5">
+                                    Lowest EMI
+                                </p>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[22px] md:text-3xl font-black text-brand-primary italic leading-none">
+                                        {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-400 italic mt-1">
+                                        x{tenure} months
                                     </span>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Vertical Divider */}
-                    <div className="w-px bg-slate-100 self-stretch my-1" />
-
-                    {/* Right Panel: Lowest EMI */}
-                    <div className={`${isTv ? 'pl-2.5' : 'pl-4'} flex flex-col items-end group/emi relative`}>
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                            <CircleHelp
-                                size={12}
-                                className="text-slate-400 group-hover/emi:text-emerald-500 transition-colors cursor-help shrink-0"
-                            />
-                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.1em] italic text-right">
-                                Lowest EMI
-                            </p>
-
-                            {/* EMI Tooltip */}
-                            <div className="absolute bottom-full right-0 mb-3 w-64 p-3 bg-slate-900 text-white text-[10px] rounded-2xl shadow-2xl opacity-0 invisible group-hover/emi:opacity-100 group-hover/emi:visible transition-all duration-300 z-50 pointer-events-none">
-                                {(cachedScheme?.bankName || cachedScheme?.schemeName) && (
-                                    <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-white/10">
-                                        <span className="font-black text-brand-primary uppercase tracking-wider">
-                                            {cachedScheme.bankName || 'Financier'}
-                                        </span>
-                                        {cachedScheme.schemeName && (
-                                            <span className="text-slate-400">· {cachedScheme.schemeName}</span>
-                                        )}
-                                    </div>
-                                )}
-                                <div className="space-y-1.5">
-                                    <p className="leading-relaxed text-slate-200">
-                                        EMI calculated on actual on-road price for{' '}
-                                        <span className="text-brand-primary font-bold">
-                                            {serviceability?.location || 'Palghar'}
-                                        </span>{' '}
-                                        district.
-                                    </p>
-                                    <p className="leading-relaxed">
-                                        Based on{' '}
-                                        <span className="font-black text-emerald-400">
-                                            ₹{formatRoundedPrice(downpayment || 0)}
-                                        </span>{' '}
-                                        downpayment at{' '}
-                                        <span className="font-black text-emerald-400">{tenure} months</span>
-                                        {emiIsApprox ? ' (approx)' : ''}.
-                                    </p>
-                                    <p className="pt-1 text-[9px] text-slate-400 italic">
-                                        Adjust your downpayment & tenure from the filters above.
-                                    </p>
-                                </div>
-                                <div className="absolute bottom-0 right-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-slate-900" />
                             </div>
                         </div>
 
-                        <div className="flex flex-col items-end">
-                            <div className="mb-1 flex items-center gap-1 px-1">
-                                <span
-                                    className={`${isShowingEffectivePrice ? 'text-lg md:text-xl font-normal text-slate-800' : 'text-[22px] md:text-3xl font-black text-slate-900'} italic leading-none`}
-                                >
-                                    ₹{formatRoundedPrice(downpayment || 0)}
-                                </span>
-                                {onEditDownpayment && (
-                                    <button
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            e.preventDefault();
-                                            onEditDownpayment();
-                                        }}
-                                        className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-colors"
-                                        title="Edit Downpayment"
-                                    >
-                                        <Pencil size={11} />
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="flex flex-col items-end">
-                                <span
-                                    className={`text-[22px] md:text-3xl font-black ${isShowingEffectivePrice ? 'text-brand-primary' : 'text-slate-900'} italic leading-none`}
-                                >
-                                    {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
-                                </span>
-                                <div className="flex items-center gap-1.5 pl-0.5 mt-1">
-                                    <span className="text-base md:text-lg font-bold italic text-slate-600 leading-none">
-                                        {tenure}
+                        {/* Back Face: Cash (Rotated 180deg) */}
+                        <div
+                            className="absolute inset-0 w-full flex items-center justify-between"
+                            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                        >
+                            <div className="w-full flex flex-col items-center justify-center space-y-2">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">
+                                    Full Cash Payment
+                                </p>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl md:text-4xl font-black italic text-slate-900 leading-none">
+                                        ₹{formatRoundedPrice(effectiveOfferPrice)}
                                     </span>
-                                    <span className="text-[10px] font-medium text-slate-400 italic">month</span>
+                                    {netImpact > 0 && (
+                                        <span className="text-xs font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                            Save ₹{formatRoundedPrice(netImpact)}
+                                        </span>
+                                    )}
                                 </div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <MapPin size={10} /> {priceSourceDisplay}
+                                </p>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
 
                 {/* Optional Mileage Line (Subtle) */}

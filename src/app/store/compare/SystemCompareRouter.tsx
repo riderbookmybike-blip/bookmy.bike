@@ -28,7 +28,9 @@ const MobileCompare = dynamic(() => import('@/components/store/mobile/MobileComp
     ),
 });
 
-export function SystemCompareRouter({ initialDevice = 'desktop' }: { initialDevice?: 'phone' | 'desktop' } = {}) {
+export function SystemCompareRouter({
+    initialDevice = 'desktop',
+}: { initialDevice?: 'phone' | 'desktop' | 'tv' } = {}) {
     const { device } = useBreakpoint(initialDevice);
     const isPhone = device === 'phone';
 

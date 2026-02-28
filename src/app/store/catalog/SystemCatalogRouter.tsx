@@ -37,7 +37,7 @@ interface SystemCatalogRouterProps {
     initialItems: ProductVariant[];
     basePath?: string;
     mode?: 'default' | 'smart';
-    initialDevice?: 'phone' | 'desktop';
+    initialDevice?: 'phone' | 'desktop' | 'tv';
 }
 
 function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }: SystemCatalogRouterProps) {

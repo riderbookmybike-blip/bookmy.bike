@@ -8,11 +8,12 @@ import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserA
  * - phone:   ≤767px (or detected handheld phone in desktop-site mode)
  * - tablet:  768–899px
  * - desktop: ≥900px
+ * - tv:      TV user-agent
  *
  * SSR-safe: defaults to 'desktop' on server, then hydrates on client
  * with a useEffect guard to prevent layout flash.
  */
-export type DeviceBreakpoint = 'phone' | 'tablet' | 'desktop';
+export type DeviceBreakpoint = 'phone' | 'tablet' | 'desktop' | 'tv';
 
 const PHONE_MAX = 767;
 const TABLET_MAX = 899; // 900px+ is Desktop (Sync with tailwind.config.js lg)
@@ -44,6 +45,7 @@ function isLikelyHandheldPhone(): boolean {
 
 function getBreakpoint(): DeviceBreakpoint {
     if (typeof window === 'undefined') return 'desktop';
+    if (isTvUserAgent(window.navigator.userAgent || '')) return 'tv';
 
     // Handles desktop-site mode on phones where innerWidth can be inflated.
     if (isLikelyHandheldPhone()) return 'phone';
@@ -65,6 +67,7 @@ export function useBreakpoint(initialDevice: DeviceBreakpoint = 'desktop'): {
     useEffect(() => {
         const applyRootFlags = (resolved: DeviceBreakpoint) => {
             document.documentElement.dataset.device = resolved;
+            document.documentElement.dataset.tv = resolved === 'tv' ? '1' : '0';
         };
 
         // Hydrate immediately on mount

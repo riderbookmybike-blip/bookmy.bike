@@ -98,7 +98,7 @@ export const DesktopCatalog = ({
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
     const [tvViewport, setTvViewport] = useState(false);
-    const isTv = device === 'tv' || tvViewport;
+    const isTv = tvViewport;
     const [showHeader, setShowHeader] = useState(true);
     const [debugMetrics, setDebugMetrics] = useState({
         width: 0,
@@ -211,6 +211,8 @@ export const DesktopCatalog = ({
         setShowOClubOnly,
         availableMakes,
         filteredVehicles,
+        pricingMode,
+        setPricingMode,
         toggleFilter,
         clearAll,
     } = filters;
@@ -1534,6 +1536,46 @@ export const DesktopCatalog = ({
 
                     {/* Main Content Area */}
                     <div className="flex-1 space-y-6">
+                        {/* Results Header: Stats & Mood Toggle */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
+                            <div className="flex items-center gap-3">
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest italic flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
+                                    {groupedDisplayResults.length} Results
+                                </h3>
+                                <div className="h-4 w-px bg-slate-200" />
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    Prices in <span className="text-slate-900">{serviceability.location}</span>
+                                </p>
+                            </div>
+
+                            {/* The "Mood" Toggle: Cash vs Finance */}
+                            <div className="flex items-center p-1 bg-slate-100 rounded-2xl w-fit">
+                                <button
+                                    onClick={() => setPricingMode('finance')}
+                                    className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
+                                        pricingMode === 'finance'
+                                            ? 'bg-white text-brand-primary shadow-sm scale-[1.02]'
+                                            : 'text-slate-400 hover:text-slate-600'
+                                    }`}
+                                >
+                                    <Zap size={12} className={pricingMode === 'finance' ? 'fill-brand-primary' : ''} />
+                                    Finance
+                                </button>
+                                <button
+                                    onClick={() => setPricingMode('cash')}
+                                    className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
+                                        pricingMode === 'cash'
+                                            ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
+                                            : 'text-slate-400 hover:text-slate-600'
+                                    }`}
+                                >
+                                    <div className="w-2.5 h-2.5 rounded-full border-2 border-current" />
+                                    Cash
+                                </button>
+                            </div>
+                        </div>
+
                         <div
                             className={`grid ${
                                 viewMode === 'list'
@@ -1591,6 +1633,10 @@ export const DesktopCatalog = ({
                                                       setExplodedVariant(prev => (prev === key ? null : key));
                                                   }
                                                 : undefined
+                                        }
+                                        pricingMode={pricingMode}
+                                        onTogglePricingMode={() =>
+                                            setPricingMode(prev => (prev === 'cash' ? 'finance' : 'cash'))
                                         }
                                     />
                                 );

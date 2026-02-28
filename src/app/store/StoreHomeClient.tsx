@@ -5,7 +5,7 @@ import { M2Home } from '@/components/store/mobile/M2Home';
 
 interface StoreHomeClientProps {
     initialItems?: any[];
-    initialDevice?: 'phone' | 'desktop';
+    initialDevice?: 'phone' | 'desktop' | 'tv';
 }
 
 export default function StoreHomeClient({ initialItems, initialDevice = 'desktop' }: StoreHomeClientProps) {

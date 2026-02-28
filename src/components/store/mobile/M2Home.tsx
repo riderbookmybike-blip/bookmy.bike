@@ -118,7 +118,7 @@ export function M2Home({
 }: {
     heroImage?: string;
     initialItems?: any[];
-    initialDevice?: 'phone' | 'desktop';
+    initialDevice?: 'phone' | 'desktop' | 'tv';
 }) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');

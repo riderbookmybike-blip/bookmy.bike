@@ -60,7 +60,7 @@ interface ProductClientProps {
     initialServices?: any[];
     initialFinance?: any;
     initialDealerId?: string | null;
-    initialDevice?: 'phone' | 'desktop';
+    initialDevice?: 'phone' | 'desktop' | 'tv';
 }
 
 export default function ProductClient({
