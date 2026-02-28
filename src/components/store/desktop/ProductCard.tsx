@@ -1030,10 +1030,11 @@ export const ProductCard = ({
                                                             0;
                                                         const tOcircle = bcoinAdjustment || 0;
 
-                                                        // Formula: Net Total = Ex + Rto + Ins + Services + Addons + Acc - Ocircle
-                                                        // We'll group residual charges into "Services & Others" to ensure the math perfectly balances with effectiveOfferPrice
-                                                        const residual =
-                                                            effectiveOfferPrice - (tEx + tRto + tIns - tOcircle);
+                                                        // Use RAW on-road price (before O'Circle) for residual calc
+                                                        // DB guarantees: ex + rto + ins = on_road (gap = 0)
+                                                        // effectiveOfferPrice = onRoad - tOcircle (O'Circle shown separately below)
+                                                        const rawOnRoad = onRoad > 0 ? onRoad : tEx + tRto + tIns;
+                                                        const residual = rawOnRoad - (tEx + tRto + tIns);
                                                         const tOthers = Math.max(0, residual);
 
                                                         return (
