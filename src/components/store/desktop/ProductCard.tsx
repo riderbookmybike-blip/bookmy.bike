@@ -946,7 +946,7 @@ export const ProductCard = ({
                                         <div className="flex items-center gap-1.5 pl-0.5 mt-1">
                                             <Logo variant="icon" size={14} />
                                             <span className="text-[10px] font-bold italic text-brand-primary">
-                                                {bcoinTotal.toLocaleString('en-IN')} Coins
+                                                {(downpayment || 0).toLocaleString('en-IN')} Coins
                                             </span>
                                         </div>
                                     )}
@@ -996,7 +996,7 @@ export const ProductCard = ({
                                         <div className="flex items-center gap-1.5 mt-1">
                                             <Logo variant="icon" size={14} />
                                             <span className="text-xs font-bold italic text-slate-600">
-                                                + {bcoinTotal.toLocaleString('en-IN')} Coins
+                                                + {effectiveOfferPrice.toLocaleString('en-IN')} Coins
                                             </span>
                                         </div>
                                     )}
