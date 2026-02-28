@@ -77,7 +77,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             right={
                 <div className={`flex items-center ${rightGapClass}`}>
                     {/* Desktop Navigation Group */}
-                    <div className="hidden lg:flex items-center gap-3">
+                    <div className={`${device === 'desktop' ? 'flex' : 'hidden'} lg:flex items-center gap-3`}>
                         <Link href="/" className={desktopNavButtonClass}>
                             <HomeIcon size={18} />
                         </Link>
