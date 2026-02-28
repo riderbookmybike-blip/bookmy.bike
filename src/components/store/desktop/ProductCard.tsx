@@ -928,22 +928,18 @@ export const ProductCard = ({
                         >
                             {/* Left Panel: Downpayment */}
                             <div className={`${isTv ? 'pr-2.5' : 'pr-4'} flex flex-col items-start`}>
-                                <div className="relative group/offer flex items-center gap-1.5 mb-1.5">
+                                <div className="flex items-center gap-1.5 mb-1.5">
                                     <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.1em] italic">
                                         Downpayment
                                     </p>
-                                    <CircleHelp
-                                        size={12}
-                                        className="text-slate-400 group-hover/offer:text-emerald-500 transition-colors cursor-help shrink-0"
-                                    />
                                 </div>
 
-                                <div className="flex flex-col gap-1.5">
-                                    <span className="text-lg md:text-xl font-black italic text-slate-900 leading-none">
+                                <div className="flex flex-col items-start">
+                                    <span className="text-[22px] md:text-3xl font-black italic text-slate-900 leading-none">
                                         ₹{formatRoundedPrice(downpayment || 0)}
                                     </span>
                                     {showBcoinBadge && (
-                                        <div className="flex items-center gap-1.5 pl-0.5 mt-1">
+                                        <div className="flex items-center gap-1.5 mt-1">
                                             <Logo variant="icon" size={14} />
                                             <span className="text-[10px] font-bold italic text-brand-primary">
                                                 {(downpayment || 0).toLocaleString('en-IN')} Coins
@@ -958,16 +954,21 @@ export const ProductCard = ({
 
                             {/* Right Panel: EMI */}
                             <div className={`${isTv ? 'pl-2.5' : 'pl-4'} flex flex-col items-end`}>
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.1em] italic mb-1.5">
-                                    Lowest EMI
-                                </p>
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.1em] italic">
+                                        Lowest EMI
+                                    </p>
+                                </div>
+
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[22px] md:text-3xl font-black text-brand-primary italic leading-none">
+                                    <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
                                         {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
                                     </span>
-                                    <span className="text-[10px] font-bold text-slate-400 italic mt-1">
-                                        x{tenure} months
-                                    </span>
+                                    <div className="mt-1">
+                                        <span className="text-[10px] font-bold text-slate-400 italic">
+                                            x{tenure} months
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
