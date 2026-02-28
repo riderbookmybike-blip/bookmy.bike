@@ -1011,10 +1011,10 @@ export const ProductCard = ({
                             {/* Center Divider */}
                             <div className="w-px h-10 bg-slate-100" />
 
-                            {/* Right Panel: B-Coins Earned */}
+                            {/* Right Panel: O'Circle Privileged */}
                             <div className={`${isTv ? 'pl-3' : 'pl-5'} flex-1 flex flex-col items-end`}>
                                 <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1 italic">
-                                    Coins Earned
+                                    O'Circle Privileged
                                 </p>
 
                                 <div className="flex flex-col items-end gap-0.5">
