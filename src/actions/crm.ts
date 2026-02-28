@@ -5897,7 +5897,7 @@ export async function getQuoteByDisplayId(
             type: variantItem.engine_type,
         });
         const performance = toDefinedObject({
-            mileage: variantItem.mileage,
+            mileage: variantItem.mileage_arai ?? variantItem.mileage,
             rangeKm: variantItem.range_km,
             rideModes: variantItem.ride_modes,
         });
@@ -5929,7 +5929,8 @@ export async function getQuoteByDisplayId(
             max_torque: variantItem.max_torque,
             transmission_type: variantItem.transmission,
             gearbox: variantItem.transmission,
-            mileage: variantItem.mileage,
+            mileage: variantItem.mileage_arai ?? variantItem.mileage,
+            mileage_arai: variantItem.mileage_arai ?? variantItem.mileage,
             fuel_capacity: variantItem.fuel_capacity,
             front_brake: variantItem.front_brake,
             front_brake_type: variantItem.front_brake,
@@ -6045,7 +6046,7 @@ export async function getQuoteByDisplayId(
             const { data: variantItem } = await (supabase as any)
                 .from('cat_variants_vehicle')
                 .select(
-                    'id, model_id, displacement, max_power, max_torque, transmission, mileage, fuel_capacity, front_brake, rear_brake, braking_system, tyre_type, kerb_weight, seat_height, wheelbase, ground_clearance, front_suspension, rear_suspension, front_tyre, rear_tyre, start_type, engine_type, motor_power, battery_type, battery_capacity, charging_time, range_km, ride_modes, air_filter, num_valves, console_type, bluetooth, navigation, usb_charging, led_headlamp, led_tail_lamp'
+                    'id, model_id, displacement, max_power, max_torque, transmission, mileage_arai, fuel_capacity, front_brake, rear_brake, braking_system, tyre_type, kerb_weight, seat_height, wheelbase, ground_clearance, front_suspension, rear_suspension, front_tyre, rear_tyre, start_type, engine_type, motor_power, battery_type, battery_capacity, charging_time, range_km, ride_modes, air_filter, num_valves, console_type, bluetooth, navigation, usb_charging, led_headlamp, led_tail_lamp'
                 )
                 .eq('id', variantIdForLookup)
                 .maybeSingle();

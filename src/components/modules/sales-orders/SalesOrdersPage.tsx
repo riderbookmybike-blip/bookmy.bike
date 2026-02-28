@@ -38,7 +38,15 @@ export interface SalesOrder {
     vehicleColor: string;
 }
 
-export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: string }) {
+type BookingDetailTab = 'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'HISTORY';
+
+export default function SalesOrdersPage({
+    initialOrderId,
+    initialDetailTab = 'DYNAMIC',
+}: {
+    initialOrderId?: string;
+    initialDetailTab?: BookingDetailTab;
+}) {
     const { tenantId } = useTenant();
     const router = useRouter();
     const params = useParams();
@@ -580,6 +588,7 @@ export default function SalesOrdersPage({ initialOrderId }: { initialOrderId?: s
                         bookingId={selectedOrderId}
                         onClose={handleCloseDetail}
                         onRefresh={fetchOrders}
+                        defaultTab={initialDetailTab}
                     />
                 </div>
             </MasterListDetailLayout>
