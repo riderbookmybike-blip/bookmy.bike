@@ -920,7 +920,6 @@ export const ProductCard = ({
                         transition={{ duration: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
                         style={{ transformStyle: 'preserve-3d' }}
                         className="relative w-full min-h-[80px]"
-                        onClick={handleFlip}
                     >
                         {/* Front Face: Finance */}
                         <div
@@ -929,9 +928,23 @@ export const ProductCard = ({
                         >
                             {/* Left Panel: Downpayment */}
                             <div className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}>
-                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1 italic">
-                                    Downpayment
-                                </p>
+                                <button
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        onEditDownpayment?.();
+                                    }}
+                                    className="flex items-center gap-1.5 group/edit mb-1 relative"
+                                >
+                                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider italic leading-none">
+                                        Downpayment
+                                    </p>
+                                    <Pencil
+                                        size={9}
+                                        className="text-emerald-500/50 group-hover/edit:text-emerald-600 transition-colors"
+                                    />
+                                    {/* Subtle focus/hover underline */}
+                                    <div className="absolute -bottom-0.5 left-0 w-0 h-px bg-emerald-600/30 group-hover/edit:w-full transition-all duration-300" />
+                                </button>
 
                                 <div className="flex flex-col items-start gap-0.5">
                                     <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
@@ -976,29 +989,49 @@ export const ProductCard = ({
                             className="absolute inset-0 w-full flex items-center justify-between"
                             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                         >
-                            <div className="w-full flex flex-col items-center justify-center space-y-2">
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">
-                                    Full Cash Payment
+                            {/* Left Panel: On-Road Price */}
+                            <div className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}>
+                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1 italic">
+                                    On-Road Price
                                 </p>
-                                <div className="flex flex-col items-center">
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-3xl md:text-4xl font-black italic text-slate-900 leading-none">
-                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
+
+                                <div className="flex flex-col items-start gap-0.5">
+                                    <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
+                                        ₹{formatRoundedPrice(effectiveOfferPrice)}
+                                    </span>
+                                    <div className="h-4 flex items-center gap-1.5 pt-1">
+                                        <MapPin size={10} className="text-slate-400" />
+                                        <span className="text-[9px] font-bold italic text-slate-500 uppercase tracking-wider leading-none">
+                                            {priceSourceDisplay}
                                         </span>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Center Divider */}
+                            <div className="w-px h-10 bg-slate-100" />
+
+                            {/* Right Panel: B-Coins Earned */}
+                            <div className={`${isTv ? 'pl-3' : 'pl-5'} flex-1 flex flex-col items-end`}>
+                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1 italic">
+                                    Coins Earned
+                                </p>
+
+                                <div className="flex flex-col items-end gap-0.5">
                                     {showBcoinBadge && (
-                                        <div className="flex items-center gap-1.5 mt-1">
-                                            <Logo variant="icon" size={14} />
-                                            <span className="text-xs font-bold italic text-slate-600">
-                                                + {coinsNeededForPrice(effectiveOfferPrice).toLocaleString('en-IN')}{' '}
-                                                Coins
+                                        <div className="flex items-center gap-2">
+                                            <Logo variant="icon" size={16} />
+                                            <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
+                                                {coinsNeededForPrice(effectiveOfferPrice).toLocaleString('en-IN')}
                                             </span>
                                         </div>
                                     )}
+                                    <div className="h-4 flex items-center pt-1">
+                                        <span className="text-[9px] font-bold italic text-slate-500 uppercase tracking-wider leading-none">
+                                            ON BOOKING
+                                        </span>
+                                    </div>
                                 </div>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 pt-1">
-                                    <MapPin size={10} /> {priceSourceDisplay}
-                                </p>
                             </div>
                         </div>
                     </motion.div>
