@@ -1267,7 +1267,7 @@ export const PremiumQuoteTemplate: React.FC<PremiumQuoteTemplateProps> = ({
                                     Share Link
                                 </div>
                                 <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-[10px] font-mono text-zinc-700 break-all">
-                                    {`https://bookmy.bike/q/${formatDisplayId(quote.displayId || quote.display_id)}`}
+                                    {`https://bookmy.bike/dossier/${formatDisplayId(quote.displayId || quote.display_id)}`}
                                 </div>
                                 <div className="flex items-center gap-3 text-zinc-500">
                                     <Newspaper size={14} />

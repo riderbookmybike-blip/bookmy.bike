@@ -5283,7 +5283,7 @@ export async function sendQuoteToCustomer(quoteId: string): Promise<{ success: b
             const managerDiscount = q.manager_discount || 0;
             const totalDiscount = platformDiscount + managerDiscount;
             const onRoad = q.on_road_price || commercials.grand_total || 0;
-            const dossierUrl = `https://bookmy.bike/q/${displayId}`;
+            const dossierUrl = `https://bookmy.bike/dossier/${displayId}`;
 
             await sendQuoteDossierWhatsApp({
                 phone,
@@ -5348,7 +5348,7 @@ export async function shareQuoteViaSms(quoteId: string): Promise<{ success: bool
         if (!phone) return { success: false, error: 'No recipient phone number' };
 
         const displayId = q.display_id ? formatDisplayId(q.display_id) : quoteId.slice(0, 8);
-        const dossierUrl = `https://www.bookmy.bike/?q=${q.display_id || displayId}`;
+        const dossierUrl = `https://www.bookmy.bike/dossier/${q.display_id || displayId}`;
 
         const result = await sendStoreVisitSms({ phone, name, storeUrl: dossierUrl });
 
@@ -5420,7 +5420,7 @@ export async function shareQuoteViaWhatsApp(quoteId: string): Promise<{ success:
         const managerDiscount = q.manager_discount || 0;
         const totalDiscount = platformDiscount + managerDiscount;
         const onRoad = q.on_road_price || commercials.grand_total || 0;
-        const dossierUrl = `https://bookmy.bike/q/${displayId}`;
+        const dossierUrl = `https://bookmy.bike/dossier/${displayId}`;
 
         const result = await sendQuoteDossierWhatsApp({
             phone,

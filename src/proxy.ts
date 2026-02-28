@@ -29,13 +29,13 @@ export async function proxy(request: NextRequest) {
 
     // A-bis. SMS DOSSIER LINK REDIRECT
     // SMS uses `www.bookmy.bike/?q=DISPLAY_ID` (DLT CTA whitelist format).
-    // Redirect to actual dossier route `/q/DISPLAY_ID`.
-    if (pathname === '/') {
+    // Redirect to canonical dossier route `/dossier/DISPLAY_ID`.
+    if (pathname === '/' || pathname === '/dossier') {
         const rawQ = request.nextUrl.searchParams.get('q');
         const displayId = normalizeDisplayIdParam(rawQ);
         if (displayId.length > 3) {
             const url = request.nextUrl.clone();
-            url.pathname = `/q/${encodeURIComponent(displayId)}`;
+            url.pathname = `/dossier/${encodeURIComponent(displayId)}`;
             url.searchParams.delete('q');
             return NextResponse.redirect(url, 302);
         }
@@ -67,7 +67,12 @@ export async function proxy(request: NextRequest) {
     }
 
     // Dossier is intentionally public (quote links must open without login).
-    if (pathname === '/q' || pathname.startsWith('/q/')) {
+    if (
+        pathname === '/q' ||
+        pathname.startsWith('/q/') ||
+        pathname === '/dossier' ||
+        pathname.startsWith('/dossier/')
+    ) {
         return NextResponse.next();
     }
 

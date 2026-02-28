@@ -1027,7 +1027,7 @@ export default function QuoteEditorTable({
     const handleShareDossier = async () => {
         if (!quote) return;
         const baseUrl = window.location.origin;
-        const dossierUrl = `${baseUrl}/q/${quote.displayId || formatDisplayId(quote.id)}`;
+        const dossierUrl = `${baseUrl}/dossier/${quote.displayId || formatDisplayId(quote.id)}`;
 
         try {
             await navigator.clipboard.writeText(dossierUrl);
@@ -1043,7 +1043,7 @@ export default function QuoteEditorTable({
         setPdfLoading(true);
         try {
             const baseUrl = window.location.origin;
-            const dossierUrl = `${baseUrl}/q/${quote.displayId || formatDisplayId(quote.id)}`;
+            const dossierUrl = `${baseUrl}/dossier/${quote.displayId || formatDisplayId(quote.id)}`;
             window.open(dossierUrl, '_blank');
             toast.success('Opened dossier');
         } catch (error) {

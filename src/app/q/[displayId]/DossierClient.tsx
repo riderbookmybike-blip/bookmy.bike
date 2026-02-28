@@ -494,7 +494,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
     const optionWarrantyItems = pdpOptions.warrantyItems || quote.vehicle?.specs?.warranty || [];
     const warrantyItems = pricing.warrantyItems || [];
     const rtoOptions = pricing.rtoOptions || [];
-    const shareUrl = `https://bookmy.bike/q/${formatDisplayId(quote.display_id)}`;
+    const shareUrl = `https://bookmy.bike/dossier/${formatDisplayId(quote.display_id)}`;
     const specs = quote.vehicle?.specs || {};
     const specEngine = specs.engine || {};
     const specPerformance = specs.performance || {};
