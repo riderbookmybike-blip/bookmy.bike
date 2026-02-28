@@ -6,6 +6,7 @@ import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper, Plus, Minus }
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ScreenHardwareDebugger } from '@/components/debug/ScreenHardwareDebugger';
 
 /* ────────── Palette ────────── */
 const GOLD = '#FFD700';
@@ -14,6 +15,7 @@ const GOLD_INT = '#F4B000';
 export const M2Footer = () => {
     const { brands } = useSystemBrandsLogic();
     const [openSection, setOpenSection] = useState<string | null>(null);
+    const [showScreenDebug, setShowScreenDebug] = useState(false);
 
     const toggleSection = (title: string) => {
         setOpenSection(openSection === title ? null : title);
@@ -201,11 +203,22 @@ export const M2Footer = () => {
                             © 2011-2026 BOOKMYBIKE
                         </p>
                         <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
-                            Engineered with <Heart size={10} className="text-red-500 fill-red-500 animate-pulse" /> in
-                            India.
+                            Engineered with{' '}
+                            <button
+                                onClick={() => setShowScreenDebug(true)}
+                                className="hover:scale-125 transition-transform active:scale-95"
+                                title="Hardware Diagnostics"
+                            >
+                                <Heart size={10} className="text-red-500 fill-red-500 animate-pulse" />
+                            </button>{' '}
+                            in India.
                         </div>
                     </div>
                 </div>
+
+                <AnimatePresence>
+                    {showScreenDebug && <ScreenHardwareDebugger onClose={() => setShowScreenDebug(false)} />}
+                </AnimatePresence>
             </div>
         </footer>
     );
