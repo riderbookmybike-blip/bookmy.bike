@@ -989,20 +989,100 @@ export const ProductCard = ({
                             className="absolute inset-0 w-full flex items-center justify-between"
                             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                         >
-                            {/* Left Panel: On-Road Price */}
+                            {/* Left Panel: On-Road Price with Breakdown Tooltip */}
                             <div className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}>
-                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1 italic">
-                                    On-Road Price
-                                </p>
+                                <div className="group/pricing relative">
+                                    <div className="flex items-center gap-1.5 mb-1 cursor-help">
+                                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider italic leading-none">
+                                            On-Road Price
+                                        </p>
+                                        <CircleHelp size={10} className="text-emerald-500/50" />
 
-                                <div className="flex flex-col items-start gap-0.5">
-                                    <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
-                                        ₹{formatRoundedPrice(effectiveOfferPrice)}
-                                    </span>
-                                    <div className="h-4 flex items-center gap-1.5 pt-1">
-                                        <MapPin size={10} className="text-slate-400" />
-                                        <span className="text-[9px] font-bold italic text-slate-500 uppercase tracking-wider leading-none">
-                                            {priceSourceDisplay}
+                                        {/* Premium Breakup Tooltip */}
+                                        <div className="absolute left-0 bottom-full mb-2 z-50 w-max min-w-[200px] p-3 rounded-xl bg-[#15191e] border border-white/10 shadow-2xl opacity-0 invisible group-hover/pricing:opacity-100 group-hover/pricing:visible transition-all duration-300 pointer-events-none origin-bottom-left scale-95 group-hover/pricing:scale-100">
+                                            {/* Triangle pointer */}
+                                            <div className="absolute -bottom-1 left-4 w-2 h-2 bg-[#15191e] border-r border-b border-white/10 rotate-45" />
+
+                                            <div className="space-y-3 relative z-10">
+                                                <div className="pb-2 border-b border-white/5">
+                                                    <p className="text-[9px] font-black uppercase tracking-widest text-[#F4B000] mb-0.5">
+                                                        Price Breakup
+                                                    </p>
+                                                    <p className="text-[8px] text-slate-500 font-medium">
+                                                        Official On-Road Statement
+                                                    </p>
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <div className="flex justify-between items-center text-[9px]">
+                                                        <span className="text-slate-400 font-bold uppercase tracking-tight">
+                                                            Ex-Showroom
+                                                        </span>
+                                                        <span className="text-white font-mono">
+                                                            ₹
+                                                            {formatRoundedPrice(
+                                                                (v.price as any)?.exShowroom ||
+                                                                    (v as any)?.serverPricing?.ex_showroom
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    {(v.price as any)?.rtoTotal ||
+                                                    (v as any)?.serverPricing?.rto?.total ? (
+                                                        <div className="flex justify-between items-center text-[9px]">
+                                                            <span className="text-slate-400 font-bold uppercase tracking-tight">
+                                                                Registration (RTO)
+                                                            </span>
+                                                            <span className="text-white font-mono">
+                                                                ₹
+                                                                {formatRoundedPrice(
+                                                                    (v.price as any)?.rtoTotal ||
+                                                                        (v as any)?.serverPricing?.rto?.total
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    ) : null}
+                                                    {(v.price as any)?.insuranceTotal ||
+                                                    (v as any)?.serverPricing?.insurance?.total ? (
+                                                        <div className="flex justify-between items-center text-[9px]">
+                                                            <span className="text-slate-400 font-bold uppercase tracking-tight">
+                                                                Insurance
+                                                            </span>
+                                                            <span className="text-white font-mono">
+                                                                ₹
+                                                                {formatRoundedPrice(
+                                                                    (v.price as any)?.insuranceTotal ||
+                                                                        (v as any)?.serverPricing?.insurance?.total
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    ) : null}
+                                                    {bcoinAdjustment > 0 && (
+                                                        <div className="flex justify-between items-center text-[9px]">
+                                                            <span className="text-emerald-500 font-bold uppercase tracking-tight">
+                                                                O'Circle Benefit
+                                                            </span>
+                                                            <span className="text-emerald-500 font-mono">
+                                                                -₹{formatRoundedPrice(bcoinAdjustment)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="pt-2 border-t border-white/10 flex justify-between items-center">
+                                                    <span className="text-[10px] font-black text-white uppercase tracking-wider">
+                                                        Effective Total
+                                                    </span>
+                                                    <span className="text-[12px] font-black text-[#F4B000] font-mono">
+                                                        ₹{formatRoundedPrice(effectiveOfferPrice)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col items-start gap-0.5">
+                                        <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
+                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
                                         </span>
                                     </div>
                                 </div>
@@ -1026,11 +1106,6 @@ export const ProductCard = ({
                                             </span>
                                         </div>
                                     )}
-                                    <div className="h-4 flex items-center pt-1">
-                                        <span className="text-[9px] font-bold italic text-slate-500 uppercase tracking-wider leading-none">
-                                            ON BOOKING
-                                        </span>
-                                    </div>
                                 </div>
                             </div>
                         </div>
