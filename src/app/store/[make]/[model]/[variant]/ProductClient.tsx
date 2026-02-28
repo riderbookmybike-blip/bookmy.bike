@@ -15,7 +15,7 @@ import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
-import { isHandheldPhoneUserAgent } from '@/lib/utils/deviceUserAgent';
+import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -109,10 +109,18 @@ export default function ProductClient({
         const isCoarsePointer =
             window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
         const isMobileUA = isHandheldPhoneUserAgent(navigator.userAgent || '');
+        const isTv = isTvUserAgent(navigator.userAgent || '');
 
         // Always treat detected phones as mobile PDP, even if browser is in desktop-site mode.
         const isPhoneDevice = device === 'phone';
-        setForceMobileLayout(isPhoneDevice || (device !== 'desktop' && (isCoarsePointer || isMobileUA)));
+
+        // TVs should ALWAYS use desktop layout.
+        // Others (Tablets/Phones) might be forced based on pointer/UA if not already 'phone'.
+        if (isTv) {
+            setForceMobileLayout(false);
+        } else {
+            setForceMobileLayout(isPhoneDevice || (device !== 'desktop' && (isCoarsePointer || isMobileUA)));
+        }
     }, [device]);
 
     useEffect(() => {

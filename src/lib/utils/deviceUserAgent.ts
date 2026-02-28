@@ -8,7 +8,18 @@ const MOBILE_TOKEN_REGEX = /\bmobile\b/i;
 
 export function isTvUserAgent(userAgent: string): boolean {
     if (!userAgent) return false;
-    return TV_USER_AGENT_REGEX.test(userAgent);
+    // Standard TV regex check
+    if (TV_USER_AGENT_REGEX.test(userAgent)) return true;
+
+    // Special case for Android: TVs and Tablets usually don't have the "Mobile" token.
+    // Handheld phones DO have "Mobile".
+    const isAndroid = /\bandroid\b/i.test(userAgent);
+    const isMobile = /\bmobile\b/i.test(userAgent);
+
+    // If it's Android but NOT Mobile, it's likely a TV or big Tablet (treat as desktop/non-phone)
+    if (isAndroid && !isMobile) return true;
+
+    return false;
 }
 
 export function isHandheldPhoneUserAgent(userAgent: string): boolean {
