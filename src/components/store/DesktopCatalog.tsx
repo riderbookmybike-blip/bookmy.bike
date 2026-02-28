@@ -1069,36 +1069,39 @@ export const DesktopCatalog = ({
                 className={`flex-1 page-container ${isTv ? 'pt-6' : isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
             >
                 <header
-                    className={`${isTv ? 'block' : showHeader ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'} hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-700`}
-                    style={{ top: 'var(--header-h)', marginTop: isTv ? '0px' : '16px' }}
+                    className={`${isTv ? 'block' : showHeader ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'} hidden md:block sticky z-[90] py-0 mb-6 transition-all duration-700 ease-in-out`}
+                    style={{ top: 'var(--header-h)', marginTop: isTv ? '0px' : '20px' }}
                 >
                     <div className="w-full">
-                        <div className="rounded-full bg-white/90 backdrop-blur-2xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.08)] h-14 px-4 flex items-center">
-                            <div className="flex items-center gap-3 w-full">
+                        <div className="mx-4 lg:mx-6 rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
+                            <div className="flex items-center gap-4 w-full">
                                 <button
                                     onClick={() => setIsFilterOpen(true)}
-                                    className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 border border-slate-200 text-slate-600 hover:text-slate-900 shrink-0"
+                                    className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white/40 border border-slate-200/40 text-slate-500 hover:text-slate-900 hover:bg-white hover:border-slate-300 hover:scale-110 active:scale-95 transition-all duration-300 shrink-0 group"
                                 >
-                                    <Menu size={16} />
+                                    <Menu
+                                        size={18}
+                                        className="group-hover:rotate-180 transition-transform duration-500"
+                                    />
                                 </button>
 
-                                <div className="flex-none min-w-[200px] lg:min-w-[280px]">
-                                    <div className="flex items-center gap-2 w-full bg-slate-100/50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 h-9 transition-all group focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-primary/10">
+                                <div className="flex-none min-w-[240px] lg:min-w-[320px]">
+                                    <div className="relative flex items-center gap-3 w-full bg-slate-100/40 hover:bg-slate-100/60 border border-slate-200/40 rounded-2xl px-4 h-10 transition-all duration-500 group focus-within:bg-white focus-within:ring-8 focus-within:ring-brand-primary/10 focus-within:border-brand-primary/30">
                                         <Search
-                                            size={14}
-                                            className="text-slate-400 group-focus-within:text-brand-primary transition-colors"
+                                            size={16}
+                                            className="text-slate-400 group-focus-within:text-brand-primary group-focus-within:scale-110 transition-all duration-300"
                                         />
                                         <input
                                             type="text"
-                                            placeholder="FIND MACHINE..."
+                                            placeholder="FIND YOUR NEXT MACHINE..."
                                             value={searchQuery}
                                             onChange={e => setSearchQuery(e.target.value)}
-                                            className="flex-1 min-w-0 bg-transparent text-[10px] font-black tracking-[0.15em] uppercase focus:outline-none placeholder:text-slate-300"
+                                            className="flex-1 min-w-0 bg-transparent text-[10px] font-black tracking-[0.2em] uppercase focus:outline-none placeholder:text-slate-400/50"
                                         />
                                         {searchQuery && (
                                             <button
                                                 onClick={() => setSearchQuery('')}
-                                                className="flex items-center text-slate-300 hover:text-slate-900 transition-colors"
+                                                className="flex items-center justify-center w-6 h-6 rounded-full text-slate-300 hover:text-slate-900 hover:bg-slate-200/50 transition-all"
                                             >
                                                 <X size={14} />
                                             </button>
@@ -1107,9 +1110,9 @@ export const DesktopCatalog = ({
                                 </div>
 
                                 {/* Consolidated Discovery Elements (Toggle Only) */}
-                                <div className="flex-1 flex items-center justify-end ml-2 pl-4 border-l border-slate-200 animate-in fade-in slide-in-from-left-2 duration-700">
+                                <div className="flex-1 flex items-center justify-end ml-4 pl-6 border-l border-slate-200/40 animate-in fade-in slide-in-from-left-4 duration-1000">
                                     {/* Pricing Toggle - Aligned Right */}
-                                    <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200/50 scale-90 lg:scale-100 transform-origin-right">
+                                    <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 scale-90 lg:scale-100 transform-origin-right shadow-inner">
                                         {[
                                             { id: 'finance', label: 'Finance' },
                                             { id: 'cash', label: 'Cash' },
@@ -1117,9 +1120,9 @@ export const DesktopCatalog = ({
                                             <button
                                                 key={mode.id}
                                                 onClick={() => setPricingMode(mode.id as any)}
-                                                className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all duration-300 ${
+                                                className={`px-5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-500 ${
                                                     pricingMode === mode.id
-                                                        ? 'bg-white text-slate-900 shadow-sm'
+                                                        ? 'bg-white text-slate-900 shadow-[0_4px_12px_rgba(0,0,0,0.08)] scale-105'
                                                         : 'text-slate-400 hover:text-slate-600'
                                                 }`}
                                             >
