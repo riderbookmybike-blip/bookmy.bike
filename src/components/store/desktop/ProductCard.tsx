@@ -981,17 +981,27 @@ export const ProductCard = ({
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">
                                     Full Cash Payment
                                 </p>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-3xl md:text-4xl font-black italic text-slate-900 leading-none">
-                                        ₹{formatRoundedPrice(effectiveOfferPrice)}
-                                    </span>
-                                    {netImpact > 0 && (
-                                        <span className="text-xs font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                                            Save ₹{formatRoundedPrice(netImpact)}
+                                <div className="flex flex-col items-center">
+                                    <div className="flex items-baseline gap-2">
+                                        {netImpact > 0 && (
+                                            <span className="text-sm md:text-base font-medium line-through text-slate-400">
+                                                ₹{formatRoundedPrice(baseOnRoadPrice)}
+                                            </span>
+                                        )}
+                                        <span className="text-3xl md:text-4xl font-black italic text-slate-900 leading-none">
+                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
                                         </span>
+                                    </div>
+                                    {showBcoinBadge && (
+                                        <div className="flex items-center gap-1.5 mt-1">
+                                            <Logo variant="icon" size={14} />
+                                            <span className="text-xs font-bold italic text-slate-600">
+                                                + {bcoinTotal.toLocaleString('en-IN')} Coins
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 pt-1">
                                     <MapPin size={10} /> {priceSourceDisplay}
                                 </p>
                             </div>
