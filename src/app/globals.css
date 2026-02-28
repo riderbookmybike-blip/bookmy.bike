@@ -268,9 +268,9 @@
 
 [data-device='desktop'] .page-container {
     max-width: 1700px !important;
-    padding-left: 5rem !important;
-    /* Premium whitespace: 80px side margins */
-    padding-right: 5rem !important;
+    padding-left: 4rem !important;
+    /* Cinematic: 64px side margins */
+    padding-right: 4rem !important;
 }
 
 [data-device='desktop'] .lg\:hidden {
@@ -283,9 +283,8 @@
 
 [data-device='desktop'] .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    /* Revert to 3 for better proportions */
-    gap: 3.5rem !important;
-    /* Increased gap for 3-card premium feel */
+    gap: 2.5rem !important;
+    /* Balanced gap for 3-card layout */
 }
 
 [data-device='desktop'] .lg\:block {

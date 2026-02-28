@@ -1380,14 +1380,14 @@ export const DesktopCatalog = ({
                                 {/* Search Bar */}
                                 <div className="relative group">
                                     <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-primary transition-colors">
-                                        <Search size={16} />
+                                        <Search size={18} />
                                     </div>
                                     <input
                                         type="text"
                                         placeholder="FIND MACHINE..."
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
-                                        className="w-full bg-white border border-slate-200 rounded-2xl py-4.5 pl-14 pr-4 text-[11px] font-black tracking-widest uppercase focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all placeholder:text-slate-300 shadow-sm"
+                                        className="w-full bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl py-5 pl-14 pr-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-[12px] font-black tracking-widest uppercase focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all placeholder:text-slate-300"
                                     />
                                 </div>
                                 {/* Filter Groups in Sidebar (List View) */}
