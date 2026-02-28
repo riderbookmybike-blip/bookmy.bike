@@ -303,8 +303,8 @@
     gap: 2rem;
 }
 
-/* Wider TV / kiosk screens can show 4 cards while preserving breathing room */
-@media (min-width: 1200px) {
+/* 4 columns starts at 900px to accommodate the 960px mock precisely */
+@media (min-width: 900px) {
     [data-tv='1'] .tv-catalog-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
