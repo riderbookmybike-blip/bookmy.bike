@@ -222,9 +222,13 @@ export default function PricingPage() {
             const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode ?? 'MH';
 
             const [priceRes, offerRes] = await Promise.all([
-                // Authoritative SOT for pricing: MHz state table
+                // Authoritative SOT for pricing: State specific table
                 supabase
-                    .from('cat_price_state_mh')
+                    .from(
+                        activeStateCode.toUpperCase() === 'MH'
+                            ? 'cat_price_state_mh'
+                            : `cat_price_${activeStateCode.toLowerCase()}`
+                    )
                     .select(
                         `
                         sku_id, state_code,
@@ -473,7 +477,7 @@ export default function PricingPage() {
     const syncPricingSnapshotForSku = useCallback(
         async (skuId: string, stateCode: string) => {
             const { data } = await supabase
-                .from('cat_price_state_mh')
+                .from(stateCode.toUpperCase() === 'MH' ? 'cat_price_state_mh' : `cat_price_${stateCode.toLowerCase()}`)
                 .select(
                     `
                     sku_id,

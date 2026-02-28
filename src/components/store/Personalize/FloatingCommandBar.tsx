@@ -4,6 +4,8 @@
 import React from 'react';
 import Image from 'next/image';
 import { Share2, Heart, ArrowRight, Wallet, Sparkles, Zap, Package, Shield, Youtube } from 'lucide-react';
+import { Logo } from '@/components/brand/Logo';
+import { coinsNeededForPrice } from '@/lib/oclub/coin';
 
 export interface FloatingCommandBarProps {
     getProductImage: () => string;
@@ -54,15 +56,27 @@ const PriceMetric = ({
     amount,
     amountClass = 'text-slate-800',
     labelClass = 'text-slate-500',
+    bCoin,
 }: {
     icon: any;
     label: string;
     amount: string;
     amountClass?: string;
     labelClass?: string;
+    bCoin?: number;
 }) => (
     <div className="flex flex-col items-center text-center px-6 py-1 min-w-[120px]">
-        <p className={`text-[15px] font-black font-mono tabular-nums leading-none ${amountClass}`}>{amount}</p>
+        <div className="flex items-end gap-1.5 justify-center">
+            <p className={`text-[15px] font-black font-mono tabular-nums leading-none ${amountClass}`}>{amount}</p>
+            {bCoin !== undefined && (
+                <div className="flex items-center gap-0.5 pb-[1px]">
+                    <Logo variant="icon" size={9} customColor="#FFD700" />
+                    <span className="text-[11px] font-bold text-[#FFD700] font-mono tabular-nums leading-none">
+                        {bCoin.toLocaleString('en-IN')}
+                    </span>
+                </div>
+            )}
+        </div>
         <p
             className={`mt-1.5 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.1em] ${labelClass}`}
         >
@@ -113,6 +127,7 @@ export default function FloatingCommandBar({
         amount: string;
         amountClass?: string;
         labelClass?: string;
+        bCoin?: number;
     }[] = [
         {
             key: 'on-road',
@@ -120,18 +135,14 @@ export default function FloatingCommandBar({
             label: 'On-Road',
             amount: `₹ ${onRoadBase.toLocaleString('en-IN')}`,
         },
-        ...(accessoriesCount > 0
-            ? [
-                  {
-                      key: 'accessories',
-                      icon: Package,
-                      label: `${accessoriesCount} Accessories`,
-                      amount: `+ ₹ ${accessoriesTotal.toLocaleString('en-IN')}`,
-                      amountClass: 'text-slate-700',
-                      labelClass: 'text-slate-500',
-                  },
-              ]
-            : []),
+        {
+            key: 'accessories',
+            icon: Package,
+            label: accessoriesCount > 0 ? `${accessoriesCount} Accessories` : 'Accessories',
+            amount: accessoriesCount > 0 ? `+ ₹ ${accessoriesTotal.toLocaleString('en-IN')}` : `₹ 0`,
+            amountClass: accessoriesCount > 0 ? 'text-slate-700' : 'text-slate-400',
+            labelClass: accessoriesCount > 0 ? 'text-slate-500' : 'text-slate-400',
+        },
         {
             key: 'insurance-addons',
             icon: Shield,
@@ -155,6 +166,7 @@ export default function FloatingCommandBar({
             amount: `₹ ${displayOnRoad.toLocaleString('en-IN')}`,
             amountClass: 'text-[#C99700]',
             labelClass: 'text-brand-primary',
+            bCoin: coinsNeededForPrice(displayOnRoad),
         },
     ];
 
@@ -212,6 +224,7 @@ export default function FloatingCommandBar({
                                             amount={metric.amount}
                                             amountClass={metric.amountClass}
                                             labelClass={metric.labelClass}
+                                            bCoin={metric.bCoin}
                                         />
                                     ))}
                                 </div>
@@ -228,9 +241,17 @@ export default function FloatingCommandBar({
                                             ₹ {(totalOnRoad + totalSavings).toLocaleString('en-IN')}
                                         </span>
                                     )}
-                                    <span className="text-lg font-black text-[#C99700] font-mono">
-                                        ₹ {displayOnRoad.toLocaleString('en-IN')}
-                                    </span>
+                                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                                        <span className="text-lg font-black text-[#C99700] font-mono leading-none">
+                                            ₹ {displayOnRoad.toLocaleString('en-IN')}
+                                        </span>
+                                        <div className="flex items-center gap-0.5">
+                                            <Logo variant="icon" size={10} customColor="#FFD700" />
+                                            <span className="text-[12px] font-bold text-[#FFD700] font-mono tabular-nums leading-none">
+                                                {coinsNeededForPrice(displayOnRoad).toLocaleString('en-IN')}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

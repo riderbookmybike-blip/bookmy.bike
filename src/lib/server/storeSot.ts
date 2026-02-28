@@ -288,7 +288,8 @@ const buildInsuranceAddons = (row: Record<string, any>) => {
                 defaultRaw === '1' ||
                 defaultRaw === 't';
 
-            if (total <= 0 && price <= 0 && gst <= 0) return null;
+            // Do not filter out 0-value addons so they can be displayed
+            // if (total <= 0 && price <= 0 && gst <= 0) return null;
 
             return {
                 rawBaseKey: String(baseKey || ''),

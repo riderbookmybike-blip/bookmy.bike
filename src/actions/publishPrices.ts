@@ -506,7 +506,13 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                 exShowroom = Number(skuWithPrice?.price_base || 0);
 
                 if (exShowroom === 0) {
-                    errors.push(`No price_base found for SKU ${skuId} (checked pricing table and cat_skus)`);
+                    const errorMsg = `No price_base found for SKU ${skuId} (checked pricing table and cat_skus)`;
+                    console.warn(`[Pricing Engine] Skipping ${skuId}: ${errorMsg}`);
+                    results.push({
+                        success: false,
+                        skuId,
+                        error: errorMsg,
+                    });
                     continue;
                 }
             }
@@ -672,7 +678,7 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                     publish_stage: 'PUBLISHED',
                     is_popular: priceRow?.is_popular ?? false,
                     published_at: new Date().toISOString(),
-                    published_by: user.id,
+                    published_by: user?.id || '00000000-0000-0000-0000-000000000000',
                     updated_at: new Date().toISOString(),
                 },
                 { onConflict: 'sku_id,state_code' }

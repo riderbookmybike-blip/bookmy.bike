@@ -1077,7 +1077,7 @@ export const DesktopCatalog = ({
                             <div className="flex items-center gap-4 w-full">
                                 <button
                                     onClick={() => setIsFilterOpen(true)}
-                                    className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white/40 border border-slate-200/40 text-slate-500 hover:text-slate-900 hover:bg-white hover:border-slate-300 hover:scale-110 active:scale-95 transition-all duration-300 shrink-0 group"
+                                    className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white/40 border border-slate-200/40 text-slate-500 hover:text-slate-900 hover:bg-white hover:border-slate-300 transition-all duration-300 shrink-0 group"
                                 >
                                     <Menu
                                         size={18}
@@ -1086,7 +1086,7 @@ export const DesktopCatalog = ({
                                 </button>
 
                                 <div className="flex-none min-w-[240px] lg:min-w-[320px]">
-                                    <div className="relative flex items-center gap-3 w-full bg-slate-100/40 hover:bg-slate-100/60 border border-slate-200/40 rounded-2xl px-4 h-10 transition-all duration-500 group focus-within:bg-white focus-within:ring-8 focus-within:ring-brand-primary/10 focus-within:border-brand-primary/30">
+                                    <div className="relative flex items-center gap-3 w-full bg-slate-100/30 hover:bg-slate-100/50 border border-slate-200/30 rounded-2xl px-4 h-10 transition-all duration-500 group focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-primary/5 focus-within:border-brand-primary/10">
                                         <Search
                                             size={16}
                                             className="text-slate-400 group-focus-within:text-brand-primary group-focus-within:scale-110 transition-all duration-300"
@@ -1109,31 +1109,9 @@ export const DesktopCatalog = ({
                                     </div>
                                 </div>
 
-                                {/* Consolidated Discovery Elements (Toggle Only) */}
-                                <div className="flex-1 flex items-center justify-end ml-4 pl-6 border-l border-slate-200/40 animate-in fade-in slide-in-from-left-4 duration-1000">
-                                    {/* Pricing Toggle - Aligned Right */}
-                                    <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 scale-90 lg:scale-100 transform-origin-right shadow-inner">
-                                        {[
-                                            { id: 'finance', label: 'Finance' },
-                                            { id: 'cash', label: 'Cash' },
-                                        ].map(mode => (
-                                            <button
-                                                key={mode.id}
-                                                onClick={() => setPricingMode(mode.id as any)}
-                                                className={`px-5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-500 ${
-                                                    pricingMode === mode.id
-                                                        ? 'bg-white text-slate-900 shadow-[0_4px_12px_rgba(0,0,0,0.08)] scale-105'
-                                                        : 'text-slate-400 hover:text-slate-600'
-                                                }`}
-                                            >
-                                                {mode.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {isSmart && !smartModel && (
-                                    <div className="flex-none flex items-center justify-end gap-2 overflow-x-auto no-scrollbar max-w-[50%]">
+                                {/* Filter Labels (Smart chips) - Now in the center */}
+                                <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar pl-2">
+                                    {isSmart && !smartModel && (
                                         <div className="flex items-center gap-2">
                                             {modelOptions.map(model => (
                                                 <button
@@ -1144,7 +1122,7 @@ export const DesktopCatalog = ({
                                                         setSmartColor(null);
                                                         setSearchQuery(model);
                                                     }}
-                                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap"
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap shadow-sm"
                                                 >
                                                     {model}
                                                     <span className="text-slate-400">•</span>
@@ -1154,11 +1132,9 @@ export const DesktopCatalog = ({
                                                 </button>
                                             ))}
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                {isSmart && smartModel && (
-                                    <div className="flex-none flex items-center justify-end gap-2 overflow-x-auto no-scrollbar max-w-[50%]">
+                                    {isSmart && smartModel && (
                                         <div className="flex items-center gap-2">
                                             {!smartVariant && (
                                                 <>
@@ -1169,10 +1145,10 @@ export const DesktopCatalog = ({
                                                             setSmartColor(null);
                                                             setSearchQuery('');
                                                         }}
-                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-700 whitespace-nowrap"
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-white whitespace-nowrap shadow-lg"
                                                     >
                                                         {smartModel}
-                                                        <X size={10} />
+                                                        <X size={10} className="text-brand-primary" />
                                                     </button>
                                                     {variantOptions.map(v => (
                                                         <button
@@ -1181,7 +1157,7 @@ export const DesktopCatalog = ({
                                                                 setSmartVariant(v.name);
                                                                 setSmartColor(null);
                                                             }}
-                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap"
+                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap shadow-sm"
                                                         >
                                                             {v.name}
                                                             <span className="text-slate-400">•</span>
@@ -1197,37 +1173,40 @@ export const DesktopCatalog = ({
                                                             setSmartVariant(null);
                                                             setSmartColor(null);
                                                         }}
-                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-700 whitespace-nowrap"
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-white whitespace-nowrap shadow-lg"
                                                     >
                                                         {smartVariant}
-                                                        <X size={10} />
+                                                        <X size={10} className="text-brand-primary" />
                                                     </button>
-                                                    {colorOptions.map(c => (
-                                                        <button
-                                                            key={`color-${c.name}`}
-                                                            onClick={() => {
-                                                                setSmartColor(c.name);
-                                                            }}
-                                                            className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${
-                                                                normalize(smartColor || undefined) === normalize(c.name)
-                                                                    ? 'ring-2 ring-brand-primary/40'
-                                                                    : ''
-                                                            }`}
-                                                            style={{ background: c.hex || '#999' }}
-                                                            title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
-                                                        >
-                                                            {c.finish?.toUpperCase() === 'GLOSSY' && (
-                                                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
-                                                            )}
-                                                            {c.finish?.toUpperCase() === 'MATTE' && (
-                                                                <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
-                                                            )}
-                                                        </button>
-                                                    ))}
+                                                    <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-200">
+                                                        {colorOptions.map(c => (
+                                                            <button
+                                                                key={`color-${c.name}`}
+                                                                onClick={() => {
+                                                                    setSmartColor(c.name);
+                                                                }}
+                                                                className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${
+                                                                    normalize(smartColor || undefined) ===
+                                                                    normalize(c.name)
+                                                                        ? 'ring-2 ring-brand-primary/60 ring-offset-1'
+                                                                        : ''
+                                                                }`}
+                                                                style={{ background: c.hex || '#999' }}
+                                                                title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
+                                                            >
+                                                                {c.finish?.toUpperCase() === 'GLOSSY' && (
+                                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                                )}
+                                                                {c.finish?.toUpperCase() === 'MATTE' && (
+                                                                    <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                     {smartColor && (
                                                         <button
                                                             onClick={() => setSmartColor(null)}
-                                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap"
+                                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-colors"
                                                         >
                                                             Clear
                                                         </button>
@@ -1235,8 +1214,31 @@ export const DesktopCatalog = ({
                                                 </>
                                             )}
                                         </div>
+                                    )}
+                                </div>
+
+                                {/* Consolidated Discovery Elements (Toggle Only) - Now on the Right */}
+                                <div className="flex-none flex items-center ml-4 pl-6 border-l border-slate-200/40">
+                                    {/* Pricing Toggle - Aligned Right */}
+                                    <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 h-10 shadow-inner">
+                                        {[
+                                            { id: 'finance', label: 'Finance' },
+                                            { id: 'cash', label: 'Cash' },
+                                        ].map(mode => (
+                                            <button
+                                                key={mode.id}
+                                                onClick={() => setPricingMode(mode.id as any)}
+                                                className={`px-6 h-full rounded-xl text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-300 ${
+                                                    pricingMode === mode.id
+                                                        ? 'bg-[#FFD700] text-black shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-950 hover:bg-slate-200/50'
+                                                }`}
+                                            >
+                                                {mode.label}
+                                            </button>
+                                        ))}
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </div>
                     </div>

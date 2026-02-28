@@ -80,6 +80,7 @@ export const WishlistClient = () => {
     // Local State for Filters
     const [activeCategory, setActiveCategory] = useState<'ALL' | 'MOTORCYCLE' | 'SCOOTER' | 'MOPED'>('ALL');
     const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
+    const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>('finance');
 
     // Map favorites to full ProductVariant data from catalog
     const wishlistItems = useMemo(() => {
@@ -244,53 +245,126 @@ export const WishlistClient = () => {
 
     return (
         <div className="space-y-4">
-            {/* Header Section with Sticky Navbar */}
+            {/* 1. Header Section - Catalog Style */}
+            <header
+                className="hidden md:block sticky z-[90] py-0 mb-6 transition-all duration-700 ease-in-out"
+                style={{ top: 'var(--header-h)', marginTop: '20px' }}
+            >
+                <div className="w-full">
+                    <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
+                        <div className="flex items-center gap-4 w-full">
+                            {/* Branding Icon (Heart) */}
+                            <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 flex items-center justify-center shrink-0 border border-brand-primary/20">
+                                <Heart size={20} className="text-brand-primary" fill="currentColor" />
+                            </div>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b border-slate-200 mb-12">
-                <div className="flex items-center gap-4 text-brand-primary">
-                    <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 flex items-center justify-center">
-                        <Heart size={28} fill="currentColor" />
-                    </div>
-                    <div>
-                        <span className="text-[14px] md:text-[16px] font-black uppercase tracking-[0.4em] italic block leading-none mb-1">
-                            Personal Collection
-                        </span>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                            {favorites.length} {favorites.length === 1 ? 'Item' : 'Items'} Saved
-                        </p>
+                            <button
+                                onClick={() => setIsFilterOpen(true)}
+                                className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white/40 border border-slate-200/40 text-slate-500 hover:text-slate-900 hover:bg-white hover:border-slate-300 transition-all duration-300 shrink-0 group"
+                            >
+                                <SlidersHorizontal
+                                    size={18}
+                                    className="group-hover:rotate-180 transition-transform duration-500"
+                                />
+                            </button>
+
+                            <div className="flex-none min-w-[240px] lg:min-w-[320px]">
+                                <div className="relative flex items-center gap-3 w-full bg-slate-100/30 hover:bg-slate-100/50 border border-slate-200/30 rounded-2xl px-4 h-10 transition-all duration-500 group focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-primary/5 focus-within:border-brand-primary/10">
+                                    <Search
+                                        size={16}
+                                        className="text-slate-400 group-focus-within:text-brand-primary group-focus-within:scale-110 transition-all duration-300"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="SEARCH YOUR WISHLIST..."
+                                        value={searchQuery}
+                                        onChange={e => setSearchQuery(e.target.value)}
+                                        className="flex-1 min-w-0 bg-transparent text-[10px] font-black tracking-[0.2em] uppercase focus:outline-none placeholder:text-slate-400/50"
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            className="flex items-center justify-center w-6 h-6 rounded-full text-slate-300 hover:text-slate-900 hover:bg-slate-200/50 transition-all"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Center Section: Info Label */}
+                            <div className="flex-1 flex items-center justify-center pointer-events-none">
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">
+                                    {wishlistItems.length} Saved Machine{wishlistItems.length === 1 ? '' : 's'}
+                                </span>
+                            </div>
+
+                            {/* Pricing Toggle - Aligned Right */}
+                            <div className="flex-none flex items-center ml-4 pl-6 border-l border-slate-200/40">
+                                <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 h-10 shadow-inner">
+                                    {[
+                                        { id: 'finance', label: 'Finance' },
+                                        { id: 'cash', label: 'Cash' },
+                                    ].map(mode => (
+                                        <button
+                                            key={mode.id}
+                                            onClick={() => setPricingMode(mode.id as any)}
+                                            className={`px-6 h-full rounded-xl text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-300 ${
+                                                pricingMode === mode.id
+                                                    ? 'bg-[#FFD700] text-black shadow-sm'
+                                                    : 'text-slate-500 hover:text-slate-950 hover:bg-slate-200/50'
+                                            }`}
+                                        >
+                                            {mode.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </header>
 
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={clearFavorites}
-                        className="px-6 py-3 rounded-xl border border-slate-200 text-slate-500 hover:text-rose-500 hover:border-rose-500/50 transition-all text-[10px] font-black uppercase tracking-[0.2em] bg-white shadow-sm active:scale-95"
-                    >
-                        Clear All
-                    </button>
-                    <Link
-                        href="/store/catalog"
-                        className="px-6 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-black hover:scale-105 transition-all shadow-lg flex items-center gap-2 active:scale-95"
-                    >
-                        <Plus size={14} />
-                        Add More
-                    </Link>
+            {/* 2. Mobile Search Bar (Sticky) */}
+            <div
+                className="md:hidden sticky z-[90] py-3 mb-4 bg-slate-50/80 backdrop-blur-2xl border-b border-slate-200/60"
+                style={{ top: 'var(--header-h)' }}
+            >
+                <div className="flex items-center gap-3 px-4">
+                    <div className="flex-1 flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-slate-200">
+                        <Search size={14} className="text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search saved rides..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="flex-1 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="flex items-center text-slate-400 hover:text-slate-900"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* STICKY NAVBAR (Copied & Adapted) */}
+            {/* STICKY NAVBAR (Catalog Aesthetic Synchronization) */}
             <header className="sticky z-40 mb-12 transition-all duration-300" style={{ top: 'var(--header-h)' }}>
                 <div className="w-full">
-                    <div className="rounded-[2rem] bg-slate-50/80 backdrop-blur-xl border border-slate-200 shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-6 py-4">
+                    <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.05)] px-6 py-4">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                             {/* Left: Category Chips */}
                             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
                                 <button
                                     onClick={() => setActiveCategory('ALL')}
-                                    className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                    className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                         activeCategory === 'ALL'
-                                            ? 'bg-slate-900 text-white shadow-md'
-                                            : 'bg-white text-slate-500 hover:text-slate-900 border border-slate-200'
+                                            ? 'bg-slate-900 text-white shadow-lg'
+                                            : 'bg-slate-100/50 text-slate-500 hover:text-slate-900 border border-slate-200/50'
                                     }`}
                                 >
                                     All Types
@@ -299,10 +373,10 @@ export const WishlistClient = () => {
                                     <button
                                         key={option}
                                         onClick={() => setActiveCategory(option)}
-                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                        className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                             activeCategory === option
                                                 ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
-                                                : 'bg-white text-slate-500 hover:text-slate-900 border border-slate-200'
+                                                : 'bg-slate-100/50 text-slate-500 hover:text-slate-900 border border-slate-200/50'
                                         }`}
                                     >
                                         {option}
@@ -310,11 +384,11 @@ export const WishlistClient = () => {
                                 ))}
                             </div>
 
-                            {/* Right: Sort */}
-                            <div className="flex items-center gap-4 flex-shrink-0">
+                            {/* Right: Sort & Filter Actions */}
+                            <div className="flex items-center gap-3 flex-shrink-0">
                                 {/* Sort Dropdown */}
-                                <div className="flex items-center bg-white border border-slate-200 rounded-full px-4 py-2 hover:border-slate-300 transition-colors">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-2">
+                                <div className="flex items-center bg-slate-100/40 border border-slate-200/40 rounded-2xl px-4 py-2 hover:border-slate-300 transition-colors group">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider mr-2">
                                         Sort:
                                     </span>
                                     <select
@@ -328,26 +402,34 @@ export const WishlistClient = () => {
                                     </select>
                                 </div>
 
-                                {/* Divider */}
-                                <div className="h-6 w-px bg-slate-200 hidden md:block" />
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setIsFilterOpen(true)}
+                                        className={`relative flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${
+                                            activeFilterCount > 0
+                                                ? 'bg-slate-900 text-white shadow-lg'
+                                                : 'bg-white text-slate-500 border border-slate-200 hover:text-slate-900 shadow-sm'
+                                        }`}
+                                    >
+                                        <SlidersHorizontal size={14} strokeWidth={2.5} />
+                                        <span className="hidden sm:inline">Refine</span>
+                                        {activeFilterCount > 0 && (
+                                            <span className="flex items-center justify-center bg-[#F4B000] text-black w-4 h-4 rounded-full text-[8px] absolute -top-1 -right-1 shadow-md">
+                                                {activeFilterCount}
+                                            </span>
+                                        )}
+                                    </button>
 
-                                {/* Filters Button */}
-                                <button
-                                    onClick={() => setIsFilterOpen(true)}
-                                    className={`relative flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${
-                                        activeFilterCount > 0
-                                            ? 'bg-slate-900 text-white shadow-md'
-                                            : 'bg-white text-slate-500 border border-slate-200 hover:text-slate-900'
-                                    }`}
-                                >
-                                    <SlidersHorizontal size={12} strokeWidth={2.5} />
-                                    <span className="hidden sm:inline">Filters</span>
-                                    {activeFilterCount > 0 && (
-                                        <span className="flex items-center justify-center bg-[#F4B000] text-black w-4 h-4 rounded-full text-[8px]">
-                                            {activeFilterCount}
-                                        </span>
-                                    )}
-                                </button>
+                                    <div className="h-8 w-px bg-slate-200 mx-2" />
+
+                                    <button
+                                        onClick={clearFavorites}
+                                        className="px-5 py-2.5 rounded-2xl border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all text-[9px] font-black uppercase tracking-widest bg-white/50 active:scale-95 shadow-sm"
+                                    >
+                                        Clear All
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -428,7 +510,16 @@ export const WishlistClient = () => {
                                 variants={itemVariants}
                                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                             >
-                                <ProductCard v={v} viewMode="grid" downpayment={downpayment} tenure={tenure} />
+                                <ProductCard
+                                    v={v}
+                                    viewMode="grid"
+                                    downpayment={downpayment}
+                                    tenure={tenure}
+                                    pricingMode={pricingMode}
+                                    onTogglePricingMode={() =>
+                                        setPricingMode(prev => (prev === 'cash' ? 'finance' : 'cash'))
+                                    }
+                                />
                             </motion.div>
                         ))
                     ) : (

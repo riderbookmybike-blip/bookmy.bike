@@ -270,11 +270,11 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                                 .single();
                             parts.push(brand?.name || 'Unknown');
                         }
-                        if (c.target_family_id) {
+                        if (c.target_model_id) {
                             const { data: fam } = await (supabase as any)
                                 .from('cat_models')
                                 .select('name')
-                                .eq('id', c.target_family_id)
+                                .eq('id', c.target_model_id)
                                 .single();
                             parts.push(fam?.name || 'All Models');
                         } else if (c.target_brand_id) {
@@ -311,7 +311,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                         id: `new-${Date.now()}`,
                         is_universal: true,
                         target_brand_id: null,
-                        target_family_id: null,
+                        target_model_id: null,
                         target_variant_id: null,
                         label: 'UNIVERSAL / ALL VEHICLES',
                     },
@@ -330,7 +330,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                 id: `new-${Date.now()}`,
                 is_universal: false,
                 target_brand_id: selBrand,
-                target_family_id: selModel && selModel !== 'ALL_MODELS' ? selModel : null,
+                target_model_id: selModel && selModel !== 'ALL_MODELS' ? selModel : null,
                 target_variant_id: selVehicleVariant && selVehicleVariant !== 'ALL_VARIANTS' ? selVehicleVariant : null,
                 label: [brandName, modelName || '(All Models)', variantName].filter(Boolean).join(' › '),
             };
@@ -338,7 +338,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                 entries.some(
                     c =>
                         c.target_brand_id === entry.target_brand_id &&
-                        c.target_family_id === entry.target_family_id &&
+                        c.target_model_id === entry.target_model_id &&
                         c.target_variant_id === entry.target_variant_id
                 )
             )
@@ -365,7 +365,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                     variant_id: variantId,
                     is_universal: e.is_universal || false,
                     target_brand_id: e.target_brand_id || null,
-                    target_model_id: e.target_model_id || e.target_family_id || null,
+                    target_model_id: e.target_model_id || null,
                     target_variant_id: e.target_variant_id || null,
                 }));
                 const { error } = await supabase.from('cat_accessory_suitable_for').insert(inserts);
@@ -443,7 +443,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                 variant_id: created.id,
                 is_universal: t.is_universal || false,
                 target_brand_id: t.target_brand_id || null,
-                target_model_id: t.target_model_id || t.target_family_id || null,
+                target_model_id: t.target_model_id || null,
                 target_variant_id: t.target_variant_id || null,
             }));
             if (inserts.length > 0) {
@@ -475,7 +475,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                     id: `new-${Date.now()}`,
                     is_universal: true,
                     target_brand_id: null,
-                    target_family_id: null,
+                    target_model_id: null,
                     target_variant_id: null,
                     label: 'All Brands (Universal)',
                 },
@@ -496,7 +496,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
             id: `new-${Date.now()}`,
             is_universal: false,
             target_brand_id: selBrand,
-            target_family_id: selModel && selModel !== 'ALL_MODELS' ? selModel : null,
+            target_model_id: selModel && selModel !== 'ALL_MODELS' ? selModel : null,
             target_variant_id: selVehicleVariant && selVehicleVariant !== 'ALL_VARIANTS' ? selVehicleVariant : null,
             label: [brandName, !selModel || selModel === 'ALL_MODELS' ? '(All)' : modelName, vName]
                 .filter(Boolean)
@@ -506,7 +506,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
             newCompatTargets.some(
                 t =>
                     t.target_brand_id === entry.target_brand_id &&
-                    t.target_family_id === entry.target_family_id &&
+                    t.target_model_id === entry.target_model_id &&
                     t.target_variant_id === entry.target_variant_id
             )
         ) {
@@ -717,7 +717,7 @@ export default function VariantStepV2({ model, variants, onUpdate }: VariantStep
                                                 id: `new-${Date.now()}`,
                                                 is_universal: true,
                                                 target_brand_id: null,
-                                                target_family_id: null,
+                                                target_model_id: null,
                                                 target_variant_id: null,
                                                 label: 'All Brands (Universal)',
                                             },

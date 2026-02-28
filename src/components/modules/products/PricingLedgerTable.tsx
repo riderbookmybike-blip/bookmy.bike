@@ -343,8 +343,7 @@ export default function PricingLedgerTable({
                     }
                     return [
                         String(idx + 1),
-                        `${sku.category} / ${sku.subCategory}`,
-                        sku.model,
+                        `${sku.brand} / ${sku.model}`,
                         sku.variant,
                         fmt(sku.exShowroom),
                         offer > 0 ? fmt(offer) : '-',
@@ -1723,8 +1722,7 @@ export default function PricingLedgerTable({
                                                 <td className="px-3 py-1.5">
                                                     <div className="flex flex-col gap-0.5">
                                                         <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                                                            {sku.category} / {sku.subCategory} / {sku.model} /{' '}
-                                                            {sku.variant}
+                                                            {sku.brand} / {sku.model} / {sku.variant}
                                                         </span>
                                                     </div>
                                                 </td>
