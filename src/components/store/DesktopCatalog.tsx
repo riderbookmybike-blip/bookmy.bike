@@ -1082,7 +1082,7 @@ export const DesktopCatalog = ({
                                     <Menu size={16} />
                                 </button>
 
-                                <div className="flex-none min-w-[200px] lg:min-w-[300px]">
+                                <div className="flex-none min-w-[200px] lg:min-w-[280px]">
                                     <div className="flex items-center gap-2 w-full bg-slate-100/50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 h-9 transition-all group focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-primary/10">
                                         <Search
                                             size={14}
@@ -1103,6 +1103,29 @@ export const DesktopCatalog = ({
                                                 <X size={14} />
                                             </button>
                                         )}
+                                    </div>
+                                </div>
+
+                                {/* Consolidated Discovery Elements (Toggle Only) */}
+                                <div className="flex-1 flex items-center justify-end ml-2 pl-4 border-l border-slate-200 animate-in fade-in slide-in-from-left-2 duration-700">
+                                    {/* Pricing Toggle - Aligned Right */}
+                                    <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200/50 scale-90 lg:scale-100 transform-origin-right">
+                                        {[
+                                            { id: 'finance', label: 'Finance' },
+                                            { id: 'cash', label: 'Cash' },
+                                        ].map(mode => (
+                                            <button
+                                                key={mode.id}
+                                                onClick={() => setPricingMode(mode.id as any)}
+                                                className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all duration-300 ${
+                                                    pricingMode === mode.id
+                                                        ? 'bg-white text-slate-900 shadow-sm'
+                                                        : 'text-slate-400 hover:text-slate-600'
+                                                }`}
+                                            >
+                                                {mode.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
 

@@ -22,7 +22,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const pathname = usePathname();
     const { device } = useBreakpoint();
-    const { resultsCount, pricingMode, setPricingMode, locationLabel, showDiscoveryBar } = useDiscovery();
+    const { showDiscoveryBar } = useDiscovery();
     const isPhone = device === 'phone';
     const isDesktopLike = device === 'desktop';
 
@@ -77,45 +77,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     </div>
                 </Link>
             }
-            center={
-                showDiscoveryBar && !isPhone ? (
-                    <div className="flex items-center gap-6 animate-in fade-in slide-in-from-top-2 duration-700">
-                        {/* Results Count & Location */}
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest italic">
-                                    {resultsCount ?? 0} Results
-                                </span>
-                            </div>
-                            <div className="h-3 w-px bg-slate-200" />
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                Prices in <span className="text-slate-900">{locationLabel || '...'}</span>
-                            </p>
-                        </div>
-
-                        {/* Finance/Cash Toggle */}
-                        <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200/50">
-                            {[
-                                { id: 'finance', label: 'Finance' },
-                                { id: 'cash', label: 'Cash' },
-                            ].map(mode => (
-                                <button
-                                    key={mode.id}
-                                    onClick={() => setPricingMode(mode.id as any)}
-                                    className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
-                                        pricingMode === mode.id
-                                            ? 'bg-white text-slate-900 shadow-sm'
-                                            : 'text-slate-400 hover:text-slate-600'
-                                    }`}
-                                >
-                                    {mode.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                ) : null
-            }
+            center={null}
             right={
                 <div className={`flex items-center ${rightGapClass}`}>
                     {/* Desktop Navigation Group */}
