@@ -16,7 +16,16 @@ interface I18nContextValue {
     languages: TranslationLanguage[];
 }
 
-const I18nContext = createContext<I18nContextValue | undefined>(undefined);
+const defaultContext: I18nContextValue = {
+    language: 'en',
+    setLanguage: () => {},
+    t: (text: string) => text,
+    scriptText: (text: string) => text,
+    isLoading: false,
+    languages: TRANSLATION_LANGUAGES,
+};
+
+const I18nContext = createContext<I18nContextValue>(defaultContext);
 
 const normalizeLang = (value: string) => value.toLowerCase().split('-')[0];
 
@@ -37,7 +46,9 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
     const [language, setLanguageState] = useState('en');
     const [translations, setTranslations] = useState<TranslationMap>({});
     const [isLoading, setIsLoading] = useState(false);
-    const [termOverrides, setTermOverrides] = useState<Record<'brand' | 'model' | 'variant' | 'color', Record<string, string>>>({
+    const [termOverrides, setTermOverrides] = useState<
+        Record<'brand' | 'model' | 'variant' | 'color', Record<string, string>>
+    >({
         brand: {},
         model: {},
         variant: {},
@@ -154,7 +165,5 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 export const useI18n = () => {
-    const ctx = useContext(I18nContext);
-    if (!ctx) throw new Error('useI18n must be used within I18nProvider');
-    return ctx;
+    return useContext(I18nContext);
 };

@@ -94,10 +94,40 @@ export const DesktopCatalog = ({
     resolvedDealerName = null,
 }: DesktopCatalogProps) => {
     // Prefer client-resolved items when available, otherwise SSR
-    const isLoading = externalLoading;
     const router = useRouter();
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
+    const isTv = device === 'tv';
+    const [showHeader, setShowHeader] = useState(true);
+
+    // Auto-hide header on TV after 4s of inactivity
+    useEffect(() => {
+        if (!isTv) return;
+
+        let timer: NodeJS.Timeout;
+        const resetTimer = () => {
+            setShowHeader(true);
+            clearTimeout(timer);
+            timer = setTimeout(() => setShowHeader(false), 4000);
+        };
+
+        const handleInteraction = () => resetTimer();
+
+        window.addEventListener('mousemove', handleInteraction);
+        window.addEventListener('scroll', handleInteraction);
+        window.addEventListener('click', handleInteraction);
+        window.addEventListener('touchstart', handleInteraction);
+
+        resetTimer();
+
+        return () => {
+            window.removeEventListener('mousemove', handleInteraction);
+            window.removeEventListener('scroll', handleInteraction);
+            window.removeEventListener('click', handleInteraction);
+            window.removeEventListener('touchstart', handleInteraction);
+            clearTimeout(timer);
+        };
+    }, [isTv]);
 
     // Destructure filters from props
     const {
@@ -142,7 +172,6 @@ export const DesktopCatalog = ({
     const activeCategory = selectedBodyTypes.length === 1 ? selectedBodyTypes[0] : 'ALL';
 
     // Local State
-    const [isTv] = useState(_variant === 'tv');
     const isSmart = mode === 'smart';
     const [sortBy] = useState<'popular' | 'price' | 'emi'>('popular');
     const viewMode = 'grid' as 'grid' | 'list';
@@ -959,11 +988,11 @@ export const DesktopCatalog = ({
                 </div>
             )}
             <div
-                className={`flex-1 page-container ${isTv ? 'pt-24' : isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
+                className={`flex-1 page-container ${isTv ? 'pt-10' : isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
             >
                 <header
-                    className="hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-300"
-                    style={{ top: 'var(--header-h)', marginTop: '16px' }}
+                    className={`${showHeader ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'} hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-700`}
+                    style={{ top: 'var(--header-h)', marginTop: isTv ? '0px' : '16px' }}
                 >
                     <div className="w-full">
                         <div className="rounded-full bg-slate-50/15 backdrop-blur-3xl border border-slate-200 shadow-2xl h-14 px-4 flex items-center">
