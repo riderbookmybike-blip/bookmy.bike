@@ -15,6 +15,7 @@ import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
+import { isHandheldPhoneUserAgent } from '@/lib/utils/deviceUserAgent';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -107,7 +108,7 @@ export default function ProductClient({
         if (typeof window === 'undefined') return;
         const isCoarsePointer =
             window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
-        const isMobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+        const isMobileUA = isHandheldPhoneUserAgent(navigator.userAgent || '');
 
         // Always treat detected phones as mobile PDP, even if browser is in desktop-site mode.
         const isPhoneDevice = device === 'phone';

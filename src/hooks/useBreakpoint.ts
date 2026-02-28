@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
 
 /**
  * Device breakpoint detection hook.
@@ -27,8 +28,10 @@ function isLikelyHandheldPhone(): boolean {
     const ua = nav.userAgent || '';
     const uaData = nav.userAgentData;
 
+    if (isTvUserAgent(ua)) return false;
+
     const mobileByUAData = Boolean(uaData?.mobile);
-    const mobileByUA = /Android|iPhone|iPod|Mobile|IEMobile|Opera Mini/i.test(ua);
+    const mobileByUA = isHandheldPhoneUserAgent(ua);
 
     const shortEdge = Math.min(window.screen?.width || window.innerWidth, window.screen?.height || window.innerHeight);
     const hasTouch = (nav.maxTouchPoints || 0) > 0;
@@ -39,6 +42,9 @@ function isLikelyHandheldPhone(): boolean {
 
 function getBreakpoint(): DeviceBreakpoint {
     if (typeof window === 'undefined') return 'desktop';
+
+    const ua = window.navigator.userAgent || '';
+    if (isTvUserAgent(ua)) return 'desktop';
 
     // Handles desktop-site mode on phones where innerWidth can be inflated.
     if (isLikelyHandheldPhone()) return 'phone';
