@@ -984,11 +984,6 @@ export const ProductCard = ({
                                 </p>
                                 <div className="flex flex-col items-center">
                                     <div className="flex items-baseline gap-2">
-                                        {netImpact > 0 && (
-                                            <span className="text-sm md:text-base font-medium line-through text-slate-400">
-                                                ₹{formatRoundedPrice(baseOnRoadPrice)}
-                                            </span>
-                                        )}
                                         <span className="text-3xl md:text-4xl font-black italic text-slate-900 leading-none">
                                             ₹{formatRoundedPrice(effectiveOfferPrice)}
                                         </span>

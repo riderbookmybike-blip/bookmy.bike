@@ -1484,38 +1484,7 @@ export const DesktopCatalog = ({
                                     )}
                                 </div>
 
-                                {/* Search Bar */}
-                                <AnimatePresence>
-                                    {(!isTv || showTvSearch) && (
-                                        <motion.div
-                                            initial={isTv ? { height: 0, opacity: 0, marginBottom: 0 } : undefined}
-                                            animate={
-                                                isTv ? { height: 'auto', opacity: 1, marginBottom: 24 } : undefined
-                                            }
-                                            exit={isTv ? { height: 0, opacity: 0, marginBottom: 0 } : undefined}
-                                            className="relative group overflow-hidden"
-                                        >
-                                            <div
-                                                className={`absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-primary transition-colors ${
-                                                    isTv ? 'left-4' : ''
-                                                }`}
-                                            >
-                                                <Search size={isTv ? 14 : 18} />
-                                            </div>
-                                            <input
-                                                type="text"
-                                                placeholder="FIND MACHINE..."
-                                                value={searchQuery}
-                                                onChange={e => setSearchQuery(e.target.value)}
-                                                className={`w-full bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] font-black tracking-widest uppercase focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all placeholder:text-slate-300 ${
-                                                    isTv
-                                                        ? 'py-3 pl-11 pr-4 text-[10px] rounded-xl'
-                                                        : 'py-5 pl-14 pr-4 text-[12px]'
-                                                }`}
-                                            />
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                {/* Search Bar moved to Navbar via DiscoveryContext */}
                                 {/* Filter Groups in Sidebar (List View) */}
                                 <div className="space-y-6">
                                     <FilterGroup

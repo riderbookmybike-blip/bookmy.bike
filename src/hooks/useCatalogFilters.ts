@@ -13,9 +13,9 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const router = useRouter();
-    const { pricingMode, setPricingMode } = useDiscovery();
+    const { pricingMode, setPricingMode, searchQuery, setSearchQuery } = useDiscovery();
 
-    const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+    // We no longer manage searchQuery local state here, we use the DiscoveryContext
     const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
 
     // Debounce search query

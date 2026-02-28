@@ -14,6 +14,8 @@ interface DiscoveryContextType {
     setLocationLabel: (label: string | null) => void;
     showDiscoveryBar: boolean;
     setShowDiscoveryBar: (show: boolean) => void;
+    searchQuery: string;
+    setSearchQuery: (query: string) => void;
 }
 
 const DiscoveryContext = createContext<DiscoveryContextType | undefined>(undefined);
@@ -43,6 +45,7 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
 
     const [locationLabel, setLocationLabel] = useState<string | null>(null);
     const [showDiscoveryBar, setShowDiscoveryBar] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
 
     return (
         <DiscoveryContext.Provider
@@ -55,6 +58,8 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
                 setLocationLabel,
                 showDiscoveryBar,
                 setShowDiscoveryBar,
+                searchQuery,
+                setSearchQuery,
             }}
         >
             {children}
