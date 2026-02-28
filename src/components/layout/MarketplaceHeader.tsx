@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, Heart, Home as HomeIcon } from 'lucide-react';
+import { Menu, X, Heart, Home as HomeIcon, Search } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
 import { usePathname } from 'next/navigation';
@@ -79,6 +79,15 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 <div className={`flex items-center ${rightGapClass}`}>
                     {/* Desktop Navigation Group */}
                     <div className={`${isDesktopLike ? 'flex' : 'hidden'} lg:flex items-center gap-3`}>
+                        {device === 'tv' && (
+                            <button
+                                onClick={() => window.dispatchEvent(new CustomEvent('toggleTvSearch'))}
+                                className={desktopNavButtonClass}
+                                aria-label="Toggle Search"
+                            >
+                                <Search size={18} />
+                            </button>
+                        )}
                         <Link href="/" className={desktopNavButtonClass}>
                             <HomeIcon size={18} />
                         </Link>

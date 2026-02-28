@@ -101,6 +101,7 @@ export const DesktopCatalog = ({
     const isTv = device === 'tv' || tvViewport;
     const [showHeader, setShowHeader] = useState(true);
     const [debugMetrics, setDebugMetrics] = useState({ width: 0, height: 0, dpr: 1, dataTv: '0' });
+    const [showTvSearch, setShowTvSearch] = useState(false);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -126,6 +127,14 @@ export const DesktopCatalog = ({
         window.addEventListener('resize', syncDebugMetrics);
         return () => window.removeEventListener('resize', syncDebugMetrics);
     }, []);
+
+    // Listen for TV search toggle
+    useEffect(() => {
+        if (!isTv) return;
+        const handleToggleSearch = () => setShowTvSearch(prev => !prev);
+        window.addEventListener('toggleTvSearch', handleToggleSearch);
+        return () => window.removeEventListener('toggleTvSearch', handleToggleSearch);
+    }, [isTv]);
 
     // Auto-hide header on TV after 4s of inactivity
     useEffect(() => {
@@ -1440,18 +1449,37 @@ export const DesktopCatalog = ({
                                 </div>
 
                                 {/* Search Bar */}
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-primary transition-colors">
-                                        <Search size={18} />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        placeholder="FIND MACHINE..."
-                                        value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
-                                        className="w-full bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl py-5 pl-14 pr-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-[12px] font-black tracking-widest uppercase focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all placeholder:text-slate-300"
-                                    />
-                                </div>
+                                <AnimatePresence>
+                                    {(!isTv || showTvSearch) && (
+                                        <motion.div
+                                            initial={isTv ? { height: 0, opacity: 0, marginBottom: 0 } : undefined}
+                                            animate={
+                                                isTv ? { height: 'auto', opacity: 1, marginBottom: 24 } : undefined
+                                            }
+                                            exit={isTv ? { height: 0, opacity: 0, marginBottom: 0 } : undefined}
+                                            className="relative group overflow-hidden"
+                                        >
+                                            <div
+                                                className={`absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-primary transition-colors ${
+                                                    isTv ? 'left-4' : ''
+                                                }`}
+                                            >
+                                                <Search size={isTv ? 14 : 18} />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="FIND MACHINE..."
+                                                value={searchQuery}
+                                                onChange={e => setSearchQuery(e.target.value)}
+                                                className={`w-full bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] font-black tracking-widest uppercase focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all placeholder:text-slate-300 ${
+                                                    isTv
+                                                        ? 'py-3 pl-11 pr-4 text-[10px] rounded-xl'
+                                                        : 'py-5 pl-14 pr-4 text-[12px]'
+                                                }`}
+                                            />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                                 {/* Filter Groups in Sidebar (List View) */}
                                 <div className="space-y-6">
                                     <FilterGroup
