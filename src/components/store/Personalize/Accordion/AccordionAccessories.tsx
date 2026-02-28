@@ -115,32 +115,7 @@ export default function AccordionAccessories({
                             )}
                         </div>
 
-                        {/* Qty ± */}
-                        {isSelected && (
-                            <div className="flex items-center gap-1 shrink-0 bg-slate-100/80 rounded-lg px-1 py-0.5">
-                                <button
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        updateQuantity(acc.id, Math.max(1, quantity - 1));
-                                    }}
-                                    className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 text-sm font-bold hover:bg-white transition-colors"
-                                >
-                                    −
-                                </button>
-                                <span className="w-5 text-center text-[11px] font-black text-slate-700">
-                                    {quantity}
-                                </span>
-                                <button
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        updateQuantity(acc.id, Math.min(maxQty, quantity + 1));
-                                    }}
-                                    className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 text-sm font-bold hover:bg-white transition-colors"
-                                >
-                                    +
-                                </button>
-                            </div>
-                        )}
+                        {/* Qty ± (Removed because maxQty is practically 1 for accessories) */}
 
                         {/* Price block */}
                         <div className="flex flex-col items-end shrink-0 min-w-[72px]">
