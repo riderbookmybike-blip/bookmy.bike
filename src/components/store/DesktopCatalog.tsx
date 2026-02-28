@@ -959,7 +959,7 @@ export const DesktopCatalog = ({
                 </div>
             )}
             <div
-                className={`flex-1 page-container ${isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
+                className={`flex-1 page-container ${isTv ? 'pt-24' : isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
             >
                 <header
                     className="hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-300"

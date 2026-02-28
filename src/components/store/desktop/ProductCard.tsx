@@ -660,7 +660,7 @@ export const ProductCard = ({
             data-offer-delta={offerDeltaForParity}
             data-district={districtLabelDisplay || ''}
             onClick={handleCardClick}
-            className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[580px]' : 'min-h-[580px] md:min-h-[660px]'}`}
+            className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[500px]' : 'min-h-[580px] md:min-h-[660px]'}`}
         >
             <div
                 className="h-[340px] md:h-[344px] lg:h-[384px] bg-slate-50 flex items-center justify-center relative p-4 border-b border-black/[0.04] overflow-hidden group/card"
