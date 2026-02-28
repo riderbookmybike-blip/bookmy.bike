@@ -20,25 +20,15 @@ const LEANBACK_LONG_EDGE_MIN = 900;
 const LEANBACK_SHORT_EDGE_MIN = 500;
 const LEANBACK_SHORT_EDGE_MAX = 620;
 
-function isLikelyLeanBackViewport(width: number, height: number, userAgent?: string): boolean {
+function isLikelyLeanBackViewport(width: number, height: number): boolean {
     const longEdge = Math.max(width, height);
     const shortEdge = Math.min(width, height);
     if (longEdge < LEANBACK_LONG_EDGE_MIN) return false;
     if (shortEdge < LEANBACK_SHORT_EDGE_MIN || shortEdge > LEANBACK_SHORT_EDGE_MAX) return false;
 
-    const ua = userAgent || window.navigator.userAgent || '';
-    if (isTvUserAgent(ua)) return true;
-
-    // If geometry looks like TV/cast and UA is NOT a handheld phone, force desktop.
-    if (!isHandheldPhoneUserAgent(ua)) return true;
-
-    const hasHover = window.matchMedia('(hover: hover)').matches || window.matchMedia('(any-hover: hover)').matches;
-    const coarsePointer =
-        window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(any-pointer: coarse)').matches;
-    const hasTouch = (window.navigator.maxTouchPoints || 0) > 0;
-
-    // Final fallback for ambiguous UAs.
-    return coarsePointer && !hasHover && !hasTouch;
+    // Geometry-first guard for TV/cast displays (e.g. 960x540, 1024x576).
+    // This intentionally overrides ambiguous Mobile UAs seen on some Smart TVs.
+    return true;
 }
 
 function isLikelyHandheldPhone(): boolean {
@@ -64,7 +54,7 @@ function isLikelyHandheldPhone(): boolean {
     if (viewportWidth >= 800) return false;
 
     // Some TV browsers report portrait-like dimensions (540x960) despite lean-back context.
-    if (isLikelyLeanBackViewport(viewportWidth, viewportHeight, ua)) return false;
+    if (isLikelyLeanBackViewport(viewportWidth, viewportHeight)) return false;
 
     const mobileByUAData = Boolean(uaData?.mobile);
     const mobileByUA = isHandheldPhoneUserAgent(ua);
@@ -83,7 +73,7 @@ function getBreakpoint(): DeviceBreakpoint {
     const ua = window.navigator.userAgent || '';
     if (isTvUserAgent(ua)) return 'desktop';
 
-    if (isLikelyLeanBackViewport(window.innerWidth, window.innerHeight, ua)) return 'desktop';
+    if (isLikelyLeanBackViewport(window.innerWidth, window.innerHeight)) return 'desktop';
 
     // Handles desktop-site mode on phones where innerWidth can be inflated.
     if (isLikelyHandheldPhone()) return 'phone';
@@ -104,10 +94,18 @@ export function useBreakpoint(initialDevice: DeviceBreakpoint = 'desktop'): {
 
     useEffect(() => {
         // Hydrate immediately on mount
-        setDevice(getBreakpoint());
+        const currentDevice = getBreakpoint();
+        setDevice(currentDevice);
         setHydrated(true);
 
-        const onResize = () => setDevice(getBreakpoint());
+        // Fail-safe: apply to HTML for CSS overrides (especially for TV breakpoints)
+        document.documentElement.dataset.device = currentDevice;
+
+        const onResize = () => {
+            const nextDevice = getBreakpoint();
+            setDevice(nextDevice);
+            document.documentElement.dataset.device = nextDevice;
+        };
 
         // Use matchMedia for efficient breakpoint listening
         const phoneQuery = window.matchMedia(`(max-width: ${PHONE_MAX}px)`);
