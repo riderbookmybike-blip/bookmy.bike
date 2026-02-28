@@ -1073,7 +1073,7 @@ export const DesktopCatalog = ({
                     style={{ top: 'var(--header-h)', marginTop: isTv ? '0px' : '20px' }}
                 >
                     <div className="w-full">
-                        <div className="mx-4 lg:mx-6 rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
+                        <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
                             <div className="flex items-center gap-4 w-full">
                                 <button
                                     onClick={() => setIsFilterOpen(true)}
