@@ -16,13 +16,17 @@ const DesktopCatalog = dynamic(() => import('@/components/store/DesktopCatalog')
     ),
 });
 
-const MobileCatalog = dynamic(() => import('@/components/store/mobile/MobileCatalog').then(m => m.MobileCatalog), {
+const MobileCatalog = dynamic(() => import('@/components/store/mobile/MobileCatalog').then(m => m.MobileCatalog));
+
+const TvCatalog = dynamic(() => import('@/components/store/tv/TvCatalog').then(m => m.TvCatalog), {
     loading: () => (
-        <div className="p-4 space-y-4 animate-pulse">
-            <div className="h-12 bg-slate-100 rounded-xl" />
-            {[1, 2, 3].map(i => (
-                <div key={i} className="h-48 bg-slate-100 rounded-2xl" />
-            ))}
+        <div className="min-h-screen bg-[#0b0d10] p-28 space-y-12 animate-pulse">
+            <div className="h-20 bg-white/5 rounded-3xl w-1/3" />
+            <div className="grid grid-cols-3 gap-24">
+                {[1, 2, 3].map(i => (
+                    <div key={i} className="aspect-[3/4] bg-white/5 rounded-[3rem]" />
+                ))}
+            </div>
         </div>
     ),
 });
@@ -37,7 +41,7 @@ interface SystemCatalogRouterProps {
     initialItems: ProductVariant[];
     basePath?: string;
     mode?: 'default' | 'smart';
-    initialDevice?: 'phone' | 'desktop';
+    initialDevice?: 'phone' | 'desktop' | 'tv';
 }
 
 function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }: SystemCatalogRouterProps) {
@@ -55,6 +59,11 @@ function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }
     const filters = useCatalogFilters(currentItems);
     const { device } = useBreakpoint(initialDevice || 'desktop');
     const isPhone = device === 'phone';
+    const isTv = device === 'tv';
+
+    if (isTv) {
+        return <TvCatalog items={currentItems} isLoading={loading} />;
+    }
 
     if (isPhone) {
         return (
@@ -103,6 +112,11 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store', initialDevice
     const filters = useCatalogFilters(currentItems);
     const { device } = useBreakpoint(initialDevice || 'desktop');
     const isPhone = device === 'phone';
+    const isTv = device === 'tv';
+
+    if (isTv) {
+        return <TvCatalog items={currentItems} isLoading={loading} needsLocation={needsLocation} />;
+    }
 
     if (isPhone) {
         return (
