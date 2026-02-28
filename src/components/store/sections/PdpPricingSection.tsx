@@ -112,20 +112,24 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
         { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
 
-        ...(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)
+        ...(totalSavings > 0
+            ? [
+                  {
+                      label: 'Special Offer',
+                      value: totalSavings,
+                      isDeduction: true,
+                      helpText: [...savingsHelpLines],
+                  },
+              ]
+            : []),
+        ...(coinPricing && coinPricing.discount > 0
             ? [
                   {
                       label: "O' Circle Privileged",
-                      value: totalSavings + (coinPricing?.discount || 0),
+                      value: coinPricing.discount,
                       isDeduction: true,
                       helpText: [
-                          ...savingsHelpLines.slice(0, -1),
-                          ...(coinPricing
-                              ? [
-                                    `Coins: ₹ ${coinPricing.discount.toLocaleString('en-IN')} (${coinPricing.coinsUsed} coins)`,
-                                ]
-                              : []),
-                          `Total: ₹ ${(totalSavings + (coinPricing?.discount || 0)).toLocaleString('en-IN')}`,
+                          `Coins: ₹ ${coinPricing.discount.toLocaleString('en-IN')} (${coinPricing.coinsUsed} coins)`,
                       ],
                   },
               ]
