@@ -1033,7 +1033,7 @@ export const DesktopCatalog = ({
                 className={`flex-1 page-container ${isTv ? 'pt-6' : isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
             >
                 <header
-                    className={`${showHeader ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'} hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-700`}
+                    className={`${isTv ? 'block' : showHeader ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'} hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-700`}
                     style={{ top: 'var(--header-h)', marginTop: isTv ? '0px' : '16px' }}
                 >
                     <div className="w-full">
