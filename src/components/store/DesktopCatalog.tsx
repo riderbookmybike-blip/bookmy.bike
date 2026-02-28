@@ -97,8 +97,35 @@ export const DesktopCatalog = ({
     const router = useRouter();
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
-    const isTv = device === 'tv';
+    const [tvViewport, setTvViewport] = useState(false);
+    const isTv = device === 'tv' || tvViewport;
     const [showHeader, setShowHeader] = useState(true);
+    const [debugMetrics, setDebugMetrics] = useState({ width: 0, height: 0, dpr: 1, dataTv: '0' });
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const syncTvViewport = () => {
+            setTvViewport(document.documentElement.dataset.tv === '1');
+        };
+        syncTvViewport();
+        window.addEventListener('resize', syncTvViewport);
+        return () => window.removeEventListener('resize', syncTvViewport);
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const syncDebugMetrics = () => {
+            setDebugMetrics({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                dpr: window.devicePixelRatio || 1,
+                dataTv: document.documentElement.dataset.tv || '0',
+            });
+        };
+        syncDebugMetrics();
+        window.addEventListener('resize', syncDebugMetrics);
+        return () => window.removeEventListener('resize', syncDebugMetrics);
+    }, []);
 
     // Auto-hide header on TV after 4s of inactivity
     useEffect(() => {
@@ -961,6 +988,12 @@ export const DesktopCatalog = ({
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 transition-colors duration-500 font-sans relative">
+            {isTv && (
+                <div className="fixed left-3 bottom-3 z-[220] rounded-full bg-black/75 text-white px-3 py-1.5 text-[10px] font-bold tracking-wide shadow-xl backdrop-blur-md">
+                    {debugMetrics.width}x{debugMetrics.height} · DPR {debugMetrics.dpr} · {device} · data-tv:
+                    {debugMetrics.dataTv}
+                </div>
+            )}
             {/* Location Gate — SEO-safe: catalog HTML stays in DOM, overlay blocks interaction */}
             {showLocationGate && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center">
@@ -988,7 +1021,7 @@ export const DesktopCatalog = ({
                 </div>
             )}
             <div
-                className={`flex-1 page-container ${isTv ? 'pt-10' : isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
+                className={`flex-1 page-container ${isTv ? 'pt-6' : isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
             >
                 <header
                     className={`${showHeader ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'} hidden md:block sticky z-[90] py-0 mb-4 transition-all duration-700`}
@@ -1464,9 +1497,11 @@ export const DesktopCatalog = ({
                             className={`grid ${
                                 viewMode === 'list'
                                     ? 'grid-cols-1 w-full gap-6'
-                                    : isPhone
-                                      ? 'grid-cols-1 gap-4 w-full'
-                                      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
+                                    : isTv
+                                      ? 'tv-catalog-grid w-full'
+                                      : isPhone
+                                        ? 'grid-cols-1 gap-4 w-full'
+                                        : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
                             }`}
                         >
                             {/* Results Grid */}

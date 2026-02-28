@@ -262,35 +262,78 @@
 }
 
 /* =============================================
-   TV-SPECIFIC OVERRIDES (data-device="desktop")
-   Ensures 960px viewports get full desktop layout
+   TV-SPECIFIC OVERRIDES (data-tv="1")
+   Tuned for 960x540 lean-back viewport density
    ============================================= */
 
-[data-device='desktop'] .page-container {
-    max-width: 1700px !important;
-    padding-left: 5rem !important;
-    /* Balanced UHW: 80px side margins for 3-col */
-    padding-right: 5rem !important;
-    padding-top: 1rem !important;
-    /* Minimal top-gap for TV visibility */
+[data-tv='1'] .page-container {
+    max-width: 1440px !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    padding-top: 0.5rem !important;
 }
 
-[data-device='desktop'] .lg\:hidden {
+@media (min-width: 768px) {
+    [data-tv='1'] .page-container {
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+}
+
+[data-tv='1'] {
+    --header-h: 64px;
+}
+
+[data-tv='1'] .lg\:hidden {
     display: none !important;
 }
 
-[data-device='desktop'] .lg\:flex {
+[data-tv='1'] .lg\:flex {
     display: flex !important;
 }
 
-[data-device='desktop'] .lg\:grid-cols-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 3rem !important;
-    /* Optimized gap for boxy card layout */
+[data-tv='1'] .lg\:block {
+    display: block !important;
 }
 
-[data-device='desktop'] .lg\:block {
-    display: block !important;
+/* TV catalog density: desktop-like composition for 960x540 */
+[data-tv='1'] .tv-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2rem;
+}
+
+/* Wider TV / kiosk screens can show 4 cards while preserving breathing room */
+@media (min-width: 1200px) {
+    [data-tv='1'] .tv-catalog-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+[data-tv='1'] [data-testid='catalog-product-card'] {
+    min-height: 328px !important;
+}
+
+[data-tv='1'] [data-testid='catalog-product-card'] > div:first-child {
+    height: 170px !important;
+}
+
+/* Keep generic lg:grid-cols-3 utilities denser on TV pages */
+@media (min-width: 900px) {
+    [data-tv='1'] .lg\:grid-cols-3 {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 1.25rem !important;
+    }
+}
+
+/* PDP vertical fit tuning for low-height TV viewports */
+[data-tv='1'] .tv-pdp-shell {
+    padding-top: 0.75rem !important;
+}
+
+[data-tv='1'] .tv-pdp-rail {
+    height: min(66vh, 560px) !important;
+    gap: 0.9rem !important;
 }
 
 /* =============================================

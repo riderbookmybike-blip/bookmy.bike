@@ -93,18 +93,23 @@ export function useBreakpoint(initialDevice: DeviceBreakpoint = 'desktop'): {
     const [hydrated, setHydrated] = useState(false);
 
     useEffect(() => {
+        const applyRootFlags = (resolved: DeviceBreakpoint) => {
+            const isTvLayout = resolved === 'tv';
+            // Keep CSS desktop rules active on TV while preserving explicit TV flag.
+            document.documentElement.dataset.device = isTvLayout ? 'desktop' : resolved;
+            document.documentElement.dataset.tv = isTvLayout ? '1' : '0';
+        };
+
         // Hydrate immediately on mount
         const currentDevice = getBreakpoint();
         setDevice(currentDevice);
         setHydrated(true);
-
-        // Fail-safe: apply to HTML for CSS overrides (especially for TV breakpoints)
-        document.documentElement.dataset.device = currentDevice;
+        applyRootFlags(currentDevice);
 
         const onResize = () => {
             const nextDevice = getBreakpoint();
             setDevice(nextDevice);
-            document.documentElement.dataset.device = nextDevice;
+            applyRootFlags(nextDevice);
         };
 
         // Use matchMedia for efficient breakpoint listening

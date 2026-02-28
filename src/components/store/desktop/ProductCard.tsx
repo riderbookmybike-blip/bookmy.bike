@@ -660,10 +660,10 @@ export const ProductCard = ({
             data-offer-delta={offerDeltaForParity}
             data-district={districtLabelDisplay || ''}
             onClick={handleCardClick}
-            className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[350px]' : 'min-h-[580px] md:min-h-[660px]'}`}
+            className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[328px]' : 'min-h-[580px] md:min-h-[660px]'}`}
         >
             <div
-                className={`${isTv ? 'h-[220px]' : 'h-[340px] md:h-[344px] lg:h-[384px]'} bg-slate-50 flex items-center justify-center relative p-4 border-b border-black/[0.04] overflow-hidden group/card`}
+                className={`${isTv ? 'h-[170px]' : 'h-[340px] md:h-[344px] lg:h-[384px]'} bg-slate-50 flex items-center justify-center relative p-4 border-b border-black/[0.04] overflow-hidden group/card`}
                 style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
             >
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 z-0" />
@@ -811,7 +811,7 @@ export const ProductCard = ({
             </div>
 
             <div
-                className={`${isTv ? 'p-5' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative bg-[#FAFAFA] z-10`}
+                className={`${isTv ? 'p-3' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative bg-[#FAFAFA] z-10`}
             >
                 <div className="relative z-10">
                     <div className="flex items-center justify-between">
@@ -896,9 +896,11 @@ export const ProductCard = ({
                     </div>
                 </div>
 
-                <div className="mt-3 md:mt-6 pt-3 md:pt-6 border-t border-slate-100 grid grid-cols-[1fr_auto_1fr] gap-0 relative z-30">
+                <div
+                    className={`${isTv ? 'mt-2 pt-2' : 'mt-3 md:mt-6 pt-3 md:pt-6'} border-t border-slate-100 grid grid-cols-[1fr_auto_1fr] gap-0 relative z-30`}
+                >
                     {/* Left Panel: Offer Price */}
-                    <div className="flex flex-col items-start pr-4">
+                    <div className={`${isTv ? 'pr-2.5' : 'pr-4'} flex flex-col items-start`}>
                         <div className="relative group/offer flex items-center gap-1.5 mb-1.5">
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.1em] italic">
                                 On Road
@@ -1014,7 +1016,7 @@ export const ProductCard = ({
                     <div className="w-px bg-slate-100 self-stretch my-1" />
 
                     {/* Right Panel: Lowest EMI */}
-                    <div className="flex flex-col items-end pl-4 group/emi relative">
+                    <div className={`${isTv ? 'pl-2.5' : 'pl-4'} flex flex-col items-end group/emi relative`}>
                         <div className="flex items-center gap-1.5 mb-1.5">
                             <CircleHelp
                                 size={12}
@@ -1103,12 +1105,14 @@ export const ProductCard = ({
                 {/* Optional Mileage Line (Subtle) */}
 
                 {!isPdp && (
-                    <div className="mt-1.5 md:mt-4 space-y-1.5 md:space-y-2 relative z-20 w-full">
+                    <div
+                        className={`${isTv ? 'mt-1 space-y-1' : 'mt-1.5 md:mt-4 space-y-1.5 md:space-y-2'} relative z-20 w-full`}
+                    >
                         {isUnserviceable ? (
                             <button
                                 onClick={handleGetQuoteClick}
                                 title={`We are not serviceable in ${safeServiceability.location || 'your area'} yet. We will notify you when we launch there.`}
-                                className="w-full h-11 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] cursor-not-allowed flex items-center justify-center"
+                                className={`w-full ${isTv ? 'h-8 text-[9px]' : 'h-11 text-[10px]'} bg-slate-100 text-slate-400 rounded-xl font-black uppercase tracking-[0.2em] cursor-not-allowed flex items-center justify-center`}
                             >
                                 Not Serviceable
                             </button>
@@ -1118,7 +1122,7 @@ export const ProductCard = ({
                                     e.stopPropagation();
                                     onExplore();
                                 }}
-                                className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
+                                className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all`}
                             >
                                 Compare Variants
                                 <ArrowRight
@@ -1141,7 +1145,7 @@ export const ProductCard = ({
                                         basePath,
                                     }).url
                                 }
-                                className="group/btn relative w-full h-10 md:h-11 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all"
+                                className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all`}
                             >
                                 Know More
                                 <ArrowRight
@@ -1152,12 +1156,14 @@ export const ProductCard = ({
                         )}
                     </div>
                 )}
-                <div className="flex items-center justify-center gap-2 opacity-80 pt-1 mt-1">
-                    <StarRating rating={v.rating || 4.5} size={9} />
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                        • {getStableReviewCount(v)} Ratings
-                    </span>
-                </div>
+                {!isTv && (
+                    <div className="flex items-center justify-center gap-2 opacity-80 pt-1 mt-1">
+                        <StarRating rating={v.rating || 4.5} size={9} />
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                            • {getStableReviewCount(v)} Ratings
+                        </span>
+                    </div>
+                )}
             </div>
         </div>
     );

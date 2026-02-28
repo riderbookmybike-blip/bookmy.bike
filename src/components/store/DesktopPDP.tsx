@@ -572,10 +572,10 @@ export function DesktopPDP({
                     className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-brand-primary/[0.02] rounded-full blur-[120px]"
                 />
             </div>
-            <div className="page-container pt-4 pb-28 md:pb-28 space-y-6 relative z-10">
+            <div className="page-container tv-pdp-shell pt-4 pb-28 md:pb-28 space-y-6 relative z-10">
                 {/* 1. Hero Row: Image / Pricing / Finance — Horizontal Accordion (Desktop) */}
                 <div
-                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} flex-row gap-4 h-[720px] overflow-visible`}
+                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-4 h-[720px] overflow-visible`}
                 >
                     {heroCards.map((card, idx) => {
                         const Icon = card.icon;
@@ -953,7 +953,7 @@ export function DesktopPDP({
                 {/* 4. Modular 5-Pillar Configuration Grid (Horizontal Accordion Design) */}
                 <div
                     data-parity-section="config"
-                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} flex-row gap-4 h-[720px] overflow-visible`}
+                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-4 h-[720px] overflow-visible`}
                 >
                     {configCards.map((category, idx) => {
                         const Icon = category.icon;

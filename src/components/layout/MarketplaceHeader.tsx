@@ -22,6 +22,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const pathname = usePathname();
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
+    const isDesktopLike = device === 'desktop' || device === 'tv';
 
     useEffect(() => {
         const handleScroll = () => {
@@ -77,7 +78,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             right={
                 <div className={`flex items-center ${rightGapClass}`}>
                     {/* Desktop Navigation Group */}
-                    <div className={`${device === 'desktop' ? 'flex' : 'hidden'} lg:flex items-center gap-3`}>
+                    <div className={`${isDesktopLike ? 'flex' : 'hidden'} lg:flex items-center gap-3`}>
                         <Link href="/" className={desktopNavButtonClass}>
                             <HomeIcon size={18} />
                         </Link>
