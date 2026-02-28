@@ -318,11 +318,11 @@
     height: 170px !important;
 }
 
-/* Keep generic lg:grid-cols-3 utilities denser on TV pages */
+/* Ensure lg:grid-cols-3 also obeys the 3-column rule on TV if present */
 @media (min-width: 900px) {
     [data-tv='1'] .lg\:grid-cols-3 {
-        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-        gap: 1.25rem !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 2rem !important;
     }
 }
 
