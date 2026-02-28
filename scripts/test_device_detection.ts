@@ -42,6 +42,18 @@ const CASES: UaCase[] = [
         label: 'Amazon Fire TV (Fling)',
         ua: 'Mozilla/5.0 (Linux; Android 11; AFTSSS) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Mobile Safari/537.36 Firebolt/1.0',
     },
+    {
+        label: 'Android Tablet (Galaxy Tab S9)',
+        ua: 'Mozilla/5.0 (Linux; Android 13; SM-X910) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    },
+    {
+        label: 'Xiaomi Mi TV',
+        ua: 'Mozilla/5.0 (Linux; Android 9; MiTV-MSSP3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36',
+    },
+    {
+        label: 'Hisense TV (Vidaa)',
+        ua: 'Mozilla/5.0 (Linux; Hisense; Vidaa/5.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36',
+    },
 ];
 
 for (const entry of CASES) {

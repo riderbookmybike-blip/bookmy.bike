@@ -1,5 +1,5 @@
 const TV_USER_AGENT_REGEX =
-    /\b(?:smarttv|google\s?tv|android\s?tv|appletv|hbbtv|crkey|tizen|web0s|webos|netcast|bravia|viera|roku|aft[a-z0-9]+|samsungbrowser|titanos|firebolt|comcastappplatform)\b|\bTV\b/i;
+    /\b(?:smarttv|google\s?tv|android\s?tv|appletv|hbbtv|crkey|tizen|web0s|webos|netcast|bravia|viera|roku|aft[a-z0-9]+|samsungbrowser|titanos|firebolt|comcastappplatform|hisense|sharp|sony|philips|panasonic|vizio|toshiba|mitv)\b|\b(?:TV|LargeScreen)\b/i;
 
 const PHONE_USER_AGENT_REGEX = /\b(?:iphone|ipod|blackberry|bb10|windows phone|iemobile|opera mini|mobile safari)\b/i;
 
@@ -16,8 +16,10 @@ export function isTvUserAgent(userAgent: string): boolean {
     const isAndroid = /\bandroid\b/i.test(userAgent);
     const isMobile = /\bmobile\b/i.test(userAgent);
 
-    // If it's Android but NOT Mobile, it's likely a TV or big Tablet (treat as desktop/non-phone)
-    if (isAndroid && !isMobile) return true;
+    // If it's Android but NOT Mobile AND has a TV/LargeScreen token, it's a TV.
+    // Pure Android-without-Mobile (Tablets) will return false here, allowing them to remain 'tablet' breakpoint.
+    if (isAndroid && !isMobile && (TV_USER_AGENT_REGEX.test(userAgent) || userAgent.includes('Large Screen')))
+        return true;
 
     return false;
 }
