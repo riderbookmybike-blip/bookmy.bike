@@ -226,7 +226,7 @@ export function M2Home({
                         src={heroImage || '/images/hero_d8.jpg'}
                         alt="Sport motorcycle at golden hour"
                         fill
-                        className="object-cover object-[80%_center] md:object-center"
+                        className="object-cover object-[80%_center] md:object-[center_25%]"
                         priority
                         sizes="100vw"
                     />
@@ -244,7 +244,7 @@ export function M2Home({
                 />
 
                 {/* Hero Content */}
-                <div className="relative z-10 pb-[110px] md:pb-0 flex flex-col gap-5 md:items-center md:text-center md:max-w-3xl lg:max-w-4xl md:mx-auto page-container">
+                <div className="relative z-10 pb-[110px] md:pb-0 pt-[140px] md:pt-0 flex flex-col gap-5 md:items-center md:text-center md:max-w-3xl lg:max-w-4xl md:mx-auto page-container">
                     {/* Tag line */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}

@@ -22,7 +22,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const pathname = usePathname();
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
-    const isDesktopLike = device === 'desktop' || device === 'tv';
+    const isDesktopLike = device === 'desktop';
 
     useEffect(() => {
         const handleScroll = () => {
@@ -53,12 +53,13 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const navPreset: 'tight' | 'wide' = 'tight';
     const rightGapClass = navPreset === 'tight' ? 'gap-3 lg:gap-6' : 'gap-4 lg:gap-10';
 
-    const isHeaderTransparent = isHome && !scrolled && !isPdpRoute;
+    const isHeaderTransparent = isHome && !isPdpRoute;
 
-    const mobileMenuButtonClass = 'text-black hover:bg-black/5';
+    const mobileMenuButtonClass = isHeaderTransparent ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/5';
 
-    const desktopNavButtonClass =
-        'w-10 h-10 rounded-full transition-all duration-300 group flex items-center justify-center text-black hover:bg-black/5';
+    const desktopNavButtonClass = `w-10 h-10 rounded-full transition-all duration-300 group flex items-center justify-center ${
+        isHeaderTransparent ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/5'
+    }`;
 
     return (
         <AppHeaderShell
@@ -70,7 +71,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             left={
                 <Link href="/" className="flex items-center group h-full">
                     <div className="flex items-center justify-center transition-all duration-300">
-                        <Logo mode="auto" size={30} variant="full" />
+                        <Logo mode={isHeaderTransparent ? 'dark' : 'auto'} size={30} variant="full" />
                     </div>
                 </Link>
             }
@@ -79,15 +80,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 <div className={`flex items-center ${rightGapClass}`}>
                     {/* Desktop Navigation Group */}
                     <div className={`${isDesktopLike ? 'flex' : 'hidden'} lg:flex items-center gap-3`}>
-                        {device === 'tv' && (
-                            <button
-                                onClick={() => window.dispatchEvent(new CustomEvent('toggleTvSearch'))}
-                                className={desktopNavButtonClass}
-                                aria-label="Toggle Search"
-                            >
-                                <Search size={18} />
-                            </button>
-                        )}
                         <Link href="/" className={desktopNavButtonClass}>
                             <HomeIcon size={18} />
                         </Link>
@@ -107,8 +99,8 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     <ProfileDropdown
                         onLoginClick={onLoginClick}
                         scrolled={!isHeaderTransparent || isPdpRoute}
-                        theme="light"
-                        tone="light"
+                        theme={isHeaderTransparent ? 'dark' : 'light'}
+                        tone={isHeaderTransparent ? 'dark' : 'light'}
                         externalOpen={isSidebarOpen}
                         onOpenChange={setIsSidebarOpen}
                     />

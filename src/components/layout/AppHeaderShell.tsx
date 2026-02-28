@@ -38,7 +38,7 @@ export const AppHeaderShell: React.FC<AppHeaderShellProps> = ({
             return 'bg-white/92 border-b border-slate-200/90 backdrop-blur-xl shadow-sm transition-all duration-300';
         }
         if (className.includes('header-transparent') || (transparentAtTop && !scrolled)) {
-            return 'bg-transparent border-transparent shadow-none backdrop-blur-none';
+            return 'bg-black/20 border-b border-white/5 shadow-none backdrop-blur-md transition-all duration-300';
         }
         if (variant === 'dashboard') {
             return 'bg-white/95 border-b border-slate-200/60 backdrop-blur-md shadow-sm transition-all duration-300';

@@ -72,6 +72,15 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const [maxPrice, setMaxPrice] = useState<number>(1000000); // 10 Lakh default
     const [maxEMI, setMaxEMI] = useState<number>(20000); // 20k default
     const [showOClubOnly, setShowOClubOnly] = useState(false);
+    const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>(() => {
+        const mode = searchParams.get('mode');
+        if (mode === 'cash' || mode === 'finance') return mode;
+        if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('bkmb_pricing_mode');
+            if (stored === 'cash' || stored === 'finance') return stored as 'cash' | 'finance';
+        }
+        return 'finance'; // Default to finance as per previous preference
+    });
 
     // Dynamic EMI States
     const [downpayment, _setDownpayment] = useState(() => {
@@ -172,6 +181,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         else params.delete('maxEMI');
         if (showOClubOnly) params.set('oclub', '1');
         else params.delete('oclub');
+        if (pricingMode !== 'finance') params.set('mode', pricingMode);
+        else params.delete('mode');
 
         const queryString = params.toString();
         if (queryString !== searchParams.toString()) {
@@ -193,6 +204,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         debouncedMaxEMI,
         showOClubOnly,
         availableMakes,
+        pricingMode,
     ]);
 
     const filteredVehicles = useMemo(() => {
@@ -353,6 +365,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setMaxEMI(20000);
         setDownpayment(0);
         setShowOClubOnly(false);
+        setPricingMode('finance');
     };
 
     return {
@@ -392,6 +405,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setShowOClubOnly,
         availableMakes,
         filteredVehicles,
+        pricingMode,
+        setPricingMode,
         toggleFilter,
         clearAll,
     };
