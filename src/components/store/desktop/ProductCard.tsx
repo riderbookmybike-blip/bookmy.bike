@@ -941,7 +941,7 @@ export const ProductCard = ({
                                     {showBcoinBadge && (
                                         <div className="flex items-center gap-1.5 mt-1">
                                             <Logo variant="icon" size={14} />
-                                            <span className="text-[10px] font-bold italic text-brand-primary">
+                                            <span className="text-[10px] font-bold italic text-slate-600">
                                                 {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} Coins
                                             </span>
                                         </div>
@@ -961,11 +961,11 @@ export const ProductCard = ({
                                 </div>
 
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[22px] md:text-3xl font-black italic text-brand-primary leading-none">
+                                    <span className="text-[22px] md:text-3xl font-black italic text-slate-900 leading-none">
                                         {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
                                     </span>
                                     <div className="mt-1">
-                                        <span className="text-[10px] font-bold text-slate-400 italic">
+                                        <span className="text-[10px] font-bold text-slate-600 italic">
                                             x{tenure} months
                                         </span>
                                     </div>
