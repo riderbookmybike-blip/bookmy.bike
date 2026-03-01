@@ -135,6 +135,12 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
         };
 
         const fetchItems = async () => {
+            // Track whether this specific invocation was aborted by the cleanup.
+            // If so, we must NOT call setIsLoading(false) in the finally block,
+            // because the next effect invocation will immediately set it back to
+            // true — and we don't want a render frame where isLoading=false and
+            // items=[] simultaneously triggers the "Model not found" guard.
+            let wasAborted = false;
             try {
                 setIsLoading(true);
                 const supabase = createClient();
@@ -393,21 +399,29 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
             } catch (err: unknown) {
                 // Ignore AbortError - expected in React StrictMode double-render
                 if (isAbortLikeError(err)) {
+                    wasAborted = true;
                     return;
                 }
                 console.error('Error fetching catalog:', err);
-                if (getErrorMessage(err) && err.details) {
+                const errAsAny = err as any;
+                if (getErrorMessage(err) && errAsAny?.details) {
                     console.error('Supabase Error Details:', {
                         message: getErrorMessage(err),
-                        details: err.details,
-                        hint: err.hint,
-                        code: err.code,
+                        details: errAsAny.details,
+                        hint: errAsAny.hint,
+                        code: errAsAny.code,
                     });
                 }
                 setError(err instanceof Error ? getErrorMessage(err) : 'Unknown error');
                 setItems([]);
             } finally {
-                setIsLoading(false);
+                // Do NOT release the loading gate when aborted — the second
+                // StrictMode effect invocation will call setIsLoading(true) next
+                // tick, so releasing it now would cause a render with
+                // isLoading=false + items=[] → wrongly shows "Model not found".
+                if (!wasAborted) {
+                    setIsLoading(false);
+                }
             }
         };
 

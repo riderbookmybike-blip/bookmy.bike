@@ -442,6 +442,21 @@ export default function DesktopCompare() {
     }
 
     if (!modelGroup || sortedVariants.length === 0) {
+        // If items haven't loaded yet (e.g. due to a race between StrictMode abort
+        // and the second fetch), keep showing the spinner — don't flash "Model not found".
+        if (items.length === 0) {
+            return (
+                <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-10 h-10 border-2 border-[#F4B000] border-t-transparent rounded-full animate-spin" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                            Loading variants...
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+        // Items are loaded but this make/model genuinely doesn't exist in catalog
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-center space-y-4">
