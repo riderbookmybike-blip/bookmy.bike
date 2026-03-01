@@ -434,6 +434,11 @@ export default function PricingPage() {
                     exShowroom: finalPrice,
                     exFactory: priceRecord?.exFactory || 0,
                     exFactoryGst: priceRecord?.exFactoryGst || 0,
+                    hsnCode: priceRecord?.hsnCode || model?.hsn_code || '',
+                    gstRate:
+                        priceRecord?.gstRate ||
+                        model?.item_tax_rate ||
+                        (Number(variant?.displacement || 0) > 350 ? 40 : 18),
                     offerAmount: stateOffer,
                     inclusionType: finalInclusionType,
                     type: itemType,
@@ -646,7 +651,17 @@ export default function PricingPage() {
 
     const handleUpdatePrice = (skuId: string, price: number) => {
         const safePrice = Number.isFinite(price) && price > 0 ? Math.round(price) : 0;
-        setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, exShowroom: safePrice } : s)));
+        setSkus(prev =>
+            prev.map(s => {
+                if (s.id === skuId) {
+                    const gstRate = s.gstRate || 18;
+                    const exFactory = Math.round(safePrice / (1 + gstRate / 100));
+                    const exFactoryGst = safePrice - exFactory;
+                    return { ...s, exShowroom: safePrice, exFactory, exFactoryGst };
+                }
+                return s;
+            })
+        );
         scheduleRealtimePriceEngine(skuId, safePrice);
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
@@ -715,6 +730,37 @@ export default function PricingPage() {
         setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, isPopular: isPopular } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
+    };
+
+    const handleBackfill = async () => {
+        if (tenantSlug !== 'aums') return;
+        const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode;
+        if (!activeStateCode) return;
+
+        const skusToBackfill = skus.filter(
+            s => s.exShowroom > 0 && (Number(s.rto || 0) === 0 || Number(s.insurance || 0) === 0)
+        );
+
+        if (skusToBackfill.length === 0) {
+            alert('No SKUs found with missing calculations and non-zero price.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const inputs = skusToBackfill.map(s => ({ skuId: s.id, exShowroom: s.exShowroom }));
+            const success = await runPriceEngineCalculation(inputs, activeStateCode);
+            if (success) {
+                alert(`Successfully backfilled ${skusToBackfill.length} SKUs.`);
+            } else {
+                alert('Backfill failed for some SKUs. Please check logs.');
+            }
+        } catch (err) {
+            console.error('Backfill Error:', err);
+            alert('Unexpected error during backfill.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleBulkUpdate = (ids: string[], price: number) => {
@@ -1016,6 +1062,18 @@ export default function PricingPage() {
                     </div>
 
                     <div className="flex items-center gap-4 relative z-10">
+                        {tenantSlug === 'aums' && (
+                            <button
+                                onClick={handleBackfill}
+                                className="group relative flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl hover:scale-105 transition-all duration-300 shadow-xl overflow-hidden active:scale-95"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <Activity size={16} className="text-emerald-400 dark:text-emerald-600" />
+                                <span className="text-[10px] font-black uppercase tracking-widest relative z-10">
+                                    Backfill Missing
+                                </span>
+                            </button>
+                        )}
                         <div
                             className={`flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-lg transition-all duration-300 border ${hasUnsavedChanges ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200 scale-100' : 'opacity-0 scale-95 border-transparent'}`}
                         >

@@ -7,7 +7,6 @@ import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { createClient } from '@/lib/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { createQuoteAction } from '@/actions/crm';
 import { toast } from 'sonner';
 import { useSystemDealerContext } from '@/hooks/useSystemDealerContext';
 import { useDealerSession } from '@/hooks/useDealerSession';
@@ -21,6 +20,23 @@ import { InsuranceRule } from '@/types/insurance';
 
 const SKU_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MIN_DWELL_TRACKING_MS = 1500;
+
+let crmActionsPromise: Promise<typeof import('@/actions/crm')> | null = null;
+function getCrmActions() {
+    if (!crmActionsPromise) {
+        crmActionsPromise = import('@/actions/crm').catch(err => {
+            crmActionsPromise = null;
+            throw err;
+        });
+    }
+    return crmActionsPromise;
+}
+
+function isAbortError(err: unknown): boolean {
+    if (!err) return false;
+    const candidate = err as { name?: string; message?: string };
+    return candidate?.name === 'AbortError' || candidate?.message?.includes('operation was aborted') === true;
+}
 
 // Dynamic imports for heavy PDP components (bundle optimization)
 const PDPSkeleton = () => (
@@ -707,6 +723,7 @@ export default function ProductClient({
         try {
             const commercials = buildCommercials();
             trackEvent('INTENT_SIGNAL', 'pdp_save_quote', buildPdpIntentMetadata({ action: 'attempt' }));
+            const { createQuoteAction } = await getCrmActions();
 
             const result: any = await createQuoteAction({
                 tenant_id: sessionDealerId || product.tenant_id || '', // Ensure tenant_id is available
@@ -735,6 +752,7 @@ export default function ProductClient({
                 toast.error(result?.message || 'Failed to save quote');
             }
         } catch (error) {
+            if (isAbortError(error)) return;
             trackEvent('INTENT_SIGNAL', 'pdp_save_quote', buildPdpIntentMetadata({ action: 'failed' }));
             console.error('Save quote error:', error);
             toast.error('An error occurred while saving the quote');
@@ -773,7 +791,7 @@ export default function ProductClient({
 
                 // If user has required data, skip modal and create quote directly
                 if (hasName && (hasPhone || hasLocation)) {
-                    const { createLeadAction } = await import('@/actions/crm');
+                    const { createLeadAction, createQuoteAction } = await getCrmActions();
 
                     toast.loading('Creating your quote...', { id: 'create-quote' });
 
@@ -835,6 +853,7 @@ export default function ProductClient({
                     return;
                 }
             } catch (error) {
+                if (isAbortError(error)) return;
                 console.error('Auto-quote creation error:', error);
                 toast.error('Failed to create quote automatically');
             }

@@ -1745,11 +1745,16 @@ export default function PricingLedgerTable({
                                                         <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight">
                                                             {sku.color}
                                                         </span>
-                                                        {sku.finish && (
-                                                            <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">
-                                                                {sku.finish}
+                                                        <div className="flex items-center gap-1.5">
+                                                            {sku.finish && (
+                                                                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">
+                                                                    {sku.finish}
+                                                                </span>
+                                                            )}
+                                                            <span className="text-[8px] font-mono font-bold text-slate-400/60 dark:text-slate-500/60 uppercase tracking-tighter leading-none border-l border-slate-200 dark:border-white/10 pl-1.5">
+                                                                {sku.id.split('-')[0]}...
                                                             </span>
-                                                        )}
+                                                        </div>
                                                         {activeCategory === 'vehicles' && sku.engineCc ? (
                                                             <span className="text-[9px] font-bold text-indigo-500 dark:text-indigo-400 tracking-tight mt-0.5">
                                                                 {formatEngineCC(Number(sku.engineCc))}
@@ -1758,34 +1763,27 @@ export default function PricingLedgerTable({
                                                     </div>
                                                 </div>
                                             </td>
-
-                                            {/* EX-FACTORY cell (AUMS only, vehicles only, editable) */}
+                                            {/* EX-FACTORY cell (AUMS only, auto-calculated) */}
                                             {isAums && activeCategory === 'vehicles' && (
-                                                <td className="px-2 py-1 text-center">
-                                                    <input
-                                                        type="number"
-                                                        value={Math.round(sku.exFactory || sku.exShowroom || 0)}
-                                                        readOnly={!canEdit}
-                                                        onChange={e => {
-                                                            const val = Number(e.target.value);
-                                                            // Update exFactory locally
-                                                            const safeVal =
-                                                                Number.isFinite(val) && val > 0 ? Math.round(val) : 0;
-                                                            // Use onUpdatePrice indirectly — store in SKU state
-                                                            setSkus?.((prev: SKUPriceRow[]) =>
-                                                                prev.map((s: SKUPriceRow) =>
-                                                                    s.id === sku.id ? { ...s, exFactory: safeVal } : s
-                                                                )
-                                                            );
-                                                        }}
-                                                        className={`w-24 rounded-lg px-2 py-1 text-[10px] font-black text-right transition-all
-                                                            ${
-                                                                !canEdit
-                                                                    ? 'bg-transparent border-transparent text-slate-400 dark:text-slate-500 cursor-default tabular-nums'
-                                                                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:text-white tabular-nums'
-                                                            }
-                                                        `}
-                                                    />
+                                                <td className="px-2 py-1 text-right">
+                                                    <div className="flex flex-col items-end gap-0.5">
+                                                        <span className="text-[11px] font-black text-slate-900 dark:text-white tabular-nums">
+                                                            {formatMoney(sku.exFactory || basePrice)}
+                                                        </span>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                                GST {sku.gstRate || 28}%
+                                                            </span>
+                                                            {sku.hsnCode && (
+                                                                <span
+                                                                    className="text-[7px] font-mono text-indigo-500/70 font-bold uppercase tracking-tighter decoration-dotted underline decoration-indigo-200 cursor-help"
+                                                                    title={`HSN: ${sku.hsnCode}`}
+                                                                >
+                                                                    #{sku.hsnCode}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </td>
                                             )}
 

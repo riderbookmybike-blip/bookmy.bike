@@ -574,10 +574,10 @@ export function DesktopPDP({
                     className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-brand-primary/[0.02] rounded-full blur-[120px]"
                 />
             </div>
-            <div className="page-container tv-pdp-shell pt-4 pb-28 md:pb-28 space-y-6 relative z-10">
+            <div className="page-container tv-pdp-shell pt-4 pb-32 md:pb-36 space-y-6 relative z-10">
                 {/* 1. Hero Row: Image / Pricing / Finance — Horizontal Accordion (Desktop) */}
                 <div
-                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-4 h-[720px] overflow-visible`}
+                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-4 h-[calc(100vh-220px)] min-h-[620px] max-h-[720px] py-2 overflow-visible`}
                 >
                     {heroCards.map((card, idx) => {
                         const Icon = card.icon;
@@ -592,7 +592,7 @@ export function DesktopPDP({
                                 initial="hidden"
                                 animate="visible"
                                 onClick={() => setHeroActiveTab(card.id)}
-                                className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
+                                className={`relative my-1 rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
                                     ${
                                         isActive
                                             ? 'flex-[3] bg-white border-slate-200 shadow-2xl,0,0,0.5)]'

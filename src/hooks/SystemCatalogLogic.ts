@@ -1,9 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
-import { getAllProducts } from '@/actions/product';
-import { getDealerOfferDeltasAction, getResolvedPricingContextAction } from '@/actions/pricingActions';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+
+function isAbortLikeError(err: unknown): boolean {
+    const message = getErrorMessage(err) || '';
+    if (message.includes('AbortError') || message.includes('operation was aborted')) return true;
+
+    const candidate = err as { name?: string; message?: string };
+    return candidate?.name === 'AbortError' || candidate?.message?.includes('operation was aborted') === true;
+}
 
 export function useSystemCatalogLogic(leadId?: string) {
     const [items, setItems] = useState<ProductVariant[]>([]);
@@ -110,6 +116,21 @@ export function useSystemCatalogLogic(leadId?: string) {
     }, []);
 
     useEffect(() => {
+        const controller = new AbortController();
+
+        const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
+            const res = await fetch(input, {
+                ...init,
+                signal: controller.signal,
+                cache: 'no-store',
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+            return (await res.json()) as T;
+        };
+
         const fetchItems = async () => {
             try {
                 setIsLoading(true);
@@ -125,10 +146,18 @@ export function useSystemCatalogLogic(leadId?: string) {
                 }
                 setNeedsLocation(false);
 
-                const resolvedContext = await getResolvedPricingContextAction({
-                    leadId: leadId || undefined,
-                    district: resolvedUserDistrict || undefined,
-                    state: resolvedStateCode || undefined,
+                const resolvedContext = await fetchJson<{
+                    dealerId?: string | null;
+                    district?: string | null;
+                    stateCode?: string;
+                }>('/api/store/pricing-context', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        leadId: leadId || undefined,
+                        district: resolvedUserDistrict || undefined,
+                        state: resolvedStateCode || undefined,
+                    }),
                 });
                 resolvedStateCode = resolvedContext.stateCode || resolvedStateCode || 'MH';
                 resolvedUserDistrict = resolvedContext.district || resolvedUserDistrict;
@@ -140,7 +169,10 @@ export function useSystemCatalogLogic(leadId?: string) {
 
                 // ---------------------------------------------------------
                 // Canonical V2 catalog fetch
-                const { products: catalogData, error: catalogError } = await getAllProducts(resolvedStateCode);
+                const { products: catalogData, error: catalogError } = await fetchJson<{
+                    products: ProductVariant[];
+                    error?: string;
+                }>(`/api/store/catalog?state=${encodeURIComponent(resolvedStateCode)}`);
                 if (catalogError) {
                     throw new Error(catalogError);
                 }
@@ -225,12 +257,19 @@ export function useSystemCatalogLogic(leadId?: string) {
                         if (primarySkuIds.length > 0) {
                             if (hasValidDealer && resolvedDealerId && !disableOffersRef.current) {
                                 try {
-                                    const dealerOffers = await getDealerOfferDeltasAction({
-                                        dealerId: resolvedDealerId,
-                                        stateCode: resolvedStateCode,
-                                        skuIds: primarySkuIds,
+                                    const dealerOffers = await fetchJson<{
+                                        offers: Array<{ vehicle_color_id: string; best_offer: number }>;
+                                        error?: string;
+                                    }>('/api/store/dealer-offers', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            dealerId: resolvedDealerId,
+                                            stateCode: resolvedStateCode,
+                                            skuIds: primarySkuIds,
+                                        }),
                                     });
-                                    offerData = (dealerOffers || []).map((offer: any) => ({
+                                    offerData = ((dealerOffers as any)?.offers || []).map((offer: any) => ({
                                         ...offer,
                                         dealer_id: resolvedDealerId,
                                         dealer_name: resolvedDealerNameLocal || null,
@@ -238,9 +277,14 @@ export function useSystemCatalogLogic(leadId?: string) {
                                         studio_code: resolvedStudioIdLocal || null,
                                     }));
                                 } catch (err: unknown) {
-                                    console.error('[CATALOG] SOT offer fetch error:', getErrorMessage(err) || err);
-                                    disableOffersRef.current = true;
-                                    offerData = [];
+                                    // Abort during navigation/re-render is expected in dev; do not disable offers.
+                                    if (isAbortLikeError(err)) {
+                                        offerData = [];
+                                    } else {
+                                        console.error('[CATALOG] SOT offer fetch error:', getErrorMessage(err) || err);
+                                        disableOffersRef.current = true;
+                                        offerData = [];
+                                    }
                                 }
                             }
 
@@ -318,7 +362,9 @@ export function useSystemCatalogLogic(leadId?: string) {
                             });
                         }
                     } catch (pricingErr) {
-                        console.error('Catalog pricing fetch failed:', pricingErr);
+                        if (!isAbortLikeError(pricingErr)) {
+                            console.error('Catalog pricing fetch failed:', getErrorMessage(pricingErr) || pricingErr);
+                        }
                     }
 
                     setItems(enrichedItems);
@@ -332,7 +378,9 @@ export function useSystemCatalogLogic(leadId?: string) {
                         .select('id', { count: 'exact', head: true })
                         .eq('status', 'ACTIVE');
                     if (skuError) {
-                        console.error('Database error fetching sku count:', JSON.stringify(skuError, null, 2));
+                        if (!isAbortLikeError(skuError)) {
+                            console.error('Database error fetching sku count:', getErrorMessage(skuError) || skuError);
+                        }
                     } else {
                         setSkuCount(skuTotal || 0);
                     }
@@ -341,7 +389,7 @@ export function useSystemCatalogLogic(leadId?: string) {
                 }
             } catch (err: unknown) {
                 // Ignore AbortError - expected in React StrictMode double-render
-                if (err?.name === 'AbortError' || getErrorMessage(err)?.includes('AbortError')) {
+                if (isAbortLikeError(err)) {
                     return;
                 }
                 console.error('Error fetching catalog:', err);
@@ -361,6 +409,7 @@ export function useSystemCatalogLogic(leadId?: string) {
         };
 
         fetchItems();
+        return () => controller.abort();
     }, [leadId, locationVersion]);
 
     return {

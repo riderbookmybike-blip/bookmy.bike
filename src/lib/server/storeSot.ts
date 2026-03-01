@@ -801,10 +801,19 @@ export async function getDealerDelta({
 // ─── 9. Catalog Snapshot ─────────────────────────────────────
 
 export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<CatalogSnapshotRow[]> {
-    const { data: skus, error } = await (adminClient as any)
-        .from('cat_skus')
-        .select(
-            `
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    const maxAttempts = 3;
+
+    try {
+        let skus: any[] | null = null;
+        let lastError: any = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                const { data, error } = await (adminClient as any)
+                    .from('cat_skus')
+                    .select(
+                        `
             id,
             sku_code,
             sku_type,
@@ -888,159 +897,196 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
                 duration_months, coverage_type, labor_included
             )
         `
-        )
-        .eq('status', 'ACTIVE')
-        .order('position');
+                    )
+                    .eq('status', 'ACTIVE')
+                    .order('position');
 
-    if (error || !skus || skus.length === 0) {
-        if (error) {
-            console.error('[StoreSot:getCatalogSnapshot] Error:', error.message);
+                if (!error) {
+                    skus = data || [];
+                    lastError = null;
+                    break;
+                }
+
+                lastError = error;
+                if (attempt < maxAttempts) {
+                    await sleep(250 * attempt);
+                }
+            } catch (attemptError) {
+                lastError = attemptError;
+                if (attempt < maxAttempts) {
+                    await sleep(250 * attempt);
+                }
+            }
         }
+
+        if (lastError || !skus || skus.length === 0) {
+            if (lastError) {
+                const rawMessage = String(lastError?.message || lastError || 'Unknown error');
+                const compactMessage = rawMessage.replace(/\s+/g, ' ').trim();
+                const isHtmlResponse =
+                    compactMessage.startsWith('<!DOCTYPE html') || compactMessage.startsWith('<html');
+                const safeMessage = isHtmlResponse
+                    ? 'Upstream service returned HTML error page (likely 5xx).'
+                    : compactMessage.slice(0, 300);
+
+                console.error('[StoreSot:getCatalogSnapshot] Error:', safeMessage);
+            }
+            return [];
+        }
+
+        // Filter to VEHICLE-type products only — exclude accessories & services from catalog
+        const vehicleSkus = skus.filter((s: any) => {
+            const productType = String(s.model?.product_type || '').toUpperCase();
+            const skuType = String(s.sku_type || '').toUpperCase();
+
+            // Explicitly reject non-vehicle SKU types, even if tied to a vehicle model
+            if (skuType === 'ACCESSORY' || skuType === 'SERVICE' || skuType === 'MERCHANDISE') {
+                return false;
+            }
+
+            return productType === 'VEHICLE' || productType === '';
+        });
+
+        const skuIds = vehicleSkus.map((s: any) => s.id);
+        const { data: pricing } = await (adminClient as any)
+            .from('cat_price_state_mh')
+            .select(
+                'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular'
+            )
+            .in('sku_id', skuIds)
+            .eq('state_code', stateCode)
+            .eq('publish_stage', 'PUBLISHED');
+
+        const pricingMap = new Map<string, any>((pricing || []).map((p: any) => [p.sku_id, p]));
+
+        return vehicleSkus.map((sku: any) => {
+            const model = sku.model;
+            const brand = model?.brand;
+            const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
+            const price = pricingMap.get(sku.id);
+
+            return {
+                sku_id: sku.id,
+                sku_code: sku.sku_code,
+                sku_type: sku.sku_type,
+                sku_name: sku.name,
+                sku_slug: sku.slug,
+                sku_status: sku.status,
+                sku_position: sku.position,
+                is_primary: sku.is_primary,
+                price_base: sku.price_base,
+                hex_primary: sku.colour?.hex_primary ?? sku.hex_primary,
+                hex_secondary: sku.colour?.hex_secondary ?? sku.hex_secondary,
+                color_name: sku.colour?.name ?? sku.color_name,
+                finish: sku.colour?.finish ?? sku.finish,
+                primary_image:
+                    sku.primary_image ||
+                    (sku.colour?.primary_image && sku.colour?.media_shared ? sku.colour.primary_image : null) ||
+                    (variant?.primary_image && variant?.media_shared ? variant.primary_image : null) ||
+                    (model?.primary_image && model?.media_shared ? model.primary_image : null),
+                gallery_img_1: sku.gallery_img_1,
+                gallery_img_2: sku.gallery_img_2,
+                gallery_img_3: sku.gallery_img_3,
+                gallery_img_4: sku.gallery_img_4,
+                gallery_img_5: sku.gallery_img_5,
+                gallery_img_6: sku.gallery_img_6,
+                has_360: sku.has_360,
+                zoom_factor: sku.zoom_factor,
+                is_flipped: sku.is_flipped,
+                offset_x: sku.offset_x,
+                offset_y: sku.offset_y,
+                model_id: model?.id,
+                model_name: model?.name,
+                model_slug: model?.slug,
+                product_type: model?.product_type,
+                body_type: model?.body_type,
+                segment: model?.segment ?? null,
+                engine_cc: model?.engine_cc,
+                fuel_type: model?.fuel_type,
+                emission_standard: model?.emission_standard,
+                model_status: model?.status,
+                brand_id: brand?.id,
+                brand_name: brand?.name,
+                brand_slug: brand?.slug,
+                logo_svg: brand?.logo_svg,
+                variant_id: variant?.id,
+                variant_name: variant?.name,
+                variant_slug: variant?.slug,
+                variant_status: variant?.status,
+                displacement: variant?.displacement ?? null,
+                max_power: variant?.max_power ?? null,
+                max_torque: variant?.max_torque ?? null,
+                transmission: variant?.transmission ?? null,
+                mileage_arai: variant?.mileage_arai ?? null,
+                warranty_years: variant?.warranty_years ?? null,
+                warranty_km: variant?.warranty_km ?? null,
+                service_interval: variant?.service_interval ?? null,
+                front_brake: variant?.front_brake ?? null,
+                rear_brake: variant?.rear_brake ?? null,
+                braking_system: variant?.braking_system ?? null,
+                kerb_weight: variant?.kerb_weight ?? null,
+                seat_height: variant?.seat_height ?? null,
+                ground_clearance: variant?.ground_clearance ?? null,
+                fuel_capacity: variant?.fuel_capacity ?? null,
+                console_type: variant?.console_type ?? null,
+                bluetooth: variant?.bluetooth ?? null,
+                usb_charging: variant?.usb_charging ?? null,
+                engine_type: variant?.engine_type ?? null,
+                start_type: variant?.start_type ?? null,
+                front_suspension: variant?.front_suspension ?? null,
+                rear_suspension: variant?.rear_suspension ?? null,
+                front_tyre: variant?.front_tyre ?? null,
+                rear_tyre: variant?.rear_tyre ?? null,
+                tyre_type: variant?.tyre_type ?? null,
+                led_headlamp: variant?.led_headlamp ?? null,
+                led_tail_lamp: variant?.led_tail_lamp ?? null,
+                navigation: variant?.navigation ?? null,
+                ride_modes: variant?.ride_modes ?? null,
+                num_valves: variant?.num_valves ?? null,
+                wheelbase: variant?.wheelbase ?? null,
+                // New BikeWale-level columns
+                cooling_system: variant?.cooling_system ?? null,
+                cylinders: variant?.cylinders ?? null,
+                bore_stroke: variant?.bore_stroke ?? null,
+                compression_ratio: variant?.compression_ratio ?? null,
+                top_speed: variant?.top_speed ?? null,
+                clutch: variant?.clutch ?? null,
+                overall_length: variant?.overall_length ?? null,
+                overall_width: variant?.overall_width ?? null,
+                overall_height: variant?.overall_height ?? null,
+                chassis_type: variant?.chassis_type ?? null,
+                wheel_type: variant?.wheel_type ?? null,
+                front_wheel_size: variant?.front_wheel_size ?? null,
+                rear_wheel_size: variant?.rear_wheel_size ?? null,
+                headlamp_type: variant?.headlamp_type ?? null,
+                speedometer: variant?.speedometer ?? null,
+                tripmeter: variant?.tripmeter ?? null,
+                clock: variant?.clock ?? null,
+                low_fuel_indicator: variant?.low_fuel_indicator ?? null,
+                low_oil_indicator: variant?.low_oil_indicator ?? null,
+                low_battery_indicator: variant?.low_battery_indicator ?? null,
+                pillion_seat: variant?.pillion_seat ?? null,
+                pillion_footrest: variant?.pillion_footrest ?? null,
+                stand_alarm: variant?.stand_alarm ?? null,
+                pass_light: variant?.pass_light ?? null,
+                killswitch: variant?.killswitch ?? null,
+                ex_showroom: price?.ex_showroom ? Math.round(price.ex_showroom) : null,
+                on_road_price: price?.on_road_price ? Math.round(price.on_road_price) : null,
+                rto_state_total: price?.rto_total_state ? Math.round(price.rto_total_state) : null,
+                ins_total: price?.ins_total ? Math.round(price.ins_total) : null,
+                publish_stage: price?.publish_stage ?? null,
+                is_popular: price?.is_popular ?? null,
+            } as CatalogSnapshotRow;
+        });
+    } catch (error: any) {
+        const rawMessage = String(error?.message || error || 'Unknown error');
+        const compactMessage = rawMessage.replace(/\s+/g, ' ').trim();
+        const isHtmlResponse = compactMessage.startsWith('<!DOCTYPE html') || compactMessage.startsWith('<html');
+        const safeMessage = isHtmlResponse
+            ? 'Upstream service returned HTML error page (likely 5xx).'
+            : compactMessage.slice(0, 300);
+
+        console.error('[StoreSot:getCatalogSnapshot] Error:', safeMessage);
         return [];
     }
-
-    // Filter to VEHICLE-type products only — exclude accessories & services from catalog
-    const vehicleSkus = skus.filter((s: any) => {
-        const productType = String(s.model?.product_type || '').toUpperCase();
-        const skuType = String(s.sku_type || '').toUpperCase();
-
-        // Explicitly reject non-vehicle SKU types, even if tied to a vehicle model
-        if (skuType === 'ACCESSORY' || skuType === 'SERVICE' || skuType === 'MERCHANDISE') {
-            return false;
-        }
-
-        return productType === 'VEHICLE' || productType === '';
-    });
-
-    const skuIds = vehicleSkus.map((s: any) => s.id);
-    const { data: pricing } = await (adminClient as any)
-        .from('cat_price_state_mh')
-        .select(
-            'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular'
-        )
-        .in('sku_id', skuIds)
-        .eq('state_code', stateCode)
-        .eq('publish_stage', 'PUBLISHED');
-
-    const pricingMap = new Map<string, any>((pricing || []).map((p: any) => [p.sku_id, p]));
-
-    return vehicleSkus.map((sku: any) => {
-        const model = sku.model;
-        const brand = model?.brand;
-        const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
-        const price = pricingMap.get(sku.id);
-
-        return {
-            sku_id: sku.id,
-            sku_code: sku.sku_code,
-            sku_type: sku.sku_type,
-            sku_name: sku.name,
-            sku_slug: sku.slug,
-            sku_status: sku.status,
-            sku_position: sku.position,
-            is_primary: sku.is_primary,
-            price_base: sku.price_base,
-            hex_primary: sku.colour?.hex_primary ?? sku.hex_primary,
-            hex_secondary: sku.colour?.hex_secondary ?? sku.hex_secondary,
-            color_name: sku.colour?.name ?? sku.color_name,
-            finish: sku.colour?.finish ?? sku.finish,
-            primary_image:
-                sku.primary_image ||
-                (sku.colour?.primary_image && sku.colour?.media_shared ? sku.colour.primary_image : null) ||
-                (variant?.primary_image && variant?.media_shared ? variant.primary_image : null) ||
-                (model?.primary_image && model?.media_shared ? model.primary_image : null),
-            gallery_img_1: sku.gallery_img_1,
-            gallery_img_2: sku.gallery_img_2,
-            gallery_img_3: sku.gallery_img_3,
-            gallery_img_4: sku.gallery_img_4,
-            gallery_img_5: sku.gallery_img_5,
-            gallery_img_6: sku.gallery_img_6,
-            has_360: sku.has_360,
-            zoom_factor: sku.zoom_factor,
-            is_flipped: sku.is_flipped,
-            offset_x: sku.offset_x,
-            offset_y: sku.offset_y,
-            model_id: model?.id,
-            model_name: model?.name,
-            model_slug: model?.slug,
-            product_type: model?.product_type,
-            body_type: model?.body_type,
-            segment: model?.segment ?? null,
-            engine_cc: model?.engine_cc,
-            fuel_type: model?.fuel_type,
-            emission_standard: model?.emission_standard,
-            model_status: model?.status,
-            brand_id: brand?.id,
-            brand_name: brand?.name,
-            brand_slug: brand?.slug,
-            logo_svg: brand?.logo_svg,
-            variant_id: variant?.id,
-            variant_name: variant?.name,
-            variant_slug: variant?.slug,
-            variant_status: variant?.status,
-            displacement: variant?.displacement ?? null,
-            max_power: variant?.max_power ?? null,
-            max_torque: variant?.max_torque ?? null,
-            transmission: variant?.transmission ?? null,
-            mileage_arai: variant?.mileage_arai ?? null,
-            warranty_years: variant?.warranty_years ?? null,
-            warranty_km: variant?.warranty_km ?? null,
-            service_interval: variant?.service_interval ?? null,
-            front_brake: variant?.front_brake ?? null,
-            rear_brake: variant?.rear_brake ?? null,
-            braking_system: variant?.braking_system ?? null,
-            kerb_weight: variant?.kerb_weight ?? null,
-            seat_height: variant?.seat_height ?? null,
-            ground_clearance: variant?.ground_clearance ?? null,
-            fuel_capacity: variant?.fuel_capacity ?? null,
-            console_type: variant?.console_type ?? null,
-            bluetooth: variant?.bluetooth ?? null,
-            usb_charging: variant?.usb_charging ?? null,
-            engine_type: variant?.engine_type ?? null,
-            start_type: variant?.start_type ?? null,
-            front_suspension: variant?.front_suspension ?? null,
-            rear_suspension: variant?.rear_suspension ?? null,
-            front_tyre: variant?.front_tyre ?? null,
-            rear_tyre: variant?.rear_tyre ?? null,
-            tyre_type: variant?.tyre_type ?? null,
-            led_headlamp: variant?.led_headlamp ?? null,
-            led_tail_lamp: variant?.led_tail_lamp ?? null,
-            navigation: variant?.navigation ?? null,
-            ride_modes: variant?.ride_modes ?? null,
-            num_valves: variant?.num_valves ?? null,
-            wheelbase: variant?.wheelbase ?? null,
-            // New BikeWale-level columns
-            cooling_system: variant?.cooling_system ?? null,
-            cylinders: variant?.cylinders ?? null,
-            bore_stroke: variant?.bore_stroke ?? null,
-            compression_ratio: variant?.compression_ratio ?? null,
-            top_speed: variant?.top_speed ?? null,
-            clutch: variant?.clutch ?? null,
-            overall_length: variant?.overall_length ?? null,
-            overall_width: variant?.overall_width ?? null,
-            overall_height: variant?.overall_height ?? null,
-            chassis_type: variant?.chassis_type ?? null,
-            wheel_type: variant?.wheel_type ?? null,
-            front_wheel_size: variant?.front_wheel_size ?? null,
-            rear_wheel_size: variant?.rear_wheel_size ?? null,
-            headlamp_type: variant?.headlamp_type ?? null,
-            speedometer: variant?.speedometer ?? null,
-            tripmeter: variant?.tripmeter ?? null,
-            clock: variant?.clock ?? null,
-            low_fuel_indicator: variant?.low_fuel_indicator ?? null,
-            low_oil_indicator: variant?.low_oil_indicator ?? null,
-            low_battery_indicator: variant?.low_battery_indicator ?? null,
-            pillion_seat: variant?.pillion_seat ?? null,
-            pillion_footrest: variant?.pillion_footrest ?? null,
-            stand_alarm: variant?.stand_alarm ?? null,
-            pass_light: variant?.pass_light ?? null,
-            killswitch: variant?.killswitch ?? null,
-            ex_showroom: price?.ex_showroom ? Math.round(price.ex_showroom) : null,
-            on_road_price: price?.on_road_price ? Math.round(price.on_road_price) : null,
-            rto_state_total: price?.rto_total_state ? Math.round(price.rto_total_state) : null,
-            ins_total: price?.ins_total ? Math.round(price.ins_total) : null,
-            publish_stage: price?.publish_stage ?? null,
-            is_popular: price?.is_popular ?? null,
-        } as CatalogSnapshotRow;
-    });
 }

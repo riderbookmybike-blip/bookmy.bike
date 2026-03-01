@@ -157,9 +157,14 @@ export const ProductCard = ({
         } catch {}
     }, []);
     const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>(globalPricingMode);
+    const [isFlipping, setIsFlipping] = useState(false);
 
     useEffect(() => {
         setCardPricingMode(globalPricingMode);
+        // Trigger flip glow animation
+        setIsFlipping(true);
+        const t = setTimeout(() => setIsFlipping(false), 900);
+        return () => clearTimeout(t);
     }, [globalPricingMode]);
 
     const handleFlip = (e: React.MouseEvent) => {
@@ -944,82 +949,98 @@ export const ProductCard = ({
                     </div>
                 </div>
 
-                <div className="mt-3 md:mt-6 pt-3 md:pt-6 border-t border-slate-100 relative z-30 perspective-1000">
+                {/* ── Pricing Flip Card ── */}
+                <div className="mt-3 md:mt-5 border-t border-slate-100 pt-3 md:pt-5" style={{ perspective: '1400px' }}>
                     <motion.div
-                        animate={{ rotateY: cardPricingMode === 'finance' ? 0 : 180 }}
-                        transition={{ duration: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
+                        initial={false}
+                        animate={{
+                            rotateY: cardPricingMode === 'finance' ? 0 : 180,
+                            filter: isFlipping
+                                ? 'drop-shadow(0 20px 36px rgba(0,0,0,0.26))'
+                                : 'drop-shadow(0 2px 8px rgba(0,0,0,0.07))',
+                        }}
+                        transition={{
+                            rotateY: { duration: 0.72, ease: [0.25, 0.46, 0.45, 0.94] },
+                            filter: { duration: 0.35 },
+                        }}
                         style={{ transformStyle: 'preserve-3d' }}
-                        className="relative w-full min-h-[80px]"
+                        className="relative w-full"
                     >
-                        {/* Front Face: Finance */}
+                        {/* ── FRONT · Finance ── */}
                         <div
-                            className="w-full flex items-center justify-between"
-                            style={{ backfaceVisibility: 'hidden' }}
+                            className={`w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
+                            style={{
+                                backfaceVisibility: 'hidden',
+                                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%)',
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.3)',
+                            }}
                         >
-                            {/* Left Panel: Downpayment */}
-                            <div className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}>
+                            {/* Left: Downpayment */}
+                            <div className="flex-1 flex flex-col items-start">
                                 <button
                                     onClick={e => {
                                         e.stopPropagation();
                                         onEditDownpayment?.();
                                     }}
-                                    className="flex items-center gap-1.5 group/edit mb-1 relative"
+                                    className="flex items-center gap-1.5 group/edit mb-1"
                                 >
-                                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider italic leading-none">
+                                    <p className="text-[9px] font-black text-emerald-400 uppercase tracking-wider italic leading-none">
                                         Downpayment
                                     </p>
                                     <Pencil
                                         size={9}
-                                        className="text-emerald-500/50 group-hover/edit:text-emerald-600 transition-colors"
+                                        className="text-emerald-400/40 group-hover/edit:text-emerald-400 transition-colors"
                                     />
-                                    {/* Subtle focus/hover underline */}
-                                    <div className="absolute -bottom-0.5 left-0 w-0 h-px bg-emerald-600/30 group-hover/edit:w-full transition-all duration-300" />
                                 </button>
-
-                                <div className="flex flex-col items-start gap-0.5">
-                                    <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
-                                        ₹{formatRoundedPrice(downpayment || 0)}
-                                    </span>
-                                    {showBcoinBadge && (
-                                        <div className="flex items-center gap-1.5 h-4">
-                                            <Logo variant="icon" size={12} />
-                                            <span className="text-[9px] font-bold italic text-slate-500 uppercase tracking-wider leading-none">
-                                                {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} COINS
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Center Divider */}
-                            <div className="w-px h-10 bg-slate-100" />
-
-                            {/* Right Panel: EMI */}
-                            <div className={`${isTv ? 'pl-3' : 'pl-5'} flex-1 flex flex-col items-end`}>
-                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1 italic">
-                                    Lowest EMI
-                                </p>
-
-                                <div className="flex flex-col items-end gap-0.5">
-                                    <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
-                                        {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
-                                    </span>
-                                    <div className="h-4 flex items-center gap-1.5">
-                                        <Clock size={11} className="text-slate-400" />
-                                        <span className="text-[9px] font-bold italic text-slate-500 uppercase tracking-wider leading-none">
-                                            {activeTenure} MONTHS
+                                <span
+                                    className={`font-black italic text-white leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
+                                >
+                                    ₹{formatRoundedPrice(downpayment || 0)}
+                                </span>
+                                {showBcoinBadge && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                        <Logo variant="icon" size={10} />
+                                        <span className="text-[9px] font-bold italic text-white/40 uppercase tracking-wider leading-none">
+                                            {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} COINS
                                         </span>
                                     </div>
+                                )}
+                            </div>
+
+                            {/* Divider */}
+                            <div className="w-px h-10 bg-white/10 mx-2 md:mx-4 shrink-0" />
+
+                            {/* Right: EMI */}
+                            <div className="flex-1 flex flex-col items-end">
+                                <p className="text-[9px] font-black text-[#F4B000] uppercase tracking-wider mb-1 italic">
+                                    Lowest EMI
+                                </p>
+                                <span
+                                    className={`font-black italic text-white leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
+                                >
+                                    {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
+                                </span>
+                                <div className="flex items-center gap-1 mt-1">
+                                    <Clock size={9} className="text-white/30" />
+                                    <span className="text-[9px] font-bold italic text-white/40 uppercase tracking-wider leading-none">
+                                        {activeTenure} MONTHS
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Back Face: Cash (Rotated 180deg) */}
+                        {/* ── BACK · Cash ── */}
                         <div
-                            className="absolute inset-0 w-full flex items-center justify-between"
-                            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                            className={`absolute inset-0 w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
+                            style={{
+                                backfaceVisibility: 'hidden',
+                                transform: 'rotateY(180deg)',
+                                background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 55%, #f8fafc 100%)',
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(16,185,129,0.08)',
+                                border: '1px solid rgba(16,185,129,0.15)',
+                            }}
                         >
-                            {/* Left Panel: On-Road Price with Breakdown Tooltip */}
+                            {/* Left: On-Road Price with Breakdown Tooltip */}
                             <div className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}>
                                 <div className="group/pricing relative">
                                     <div className="flex items-center gap-1.5 mb-1 cursor-help">

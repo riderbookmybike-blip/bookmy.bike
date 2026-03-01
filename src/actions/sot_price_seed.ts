@@ -66,19 +66,25 @@ export async function sot_price_seed(rows: SotPriceSeedRow[]): Promise<SotPriceS
     ) as SotPriceSeedRow[];
     const skuIds = Array.from(new Set(deduped.map(row => row.sku_id)));
 
-    const upsertPayload = deduped.map(row => ({
-        id: crypto.randomUUID(),
-        sku_id: row.sku_id,
-        state_code: row.state_code,
-        ex_factory: row.ex_showroom,
-        ex_factory_gst_amount: 0,
-        logistics_charges: 0,
-        logistics_charges_gst_amount: 0,
-        ex_showroom: row.ex_showroom,
-        publish_stage: row.publish_stage || 'DRAFT',
-        is_popular: row.is_popular || false,
-        updated_at: new Date().toISOString(),
-    }));
+    const upsertPayload = deduped.map(row => {
+        const gstRate = Number(row.ex_showroom > 400000 ? 40 : 18); // Simple heuristic for pre-lookup
+        const exFactory = Math.round(row.ex_showroom / (1 + gstRate / 100));
+        const exGst = row.ex_showroom - exFactory;
+
+        return {
+            id: crypto.randomUUID(),
+            sku_id: row.sku_id,
+            state_code: row.state_code,
+            ex_factory: exFactory,
+            ex_factory_gst_amount: exGst,
+            logistics_charges: 0,
+            logistics_charges_gst_amount: 0,
+            ex_showroom: row.ex_showroom,
+            publish_stage: row.publish_stage || 'DRAFT',
+            is_popular: row.is_popular || false,
+            updated_at: new Date().toISOString(),
+        };
+    });
 
     const { error: upsertError } = await adminClient
         .from('cat_price_state_mh')

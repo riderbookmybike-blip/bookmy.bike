@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Menu, Search, X } from 'lucide-react';
+import { Menu, Search, Share2, X } from 'lucide-react';
 
 interface DiscoveryBarProps {
     /** Called when the hamburger/filter button is clicked */
@@ -16,6 +16,12 @@ interface DiscoveryBarProps {
     pricingMode: 'cash' | 'finance';
     /** Called when the user switches cash/finance */
     onPricingModeChange: (mode: 'cash' | 'finance') => void;
+    /** Optional share action shown before cash/finance toggle */
+    onShareClick?: () => void;
+    /** Optional label override for share button */
+    shareLabel?: string;
+    /** Optional copied/success visual state */
+    shareActive?: boolean;
     /** Optional content rendered in the flexible center area (chips, breadcrumbs, etc.) */
     centerContent?: React.ReactNode;
     /**
@@ -40,6 +46,9 @@ export function DiscoveryBar({
     onSearchSubmit,
     pricingMode,
     onPricingModeChange,
+    onShareClick,
+    shareLabel = 'Share',
+    shareActive = false,
     centerContent,
     className = '',
 }: DiscoveryBarProps) {
@@ -94,8 +103,21 @@ export function DiscoveryBar({
                             {centerContent}
                         </div>
 
-                        {/* ── Right: Cash / Finance toggle ── */}
+                        {/* ── Right: Share + Cash / Finance toggle ── */}
                         <div className="flex-none flex items-center ml-4 pl-6 border-l border-slate-200/40">
+                            {onShareClick && (
+                                <button
+                                    onClick={onShareClick}
+                                    className={`mr-2 inline-flex items-center gap-1.5 px-4 h-10 rounded-2xl border transition-all duration-300 text-[9px] font-black uppercase tracking-[0.1em] ${
+                                        shareActive
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                            : 'bg-white/70 text-slate-600 border-slate-200/60 hover:bg-white hover:text-slate-900'
+                                    }`}
+                                >
+                                    <Share2 size={13} />
+                                    {shareActive ? 'Copied' : shareLabel}
+                                </button>
+                            )}
                             <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 h-10 shadow-inner">
                                 {(
                                     [

@@ -34,15 +34,15 @@ These attributes define the specific SKU (Variant) and are used for detailed com
 
 ### Variant-Specific Diff Points
 
-| Feature | Single Seat | Drum | Disc | SmartXonnect (SX) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Braking (Front)** | Drum | Drum | 240mm Disc | 240mm Disc |
-| **Console** | Digital | Digital | Digital | TFT Color Display |
-| **Bluetooth** | No | No | No | Yes |
-| **NFC** | No | No | No | Optional/Yes |
-| **Voice Assist** | No | No | No | Yes |
-| **Seat Type** | Single | Split | Split | Split |
-| **USB Charging** | Optional | Optional | Optional | Standard |
+| Feature | Single Seat | Drum | Disc | iGO (Boost) | SmartXonnect (SX) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Braking (Front)** | Drum | Drum | 240mm Disc | 240mm Disc | 240mm Disc |
+| **Console** | Digital | Digital | Digital | Digital + iGO | TFT Color Display |
+| **Bluetooth** | No | No | No | Optional/Yes | Yes |
+| **NFC** | No | No | No | No | Optional/Yes |
+| **Voice Assist** | No | No | No | No | Yes |
+| **Seat Type** | Single | Split | Split | Split | Split |
+| **USB Charging** | Optional | Optional | Optional | Standard | Standard |
 
 ## 3. Standardization Logic
 

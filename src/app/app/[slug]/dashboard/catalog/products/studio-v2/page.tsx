@@ -368,6 +368,7 @@ export default function StudioV2Page() {
                             colours={colours}
                             skus={skus}
                             onUpdate={(s: CatalogSku[]) => setSkus(s)}
+                            onUpdateColours={(c: CatalogColour[]) => setColours(c)}
                         />
                     )}
                     {selectedCategory !== 'SERVICE' && currentStep === 5 && modelData && (

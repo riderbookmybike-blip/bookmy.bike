@@ -1,10 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Palette, Grid3X3, Layers, Star, Loader2, Upload, Image as ImageIcon, X, Trash2, Copy } from 'lucide-react';
+import {
+    Palette,
+    Grid3X3,
+    Layers,
+    Star,
+    Loader2,
+    Upload,
+    Image as ImageIcon,
+    X,
+    Trash2,
+    Copy,
+    RefreshCcw,
+    Trash2 as TrashIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
-import { updateSku, createSku, deleteSku } from '@/actions/catalog/catalogV2Actions';
+import { updateSku, createSku, deleteSku, createColour } from '@/actions/catalog/catalogV2Actions';
 import type { CatalogModel, CatalogSku, CatalogColour, ProductType } from '@/actions/catalog/catalogV2Actions';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
@@ -16,6 +29,7 @@ interface SKUStepProps {
     colours: CatalogColour[];
     skus: CatalogSku[];
     onUpdate: (skus: CatalogSku[]) => void;
+    onUpdateColours: (colours: CatalogColour[]) => void;
 }
 
 // Helpers — convert between flat cat_skus columns and SKUMediaManager arrays
@@ -334,6 +348,37 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
         }
 
         toast.success(shouldAdd ? `${colour.name} added to all variants` : `${colour.name} removed from all variants`);
+    };
+
+    // ─── Restore an orphaned SKU by re-creating its color ───────────
+    const handleRestoreSku = async (sku: CatalogSku) => {
+        if (!sku.color_name) {
+            toast.error('Cannot restore: Color metadata missing in SKU');
+            return;
+        }
+
+        try {
+            // 1. Create the colour definition from SKU cache
+            const newColour = await createColour({
+                model_id: model.id,
+                name: sku.color_name,
+                hex_primary: sku.hex_primary || undefined,
+                hex_secondary: sku.hex_secondary || undefined,
+                finish: sku.finish || undefined,
+            });
+
+            // 2. Link SKU to this new colour
+            const updatedSku = await updateSku(sku.id, { colour_id: newColour.id });
+
+            // 3. Update parent states
+            onUpdateColours([...colours, newColour]);
+            onUpdate(skus.map(s => (s.id === sku.id ? updatedSku : s)));
+
+            toast.success(`Restored ${sku.color_name} to the colour pool`);
+        } catch (err) {
+            console.error('Restore failed:', err);
+            toast.error('Restore failed: ' + getErrorMessage(err));
+        }
     };
 
     return (
@@ -987,45 +1032,81 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
 
             {/* ─── Orphaned SKUs (Cleanup) ─── */}
             {skus.some(s => !effectiveColours.some(c => c.id === s.colour_id)) && (
-                <div className="bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/20 p-6 space-y-4 shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <Trash2 className="text-rose-500" size={20} />
-                        <h3 className="text-sm font-black uppercase tracking-tight text-rose-900 dark:text-rose-400">
-                            Orphaned SKUs Found
-                        </h3>
+                <div className="bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/20 p-6 space-y-4 shadow-sm border-dashed">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-rose-100 dark:bg-rose-900/40 rounded-xl">
+                                <Trash2 className="text-rose-600 dark:text-rose-500" size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black uppercase tracking-tight text-rose-900 dark:text-rose-400">
+                                    Orphaned SKUs Found
+                                </h3>
+                                <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-0.5 opacity-70">
+                                    SKUs without a valid colour in the current pool
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                    <p className="text-xs text-rose-600 dark:text-rose-500/80 italic">
-                        These SKUs are not linked to any colour in your current pool (likely due to colour pool
-                        changes). Delete them to keep your catalog clean.
+
+                    <p className="text-xs text-rose-600 dark:text-rose-500/80 italic leading-relaxed">
+                        These SKUs exist in the database but are hidden from the matrix because their associated colour
+                        was removed. Do you want to <strong>Restore</strong> the colour pool or <strong>Purge</strong>{' '}
+                        them permanently?
                     </p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {skus
                             .filter(s => !effectiveColours.some(c => c.id === s.colour_id))
                             .map(sku => (
                                 <div
                                     key={sku.id}
-                                    className="flex items-center gap-2 bg-white dark:bg-black/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/30 group/orph"
+                                    className="flex items-center justify-between bg-white dark:bg-black/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/30 shadow-sm"
                                 >
-                                    <span className="text-xs font-bold text-rose-700 dark:text-rose-400 truncate">
-                                        {sku.name}
-                                    </span>
-                                    <button
-                                        onClick={async () => {
-                                            if (confirm(`Delete orphaned SKU "${sku.name}"?`)) {
-                                                try {
-                                                    await deleteSku(sku.id);
-                                                    onUpdate(skus.filter(s => s.id !== sku.id));
-                                                    toast.success('Orphan purged');
-                                                } catch {
-                                                    toast.error('Purge failed');
+                                    <div className="flex flex-col min-w-0 pr-4">
+                                        <span className="text-[11px] font-black text-rose-800 dark:text-rose-400 truncate uppercase tracking-tight">
+                                            {sku.name}
+                                        </span>
+                                        <span className="text-[9px] font-bold text-rose-400 dark:text-rose-500/60 uppercase tracking-widest">
+                                            {sku.color_name || 'Legacy SKU'}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        <button
+                                            onClick={() => handleRestoreSku(sku)}
+                                            className="px-3 py-1.5 bg-rose-100 hover:bg-emerald-500 hover:text-white dark:bg-rose-900/20 text-rose-600 transition-all rounded-lg flex items-center gap-1.5 group"
+                                            title="Restore Color definition"
+                                        >
+                                            <RefreshCcw
+                                                size={12}
+                                                className="group-hover:rotate-180 transition-transform duration-500"
+                                            />
+                                            <span className="text-[9px] font-black uppercase">Restore</span>
+                                        </button>
+
+                                        <button
+                                            onClick={async () => {
+                                                if (
+                                                    confirm(
+                                                        `PERMANENTLY DELETE SKU "${sku.name}"? This cannot be undone.`
+                                                    )
+                                                ) {
+                                                    try {
+                                                        await deleteSku(sku.id);
+                                                        onUpdate(skus.filter(s => s.id !== sku.id));
+                                                        toast.success('SKU Purged');
+                                                    } catch {
+                                                        toast.error('Purge failed');
+                                                    }
                                                 }
-                                            }
-                                        }}
-                                        className="ml-auto p-1.5 text-rose-300 hover:text-rose-600 transition-colors opacity-0 group-hover/orph:opacity-100"
-                                        title="Purge SKU"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                            }}
+                                            className="p-1.5 text-rose-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-all rounded-lg"
+                                            title="Delete permanently"
+                                        >
+                                            <TrashIcon size={14} />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                     </div>

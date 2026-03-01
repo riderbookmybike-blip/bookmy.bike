@@ -1,7 +1,7 @@
 'use client';
 
-import { M2Footer } from '@/components/store/mobile/M2Footer';
+import { ModernFooter } from '@/components/layout/ModernFooter';
 
 export const MarketplaceFooter = () => {
-    return <M2Footer />;
+    return <ModernFooter />;
 };

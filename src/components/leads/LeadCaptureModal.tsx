@@ -23,13 +23,6 @@ import { useDealerSession } from '@/hooks/useDealerSession';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
 import { normalizePhone, formatPhone, isValidPhone } from '@/lib/utils/phoneUtils';
-import {
-    checkExistingCustomer,
-    createQuoteAction,
-    createLeadAction,
-    shareQuoteViaSms,
-    shareQuoteViaWhatsApp,
-} from '@/actions/crm';
 import { ensureMemberByPhone } from '@/actions/teamActions';
 import { OCLUB_SIGNUP_BONUS, OCLUB_COIN_VALUE, discountForCoins, computeOClubPricing } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
@@ -50,6 +43,23 @@ interface LeadCaptureModalProps {
 }
 
 type LeadStep = 'PHONE' | 'PHONE_CONFIRM' | 'DETAILS';
+
+let crmActionsPromise: Promise<typeof import('@/actions/crm')> | null = null;
+function getCrmActions() {
+    if (!crmActionsPromise) {
+        crmActionsPromise = import('@/actions/crm').catch(err => {
+            crmActionsPromise = null;
+            throw err;
+        });
+    }
+    return crmActionsPromise;
+}
+
+function isAbortError(err: unknown): boolean {
+    if (!err) return false;
+    const candidate = err as { name?: string; message?: string };
+    return candidate?.name === 'AbortError' || candidate?.message?.includes('operation was aborted') === true;
+}
 
 export function LeadCaptureModal({
     isOpen,
@@ -193,6 +203,7 @@ export function LeadCaptureModal({
         setIsSubmitting(true);
         try {
             const cleanPhone = normalizePhone(rawPhone);
+            const { checkExistingCustomer, createLeadAction } = await getCrmActions();
             const result = await checkExistingCustomer(cleanPhone);
             const { data: existingUser, memberId: existingMemberId, walletCoins } = result;
 
@@ -336,6 +347,7 @@ export function LeadCaptureModal({
         setIsSubmitting(true);
         try {
             setSubmitStage('QUOTE GENERATING');
+            const { createLeadAction } = await getCrmActions();
             const leadResult = await createLeadAction({
                 customer_name: name,
                 customer_phone: phone,
@@ -396,6 +408,7 @@ export function LeadCaptureModal({
 
         try {
             setSubmitStage('SHARING QUOTE');
+            const { createQuoteAction } = await getCrmActions();
             const result = await createQuoteAction({
                 tenant_id: effectiveTenantId,
                 lead_id: lId,
@@ -474,15 +487,24 @@ export function LeadCaptureModal({
                                 <div className="flex gap-3">
                                     <button
                                         onClick={async () => {
-                                            setShareStatus('sending-wa');
-                                            const result = await shareQuoteViaWhatsApp(quoteUuid);
-                                            if (result.success) {
-                                                setShareStatus('sent');
-                                                setSmsFeedback('Shared via WhatsApp ✅');
-                                                toast.success('Quote sent via WhatsApp!');
-                                            } else {
+                                            try {
+                                                setShareStatus('sending-wa');
+                                                const { shareQuoteViaWhatsApp } = await getCrmActions();
+                                                const result = await shareQuoteViaWhatsApp(quoteUuid);
+                                                if (result.success) {
+                                                    setShareStatus('sent');
+                                                    setSmsFeedback('Shared via WhatsApp ✅');
+                                                    toast.success('Quote sent via WhatsApp!');
+                                                } else {
+                                                    setShareStatus('idle');
+                                                    toast.error(result.error || 'WhatsApp send failed');
+                                                }
+                                            } catch (err) {
                                                 setShareStatus('idle');
-                                                toast.error(result.error || 'WhatsApp send failed');
+                                                if (!isAbortError(err)) {
+                                                    toast.error('WhatsApp send failed');
+                                                    console.error('WhatsApp share failed:', err);
+                                                }
                                             }
                                         }}
                                         disabled={shareStatus !== 'idle'}
@@ -499,15 +521,24 @@ export function LeadCaptureModal({
                                     </button>
                                     <button
                                         onClick={async () => {
-                                            setShareStatus('sending-sms');
-                                            const result = await shareQuoteViaSms(quoteUuid);
-                                            if (result.success) {
-                                                setShareStatus('sent');
-                                                setSmsFeedback('Shared via SMS ✅');
-                                                toast.success('Quote sent via SMS!');
-                                            } else {
+                                            try {
+                                                setShareStatus('sending-sms');
+                                                const { shareQuoteViaSms } = await getCrmActions();
+                                                const result = await shareQuoteViaSms(quoteUuid);
+                                                if (result.success) {
+                                                    setShareStatus('sent');
+                                                    setSmsFeedback('Shared via SMS ✅');
+                                                    toast.success('Quote sent via SMS!');
+                                                } else {
+                                                    setShareStatus('idle');
+                                                    toast.error(result.error || 'SMS send failed');
+                                                }
+                                            } catch (err) {
                                                 setShareStatus('idle');
-                                                toast.error(result.error || 'SMS send failed');
+                                                if (!isAbortError(err)) {
+                                                    toast.error('SMS send failed');
+                                                    console.error('SMS share failed:', err);
+                                                }
                                             }
                                         }}
                                         disabled={shareStatus !== 'idle'}

@@ -23,22 +23,21 @@ const DiscoveryContext = createContext<DiscoveryContextType | undefined>(undefin
 export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
     const searchParams = useSearchParams();
     const [resultsCount, setResultsCount] = useState<number | null>(null);
+
+    // Always start with 'finance' to match SSR output, then correct from localStorage on the client.
+    // A lazy useState initializer also runs on the server where localStorage is undefined,
+    // causing a hydration mismatch when the client resolves a stored 'cash' value.
     const [pricingMode, setPricingMode] = useState<PricingMode>('finance');
 
-    // Sync initial state from URL/LocalStorage
+    // On mount (client only): read saved preference and apply it
     useEffect(() => {
-        const mode = searchParams.get('mode');
-        if (mode === 'cash' || mode === 'finance') {
-            setPricingMode(mode);
-        } else {
-            const stored = localStorage.getItem('bkmb_pricing_mode');
-            if (stored === 'cash' || stored === 'finance') {
-                setPricingMode(stored as PricingMode);
-            }
+        const stored = localStorage.getItem('bkmb_pricing_mode');
+        if (stored === 'cash' || stored === 'finance') {
+            setPricingMode(stored);
         }
-    }, [searchParams]);
+    }, []); // ← runs once on mount only, no searchParams dependency
 
-    // Persist pricing mode changes
+    // Persist pricing mode changes to localStorage
     useEffect(() => {
         localStorage.setItem('bkmb_pricing_mode', pricingMode);
     }, [pricingMode]);

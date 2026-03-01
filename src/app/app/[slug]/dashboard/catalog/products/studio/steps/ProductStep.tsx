@@ -29,6 +29,7 @@ import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import { toast } from 'sonner';
 import CopyableId from '@/components/ui/CopyableId';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { resolveVehicleTax } from '@/lib/aums/hsn_engine';
 
 const getYoutubeThumbnail = (url: string) => {
     if (!url) return null;
@@ -128,6 +129,25 @@ export default function ProductStep({
             });
         }
     }, [familyData]);
+
+    // Auto-resolve HSN and GST based on engine specs
+    useEffect(() => {
+        if (formData.category === 'VEHICLE' && (formData.specs as any).engine_cc) {
+            const res = resolveVehicleTax(
+                (formData.specs as any).fuel_type || 'PETROL',
+                Number((formData.specs as any).engine_cc) || 0
+            );
+
+            // Only update if current is empty or if it's a new product
+            if (!formData.hsn_code || !familyData?.id) {
+                setFormData(prev => ({
+                    ...prev,
+                    hsn_code: res.hsnCode,
+                    item_tax_rate: res.gstRate + res.cessRate,
+                }));
+            }
+        }
+    }, [(formData.specs as any).engine_cc, (formData.specs as any).fuel_type, formData.category]);
 
     const handleAutoSave = async () => {
         if (!formData.name) return;

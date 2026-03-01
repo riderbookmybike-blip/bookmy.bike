@@ -9,7 +9,6 @@ import {
     Menu,
     Search,
     X,
-    Share2,
     Check,
     Filter,
     Trophy,
@@ -347,14 +346,54 @@ export default function DesktopCompare() {
         });
     };
 
+    const shareMessage = useMemo(() => {
+        if (!activeVariants.length) return 'Compare two-wheelers on BookMyBike.';
+
+        const uniqueModels = Array.from(
+            new Map(
+                activeVariants.map(v => {
+                    const modelKey = `${v.make} ${v.model}`.trim();
+                    return [modelKey.toLowerCase(), modelKey];
+                })
+            ).values()
+        );
+
+        const sameModelCompare = uniqueModels.length === 1;
+        const variantNames = activeVariants
+            .map(v => v.variant)
+            .filter(Boolean)
+            .join(', ');
+
+        const title = sameModelCompare
+            ? `Here are the details of ${uniqueModels[0]} variants${variantNames ? `: ${variantNames}` : ''}.`
+            : `Here are the details of ${uniqueModels.join(', ')} comparison.`;
+
+        const variantLines = activeVariants.map(v => {
+            const price = getDisplayPrice(v);
+            const emi = getEmi(v, downpayment, tenure);
+            const variantLabel = [v.make, v.model, v.variant].filter(Boolean).join(' ');
+            return `- ${variantLabel}: On-road ₹${price.toLocaleString('en-IN')} | EMI ₹${emi.toLocaleString('en-IN')}/mo`;
+        });
+
+        return [title, '', ...variantLines, '', 'Shared via BookMyBike'].join('\n');
+    }, [activeVariants, downpayment, tenure]);
+
     const handleShare = async () => {
+        const url = window.location.href;
+        const textToShare = `${shareMessage}\n\nCompare link: ${url}`;
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(textToShare)}`;
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+
         try {
-            await navigator.clipboard.writeText(window.location.href);
+            await navigator.clipboard.writeText(textToShare);
         } catch {
-            const input = document.createElement('input');
-            input.value = window.location.href;
+            const input = document.createElement('textarea');
+            input.value = textToShare;
+            input.style.position = 'fixed';
+            input.style.opacity = '0';
             document.body.appendChild(input);
-            input.select();
+            input.focus();
+            input.setSelectionRange(0, textToShare.length);
             document.execCommand('copy');
             document.body.removeChild(input);
         }
@@ -400,6 +439,9 @@ export default function DesktopCompare() {
                         onFilterClick={() => router.push('/store/catalog')}
                         searchQuery={searchQuery}
                         onSearchChange={setSearchQuery}
+                        onShareClick={handleShare}
+                        shareLabel="Share Compare"
+                        shareActive={shareTooltip}
                         pricingMode={pricingMode}
                         onPricingModeChange={setPricingMode}
                     />
@@ -418,6 +460,8 @@ export default function DesktopCompare() {
                                     downpayment={downpayment}
                                     tenure={tenure}
                                     onEditDownpayment={openDpEdit}
+                                    pricingMode={pricingMode}
+                                    onTogglePricingMode={() => setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))}
                                 />
                             ))}
                         </div>
