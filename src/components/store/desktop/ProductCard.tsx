@@ -695,6 +695,42 @@ export const ProductCard = ({
         );
     }
 
+    // ── Hex color tokens for the pricing fold card ─────────────────────────
+    const _isLight = (hex: string | null): boolean => {
+        if (!hex) return false;
+        const h = hex.replace('#', '');
+        if (h.length < 6) return false;
+        const r = parseInt(h.slice(0, 2), 16);
+        const g = parseInt(h.slice(2, 4), 16);
+        const b = parseInt(h.slice(4, 6), 16);
+        return (r * 299 + g * 587 + b * 114) / 1000 > 140;
+    };
+    const _hex = selectedHex;
+    const _light = _isLight(_hex);
+    // Finance face — saturated hex
+    const finBg = _hex
+        ? `linear-gradient(135deg, ${_hex}F0 0%, ${_hex} 60%, ${_hex}D0 100%)`
+        : 'linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%)';
+    const finBoxShadow = _light
+        ? 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.08)'
+        : 'inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3)';
+    const finText = _light ? '#0f172a' : '#ffffff';
+    const finSub = _light ? 'rgba(15,23,42,0.5)' : 'rgba(255,255,255,0.45)';
+    const finAccent = _light ? '#0f172a' : '#F4B000';
+    const finDiv = _light ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)';
+    // Cash face — light ~14% hex tint (matches vehicle image bg)
+    const cashBg = _hex
+        ? `linear-gradient(135deg, ${_hex}22 0%, ${_hex}2E 55%, ${_hex}1A 100%)`
+        : 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 55%, #f8fafc 100%)';
+    const cashBorder = _hex ? `1px solid ${_hex}40` : '1px solid rgba(16,185,129,0.15)';
+    const cashBoxShadow = 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.04)';
+    // Cash bg is always ~14% on white → always appears light → always dark text
+    const cashText = '#1a2a4a';
+    const cashSub = 'rgba(15,23,42,0.50)';
+    const cashLabel = _hex ? `${_hex}CC` : 'rgb(5,150,105)';
+    const cashDiv = _hex ? `${_hex}40` : 'rgb(226,232,240)';
+    // ────────────────────────────────────────────────────────────────────────
+
     return (
         <div
             key={v.id}
@@ -949,254 +985,279 @@ export const ProductCard = ({
                     </div>
                 </div>
 
-                {/* ── Pricing Flip Card ── */}
-                <div className="mt-3 md:mt-5 border-t border-slate-100 pt-3 md:pt-5" style={{ perspective: '1400px' }}>
+                {/* ── Pricing Fold Card — 2D scaleX, works under overflow-hidden ── */}
+                <div className="mt-3 md:mt-5 border-t border-slate-100 pt-3 md:pt-5 relative">
+                    {/* ── FRONT · Finance ── */}
                     <motion.div
                         initial={false}
                         animate={{
-                            rotateY: cardPricingMode === 'finance' ? 0 : 180,
-                            filter: isFlipping
-                                ? 'drop-shadow(0 20px 36px rgba(0,0,0,0.26))'
-                                : 'drop-shadow(0 2px 8px rgba(0,0,0,0.07))',
+                            scaleX: cardPricingMode === 'finance' ? 1 : 0,
+                            opacity: cardPricingMode === 'finance' ? 1 : 0,
                         }}
                         transition={{
-                            rotateY: { duration: 0.72, ease: [0.25, 0.46, 0.45, 0.94] },
-                            filter: { duration: 0.35 },
+                            scaleX: {
+                                duration: 0.28,
+                                ease: cardPricingMode === 'finance' ? [0.0, 0.0, 0.2, 1] : [0.4, 0, 1, 1],
+                                delay: cardPricingMode === 'finance' ? 0.28 : 0,
+                            },
+                            opacity: {
+                                duration: 0.18,
+                                delay: cardPricingMode === 'finance' ? 0.28 : 0,
+                            },
                         }}
-                        style={{ transformStyle: 'preserve-3d' }}
-                        className="relative w-full"
+                        className={`w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
+                        style={{
+                            originX: '50%',
+                            background: finBg,
+                            boxShadow: finBoxShadow,
+                        }}
                     >
-                        {/* ── FRONT · Finance ── */}
-                        <div
-                            className={`w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
-                            style={{
-                                backfaceVisibility: 'hidden',
-                                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%)',
-                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.3)',
-                            }}
-                        >
-                            {/* Left: Downpayment */}
-                            <div className="flex-1 flex flex-col items-start">
-                                <button
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        onEditDownpayment?.();
-                                    }}
-                                    className="flex items-center gap-1.5 group/edit mb-1"
+                        {/* Left: Downpayment */}
+                        <div className="flex-1 flex flex-col items-start">
+                            <button
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    onEditDownpayment?.();
+                                }}
+                                className="flex items-center gap-1.5 group/edit mb-1"
+                            >
+                                <p
+                                    style={{ color: finAccent }}
+                                    className="text-[9px] font-black uppercase tracking-wider italic leading-none"
                                 >
-                                    <p className="text-[9px] font-black text-emerald-400 uppercase tracking-wider italic leading-none">
-                                        Downpayment
-                                    </p>
-                                    <Pencil
-                                        size={9}
-                                        className="text-emerald-400/40 group-hover/edit:text-emerald-400 transition-colors"
-                                    />
-                                </button>
-                                <span
-                                    className={`font-black italic text-white leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
-                                >
-                                    ₹{formatRoundedPrice(downpayment || 0)}
-                                </span>
-                                {showBcoinBadge && (
-                                    <div className="flex items-center gap-1 mt-1">
-                                        <Logo variant="icon" size={10} />
-                                        <span className="text-[9px] font-bold italic text-white/40 uppercase tracking-wider leading-none">
-                                            {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} COINS
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Divider */}
-                            <div className="w-px h-10 bg-white/10 mx-2 md:mx-4 shrink-0" />
-
-                            {/* Right: EMI */}
-                            <div className="flex-1 flex flex-col items-end">
-                                <p className="text-[9px] font-black text-[#F4B000] uppercase tracking-wider mb-1 italic">
-                                    Lowest EMI
+                                    Downpayment
                                 </p>
-                                <span
-                                    className={`font-black italic text-white leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
-                                >
-                                    {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
-                                </span>
+                                <Pencil
+                                    size={9}
+                                    style={{ color: finAccent, opacity: 0.5 }}
+                                    className="group-hover/edit:opacity-100 transition-opacity"
+                                />
+                            </button>
+                            <span
+                                style={{ color: finText }}
+                                className={`font-black italic leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
+                            >
+                                ₹{formatRoundedPrice(downpayment || 0)}
+                            </span>
+                            {showBcoinBadge && (
                                 <div className="flex items-center gap-1 mt-1">
-                                    <Clock size={9} className="text-white/30" />
-                                    <span className="text-[9px] font-bold italic text-white/40 uppercase tracking-wider leading-none">
-                                        {activeTenure} MONTHS
+                                    <Logo variant="icon" size={10} />
+                                    <span
+                                        style={{ color: finSub }}
+                                        className="text-[9px] font-bold italic uppercase tracking-wider leading-none"
+                                    >
+                                        {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} COINS
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ backgroundColor: finDiv }} className="w-px h-10 mx-2 md:mx-4 shrink-0" />
+
+                        {/* Right: EMI */}
+                        <div className="flex-1 flex flex-col items-end">
+                            <p
+                                style={{ color: finAccent }}
+                                className="text-[9px] font-black uppercase tracking-wider mb-1 italic"
+                            >
+                                Lowest EMI
+                            </p>
+                            <span
+                                style={{ color: finText }}
+                                className={`font-black italic leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
+                            >
+                                {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
+                            </span>
+                            <div className="flex items-center gap-1 mt-1">
+                                <Clock size={9} style={{ color: finSub }} />
+                                <span
+                                    style={{ color: finSub }}
+                                    className="text-[9px] font-bold italic uppercase tracking-wider leading-none"
+                                >
+                                    {activeTenure} MONTHS
+                                </span>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* ── BACK · Cash — absolute overlay, phases in when finance phases out ── */}
+                    <motion.div
+                        initial={false}
+                        animate={{
+                            scaleX: cardPricingMode === 'cash' ? 1 : 0,
+                            opacity: cardPricingMode === 'cash' ? 1 : 0,
+                        }}
+                        transition={{
+                            scaleX: {
+                                duration: 0.28,
+                                ease: cardPricingMode === 'cash' ? [0.0, 0.0, 0.2, 1] : [0.4, 0, 1, 1],
+                                delay: cardPricingMode === 'cash' ? 0.28 : 0,
+                            },
+                            opacity: {
+                                duration: 0.18,
+                                delay: cardPricingMode === 'cash' ? 0.28 : 0,
+                            },
+                        }}
+                        className={`absolute inset-0 rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
+                        style={{
+                            originX: '50%',
+                            background: cashBg,
+                            boxShadow: cashBoxShadow,
+                            border: cashBorder,
+                        }}
+                    >
+                        {/* Left: On-Road Price with Breakdown Tooltip */}
+                        <div className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}>
+                            <div className="group/pricing relative">
+                                <div className="flex items-center gap-1.5 mb-1 cursor-help">
+                                    <p
+                                        style={{ color: cashLabel }}
+                                        className="text-[9px] font-black uppercase tracking-wider italic leading-none"
+                                    >
+                                        On-Road Price
+                                    </p>
+                                    <CircleHelp size={10} style={{ color: cashLabel, opacity: 0.5 }} />
+
+                                    {/* Premium Breakup Tooltip */}
+                                    <div className="absolute left-0 bottom-full mb-4 z-50 w-max min-w-[280px] p-5 rounded-[2rem] bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.15)] opacity-0 invisible group-hover/pricing:opacity-100 group-hover/pricing:visible transition-all duration-500 pointer-events-none origin-bottom-left scale-90 group-hover/pricing:scale-100 ring-1 ring-black/5">
+                                        <div className="absolute -bottom-1.5 left-6 w-3 h-3 bg-white border-r border-b border-slate-200 rotate-45" />
+                                        <div className="space-y-5 relative z-10">
+                                            <div className="pb-3 border-b border-slate-100 flex justify-between items-end">
+                                                <div>
+                                                    <p className="text-[11px] font-black uppercase tracking-[0.15em] text-brand-primary mb-0.5">
+                                                        Pricing Breakup
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                                                        Detailed Statement
+                                                    </p>
+                                                </div>
+                                                <div className="px-2 py-0.5 bg-slate-100 rounded-md text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                                                    {priceSourceDisplay}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {(() => {
+                                                    const tEx =
+                                                        (v.price as any)?.exShowroom ||
+                                                        (v as any)?.serverPricing?.ex_showroom ||
+                                                        0;
+                                                    const tRto =
+                                                        (v.price as any)?.rtoTotal ||
+                                                        (v as any)?.serverPricing?.rto?.total ||
+                                                        0;
+                                                    const tIns =
+                                                        (v.price as any)?.insuranceTotal ||
+                                                        (v as any)?.serverPricing?.insurance?.total ||
+                                                        0;
+                                                    const tOcircle = bcoinAdjustment || 0;
+                                                    const rawOnRoad = onRoad > 0 ? onRoad : tEx + tRto + tIns;
+                                                    const tOthers = Math.max(0, rawOnRoad - (tEx + tRto + tIns));
+                                                    const rows = [
+                                                        { label: 'Ex-Showroom', val: tEx },
+                                                        { label: 'Registration (State)', val: tRto },
+                                                        { label: 'Insurance', val: tIns },
+                                                        { label: 'Insurance Add-ons', val: 0 },
+                                                        { label: 'Mandatory Accessories', val: 0 },
+                                                        { label: 'Optional Accessories', val: 0 },
+                                                        { label: 'Services & Others', val: tOthers },
+                                                    ];
+                                                    return (
+                                                        <>
+                                                            <div className="space-y-2">
+                                                                {rows.map((row, idx) => (
+                                                                    <div
+                                                                        key={idx}
+                                                                        className="flex justify-between items-center group/row"
+                                                                    >
+                                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover/row:text-slate-900 transition-colors">
+                                                                            {row.label}
+                                                                        </span>
+                                                                        <span className="text-[11px] font-mono font-black text-slate-900">
+                                                                            ₹{formatRoundedPrice(row.val)}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                                <div className="flex justify-between items-center group/row">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover/row:text-slate-900 transition-colors">
+                                                                        Delivery TAT
+                                                                    </span>
+                                                                    <span className="text-[11px] font-black text-slate-900 uppercase">
+                                                                        7-10 Days
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            {savings + tOcircle > 0 && (
+                                                                <div className="mt-4 p-3 bg-[#F4B000]/5 border border-[#F4B000]/20 rounded-2xl">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[10px] font-black uppercase tracking-widest text-[#F4B000]">
+                                                                                O' Circle Privileged
+                                                                            </span>
+                                                                            <span className="text-[8px] font-bold text-[#F4B000]/60 uppercase tracking-tight">
+                                                                                Exclusive Member Reward
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className="text-[13px] font-mono font-black text-[#F4B000]">
+                                                                            -₹{formatRoundedPrice(savings + tOcircle)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                            <div className="pt-4 border-t-2 border-slate-900/5 flex justify-between items-center">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">
+                                                        Net Offer Price
+                                                    </span>
+                                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">
+                                                        Final Payable Amount
+                                                    </span>
+                                                </div>
+                                                <span className="text-[18px] font-black text-brand-primary font-mono italic leading-none">
+                                                    ₹{formatRoundedPrice(effectiveOfferPrice)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-start gap-0.5">
+                                    <span
+                                        style={{ color: cashText }}
+                                        className="text-[24px] md:text-[28px] font-black italic leading-none"
+                                    >
+                                        ₹{formatRoundedPrice(effectiveOfferPrice)}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* ── BACK · Cash ── */}
-                        <div
-                            className={`absolute inset-0 w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
-                            style={{
-                                backfaceVisibility: 'hidden',
-                                transform: 'rotateY(180deg)',
-                                background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 55%, #f8fafc 100%)',
-                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(16,185,129,0.08)',
-                                border: '1px solid rgba(16,185,129,0.15)',
-                            }}
-                        >
-                            {/* Left: On-Road Price with Breakdown Tooltip */}
-                            <div className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}>
-                                <div className="group/pricing relative">
-                                    <div className="flex items-center gap-1.5 mb-1 cursor-help">
-                                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider italic leading-none">
-                                            On-Road Price
-                                        </p>
-                                        <CircleHelp size={10} className="text-emerald-500/50" />
+                        {/* Center Divider */}
+                        <div style={{ backgroundColor: cashDiv }} className="w-px h-10" />
 
-                                        {/* Premium Breakup Tooltip (PDP Parity: High-Fidelity) */}
-                                        <div className="absolute left-0 bottom-full mb-4 z-50 w-max min-w-[280px] p-5 rounded-[2rem] bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.15)] opacity-0 invisible group-hover/pricing:opacity-100 group-hover/pricing:visible transition-all duration-500 pointer-events-none origin-bottom-left scale-90 group-hover/pricing:scale-100 ring-1 ring-black/5">
-                                            {/* Triangle pointer */}
-                                            <div className="absolute -bottom-1.5 left-6 w-3 h-3 bg-white border-r border-b border-slate-200 rotate-45" />
-
-                                            <div className="space-y-5 relative z-10">
-                                                <div className="pb-3 border-b border-slate-100 flex justify-between items-end">
-                                                    <div>
-                                                        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-brand-primary mb-0.5">
-                                                            Pricing Breakup
-                                                        </p>
-                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                                                            Detailed Statement
-                                                        </p>
-                                                    </div>
-                                                    <div className="px-2 py-0.5 bg-slate-100 rounded-md text-[8px] font-black text-slate-500 uppercase tracking-widest">
-                                                        {priceSourceDisplay}
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-3">
-                                                    {(() => {
-                                                        const tEx =
-                                                            (v.price as any)?.exShowroom ||
-                                                            (v as any)?.serverPricing?.ex_showroom ||
-                                                            0;
-                                                        const tRto =
-                                                            (v.price as any)?.rtoTotal ||
-                                                            (v as any)?.serverPricing?.rto?.total ||
-                                                            0;
-                                                        const tIns =
-                                                            (v.price as any)?.insuranceTotal ||
-                                                            (v as any)?.serverPricing?.insurance?.total ||
-                                                            0;
-                                                        const tOcircle = bcoinAdjustment || 0;
-
-                                                        const rawOnRoad = onRoad > 0 ? onRoad : tEx + tRto + tIns;
-                                                        const residual = rawOnRoad - (tEx + tRto + tIns);
-                                                        const tOthers = Math.max(0, residual);
-
-                                                        const rows = [
-                                                            { label: 'Ex-Showroom', val: tEx },
-                                                            { label: 'Registration (State)', val: tRto },
-                                                            { label: 'Insurance', val: tIns },
-                                                            { label: 'Insurance Add-ons', val: 0 },
-                                                            { label: 'Mandatory Accessories', val: 0 },
-                                                            { label: 'Optional Accessories', val: 0 },
-                                                            { label: 'Services & Others', val: tOthers },
-                                                        ];
-
-                                                        return (
-                                                            <>
-                                                                <div className="space-y-2">
-                                                                    {rows.map((row, idx) => (
-                                                                        <div
-                                                                            key={idx}
-                                                                            className="flex justify-between items-center group/row"
-                                                                        >
-                                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover/row:text-slate-900 transition-colors">
-                                                                                {row.label}
-                                                                            </span>
-                                                                            <span className="text-[11px] font-mono font-black text-slate-900">
-                                                                                ₹{formatRoundedPrice(row.val)}
-                                                                            </span>
-                                                                        </div>
-                                                                    ))}
-
-                                                                    {/* Row: Delivery TAT */}
-                                                                    <div className="flex justify-between items-center group/row">
-                                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover/row:text-slate-900 transition-colors">
-                                                                            Delivery TAT
-                                                                        </span>
-                                                                        <span className="text-[11px] font-black text-slate-900 uppercase">
-                                                                            7-10 Days
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Unified O' Circle Privileged (Dealer + Coin Discounts) */}
-                                                                {savings + tOcircle > 0 && (
-                                                                    <div className="mt-4 p-3 bg-[#F4B000]/5 border border-[#F4B000]/20 rounded-2xl">
-                                                                        <div className="flex justify-between items-center">
-                                                                            <div className="flex flex-col">
-                                                                                <span className="text-[10px] font-black uppercase tracking-widest text-[#F4B000]">
-                                                                                    O' Circle Privileged
-                                                                                </span>
-                                                                                <span className="text-[8px] font-bold text-[#F4B000]/60 uppercase tracking-tight">
-                                                                                    Exclusive Member Reward
-                                                                                </span>
-                                                                            </div>
-                                                                            <span className="text-[13px] font-mono font-black text-[#F4B000]">
-                                                                                -₹
-                                                                                {formatRoundedPrice(savings + tOcircle)}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-
-                                                <div className="pt-4 border-t-2 border-slate-900/5 flex justify-between items-center group/total">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">
-                                                            Net Offer Price
-                                                        </span>
-                                                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">
-                                                            Final Payable Amount
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="text-[18px] font-black text-brand-primary font-mono italic leading-none">
-                                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col items-start gap-0.5">
-                                        <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
-                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
+                        {/* Right: O'Circle Privileged */}
+                        <div className={`${isTv ? 'pl-3' : 'pl-5'} flex-1 flex flex-col items-end`}>
+                            <p
+                                style={{ color: cashLabel }}
+                                className="text-[9px] font-black uppercase tracking-wider mb-1 italic"
+                            >
+                                O'Circle Privileged
+                            </p>
+                            <div className="flex flex-col items-end gap-0.5">
+                                {showBcoinBadge && (
+                                    <div className="flex items-center gap-2">
+                                        <Logo variant="icon" size={16} />
+                                        <span
+                                            style={{ color: cashText }}
+                                            className="text-[24px] md:text-[28px] font-black italic leading-none"
+                                        >
+                                            {coinsNeededForPrice(effectiveOfferPrice).toLocaleString('en-IN')}
                                         </span>
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* Center Divider */}
-                            <div className="w-px h-10 bg-slate-100" />
-
-                            {/* Right Panel: O'Circle Privileged */}
-                            <div className={`${isTv ? 'pl-3' : 'pl-5'} flex-1 flex flex-col items-end`}>
-                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1 italic">
-                                    O'Circle Privileged
-                                </p>
-
-                                <div className="flex flex-col items-end gap-0.5">
-                                    {showBcoinBadge && (
-                                        <div className="flex items-center gap-2">
-                                            <Logo variant="icon" size={16} />
-                                            <span className="text-[24px] md:text-[28px] font-black italic text-slate-900 leading-none">
-                                                {coinsNeededForPrice(effectiveOfferPrice).toLocaleString('en-IN')}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
+                                )}
                             </div>
                         </div>
                     </motion.div>

@@ -108,6 +108,7 @@ export function DiscoveryBar({
                             {onShareClick && (
                                 <button
                                     onClick={onShareClick}
+                                    title={shareActive ? 'Copied' : 'Copy compare message'}
                                     className={`mr-2 inline-flex items-center gap-1.5 px-4 h-10 rounded-2xl border transition-all duration-300 text-[9px] font-black uppercase tracking-[0.1em] ${
                                         shareActive
                                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -115,7 +116,6 @@ export function DiscoveryBar({
                                     }`}
                                 >
                                     <Share2 size={13} />
-                                    {shareActive ? 'Copied' : shareLabel}
                                 </button>
                             )}
                             <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 h-10 shadow-inner">

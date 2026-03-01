@@ -47,6 +47,7 @@ import {
     CreditCard,
     Calendar,
     TrendingDown,
+    Share2,
     type LucideIcon,
 } from 'lucide-react';
 import { ProductCard } from '@/components/store/desktop/ProductCard';
@@ -196,6 +197,7 @@ export default function DesktopCompare() {
         modelSlug,
         items,
         isLoading,
+        needsLocation,
         modelGroup,
         activeVariants,
         sortedVariants,
@@ -381,9 +383,6 @@ export default function DesktopCompare() {
     const handleShare = async () => {
         const url = window.location.href;
         const textToShare = `${shareMessage}\n\nCompare link: ${url}`;
-        const waUrl = `https://wa.me/?text=${encodeURIComponent(textToShare)}`;
-        window.open(waUrl, '_blank', 'noopener,noreferrer');
-
         try {
             await navigator.clipboard.writeText(textToShare);
         } catch {
@@ -409,6 +408,34 @@ export default function DesktopCompare() {
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
                         Loading variants...
                     </p>
+                </div>
+            </div>
+        );
+    }
+
+    // No location set — show a friendly prompt instead of blank state
+    if (needsLocation) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="text-center space-y-5 max-w-xs">
+                    <div className="w-14 h-14 rounded-full bg-[#F4B000]/10 flex items-center justify-center mx-auto">
+                        <Navigation size={24} className="text-[#F4B000]" />
+                    </div>
+                    <div className="space-y-2">
+                        <p className="text-[13px] font-black uppercase tracking-widest text-slate-800">
+                            Set Your Location
+                        </p>
+                        <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                            We need your city/district to show accurate on-road prices for {makeSlug} {modelSlug}{' '}
+                            variants.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => router.push('/store/catalog')}
+                        className="px-6 py-3 bg-[#F4B000] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#FFD700] transition-colors"
+                    >
+                        Go to Catalog → Set Location
+                    </button>
                 </div>
             </div>
         );
@@ -440,7 +467,7 @@ export default function DesktopCompare() {
                         searchQuery={searchQuery}
                         onSearchChange={setSearchQuery}
                         onShareClick={handleShare}
-                        shareLabel="Share Compare"
+                        shareLabel=""
                         shareActive={shareTooltip}
                         pricingMode={pricingMode}
                         onPricingModeChange={setPricingMode}

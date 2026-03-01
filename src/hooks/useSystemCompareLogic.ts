@@ -17,7 +17,7 @@ export function useSystemCompareLogic() {
     const makeSlug = (params.make as string) || '';
     const modelSlug = (params.model as string) || '';
 
-    const { items, isLoading } = useSystemCatalogLogic();
+    const { items, isLoading, needsLocation } = useSystemCatalogLogic(undefined, { allowStateOnly: true });
 
     // ── Variant removal state ──
     const [removedVariantIds, setRemovedVariantIds] = useState<Set<string>>(new Set());
@@ -30,7 +30,15 @@ export function useSystemCompareLogic() {
             groups.find(g => {
                 const gMake = slugify(g.make);
                 const gModel = slugify(g.model);
-                return gMake === makeSlug && (gModel === modelSlug || g.modelSlug === modelSlug);
+                const groupSlug = slugify(g.modelSlug || g.model);
+                const modelMatch =
+                    gModel === modelSlug ||
+                    groupSlug === modelSlug ||
+                    gModel.startsWith(`${modelSlug}-`) ||
+                    groupSlug.startsWith(`${modelSlug}-`) ||
+                    modelSlug.startsWith(`${gModel}-`) ||
+                    modelSlug.startsWith(`${groupSlug}-`);
+                return gMake === makeSlug && modelMatch;
             }) || null
         );
     }, [items, makeSlug, modelSlug]);
@@ -102,6 +110,7 @@ export function useSystemCompareLogic() {
         // Data
         items,
         isLoading,
+        needsLocation,
         modelGroup,
         sortedVariants,
         activeVariants,

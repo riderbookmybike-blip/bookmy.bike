@@ -4,14 +4,17 @@ import { ProductVariant } from '@/types/productMaster';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 function isAbortLikeError(err: unknown): boolean {
-    const message = getErrorMessage(err) || '';
-    if (message.includes('AbortError') || message.includes('operation was aborted')) return true;
+    const message = (getErrorMessage(err) || '').toLowerCase();
+    if (message.includes('aborterror') || message.includes('operation was aborted')) return true;
 
     const candidate = err as { name?: string; message?: string };
-    return candidate?.name === 'AbortError' || candidate?.message?.includes('operation was aborted') === true;
+    const name = String(candidate?.name || '').toLowerCase();
+    const raw = String(candidate?.message || '').toLowerCase();
+    return name === 'aborterror' || raw.includes('operation was aborted') || raw.includes('aborterror');
 }
 
-export function useSystemCatalogLogic(leadId?: string) {
+export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnly?: boolean }) {
+    const allowStateOnly = options?.allowStateOnly ?? false;
     const [items, setItems] = useState<ProductVariant[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -139,7 +142,7 @@ export function useSystemCatalogLogic(leadId?: string) {
 
                 let resolvedStateCode = cachedLocation.stateCode || stateCode || 'MH';
                 let resolvedUserDistrict = cachedLocation.district || userDistrict;
-                if (!resolvedUserDistrict && !leadId) {
+                if (!resolvedUserDistrict && !leadId && !allowStateOnly) {
                     setNeedsLocation(true);
                     setIsLoading(false);
                     return;
