@@ -22,8 +22,7 @@ export async function isMobileDevice(): Promise<boolean> {
 export async function getInitialDeviceType(): Promise<'phone' | 'desktop' | 'tv'> {
     const headersList = await headers();
     const userAgent = headersList.get('user-agent');
-    if (userAgent && isTvUserAgent(userAgent)) return 'tv';
-
-    const isMobile = await isMobileDevice();
-    return isMobile ? 'phone' : 'desktop';
+    if (!userAgent) return 'desktop';
+    if (isTvUserAgent(userAgent)) return 'tv';
+    return isHandheldPhoneUserAgent(userAgent) ? 'phone' : 'desktop';
 }

@@ -3,14 +3,23 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Heart, ArrowRight, Plus, Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
+import { Heart, ArrowRight, Plus, Search, X, ChevronDown, ChevronRight, Menu } from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { ProductCard } from '@/components/store/desktop/ProductCard';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
+import { DiscoveryBar } from '@/components/store/DiscoveryBar';
 
 // Filter Group Component (Extracted)
-const FilterGroup = ({ title, options, selectedValues, onToggle, onReset, showReset = false }: any) => {
+const FilterGroup = ({
+    title,
+    options,
+    selectedValues,
+    onToggle,
+    onReset,
+    showReset = false,
+    allVisible = false,
+}: any) => {
     const [isOpen, setIsOpen] = useState(true);
 
     return (
@@ -245,85 +254,13 @@ export const WishlistClient = () => {
 
     return (
         <div className="space-y-4">
-            {/* 1. Header Section - Catalog Style */}
-            <header
-                className="hidden md:block sticky z-[90] py-0 mb-6 transition-all duration-700 ease-in-out"
-                style={{ top: 'var(--header-h)', marginTop: '20px' }}
-            >
-                <div className="w-full">
-                    <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
-                        <div className="flex items-center gap-4 w-full">
-                            {/* Branding Icon (Heart) */}
-                            <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 flex items-center justify-center shrink-0 border border-brand-primary/20">
-                                <Heart size={20} className="text-brand-primary" fill="currentColor" />
-                            </div>
-
-                            <button
-                                onClick={() => setIsFilterOpen(true)}
-                                className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white/40 border border-slate-200/40 text-slate-500 hover:text-slate-900 hover:bg-white hover:border-slate-300 transition-all duration-300 shrink-0 group"
-                            >
-                                <SlidersHorizontal
-                                    size={18}
-                                    className="group-hover:rotate-180 transition-transform duration-500"
-                                />
-                            </button>
-
-                            <div className="flex-none min-w-[240px] lg:min-w-[320px]">
-                                <div className="relative flex items-center gap-3 w-full bg-slate-100/30 hover:bg-slate-100/50 border border-slate-200/30 rounded-2xl px-4 h-10 transition-all duration-500 group focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-primary/5 focus-within:border-brand-primary/10">
-                                    <Search
-                                        size={16}
-                                        className="text-slate-400 group-focus-within:text-brand-primary group-focus-within:scale-110 transition-all duration-300"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="SEARCH YOUR WISHLIST..."
-                                        value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
-                                        className="flex-1 min-w-0 bg-transparent text-[10px] font-black tracking-[0.2em] uppercase focus:outline-none placeholder:text-slate-400/50"
-                                    />
-                                    {searchQuery && (
-                                        <button
-                                            onClick={() => setSearchQuery('')}
-                                            className="flex items-center justify-center w-6 h-6 rounded-full text-slate-300 hover:text-slate-900 hover:bg-slate-200/50 transition-all"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Center Section: Info Label */}
-                            <div className="flex-1 flex items-center justify-center pointer-events-none">
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">
-                                    {wishlistItems.length} Saved Machine{wishlistItems.length === 1 ? '' : 's'}
-                                </span>
-                            </div>
-
-                            {/* Pricing Toggle - Aligned Right */}
-                            <div className="flex-none flex items-center ml-4 pl-6 border-l border-slate-200/40">
-                                <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 h-10 shadow-inner">
-                                    {[
-                                        { id: 'finance', label: 'Finance' },
-                                        { id: 'cash', label: 'Cash' },
-                                    ].map(mode => (
-                                        <button
-                                            key={mode.id}
-                                            onClick={() => setPricingMode(mode.id as any)}
-                                            className={`px-6 h-full rounded-xl text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-300 ${
-                                                pricingMode === mode.id
-                                                    ? 'bg-[#FFD700] text-black shadow-sm'
-                                                    : 'text-slate-500 hover:text-slate-950 hover:bg-slate-200/50'
-                                            }`}
-                                        >
-                                            {mode.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <DiscoveryBar
+                onFilterClick={() => setIsFilterOpen(true)}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                pricingMode={pricingMode}
+                onPricingModeChange={mode => setPricingMode(mode as any)}
+            />
 
             {/* 2. Mobile Search Bar (Sticky) */}
             <div
@@ -351,90 +288,6 @@ export const WishlistClient = () => {
                     </div>
                 </div>
             </div>
-
-            {/* STICKY NAVBAR (Catalog Aesthetic Synchronization) */}
-            <header className="sticky z-40 mb-12 transition-all duration-300" style={{ top: 'var(--header-h)' }}>
-                <div className="w-full">
-                    <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.05)] px-6 py-4">
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                            {/* Left: Category Chips */}
-                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right">
-                                <button
-                                    onClick={() => setActiveCategory('ALL')}
-                                    className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                                        activeCategory === 'ALL'
-                                            ? 'bg-slate-900 text-white shadow-lg'
-                                            : 'bg-slate-100/50 text-slate-500 hover:text-slate-900 border border-slate-200/50'
-                                    }`}
-                                >
-                                    All Types
-                                </button>
-                                {(['MOTORCYCLE', 'SCOOTER', 'MOPED'] as const).map(option => (
-                                    <button
-                                        key={option}
-                                        onClick={() => setActiveCategory(option)}
-                                        className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                                            activeCategory === option
-                                                ? 'bg-[#F4B000] text-black shadow-lg shadow-[#F4B000]/20 scale-105'
-                                                : 'bg-slate-100/50 text-slate-500 hover:text-slate-900 border border-slate-200/50'
-                                        }`}
-                                    >
-                                        {option}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Right: Sort & Filter Actions */}
-                            <div className="flex items-center gap-3 flex-shrink-0">
-                                {/* Sort Dropdown */}
-                                <div className="flex items-center bg-slate-100/40 border border-slate-200/40 rounded-2xl px-4 py-2 hover:border-slate-300 transition-colors group">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider mr-2">
-                                        Sort:
-                                    </span>
-                                    <select
-                                        value={sortBy}
-                                        onChange={e => setSortBy(e.target.value as any)}
-                                        className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-900 focus:outline-none cursor-pointer pr-2"
-                                    >
-                                        <option value="popular">Popularity</option>
-                                        <option value="price">Price: Low to High</option>
-                                        <option value="emi">EMI: Low to High</option>
-                                    </select>
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => setIsFilterOpen(true)}
-                                        className={`relative flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ${
-                                            activeFilterCount > 0
-                                                ? 'bg-slate-900 text-white shadow-lg'
-                                                : 'bg-white text-slate-500 border border-slate-200 hover:text-slate-900 shadow-sm'
-                                        }`}
-                                    >
-                                        <SlidersHorizontal size={14} strokeWidth={2.5} />
-                                        <span className="hidden sm:inline">Refine</span>
-                                        {activeFilterCount > 0 && (
-                                            <span className="flex items-center justify-center bg-[#F4B000] text-black w-4 h-4 rounded-full text-[8px] absolute -top-1 -right-1 shadow-md">
-                                                {activeFilterCount}
-                                            </span>
-                                        )}
-                                    </button>
-
-                                    <div className="h-8 w-px bg-slate-200 mx-2" />
-
-                                    <button
-                                        onClick={clearFavorites}
-                                        className="px-5 py-2.5 rounded-2xl border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all text-[9px] font-black uppercase tracking-widest bg-white/50 active:scale-95 shadow-sm"
-                                    >
-                                        Clear All
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
 
             {/* Active Filter Chips */}
             {(searchQuery ||

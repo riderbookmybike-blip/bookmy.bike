@@ -10,6 +10,8 @@ import { coinsNeededForPrice, computeOClubPricing, discountForCoins } from '@/li
 import { Logo } from '@/components/brand/Logo';
 import Image from 'next/image';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
+import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
+import { slugify } from '@/utils/slugs';
 
 interface CompactProductCardProps {
     v: ProductVariant;
@@ -35,6 +37,7 @@ export function CompactProductCard({
     showOClubPrompt,
 }: CompactProductCardProps) {
     const { isFavorite, toggleFavorite } = useFavorites();
+    const { trackEvent } = useAnalytics();
     const isSaved = isFavorite(v.id);
     const [selectedHex, setSelectedHex] = useState<string | null>(() => {
         const match = v.availableColors?.find(c => c.imageUrl === v.imageUrl) || v.availableColors?.[0];
@@ -108,6 +111,16 @@ export function CompactProductCard({
         leadId,
         basePath,
     }).url;
+    const trackCatalogClick = () => {
+        trackEvent('INTENT_SIGNAL', 'catalog_vehicle_click', {
+            lead_id: leadId || undefined,
+            sku_id: v.availableColors?.[0]?.id || undefined,
+            make_slug: slugify(v.make || ''),
+            model_slug: slugify(v.model || ''),
+            variant_slug: slugify(v.variant || ''),
+            source: 'STORE_CATALOG',
+        });
+    };
 
     return (
         <div
@@ -132,6 +145,15 @@ export function CompactProductCard({
                         imageUrl: selectedImage || v.imageUrl || undefined,
                         price: displayPrice || undefined,
                     });
+                    trackEvent('INTENT_SIGNAL', 'wishlist_toggle', {
+                        lead_id: leadId || undefined,
+                        sku_id: v.availableColors?.[0]?.id || undefined,
+                        make_slug: slugify(v.make || ''),
+                        model_slug: slugify(v.model || ''),
+                        variant_slug: slugify(v.variant || ''),
+                        action: isSaved ? 'removed' : 'added',
+                        source: 'STORE_CATALOG',
+                    });
                 }}
                 className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center transition-all border border-slate-100"
             >
@@ -143,7 +165,11 @@ export function CompactProductCard({
             </button>
 
             {/* Vehicle Image */}
-            <Link href={href} className="block relative aspect-[4/3] bg-slate-50 overflow-hidden">
+            <Link
+                href={href}
+                onClick={trackCatalogClick}
+                className="block relative aspect-[4/3] bg-slate-50 overflow-hidden"
+            >
                 {selectedImage ? (
                     <Image
                         src={selectedImage}
@@ -160,7 +186,7 @@ export function CompactProductCard({
             </Link>
 
             {/* Content */}
-            <Link href={href} className="flex flex-col gap-1.5 p-3 pt-2">
+            <Link href={href} onClick={trackCatalogClick} className="flex flex-col gap-1.5 p-3 pt-2">
                 {/* Make & Model */}
                 <div>
                     <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 leading-none">

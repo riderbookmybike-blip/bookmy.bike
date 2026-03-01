@@ -181,7 +181,9 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
 
         const queryString = params.toString();
         if (queryString !== searchParams.toString()) {
-            console.log('[useCatalogFilters] Updating URL:', queryString);
+            if (process.env.NODE_ENV !== 'production') {
+                console.log('[useCatalogFilters] Updating URL:', queryString);
+            }
             const url = queryString ? `${pathname}?${queryString}` : pathname;
             router.replace(url, { scroll: false });
         }
@@ -203,15 +205,15 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     ]);
 
     const filteredVehicles = useMemo(() => {
+        const normalizedSearch = debouncedSearch.toLowerCase();
+        const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
+        const isAllMakesSelected =
+            selectedMakes.length === 0 ||
+            (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
+
         return initialVehicles.filter((v: ProductVariant) => {
-            const matchesSearch = (v.make + ' ' + v.model + ' ' + v.variant)
-                .toLowerCase()
-                .includes(debouncedSearch.toLowerCase());
+            const matchesSearch = (v.make + ' ' + v.model + ' ' + v.variant).toLowerCase().includes(normalizedSearch);
             const normalizedMake = (v.make || '').toUpperCase();
-            const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
-            const isAllMakesSelected =
-                selectedMakes.length === 0 ||
-                (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
             const matchesMake = isAllMakesSelected || selectedMakeSet.has(normalizedMake);
 
             const isElectric = v.model.toLowerCase().includes('electric') || v.fuelType === 'EV';
@@ -258,12 +260,12 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             }
             const matchesBrakes = selectedBrakes.length === 0 || selectedBrakes.includes(brakeTag);
 
-            const wheelType = (v.specifications as any)?.wheels?.front?.toLowerCase().includes('alloy')
+            const wheelType = (v.specifications as any)?.wheels?.front?.toLowerCase?.().includes('alloy')
                 ? 'Alloy'
                 : 'Spoke';
             const matchesWheels = selectedWheels.length === 0 || selectedWheels.includes(wheelType);
 
-            const consoleType = (v.specifications as any)?.console?.toLowerCase().includes('digital')
+            const consoleType = (v.specifications as any)?.console?.toLowerCase?.().includes('digital')
                 ? 'Full Digital'
                 : 'Analog';
             const matchesConsole = selectedConsole.length === 0 || selectedConsole.includes(consoleType);
@@ -332,7 +334,6 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         selectedFinishes,
         maxPrice,
         maxEMI,
-        maxEMI,
         showOClubOnly,
         downpayment, // Added dependency for EMI calculation
         availableMakes,
@@ -355,7 +356,6 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setSelectedSeatHeight([]);
         setSelectedWeights([]);
         setSelectedFinishes([]);
-        setMaxPrice(1000000);
         setMaxPrice(1000000);
         setMaxEMI(20000);
         setDownpayment(0);

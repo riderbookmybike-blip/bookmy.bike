@@ -218,6 +218,8 @@ export default function ProductClient({
         isReferralActive,
         baseExShowroom,
     } = data;
+    // SSPP v1: Enforce canonical SKU UUID for all persistence actions.
+    const colorSkuId = SKU_UUID_REGEX.test(String(selectedSkuId || '')) ? String(selectedSkuId) : null;
 
     const {
         setSelectedColor,
@@ -244,6 +246,20 @@ export default function ProductClient({
             ...extra,
         }),
         [leadIdFromUrl, makeParam, modelParam, variantParam]
+    );
+
+    const buildPdpIntentMetadata = React.useCallback(
+        (extra: Record<string, unknown> = {}) => ({
+            lead_id: leadContext?.id || leadIdFromUrl || undefined,
+            sku_id: colorSkuId || undefined,
+            color_id: selectedColor || undefined,
+            make_slug: makeParam || undefined,
+            model_slug: modelParam || undefined,
+            variant_slug: variantParam || undefined,
+            source: 'STORE_PDP',
+            ...extra,
+        }),
+        [leadContext?.id, leadIdFromUrl, colorSkuId, selectedColor, makeParam, modelParam, variantParam]
     );
 
     const sendImmediateIntentSignal = React.useCallback((eventName: string, metadata: Record<string, unknown>) => {
@@ -331,6 +347,10 @@ export default function ProductClient({
         activeSkuStartedAtRef.current = Date.now();
         trackEvent('INTENT_SIGNAL', 'sku_view', buildSkuEventMetadata(trackedSkuId));
     }, [trackedSkuId, emitDwellForActiveSku, trackEvent, buildSkuEventMetadata]);
+
+    useEffect(() => {
+        trackEvent('INTENT_SIGNAL', 'pdp_visit', buildPdpIntentMetadata());
+    }, [trackEvent, buildPdpIntentMetadata]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -447,10 +467,15 @@ export default function ProductClient({
             }
         }
         if (leadIdFromUrl) url.searchParams.set('leadId', leadIdFromUrl);
+        const shareMetadata = buildPdpIntentMetadata({ color_name: selectedColor || undefined });
 
         if (navigator.share) {
             try {
                 shareInFlightRef.current = true;
+                trackEvent('INTENT_SIGNAL', 'pdp_share_quote', {
+                    ...shareMetadata,
+                    share_channel: 'native_share',
+                });
                 await navigator.share({
                     title: `${product.model} Configuration`,
                     text: `Check out ${product.model} on BookMyBike! Price: ₹${totalOnRoad.toLocaleString()}`,
@@ -467,15 +492,16 @@ export default function ProductClient({
         } else {
             try {
                 await navigator.clipboard.writeText(url.toString());
+                trackEvent('INTENT_SIGNAL', 'pdp_share_quote', {
+                    ...shareMetadata,
+                    share_channel: 'clipboard',
+                });
                 alert('URL copied!');
             } catch (err) {
                 console.error('Clipboard copy failed:', err);
             }
         }
     };
-
-    // SSPP v1: Enforce canonical SKU UUID for all persistence actions.
-    const colorSkuId = SKU_UUID_REGEX.test(String(selectedSkuId || '')) ? String(selectedSkuId) : null;
 
     const buildCommercials = () => {
         const resolvedColor =
@@ -680,6 +706,7 @@ export default function ProductClient({
 
         try {
             const commercials = buildCommercials();
+            trackEvent('INTENT_SIGNAL', 'pdp_save_quote', buildPdpIntentMetadata({ action: 'attempt' }));
 
             const result: any = await createQuoteAction({
                 tenant_id: sessionDealerId || product.tenant_id || '', // Ensure tenant_id is available
@@ -691,14 +718,24 @@ export default function ProductClient({
             });
 
             if (result?.success) {
+                trackEvent(
+                    'INTENT_SIGNAL',
+                    'pdp_save_quote',
+                    buildPdpIntentMetadata({
+                        action: 'success',
+                        quote_id: result?.data?.id || undefined,
+                    })
+                );
                 toast.success(`Quote saved for ${leadContext.name}`);
                 notifySmsStatus(result?.smsStatus);
                 router.back(); // Go back to leads
             } else {
+                trackEvent('INTENT_SIGNAL', 'pdp_save_quote', buildPdpIntentMetadata({ action: 'failed' }));
                 console.error('Server reported failure saving quote in PDP:', result);
                 toast.error(result?.message || 'Failed to save quote');
             }
         } catch (error) {
+            trackEvent('INTENT_SIGNAL', 'pdp_save_quote', buildPdpIntentMetadata({ action: 'failed' }));
             console.error('Save quote error:', error);
             toast.error('An error occurred while saving the quote');
         }
@@ -776,6 +813,13 @@ export default function ProductClient({
 
                         if (quoteResult?.success) {
                             const displayId = quoteResult.data?.display_id || quoteResult.data?.id;
+                            trackEvent('INTENT_SIGNAL', 'pdp_save_quote', {
+                                ...buildPdpIntentMetadata({
+                                    action: 'success',
+                                    quote_id: quoteResult?.data?.id || undefined,
+                                    lead_id: leadResult.leadId,
+                                }),
+                            });
                             toast.success(`Quote ${displayId} created successfully! 🎉`);
                             notifySmsStatus((quoteResult as any)?.smsStatus);
                             // Optionally redirect to quotes page or show success message

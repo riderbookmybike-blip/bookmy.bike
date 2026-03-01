@@ -902,6 +902,13 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
     // Filter to VEHICLE-type products only — exclude accessories & services from catalog
     const vehicleSkus = skus.filter((s: any) => {
         const productType = String(s.model?.product_type || '').toUpperCase();
+        const skuType = String(s.sku_type || '').toUpperCase();
+
+        // Explicitly reject non-vehicle SKU types, even if tied to a vehicle model
+        if (skuType === 'ACCESSORY' || skuType === 'SERVICE' || skuType === 'MERCHANDISE') {
+            return false;
+        }
+
         return productType === 'VEHICLE' || productType === '';
     });
 

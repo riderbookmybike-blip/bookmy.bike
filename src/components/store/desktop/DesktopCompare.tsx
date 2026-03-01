@@ -53,6 +53,7 @@ import {
 import { ProductCard } from '@/components/store/desktop/ProductCard';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
+import { DiscoveryBar } from '@/components/store/DiscoveryBar';
 import { useSystemCompareLogic } from '@/hooks/useSystemCompareLogic';
 import {
     computeSpecRows,
@@ -235,6 +236,7 @@ export default function DesktopCompare() {
     // Scroll-morph state
     const [compactMode, setCompactMode] = useState(false);
     const [stickyHeight, setStickyHeight] = useState(0);
+    const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>('finance');
     const fullCardsRef = useRef<HTMLDivElement>(null);
     const scrollAnchorRef = useRef<HTMLDivElement>(null);
 
@@ -392,466 +394,515 @@ export default function DesktopCompare() {
     return (
         <>
             <div className="min-h-screen bg-slate-50 transition-colors duration-500">
-                {/* Discovery Bar */}
-                <div className="page-container pt-4 pb-4">
-                    <header className="hidden md:block sticky z-[90] py-0" style={{ top: 'var(--header-h)' }}>
-                        <div className="w-full">
-                            <div className="rounded-full bg-slate-50/15 backdrop-blur-3xl border border-slate-200 shadow-2xl h-14 px-4 flex items-center">
-                                <div className="flex items-center gap-3 w-full">
-                                    <button
-                                        onClick={() => router.push('/store/catalog')}
-                                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 border border-slate-200 text-slate-600 hover:text-slate-900 shrink-0"
-                                        title="Back to Catalog"
-                                    >
-                                        <Menu size={16} />
-                                    </button>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 w-full bg-white/70 border border-slate-200 rounded-full px-4 py-2 h-10">
-                                            <Search size={14} className="text-slate-400" />
-                                            <input
-                                                type="text"
-                                                placeholder="Search brand, product, variant"
-                                                value={searchQuery}
-                                                onChange={e => setSearchQuery(e.target.value)}
-                                                className="flex-1 min-w-0 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300"
-                                            />
-                                            {searchQuery && (
-                                                <button
-                                                    onClick={() => setSearchQuery('')}
-                                                    className="text-slate-400 hover:text-slate-900"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="relative">
-                                        <button
-                                            onClick={handleShare}
-                                            className="flex items-center justify-center w-10 h-10 rounded-full bg-white/80 border border-slate-200 text-slate-600 hover:text-[#F4B000] hover:border-[#F4B000]/30 transition-all shrink-0"
-                                            title="Share Comparison"
-                                        >
-                                            {shareTooltip ? (
-                                                <Check size={16} className="text-emerald-500" />
-                                            ) : (
-                                                <Share2 size={16} />
-                                            )}
-                                        </button>
-                                        {shareTooltip && (
-                                            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900 text-white text-[9px] font-bold uppercase tracking-widest rounded-lg whitespace-nowrap shadow-xl z-50">
-                                                Link Copied!
-                                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45" />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </header>
-                </div>
+                {/* Main content with header + cards — same structure as Catalog */}
+                <div className="flex-1 page-container pt-0 pb-10 md:pb-16">
+                    <DiscoveryBar
+                        onFilterClick={() => router.push('/store/catalog')}
+                        searchQuery={searchQuery}
+                        onSearchChange={setSearchQuery}
+                        pricingMode={pricingMode}
+                        onPricingModeChange={setPricingMode}
+                    />
 
-                {/* ────── Full Cards (normal flow — scrolls away) ────── */}
-                <div ref={fullCardsRef} className="page-container pb-4">
-                    <div ref={scrollAnchorRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-                        {activeVariants.map(v => (
-                            <ProductCard
-                                key={v.id}
-                                v={v}
-                                viewMode="grid"
-                                downpayment={downpayment}
-                                tenure={tenure}
-                                onEditDownpayment={openDpEdit}
-                            />
-                        ))}
-                    </div>
-                </div>
-
-                {/* ────── Sticky Compact Bar + Specs (same parent so sticky persists) ────── */}
-                {allSpecs.length > 0 && (
-                    <div>
-                        {/* Compact bar — sticky, freezes below header */}
+                    {/* ────── Full Cards (normal flow — scrolls away) ────── */}
+                    <div ref={fullCardsRef}>
                         <div
-                            className="sticky z-[50] transition-all duration-500 ease-in-out"
-                            style={{
-                                top: 'var(--header-h, 80px)',
-                                maxHeight: compactMode ? '160px' : '0px',
-                                opacity: compactMode ? 1 : 0,
-                                overflow: 'hidden',
-                            }}
+                            ref={scrollAnchorRef}
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pb-4"
                         >
-                            <div className="page-container py-1">
-                                <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-0 py-2">
-                                    <div className="flex items-stretch">
-                                        {/* Left label column — matches 180px spec key column */}
-                                        <div className="w-[180px] shrink-0 flex flex-col items-center justify-center px-3 border-r border-black/[0.04]">
-                                            <GitCompareArrows size={18} className="text-[#F4B000] mb-1.5" />
-                                            <span className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400 text-center leading-tight">
-                                                {activeVariants.length} Variants
-                                            </span>
-                                            {/* Restore all button */}
-                                            {removedVariantIds.size > 0 && (
-                                                <button
-                                                    onClick={restoreAllVariants}
-                                                    className="mt-1.5 px-2 py-0.5 rounded-md bg-[#F4B000]/10 text-[#F4B000] text-[7px] font-black uppercase tracking-widest hover:bg-[#F4B000]/20 transition-colors"
-                                                    title="Restore removed variants"
-                                                >
-                                                    +{removedVariantIds.size} back
-                                                </button>
-                                            )}
-                                        </div>
-                                        {/* Variant cards grid */}
-                                        <div
-                                            className="grid gap-1.5 flex-1 px-2"
-                                            style={{ gridTemplateColumns: `repeat(${activeVariants.length}, 1fr)` }}
-                                        >
-                                            {activeVariants.map((v, i) => {
-                                                const price = getDisplayPrice(v);
-                                                const bCoin = coinsNeededForPrice(price);
-                                                const isCheapest = i === 0;
-                                                const swatches = (v.availableColors || [])
-                                                    .filter(
-                                                        c =>
-                                                            typeof c?.hexCode === 'string' &&
-                                                            c.hexCode.trim().length > 0
-                                                    )
-                                                    .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
-                                                const currentImage =
-                                                    compactColorImages[v.id] ||
-                                                    v.imageUrl ||
-                                                    '/images/categories/motorcycle_nobg.png';
-                                                const currentHex =
-                                                    compactColorHexes[v.id] || swatches[0]?.hexCode || null;
-                                                return (
-                                                    <div
-                                                        key={v.id}
-                                                        className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${
-                                                            isCheapest
-                                                                ? 'border border-[#F4B000]/20'
-                                                                : 'border border-transparent'
-                                                        }`}
-                                                        style={{
-                                                            backgroundColor: currentHex
-                                                                ? `${currentHex}1A`
-                                                                : isCheapest
-                                                                  ? 'rgba(244,176,0,0.05)'
-                                                                  : 'rgba(248,250,252,0.6)',
-                                                        }}
+                            {activeVariants.map(v => (
+                                <ProductCard
+                                    key={v.id}
+                                    v={v}
+                                    viewMode="grid"
+                                    downpayment={downpayment}
+                                    tenure={tenure}
+                                    onEditDownpayment={openDpEdit}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ────── Sticky Compact Bar + Specs (same parent so sticky persists) ────── */}
+                    {allSpecs.length > 0 && (
+                        <div>
+                            {/* Compact bar — sticky, freezes below header */}
+                            <div
+                                className="sticky z-[50] transition-all duration-500 ease-in-out"
+                                style={{
+                                    top: 'var(--header-h, 80px)',
+                                    maxHeight: compactMode ? '160px' : '0px',
+                                    opacity: compactMode ? 1 : 0,
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <div className="page-container py-1">
+                                    <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-0 py-2">
+                                        <div className="flex items-stretch">
+                                            {/* Left label column — matches 180px spec key column */}
+                                            <div className="w-[180px] shrink-0 flex flex-col items-center justify-center px-3 border-r border-black/[0.04]">
+                                                <GitCompareArrows size={18} className="text-[#F4B000] mb-1.5" />
+                                                <span className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400 text-center leading-tight">
+                                                    {activeVariants.length} Variants
+                                                </span>
+                                                {/* Restore all button */}
+                                                {removedVariantIds.size > 0 && (
+                                                    <button
+                                                        onClick={restoreAllVariants}
+                                                        className="mt-1.5 px-2 py-0.5 rounded-md bg-[#F4B000]/10 text-[#F4B000] text-[7px] font-black uppercase tracking-widest hover:bg-[#F4B000]/20 transition-colors"
+                                                        title="Restore removed variants"
                                                     >
-                                                        {/* Remove Button */}
-                                                        {activeVariants.length > 2 && (
-                                                            <button
-                                                                onClick={e => {
-                                                                    e.stopPropagation();
-                                                                    removeVariant(v.id);
-                                                                }}
-                                                                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center hover:bg-red-500 hover:text-white text-slate-400 transition-all z-10"
-                                                                title="Remove from comparison"
-                                                            >
-                                                                <X size={10} />
-                                                            </button>
-                                                        )}
-                                                        <div className="w-14 h-14 shrink-0">
-                                                            <img
-                                                                src={currentImage}
-                                                                alt={v.variant}
-                                                                className="w-full h-full object-contain transition-all duration-300"
-                                                            />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 truncate leading-tight">
-                                                                {v.make} {v.model}
-                                                            </p>
-                                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-900 truncate leading-tight mt-0.5">
-                                                                {v.variant}
-                                                            </p>
-                                                            {/* Color Swatches */}
-                                                            {swatches.length > 0 && (
-                                                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                                                                    {swatches.map((c, ci) => (
-                                                                        <button
-                                                                            key={ci}
-                                                                            onClick={e => {
-                                                                                e.stopPropagation();
-                                                                                if (c.imageUrl) {
-                                                                                    setCompactColorImages(prev => ({
-                                                                                        ...prev,
-                                                                                        [v.id]: c.imageUrl!,
-                                                                                    }));
-                                                                                }
-                                                                                if (c.hexCode) {
-                                                                                    setCompactColorHexes(prev => ({
-                                                                                        ...prev,
-                                                                                        [v.id]: c.hexCode,
-                                                                                    }));
-                                                                                }
-                                                                            }}
-                                                                            className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${
-                                                                                currentHex === c.hexCode
-                                                                                    ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
-                                                                                    : ''
-                                                                            }`}
-                                                                            style={{ background: c.hexCode }}
-                                                                            title={c.name}
-                                                                        >
-                                                                            {c.finish?.toUpperCase() === 'GLOSS' && (
-                                                                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
-                                                                            )}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
+                                                        +{removedVariantIds.size} back
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {/* Variant cards grid */}
+                                            <div
+                                                className="grid gap-1.5 flex-1 px-2"
+                                                style={{ gridTemplateColumns: `repeat(${activeVariants.length}, 1fr)` }}
+                                            >
+                                                {activeVariants.map((v, i) => {
+                                                    const price = getDisplayPrice(v);
+                                                    const bCoin = coinsNeededForPrice(price);
+                                                    const isCheapest = i === 0;
+                                                    const swatches = (v.availableColors || [])
+                                                        .filter(
+                                                            c =>
+                                                                typeof c?.hexCode === 'string' &&
+                                                                c.hexCode.trim().length > 0
+                                                        )
+                                                        .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+                                                    const currentImage =
+                                                        compactColorImages[v.id] ||
+                                                        v.imageUrl ||
+                                                        '/images/categories/motorcycle_nobg.png';
+                                                    const currentHex =
+                                                        compactColorHexes[v.id] || swatches[0]?.hexCode || null;
+                                                    return (
+                                                        <div
+                                                            key={v.id}
+                                                            className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${
+                                                                isCheapest
+                                                                    ? 'border border-[#F4B000]/20'
+                                                                    : 'border border-transparent'
+                                                            }`}
+                                                            style={{
+                                                                backgroundColor: currentHex
+                                                                    ? `${currentHex}1A`
+                                                                    : isCheapest
+                                                                      ? 'rgba(244,176,0,0.05)'
+                                                                      : 'rgba(248,250,252,0.6)',
+                                                            }}
+                                                        >
+                                                            {/* Remove Button */}
+                                                            {activeVariants.length > 2 && (
+                                                                <button
+                                                                    onClick={e => {
+                                                                        e.stopPropagation();
+                                                                        removeVariant(v.id);
+                                                                    }}
+                                                                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center hover:bg-red-500 hover:text-white text-slate-400 transition-all z-10"
+                                                                    title="Remove from comparison"
+                                                                >
+                                                                    <X size={10} />
+                                                                </button>
                                                             )}
+                                                            <div className="w-14 h-14 shrink-0">
+                                                                <img
+                                                                    src={currentImage}
+                                                                    alt={v.variant}
+                                                                    className="w-full h-full object-contain transition-all duration-300"
+                                                                />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 truncate leading-tight">
+                                                                    {v.make} {v.model}
+                                                                </p>
+                                                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-900 truncate leading-tight mt-0.5">
+                                                                    {v.variant}
+                                                                </p>
+                                                                {/* Color Swatches */}
+                                                                {swatches.length > 0 && (
+                                                                    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                                                        {swatches.map((c, ci) => (
+                                                                            <button
+                                                                                key={ci}
+                                                                                onClick={e => {
+                                                                                    e.stopPropagation();
+                                                                                    if (c.imageUrl) {
+                                                                                        setCompactColorImages(prev => ({
+                                                                                            ...prev,
+                                                                                            [v.id]: c.imageUrl!,
+                                                                                        }));
+                                                                                    }
+                                                                                    if (c.hexCode) {
+                                                                                        setCompactColorHexes(prev => ({
+                                                                                            ...prev,
+                                                                                            [v.id]: c.hexCode,
+                                                                                        }));
+                                                                                    }
+                                                                                }}
+                                                                                className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${
+                                                                                    currentHex === c.hexCode
+                                                                                        ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
+                                                                                        : ''
+                                                                                }`}
+                                                                                style={{ background: c.hexCode }}
+                                                                                title={c.name}
+                                                                            >
+                                                                                {c.finish?.toUpperCase() ===
+                                                                                    'GLOSS' && (
+                                                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                                                )}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="page-container py-6">
-                            <div className="bg-white border border-black/[0.04] rounded-2xl overflow-hidden shadow-sm">
-                                {/* ── Financial Comparison Section ── */}
-                                <div>
-                                    <div className="px-4 py-2.5 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
-                                        <div className="flex items-center gap-2">
-                                            <IndianRupee size={12} className="text-[#F4B000]/60" />
-                                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
-                                                Pricing & Finance
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {/* 1. On-Road Price */}
-                                    <div
-                                        className="grid border-b border-black/[0.04]"
-                                        style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
-                                    >
-                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <IndianRupee size={12} className="text-slate-300 shrink-0" />
-                                            <span className="text-[10px] font-bold text-slate-500">On-Road Price</span>
-                                        </div>
-                                        {activeVariants.map((v, vIdx) => (
-                                            <div
-                                                key={vIdx}
-                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                            >
-                                                <span className="text-[11px] font-bold text-slate-600">
-                                                    ₹
-                                                    {(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString(
-                                                        'en-IN'
-                                                    )}
+                            <div className="page-container py-6">
+                                <div className="bg-white border border-black/[0.04] rounded-2xl overflow-hidden shadow-sm">
+                                    {/* ── Financial Comparison Section ── */}
+                                    <div>
+                                        <div className="px-4 py-2.5 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
+                                            <div className="flex items-center gap-2">
+                                                <IndianRupee size={12} className="text-[#F4B000]/60" />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
+                                                    Pricing & Finance
                                                 </span>
                                             </div>
-                                        ))}
-                                    </div>
-                                    {/* 2. Discount / Surge */}
-                                    <div
-                                        className="grid border-b border-black/[0.04]"
-                                        style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
-                                    >
-                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <TrendingDown size={12} className="text-slate-300 shrink-0" />
-                                            <span className="text-[10px] font-bold text-slate-500">
-                                                Platform Discount / Surge Charges
-                                            </span>
                                         </div>
-                                        {activeVariants.map((v, vIdx) => {
-                                            const disc = v.price?.discount || 0;
-                                            const isDiscount = disc > 0;
-                                            const isSurge = disc < 0;
-                                            return (
+                                        {/* 1. On-Road Price */}
+                                        <div
+                                            className="grid border-b border-black/[0.04]"
+                                            style={{
+                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                            }}
+                                        >
+                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                                <IndianRupee size={12} className="text-slate-300 shrink-0" />
+                                                <span className="text-[10px] font-bold text-slate-500">
+                                                    On-Road Price
+                                                </span>
+                                            </div>
+                                            {activeVariants.map((v, vIdx) => (
                                                 <div
                                                     key={vIdx}
                                                     className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                                 >
-                                                    <span
-                                                        className={`text-[11px] font-black ${isDiscount ? 'text-emerald-600' : isSurge ? 'text-red-500' : 'text-slate-400'}`}
-                                                    >
-                                                        {isDiscount
-                                                            ? `−₹${disc.toLocaleString('en-IN')}`
-                                                            : isSurge
-                                                              ? `+₹${Math.abs(disc).toLocaleString('en-IN')}`
-                                                              : '—'}
+                                                    <span className="text-[11px] font-bold text-slate-600">
+                                                        ₹
+                                                        {(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString(
+                                                            'en-IN'
+                                                        )}
                                                     </span>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                    {/* 3. Offer Price (INR) + B Coin side by side */}
-                                    <div
-                                        className="grid border-b border-black/[0.04] bg-[#F4B000]/[0.04]"
-                                        style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
-                                    >
-                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                            <span className="text-[10px] font-bold text-slate-700">Offer Price</span>
+                                            ))}
                                         </div>
-                                        {activeVariants.map((v, vIdx) => {
-                                            const offerPrice = getDisplayPrice(v);
-                                            const bCoin = coinsNeededForPrice(offerPrice);
-                                            return (
+                                        {/* 2. Discount / Surge */}
+                                        <div
+                                            className="grid border-b border-black/[0.04]"
+                                            style={{
+                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                            }}
+                                        >
+                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                                <TrendingDown size={12} className="text-slate-300 shrink-0" />
+                                                <span className="text-[10px] font-bold text-slate-500">
+                                                    Platform Discount / Surge Charges
+                                                </span>
+                                            </div>
+                                            {activeVariants.map((v, vIdx) => {
+                                                const disc = v.price?.discount || 0;
+                                                const isDiscount = disc > 0;
+                                                const isSurge = disc < 0;
+                                                return (
+                                                    <div
+                                                        key={vIdx}
+                                                        className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                                    >
+                                                        <span
+                                                            className={`text-[11px] font-black ${isDiscount ? 'text-emerald-600' : isSurge ? 'text-red-500' : 'text-slate-400'}`}
+                                                        >
+                                                            {isDiscount
+                                                                ? `−₹${disc.toLocaleString('en-IN')}`
+                                                                : isSurge
+                                                                  ? `+₹${Math.abs(disc).toLocaleString('en-IN')}`
+                                                                  : '—'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {/* 3. Offer Price (INR) + B Coin side by side */}
+                                        <div
+                                            className="grid border-b border-black/[0.04] bg-[#F4B000]/[0.04]"
+                                            style={{
+                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                            }}
+                                        >
+                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                                <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                <span className="text-[10px] font-bold text-slate-700">
+                                                    Offer Price
+                                                </span>
+                                            </div>
+                                            {activeVariants.map((v, vIdx) => {
+                                                const offerPrice = getDisplayPrice(v);
+                                                const bCoin = coinsNeededForPrice(offerPrice);
+                                                return (
+                                                    <div
+                                                        key={vIdx}
+                                                        className={`px-4 py-3 flex items-center justify-center gap-2 text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                                    >
+                                                        <span className="text-[12px] font-black text-slate-900">
+                                                            ₹{offerPrice.toLocaleString('en-IN')}
+                                                        </span>
+                                                        <span className="text-[8px] text-slate-300">|</span>
+                                                        <span className="flex items-center gap-0.5">
+                                                            <Logo variant="icon" size={10} />
+                                                            <span className="text-[10px] font-black text-[#F4B000] italic">
+                                                                {bCoin.toLocaleString('en-IN')}
+                                                            </span>
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {/* 4. Downpayment (editable, shared) */}
+                                        <div
+                                            className="grid border-b border-black/[0.04]"
+                                            style={{
+                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                            }}
+                                        >
+                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                                <CreditCard size={12} className="text-slate-300 shrink-0" />
+                                                <span className="text-[10px] font-bold text-slate-500">
+                                                    Downpayment
+                                                </span>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingDownpayment(true);
+                                                        setDpInputValue(String(downpayment));
+                                                    }}
+                                                    className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
+                                                    title="Edit downpayment for all variants"
+                                                >
+                                                    <Pencil size={10} />
+                                                </button>
+                                            </div>
+                                            {activeVariants.map((_, vIdx) => (
                                                 <div
                                                     key={vIdx}
-                                                    className={`px-4 py-3 flex items-center justify-center gap-2 text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                                    className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                                 >
-                                                    <span className="text-[12px] font-black text-slate-900">
-                                                        ₹{offerPrice.toLocaleString('en-IN')}
-                                                    </span>
-                                                    <span className="text-[8px] text-slate-300">|</span>
-                                                    <span className="flex items-center gap-0.5">
-                                                        <Logo variant="icon" size={10} />
-                                                        <span className="text-[10px] font-black text-[#F4B000] italic">
-                                                            {bCoin.toLocaleString('en-IN')}
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                    {/* 4. Downpayment (editable, shared) */}
-                                    <div
-                                        className="grid border-b border-black/[0.04]"
-                                        style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
-                                    >
-                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <CreditCard size={12} className="text-slate-300 shrink-0" />
-                                            <span className="text-[10px] font-bold text-slate-500">Downpayment</span>
-                                            <button
-                                                onClick={() => {
-                                                    setEditingDownpayment(true);
-                                                    setDpInputValue(String(downpayment));
-                                                }}
-                                                className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
-                                                title="Edit downpayment for all variants"
-                                            >
-                                                <Pencil size={10} />
-                                            </button>
-                                        </div>
-                                        {activeVariants.map((_, vIdx) => (
-                                            <div
-                                                key={vIdx}
-                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                            >
-                                                {editingDownpayment ? (
-                                                    <input
-                                                        type="number"
-                                                        value={dpInputValue}
-                                                        onChange={e => setDpInputValue(e.target.value)}
-                                                        onBlur={() => {
-                                                            const val = parseInt(dpInputValue);
-                                                            if (!isNaN(val) && val >= 0) setDownpayment(val);
-                                                            setEditingDownpayment(false);
-                                                        }}
-                                                        onKeyDown={e => {
-                                                            if (e.key === 'Enter') {
+                                                    {editingDownpayment ? (
+                                                        <input
+                                                            type="number"
+                                                            value={dpInputValue}
+                                                            onChange={e => setDpInputValue(e.target.value)}
+                                                            onBlur={() => {
                                                                 const val = parseInt(dpInputValue);
                                                                 if (!isNaN(val) && val >= 0) setDownpayment(val);
                                                                 setEditingDownpayment(false);
-                                                            }
-                                                        }}
-                                                        autoFocus={vIdx === 0}
-                                                        className="w-20 text-center text-[11px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
-                                                    />
-                                                ) : (
-                                                    <span className="text-[11px] font-bold text-slate-600">
-                                                        ₹{downpayment.toLocaleString('en-IN')}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {/* 5. Tenure (editable, shared) */}
-                                    <div
-                                        className="grid border-b border-black/[0.04]"
-                                        style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
-                                    >
-                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <Calendar size={12} className="text-slate-300 shrink-0" />
-                                            <span className="text-[10px] font-bold text-slate-500">Tenure</span>
-                                            <button
-                                                onClick={() => setEditingTenure(!editingTenure)}
-                                                className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
-                                                title="Change tenure for all variants"
-                                            >
-                                                <Pencil size={10} />
-                                            </button>
+                                                            }}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter') {
+                                                                    const val = parseInt(dpInputValue);
+                                                                    if (!isNaN(val) && val >= 0) setDownpayment(val);
+                                                                    setEditingDownpayment(false);
+                                                                }
+                                                            }}
+                                                            autoFocus={vIdx === 0}
+                                                            className="w-20 text-center text-[11px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-[11px] font-bold text-slate-600">
+                                                            ₹{downpayment.toLocaleString('en-IN')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
-                                        {activeVariants.map((_, vIdx) => (
-                                            <div
-                                                key={vIdx}
-                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                            >
-                                                {editingTenure ? (
-                                                    <div className="flex gap-1 flex-wrap justify-center">
-                                                        {TENURE_OPTIONS.map(t => (
-                                                            <button
-                                                                key={t}
-                                                                onClick={() => {
-                                                                    setTenure(t);
-                                                                    setEditingTenure(false);
-                                                                }}
-                                                                className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${
-                                                                    tenure === t
-                                                                        ? 'bg-[#F4B000] text-black'
-                                                                        : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
-                                                                }`}
-                                                            >
-                                                                {t}mo
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[11px] font-bold text-slate-600">
-                                                        {tenure} months
-                                                    </span>
-                                                )}
+                                        {/* 5. Tenure (editable, shared) */}
+                                        <div
+                                            className="grid border-b border-black/[0.04]"
+                                            style={{
+                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                            }}
+                                        >
+                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                                <Calendar size={12} className="text-slate-300 shrink-0" />
+                                                <span className="text-[10px] font-bold text-slate-500">Tenure</span>
+                                                <button
+                                                    onClick={() => setEditingTenure(!editingTenure)}
+                                                    className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
+                                                    title="Change tenure for all variants"
+                                                >
+                                                    <Pencil size={10} />
+                                                </button>
                                             </div>
-                                        ))}
-                                    </div>
-                                    {/* 6. EMI */}
-                                    <div
-                                        className="grid border-b-2 border-[#F4B000]/20"
-                                        style={{ gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)` }}
-                                    >
-                                        <div className="px-4 py-3 bg-[#F4B000]/[0.06] border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
-                                            <span className="text-[10px] font-bold text-[#F4B000]">EMI</span>
-                                        </div>
-                                        {activeVariants.map((v, vIdx) => (
-                                            <div
-                                                key={vIdx}
-                                                className={`px-4 py-3 flex items-center justify-center text-center bg-[#F4B000]/[0.04] ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                            >
-                                                <span className="text-[12px] font-black text-[#F4B000]">
-                                                    ₹{getEmi(v, downpayment, tenure).toLocaleString('en-IN')}/mo
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* ── Smart Spec Rows ── */}
-                                {/* Section 1: What's Different */}
-                                {smartSpecs.diffSpecs.length > 0 && (
-                                    <div>
-                                        <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
-                                            <div className="flex items-center gap-2">
-                                                <GitCompareArrows size={12} className="text-[#F4B000]/60" />
-                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
-                                                    What&apos;s Different
-                                                </span>
-                                                <span className="px-1.5 py-0.5 bg-[#F4B000]/10 text-[#F4B000] text-[8px] font-black rounded-md">
-                                                    {smartSpecs.diffSpecs.length}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        {smartSpecs.diffSpecs.map((row, rIdx) => {
-                                            const bestIdx = findBestValueIndex(row);
-                                            return (
+                                            {activeVariants.map((_, vIdx) => (
                                                 <div
-                                                    key={`diff-${rIdx}`}
-                                                    className="grid border-b border-black/[0.04] last:border-b-0 bg-[#F4B000]/[0.04] hover:bg-[#F4B000]/[0.08] transition-colors"
+                                                    key={vIdx}
+                                                    className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                                >
+                                                    {editingTenure ? (
+                                                        <div className="flex gap-1 flex-wrap justify-center">
+                                                            {TENURE_OPTIONS.map(t => (
+                                                                <button
+                                                                    key={t}
+                                                                    onClick={() => {
+                                                                        setTenure(t);
+                                                                        setEditingTenure(false);
+                                                                    }}
+                                                                    className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${
+                                                                        tenure === t
+                                                                            ? 'bg-[#F4B000] text-black'
+                                                                            : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
+                                                                    }`}
+                                                                >
+                                                                    {t}mo
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[11px] font-bold text-slate-600">
+                                                            {tenure} months
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {/* 6. EMI */}
+                                        <div
+                                            className="grid border-b-2 border-[#F4B000]/20"
+                                            style={{
+                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                            }}
+                                        >
+                                            <div className="px-4 py-3 bg-[#F4B000]/[0.06] border-r border-black/[0.04] flex items-center gap-1.5">
+                                                <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                <span className="text-[10px] font-bold text-[#F4B000]">EMI</span>
+                                            </div>
+                                            {activeVariants.map((v, vIdx) => (
+                                                <div
+                                                    key={vIdx}
+                                                    className={`px-4 py-3 flex items-center justify-center text-center bg-[#F4B000]/[0.04] ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                                >
+                                                    <span className="text-[12px] font-black text-[#F4B000]">
+                                                        ₹{getEmi(v, downpayment, tenure).toLocaleString('en-IN')}/mo
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* ── Smart Spec Rows ── */}
+                                    {/* Section 1: What's Different */}
+                                    {smartSpecs.diffSpecs.length > 0 && (
+                                        <div>
+                                            <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
+                                                <div className="flex items-center gap-2">
+                                                    <GitCompareArrows size={12} className="text-[#F4B000]/60" />
+                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
+                                                        What&apos;s Different
+                                                    </span>
+                                                    <span className="px-1.5 py-0.5 bg-[#F4B000]/10 text-[#F4B000] text-[8px] font-black rounded-md">
+                                                        {smartSpecs.diffSpecs.length}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {smartSpecs.diffSpecs.map((row, rIdx) => {
+                                                const bestIdx = findBestValueIndex(row);
+                                                return (
+                                                    <div
+                                                        key={`diff-${rIdx}`}
+                                                        className="grid border-b border-black/[0.04] last:border-b-0 bg-[#F4B000]/[0.04] hover:bg-[#F4B000]/[0.08] transition-colors"
+                                                        style={{
+                                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                        }}
+                                                    >
+                                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                                            {(() => {
+                                                                const SpecIcon = getSpecIcon(row.label);
+                                                                return (
+                                                                    <SpecIcon
+                                                                        size={12}
+                                                                        className="shrink-0 text-[#F4B000]/70"
+                                                                    />
+                                                                );
+                                                            })()}
+                                                            <span className="text-[10px] font-bold text-slate-700">
+                                                                {row.label}
+                                                            </span>
+                                                        </div>
+                                                        {row.values.map((val, vIdx) => {
+                                                            const isBest = bestIdx === vIdx;
+                                                            const isUnique =
+                                                                val && row.values.filter(v => v === val).length === 1;
+                                                            const barPct = NUMERIC_BAR_SPECS.has(
+                                                                row.label.toLowerCase()
+                                                            )
+                                                                ? getBarPercent(val, row.values)
+                                                                : null;
+                                                            return (
+                                                                <div
+                                                                    key={vIdx}
+                                                                    className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''} ${isBest ? 'bg-emerald-50/60' : ''}`}
+                                                                >
+                                                                    <span
+                                                                        className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : isBest ? 'text-emerald-600 font-black' : isUnique ? 'text-[#F4B000] font-bold' : 'text-slate-700'}`}
+                                                                    >
+                                                                        {isBest && (
+                                                                            <Trophy
+                                                                                size={10}
+                                                                                className="inline mr-1 -mt-0.5"
+                                                                            />
+                                                                        )}
+                                                                        {formatSpecValue(val, row.label)}
+                                                                    </span>
+                                                                    {barPct !== null && (
+                                                                        <div className="w-full max-w-[80px] h-1 rounded-full bg-slate-100 overflow-hidden">
+                                                                            <div
+                                                                                className={`h-full rounded-full transition-all ${isBest ? 'bg-emerald-400' : 'bg-[#F4B000]/40'}`}
+                                                                                style={{ width: `${barPct}%` }}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Section 2: All Specifications */}
+                                    {smartSpecs.restSpecs.length > 0 && (
+                                        <div>
+                                            <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-slate-100/60 to-transparent">
+                                                <div className="flex items-center gap-2">
+                                                    <CircleDot size={12} className="text-slate-400" />
+                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                                                        All Specifications
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {smartSpecs.restSpecs.map((row, rIdx) => (
+                                                <div
+                                                    key={`rest-${rIdx}`}
+                                                    className={`grid border-b border-black/[0.04] last:border-b-0 hover:bg-slate-50/50 transition-colors ${rIdx % 2 === 1 ? 'bg-slate-50/30' : ''}`}
                                                     style={{
                                                         gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
                                                     }}
@@ -862,207 +913,138 @@ export default function DesktopCompare() {
                                                             return (
                                                                 <SpecIcon
                                                                     size={12}
-                                                                    className="shrink-0 text-[#F4B000]/70"
+                                                                    className="shrink-0 text-slate-300"
                                                                 />
                                                             );
                                                         })()}
-                                                        <span className="text-[10px] font-bold text-slate-700">
+                                                        <span className="text-[10px] font-bold text-slate-500">
                                                             {row.label}
                                                         </span>
                                                     </div>
                                                     {row.values.map((val, vIdx) => {
-                                                        const isBest = bestIdx === vIdx;
-                                                        const isUnique =
-                                                            val && row.values.filter(v => v === val).length === 1;
-                                                        const barPct = NUMERIC_BAR_SPECS.has(row.label.toLowerCase())
-                                                            ? getBarPercent(val, row.values)
-                                                            : null;
+                                                        const isNumeric =
+                                                            val &&
+                                                            NUMERIC_BAR_SPECS.has(row.label.toLowerCase()) &&
+                                                            extractNumeric(val) !== null;
                                                         return (
                                                             <div
                                                                 key={vIdx}
-                                                                className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''} ${isBest ? 'bg-emerald-50/60' : ''}`}
+                                                                className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                                             >
                                                                 <span
-                                                                    className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : isBest ? 'text-emerald-600 font-black' : isUnique ? 'text-[#F4B000] font-bold' : 'text-slate-700'}`}
+                                                                    className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : 'text-slate-700'}`}
                                                                 >
-                                                                    {isBest && (
-                                                                        <Trophy
-                                                                            size={10}
-                                                                            className="inline mr-1 -mt-0.5"
-                                                                        />
-                                                                    )}
                                                                     {formatSpecValue(val, row.label)}
                                                                 </span>
-                                                                {barPct !== null && (
-                                                                    <div className="w-full max-w-[80px] h-1 rounded-full bg-slate-100 overflow-hidden">
-                                                                        <div
-                                                                            className={`h-full rounded-full transition-all ${isBest ? 'bg-emerald-400' : 'bg-[#F4B000]/40'}`}
-                                                                            style={{ width: `${barPct}%` }}
-                                                                        />
-                                                                    </div>
+                                                                {isNumeric && (
+                                                                    <div className="w-full max-w-[60px] h-[2px] rounded-full bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200" />
                                                                 )}
                                                             </div>
                                                         );
                                                     })}
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                {/* Section 2: All Specifications */}
-                                {smartSpecs.restSpecs.length > 0 && (
-                                    <div>
-                                        <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-slate-100/60 to-transparent">
-                                            <div className="flex items-center gap-2">
-                                                <CircleDot size={12} className="text-slate-400" />
-                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-                                                    All Specifications
-                                                </span>
-                                            </div>
+                                            ))}
                                         </div>
-                                        {smartSpecs.restSpecs.map((row, rIdx) => (
-                                            <div
-                                                key={`rest-${rIdx}`}
-                                                className={`grid border-b border-black/[0.04] last:border-b-0 hover:bg-slate-50/50 transition-colors ${rIdx % 2 === 1 ? 'bg-slate-50/30' : ''}`}
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
-                                                <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                    {(() => {
-                                                        const SpecIcon = getSpecIcon(row.label);
-                                                        return (
-                                                            <SpecIcon size={12} className="shrink-0 text-slate-300" />
-                                                        );
-                                                    })()}
-                                                    <span className="text-[10px] font-bold text-slate-500">
-                                                        {row.label}
-                                                    </span>
-                                                </div>
-                                                {row.values.map((val, vIdx) => {
-                                                    const isNumeric =
-                                                        val &&
-                                                        NUMERIC_BAR_SPECS.has(row.label.toLowerCase()) &&
-                                                        extractNumeric(val) !== null;
-                                                    return (
-                                                        <div
-                                                            key={vIdx}
-                                                            className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                        >
-                                                            <span
-                                                                className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : 'text-slate-700'}`}
-                                                            >
-                                                                {formatSpecValue(val, row.label)}
-                                                            </span>
-                                                            {isNumeric && (
-                                                                <div className="w-full max-w-[60px] h-[2px] rounded-full bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200" />
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Finance Edit — full-width bottom sheet */}
+                {isDpEditOpen && (
+                    <div
+                        className="fixed inset-0 z-[200] flex items-end justify-center"
+                        onClick={() => setIsDpEditOpen(false)}
+                    >
+                        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            className="relative z-10 w-full max-w-2xl mx-auto rounded-t-3xl bg-white border-t border-x border-slate-200 shadow-2xl p-6 space-y-6 animate-in slide-in-from-bottom-4 duration-300"
+                        >
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">
+                                    Finance Settings
+                                </h3>
+                                <button
+                                    onClick={() => setIsDpEditOpen(false)}
+                                    className="text-slate-400 hover:text-slate-900"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {/* Downpayment */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Downpayment
+                                    </span>
+                                    <span className="text-lg font-black text-emerald-600">
+                                        ₹{dpDraft.toLocaleString('en-IN')}
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={100000}
+                                    step={1000}
+                                    value={dpDraft}
+                                    onChange={e => setDpDraft(Number(e.target.value))}
+                                    className="w-full accent-[#F4B000] h-2 rounded-full"
+                                />
+                                <div className="flex justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest">
+                                    <span>₹0</span>
+                                    <span>₹25K</span>
+                                    <span>₹50K</span>
+                                    <span>₹75K</span>
+                                    <span>₹1L</span>
+                                </div>
+                                <div className="flex items-center justify-center gap-2 flex-wrap">
+                                    {[5000, 10000, 15000, 20000, 30000, 50000].map(val => (
+                                        <button
+                                            key={val}
+                                            onClick={() => setDpDraft(val)}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                        >
+                                            ₹{val / 1000}K
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Tenure */}
+                            <div className="space-y-3 pt-2 border-t border-slate-100">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Tenure
+                                    </span>
+                                    <span className="text-lg font-black text-emerald-600">{tenure} months</span>
+                                </div>
+                                <div className="flex items-center justify-center gap-2">
+                                    {[12, 24, 36, 48, 60].map(val => (
+                                        <button
+                                            key={val}
+                                            onClick={() => setTenure(val)}
+                                            className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                        >
+                                            {val}mo
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => applyDp(dpDraft)}
+                                className="w-full py-3 rounded-xl bg-[#F4B000] hover:bg-[#FFD700] text-black text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[#F4B000]/20 transition-all hover:-translate-y-0.5"
+                            >
+                                Apply to All
+                            </button>
                         </div>
                     </div>
                 )}
             </div>
-
-            {/* Finance Edit — full-width bottom sheet */}
-            {isDpEditOpen && (
-                <div
-                    className="fixed inset-0 z-[200] flex items-end justify-center"
-                    onClick={() => setIsDpEditOpen(false)}
-                >
-                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-                    <div
-                        onClick={e => e.stopPropagation()}
-                        className="relative z-10 w-full max-w-2xl mx-auto rounded-t-3xl bg-white border-t border-x border-slate-200 shadow-2xl p-6 space-y-6 animate-in slide-in-from-bottom-4 duration-300"
-                    >
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">
-                                Finance Settings
-                            </h3>
-                            <button
-                                onClick={() => setIsDpEditOpen(false)}
-                                className="text-slate-400 hover:text-slate-900"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        {/* Downpayment */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    Downpayment
-                                </span>
-                                <span className="text-lg font-black text-emerald-600">
-                                    ₹{dpDraft.toLocaleString('en-IN')}
-                                </span>
-                            </div>
-                            <input
-                                type="range"
-                                min={0}
-                                max={100000}
-                                step={1000}
-                                value={dpDraft}
-                                onChange={e => setDpDraft(Number(e.target.value))}
-                                className="w-full accent-[#F4B000] h-2 rounded-full"
-                            />
-                            <div className="flex justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest">
-                                <span>₹0</span>
-                                <span>₹25K</span>
-                                <span>₹50K</span>
-                                <span>₹75K</span>
-                                <span>₹1L</span>
-                            </div>
-                            <div className="flex items-center justify-center gap-2 flex-wrap">
-                                {[5000, 10000, 15000, 20000, 30000, 50000].map(val => (
-                                    <button
-                                        key={val}
-                                        onClick={() => setDpDraft(val)}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
-                                    >
-                                        ₹{val / 1000}K
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Tenure */}
-                        <div className="space-y-3 pt-2 border-t border-slate-100">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    Tenure
-                                </span>
-                                <span className="text-lg font-black text-emerald-600">{tenure} months</span>
-                            </div>
-                            <div className="flex items-center justify-center gap-2">
-                                {[12, 24, 36, 48, 60].map(val => (
-                                    <button
-                                        key={val}
-                                        onClick={() => setTenure(val)}
-                                        className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
-                                    >
-                                        {val}mo
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => applyDp(dpDraft)}
-                            className="w-full py-3 rounded-xl bg-[#F4B000] hover:bg-[#FFD700] text-black text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[#F4B000]/20 transition-all hover:-translate-y-0.5"
-                        >
-                            Apply to All
-                        </button>
-                    </div>
-                </div>
-            )}
         </>
     );
 }

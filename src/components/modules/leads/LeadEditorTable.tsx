@@ -44,6 +44,7 @@ import { getOClubLedger, getOClubWallet } from '@/actions/oclub';
 import { getMemberFullProfile } from '@/actions/members';
 import { createClient } from '@/lib/supabase/client';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import UnifiedInboxPanel from '@/components/modules/shared/UnifiedInboxPanel';
 
 interface LeadProfile {
     lead: any;
@@ -76,6 +77,13 @@ type LeadTimelineEntry = {
     source: 'EVENT_LOG' | 'LEGACY_LOG';
     actorName?: string | null;
     changedValue?: string | null;
+    meta?: {
+        eventType?: string;
+        channel?: string;
+        action?: string;
+        skuId?: string;
+        colorName?: string;
+    } | null;
 };
 
 const formatDate = (value?: string | null) => {
@@ -108,12 +116,57 @@ const formatMoney = (value?: number | null) => {
     return `₹${value.toLocaleString()}`;
 };
 
-const formatEventTypeLabel = (eventType?: string | null) =>
-    (eventType || 'SYSTEM_EVENT')
+const EVENT_LABEL_MAP: Record<string, string> = {
+    CATALOG_VEHICLE_CLICK: 'Catalog Click',
+    PDP_VISIT: 'PDP Visit',
+    SKU_VISIT: 'SKU Viewed',
+    SKU_DWELL: 'SKU Dwell',
+    PDP_SHARE_QUOTE: 'Quote Shared',
+    PDP_SAVE_QUOTE: 'Quote Saved',
+    WISHLIST_TOGGLE: 'Wishlist Updated',
+    MEMBER_ACTIVITY: 'Member Activity',
+};
+
+const formatEventTypeLabel = (eventType?: string | null) => {
+    const normalized = (eventType || 'SYSTEM_EVENT').toUpperCase();
+    if (EVENT_LABEL_MAP[normalized]) return EVENT_LABEL_MAP[normalized];
+    return normalized
         .split('_')
         .filter(Boolean)
         .map(token => token.charAt(0) + token.slice(1).toLowerCase())
         .join(' ');
+};
+
+const safeJsonParse = (value?: string | null): Record<string, any> | null => {
+    if (!value) return null;
+    try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+};
+
+const getTimelineDescription = (event: LeadEventRecord) => {
+    const meta = safeJsonParse(event.changed_value);
+    if (!meta) return event.notes || event.changed_value || 'System event';
+
+    const parts: string[] = [];
+    if (meta.make_slug || meta.model_slug || meta.variant_slug) {
+        const vehicle = [meta.make_slug, meta.model_slug, meta.variant_slug]
+            .filter(Boolean)
+            .map((token: string) => String(token).replace(/[-_]/g, ' '))
+            .join(' / ');
+        if (vehicle) parts.push(vehicle);
+    }
+    if (meta.color_name) parts.push(`Color: ${meta.color_name}`);
+    if (meta.sku_id) parts.push(`SKU: ${String(meta.sku_id).slice(0, 8)}`);
+    if (meta.share_channel) parts.push(`Channel: ${meta.share_channel}`);
+    if (meta.action) parts.push(`Action: ${meta.action}`);
+    if (meta.dwell_ms && Number(meta.dwell_ms) > 0) parts.push(`Dwell: ${Math.round(Number(meta.dwell_ms) / 1000)}s`);
+
+    return parts.join(' • ') || event.notes || 'System event';
+};
 
 function cn(...inputs: any[]) {
     return inputs.filter(Boolean).join(' ');
@@ -139,6 +192,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         | 'TASKS'
         | 'NOTES'
         | 'TIMELINE'
+        | 'INBOX'
         | 'OCLUB';
     const [activeTab, setActiveTab] = useState<TabKey>('LEAD');
     const [groups, setGroups] = useState({
@@ -205,11 +259,21 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         const fromLeadEvents = leadEvents.map(event => ({
             id: `event-${event.id}`,
             title: formatEventTypeLabel(event.event_type),
-            description: event.notes || event.changed_value || 'System event',
+            description: getTimelineDescription(event),
             timestamp: event.created_at || null,
             source: 'EVENT_LOG' as const,
             actorName: event.actor_name || null,
             changedValue: event.changed_value || null,
+            meta: (() => {
+                const parsed = safeJsonParse(event.changed_value);
+                return {
+                    eventType: event.event_type || undefined,
+                    channel: parsed?.share_channel || parsed?.source || undefined,
+                    action: parsed?.action || undefined,
+                    skuId: parsed?.sku_id || undefined,
+                    colorName: parsed?.color_name || undefined,
+                };
+            })(),
         }));
 
         const fromLegacy = legacyTimelineEvents.map((event: any, index: number) => ({
@@ -220,6 +284,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             source: 'LEGACY_LOG' as const,
             actorName: event?.actor || null,
             changedValue: null,
+            meta: null,
         }));
 
         return [...fromLeadEvents, ...fromLegacy].sort((a, b) => {
@@ -238,6 +303,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             { key: 'DOCUMENTS', label: 'DOCUMENTS', count: lead.customerId ? 1 : 0 },
             { key: 'TASKS', label: 'TASK', count: tasks.filter(task => !task.completed).length },
             { key: 'NOTES', label: 'NOTES', count: notes.length },
+            { key: 'INBOX', label: 'INBOX', count: 0 },
             {
                 key: 'TIMELINE',
                 label: 'TIMELINE',
@@ -247,6 +313,25 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         ],
         [quoteCount, bookingCount, receiptCount, lead.customerId, tasks, notes, timelineEntries.length]
     );
+
+    const timelineSummary = useMemo(() => {
+        const countByType = (type: string) =>
+            timelineEntries.filter(entry => String(entry.meta?.eventType || '').toUpperCase() === type).length;
+
+        const lastVisitEntry = timelineEntries.find(
+            entry =>
+                String(entry.meta?.eventType || '').toUpperCase() === 'PDP_VISIT' ||
+                String(entry.meta?.eventType || '').toUpperCase() === 'CATALOG_VEHICLE_CLICK'
+        );
+
+        return {
+            catalogClicks: countByType('CATALOG_VEHICLE_CLICK'),
+            pdpVisits: countByType('PDP_VISIT'),
+            shares: countByType('PDP_SHARE_QUOTE'),
+            saves: countByType('PDP_SAVE_QUOTE'),
+            lastVisitAt: lastVisitEntry?.timestamp || null,
+        };
+    }, [timelineEntries]);
 
     useEffect(() => {
         const loadLeadModules = async () => {
@@ -1035,7 +1120,63 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     </PhoneSection>
 
                     {/* Timeline */}
+                    <PhoneSection title="Inbox">
+                        <UnifiedInboxPanel
+                            memberId={lead.customerId || null}
+                            leadId={lead.id || null}
+                            phone={lead.phone || null}
+                            email={null}
+                            timelineEvents={timelineEntries.map(entry => ({
+                                id: entry.id,
+                                title: entry.title,
+                                timestamp: entry.timestamp,
+                            }))}
+                        />
+                    </PhoneSection>
+
                     <PhoneSection title="Timeline" count={timelineEntries.length || undefined}>
+                        <div className="mb-2 rounded-xl border border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] p-3">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-lg bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 p-2">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                        Catalog Clicks
+                                    </p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                                        {timelineSummary.catalogClicks}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 p-2">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                        PDP Visits
+                                    </p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                                        {timelineSummary.pdpVisits}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 p-2">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                        Shares
+                                    </p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                                        {timelineSummary.shares}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 p-2">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                        Quote Saves
+                                    </p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white mt-1">
+                                        {timelineSummary.saves}
+                                    </p>
+                                </div>
+                            </div>
+                            <p className="mt-2 text-[9px] font-bold text-slate-500">
+                                Last Visit:{' '}
+                                <span className="text-slate-700 dark:text-slate-300">
+                                    {timelineSummary.lastVisitAt ? formatDateTime(timelineSummary.lastVisitAt) : '—'}
+                                </span>
+                            </p>
+                        </div>
                         {leadEventsLoading && timelineEntries.length === 0 ? (
                             <div className="py-4 text-center">
                                 <Clock size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
@@ -1061,23 +1202,28 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                             <div className="text-[10px] font-black text-slate-700 dark:text-slate-200 truncate">
                                                 {entry.title}
                                             </div>
-                                            <span
-                                                className={cn(
-                                                    'px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest',
-                                                    entry.source === 'EVENT_LOG'
-                                                        ? 'bg-indigo-500/10 text-indigo-600'
-                                                        : 'bg-slate-100 text-slate-500'
-                                                )}
-                                            >
-                                                {entry.source === 'EVENT_LOG' ? 'EVENT' : 'LEGACY'}
-                                            </span>
+                                            <div className="flex items-center gap-1">
+                                                <span
+                                                    className={cn(
+                                                        'px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest',
+                                                        entry.source === 'EVENT_LOG'
+                                                            ? 'bg-indigo-500/10 text-indigo-600'
+                                                            : 'bg-slate-100 text-slate-500'
+                                                    )}
+                                                >
+                                                    {entry.source === 'EVENT_LOG' ? 'EVENT' : 'LEGACY'}
+                                                </span>
+                                                {entry.meta?.action ? (
+                                                    <span className="px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600">
+                                                        {entry.meta.action}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                         <div className="text-[9px] text-slate-400 font-bold mt-0.5">
                                             {entry.description || 'System event'}
                                             {entry.actorName ? <> • {entry.actorName}</> : null}
-                                            {entry.timestamp ? (
-                                                <> • {new Date(entry.timestamp).toLocaleDateString()}</>
-                                            ) : null}
+                                            {entry.timestamp ? <> • {formatDateTime(entry.timestamp)}</> : null}
                                         </div>
                                     </div>
                                 ))}
@@ -1196,7 +1342,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     'mx-4 mt-4'
                 )}
             >
-                <div className={cn('text-[9px] font-black uppercase tracking-widest w-full', 'grid grid-cols-9')}>
+                <div className={cn('text-[9px] font-black uppercase tracking-widest w-full', 'grid grid-cols-10')}>
                     {tabs.map((tab, idx) => (
                         <button
                             key={tab.key}
@@ -1204,7 +1350,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             className={cn(
                                 'py-3 text-center transition-all relative whitespace-nowrap',
                                 'w-full',
-                                idx < 8 ? 'border-r border-slate-100 dark:border-white/10' : '',
+                                idx < 9 ? 'border-r border-slate-100 dark:border-white/10' : '',
                                 activeTab === tab.key
                                     ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                                     : 'bg-transparent text-slate-400 hover:text-slate-600 hover:bg-white/30 dark:hover:bg-white/10'
@@ -2148,12 +2294,70 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     </div>
                 )}
 
+                {activeTab === 'INBOX' && (
+                    <div className="mx-4 mt-4">
+                        <UnifiedInboxPanel
+                            memberId={lead.customerId || null}
+                            leadId={lead.id || null}
+                            phone={lead.phone || null}
+                            email={null}
+                            timelineEvents={timelineEntries.map(entry => ({
+                                id: entry.id,
+                                title: entry.title,
+                                timestamp: entry.timestamp,
+                            }))}
+                        />
+                    </div>
+                )}
+
                 {activeTab === 'TIMELINE' && (
                     <div className="mx-4 mt-4 bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5">
                             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                 Timeline
                             </div>
+                        </div>
+                        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-white/[0.02]">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 p-3">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        Catalog Clicks
+                                    </p>
+                                    <p className="text-lg font-black text-slate-900 dark:text-white mt-1">
+                                        {timelineSummary.catalogClicks}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 p-3">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        PDP Visits
+                                    </p>
+                                    <p className="text-lg font-black text-slate-900 dark:text-white mt-1">
+                                        {timelineSummary.pdpVisits}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 p-3">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        Shares
+                                    </p>
+                                    <p className="text-lg font-black text-slate-900 dark:text-white mt-1">
+                                        {timelineSummary.shares}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 p-3">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        Quote Saves
+                                    </p>
+                                    <p className="text-lg font-black text-slate-900 dark:text-white mt-1">
+                                        {timelineSummary.saves}
+                                    </p>
+                                </div>
+                            </div>
+                            <p className="mt-3 text-xs font-bold text-slate-500">
+                                Last Visit:{' '}
+                                <span className="text-slate-700 dark:text-slate-300">
+                                    {timelineSummary.lastVisitAt ? formatDateTime(timelineSummary.lastVisitAt) : '—'}
+                                </span>
+                            </p>
                         </div>
                         <div className="divide-y divide-slate-100 dark:divide-white/5">
                             {leadEventsLoading && timelineEntries.length === 0 ? (
@@ -2178,8 +2382,13 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                                 >
                                                     {event.source === 'EVENT_LOG' ? 'EVENT' : 'LEGACY'}
                                                 </span>
+                                                {event.meta?.action ? (
+                                                    <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600">
+                                                        {event.meta.action}
+                                                    </span>
+                                                ) : null}
                                                 <span className="text-[10px] text-slate-400">
-                                                    {event.timestamp ? formatDate(event.timestamp) : '—'}
+                                                    {event.timestamp ? formatDateTime(event.timestamp) : '—'}
                                                 </span>
                                             </div>
                                         </div>

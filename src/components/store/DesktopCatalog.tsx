@@ -26,6 +26,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 import { groupProductsByModel } from '@/utils/variantGrouping';
 import { formatPriceLabel } from '@/utils/formatVehicleSpec';
+import { DiscoveryBar } from '@/components/store/DiscoveryBar';
 
 import { BRANDS as defaultBrands } from '@/config/market';
 import type { useCatalogFilters } from '@/hooks/useCatalogFilters';
@@ -227,7 +228,7 @@ export const DesktopCatalog = ({
     const isSmart = mode === 'smart';
     const [sortBy] = useState<'popular' | 'price' | 'emi'>('popular');
     const viewMode = 'grid' as 'grid' | 'list';
-    const [isEmiOpen, setIsEmiOpen] = useState(true);
+
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Compare state
@@ -755,6 +756,7 @@ export const DesktopCatalog = ({
         onToggle,
         showReset = false,
         onReset,
+        allVisible = false,
     }: {
         title: string;
         options: string[];
@@ -762,10 +764,11 @@ export const DesktopCatalog = ({
         onToggle: (val: string) => void;
         showReset?: boolean;
         onReset: () => void;
+        allVisible?: boolean;
     }) => {
         const [isCollapsed, setIsCollapsed] = useState(false);
         const [isExpanded, setIsExpanded] = useState(false);
-        const visibleOptions = isExpanded ? options : options.slice(0, 3);
+        const visibleOptions = isExpanded || allVisible ? options : options.slice(0, 3);
 
         return (
             <div className="space-y-4">
@@ -822,7 +825,7 @@ export const DesktopCatalog = ({
                                 </button>
                             ))}
                         </div>
-                        {options.length > 3 && (
+                        {!allVisible && options.length > 3 && (
                             <button
                                 onClick={() => setIsExpanded(!isExpanded)}
                                 className="w-full py-2 flex items-center justify-center gap-2 text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-brand-primary transition-colors border border-dashed border-slate-200 rounded-xl"
@@ -1068,181 +1071,119 @@ export const DesktopCatalog = ({
             <div
                 className={`flex-1 page-container ${isTv ? 'pt-6' : isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
             >
-                <header
-                    className={`${isTv ? 'block' : showHeader ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'} hidden md:block sticky z-[90] py-0 mb-6 transition-all duration-700 ease-in-out`}
-                    style={{ top: 'var(--header-h)', marginTop: isTv ? '0px' : '20px' }}
-                >
-                    <div className="w-full">
-                        <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
-                            <div className="flex items-center gap-4 w-full">
-                                <button
-                                    onClick={() => setIsFilterOpen(true)}
-                                    className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white/40 border border-slate-200/40 text-slate-500 hover:text-slate-900 hover:bg-white hover:border-slate-300 transition-all duration-300 shrink-0 group"
-                                >
-                                    <Menu
-                                        size={18}
-                                        className="group-hover:rotate-180 transition-transform duration-500"
-                                    />
-                                </button>
-
-                                <div className="flex-none min-w-[240px] lg:min-w-[320px]">
-                                    <div className="relative flex items-center gap-3 w-full bg-slate-100/30 hover:bg-slate-100/50 border border-slate-200/30 rounded-2xl px-4 h-10 transition-all duration-500 group focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-primary/5 focus-within:border-brand-primary/10">
-                                        <Search
-                                            size={16}
-                                            className="text-slate-400 group-focus-within:text-brand-primary group-focus-within:scale-110 transition-all duration-300"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="FIND YOUR NEXT MACHINE..."
-                                            value={searchQuery}
-                                            onChange={e => setSearchQuery(e.target.value)}
-                                            className="flex-1 min-w-0 bg-transparent text-[10px] font-black tracking-[0.2em] uppercase focus:outline-none placeholder:text-slate-400/50"
-                                        />
-                                        {searchQuery && (
-                                            <button
-                                                onClick={() => setSearchQuery('')}
-                                                className="flex items-center justify-center w-6 h-6 rounded-full text-slate-300 hover:text-slate-900 hover:bg-slate-200/50 transition-all"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        )}
-                                    </div>
+                <DiscoveryBar
+                    className={
+                        isTv
+                            ? 'opacity-100 translate-y-0'
+                            : showHeader
+                              ? 'opacity-100 translate-y-0'
+                              : 'opacity-0 -translate-y-full pointer-events-none'
+                    }
+                    onFilterClick={() => setIsFilterOpen(true)}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    pricingMode={pricingMode}
+                    onPricingModeChange={mode => setPricingMode(mode as any)}
+                    centerContent={
+                        <>
+                            {isSmart && !smartModel && (
+                                <div className="flex items-center gap-2">
+                                    {modelOptions.map(model => (
+                                        <button
+                                            key={`model-${model}`}
+                                            onClick={() => {
+                                                setSmartModel(model);
+                                                setSmartVariant(null);
+                                                setSmartColor(null);
+                                                setSearchQuery(model);
+                                            }}
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap shadow-sm"
+                                        >
+                                            {model}
+                                            <span className="text-slate-400">•</span>
+                                            <span className="text-brand-primary">{modelCounts.get(model) || 0}</span>
+                                        </button>
+                                    ))}
                                 </div>
+                            )}
 
-                                {/* Filter Labels (Smart chips) - Now in the center */}
-                                <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar pl-2">
-                                    {isSmart && !smartModel && (
-                                        <div className="flex items-center gap-2">
-                                            {modelOptions.map(model => (
+                            {isSmart && smartModel && (
+                                <div className="flex items-center gap-2">
+                                    {!smartVariant && (
+                                        <>
+                                            <button
+                                                onClick={() => {
+                                                    setSmartModel(null);
+                                                    setSmartVariant(null);
+                                                    setSmartColor(null);
+                                                    setSearchQuery('');
+                                                }}
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-white whitespace-nowrap shadow-lg"
+                                            >
+                                                {smartModel}
+                                                <X size={10} className="text-brand-primary" />
+                                            </button>
+                                            {variantOptions.map(v => (
                                                 <button
-                                                    key={`model-${model}`}
+                                                    key={`variant-${v.name}`}
                                                     onClick={() => {
-                                                        setSmartModel(model);
-                                                        setSmartVariant(null);
+                                                        setSmartVariant(v.name);
                                                         setSmartColor(null);
-                                                        setSearchQuery(model);
                                                     }}
                                                     className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap shadow-sm"
                                                 >
-                                                    {model}
+                                                    {v.name}
                                                     <span className="text-slate-400">•</span>
-                                                    <span className="text-brand-primary">
-                                                        {modelCounts.get(model) || 0}
-                                                    </span>
+                                                    <span className="text-brand-primary">{v.count}</span>
                                                 </button>
                                             ))}
-                                        </div>
+                                        </>
                                     )}
-
-                                    {isSmart && smartModel && (
-                                        <div className="flex items-center gap-2">
-                                            {!smartVariant && (
-                                                <>
-                                                    <button
-                                                        onClick={() => {
-                                                            setSmartModel(null);
-                                                            setSmartVariant(null);
-                                                            setSmartColor(null);
-                                                            setSearchQuery('');
-                                                        }}
-                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-white whitespace-nowrap shadow-lg"
-                                                    >
-                                                        {smartModel}
-                                                        <X size={10} className="text-brand-primary" />
-                                                    </button>
-                                                    {variantOptions.map(v => (
-                                                        <button
-                                                            key={`variant-${v.name}`}
-                                                            onClick={() => {
-                                                                setSmartVariant(v.name);
-                                                                setSmartColor(null);
-                                                            }}
-                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap shadow-sm"
-                                                        >
-                                                            {v.name}
-                                                            <span className="text-slate-400">•</span>
-                                                            <span className="text-brand-primary">{v.count}</span>
-                                                        </button>
-                                                    ))}
-                                                </>
-                                            )}
-                                            {smartVariant && (
-                                                <>
-                                                    <button
-                                                        onClick={() => {
-                                                            setSmartVariant(null);
-                                                            setSmartColor(null);
-                                                        }}
-                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-white whitespace-nowrap shadow-lg"
-                                                    >
-                                                        {smartVariant}
-                                                        <X size={10} className="text-brand-primary" />
-                                                    </button>
-                                                    <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-200">
-                                                        {colorOptions.map(c => (
-                                                            <button
-                                                                key={`color-${c.name}`}
-                                                                onClick={() => {
-                                                                    setSmartColor(c.name);
-                                                                }}
-                                                                className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${
-                                                                    normalize(smartColor || undefined) ===
-                                                                    normalize(c.name)
-                                                                        ? 'ring-2 ring-brand-primary/60 ring-offset-1'
-                                                                        : ''
-                                                                }`}
-                                                                style={{ background: c.hex || '#999' }}
-                                                                title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
-                                                            >
-                                                                {c.finish?.toUpperCase() === 'GLOSSY' && (
-                                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
-                                                                )}
-                                                                {c.finish?.toUpperCase() === 'MATTE' && (
-                                                                    <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
-                                                                )}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                    {smartColor && (
-                                                        <button
-                                                            onClick={() => setSmartColor(null)}
-                                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-colors"
-                                                        >
-                                                            Clear
-                                                        </button>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Consolidated Discovery Elements (Toggle Only) - Now on the Right */}
-                                <div className="flex-none flex items-center ml-4 pl-6 border-l border-slate-200/40">
-                                    {/* Pricing Toggle - Aligned Right */}
-                                    <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 h-10 shadow-inner">
-                                        {[
-                                            { id: 'finance', label: 'Finance' },
-                                            { id: 'cash', label: 'Cash' },
-                                        ].map(mode => (
+                                    {smartVariant && (
+                                        <>
                                             <button
-                                                key={mode.id}
-                                                onClick={() => setPricingMode(mode.id as any)}
-                                                className={`px-6 h-full rounded-xl text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-300 ${
-                                                    pricingMode === mode.id
-                                                        ? 'bg-[#FFD700] text-black shadow-sm'
-                                                        : 'text-slate-500 hover:text-slate-950 hover:bg-slate-200/50'
-                                                }`}
+                                                onClick={() => {
+                                                    setSmartVariant(null);
+                                                    setSmartColor(null);
+                                                }}
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-white whitespace-nowrap shadow-lg"
                                             >
-                                                {mode.label}
+                                                {smartVariant}
+                                                <X size={10} className="text-brand-primary" />
                                             </button>
-                                        ))}
-                                    </div>
+                                            <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-200">
+                                                {colorOptions.map(c => (
+                                                    <button
+                                                        key={`color-${c.name}`}
+                                                        onClick={() => setSmartColor(c.name)}
+                                                        className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${normalize(smartColor || undefined) === normalize(c.name) ? 'ring-2 ring-brand-primary/60 ring-offset-1' : ''}`}
+                                                        style={{ background: c.hex || '#999' }}
+                                                        title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
+                                                    >
+                                                        {c.finish?.toUpperCase() === 'GLOSSY' && (
+                                                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                        )}
+                                                        {c.finish?.toUpperCase() === 'MATTE' && (
+                                                            <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {smartColor && (
+                                                <button
+                                                    onClick={() => setSmartColor(null)}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-colors"
+                                                >
+                                                    Clear
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </header>
+                            )}
+                        </>
+                    }
+                />
 
                 <div
                     className="md:hidden sticky z-[90] py-3 mb-4 bg-slate-50/80 backdrop-blur-2xl border-b border-slate-200/60"
@@ -1338,173 +1279,6 @@ export const DesktopCatalog = ({
                             style={{ top: 'calc(var(--header-h) + 24px)' }}
                         >
                             <div className="flex flex-col gap-8 p-6 bg-white/60 border border-slate-200/60 rounded-[3rem] backdrop-blur-3xl shadow-2xl">
-                                {/* EMI Calculator Accordion */}
-                                <div className="space-y-4">
-                                    <button
-                                        onClick={() => setIsEmiOpen(!isEmiOpen)}
-                                        className="w-full flex items-center justify-between group"
-                                    >
-                                        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 flex items-center gap-2">
-                                            <div className="w-1 h-1 rounded-full bg-brand-primary shadow-[0_0_8px_#F4B000]" />
-                                            EMI Calculator
-                                        </h4>
-                                        <ChevronDown
-                                            size={14}
-                                            className={`text-slate-400 transition-transform duration-300 ${isEmiOpen ? 'rotate-180' : 'rotate-0'} group-hover:text-brand-primary`}
-                                        />
-                                    </button>
-
-                                    {isEmiOpen && (
-                                        <div className="space-y-6 p-5 bg-slate-50 border border-slate-100 rounded-3xl animate-in fade-in slide-in-from-top-2">
-                                            <div className="space-y-4">
-                                                <div className="flex justify-between items-end">
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                        Downpayment
-                                                    </span>
-                                                    <span className="text-sm font-black text-brand-primary italic">
-                                                        ₹{downpayment.toLocaleString('en-IN')}
-                                                    </span>
-                                                </div>
-                                                <div className="relative flex items-center h-6">
-                                                    <input
-                                                        type="range"
-                                                        min="5000"
-                                                        max="50000"
-                                                        step="1000"
-                                                        value={downpayment}
-                                                        onChange={e => setDownpayment(parseInt(e.target.value))}
-                                                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 slider-thumb-black"
-                                                        style={{
-                                                            background: `linear-gradient(to right, #F4B000 0%, #F4B000 ${((downpayment - 5000) / (50000 - 5000)) * 100}%, ${typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? '#1e293b' : '#e2e8f0'} ${((downpayment - 5000) / (50000 - 5000)) * 100}%, ${typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? '#1e293b' : '#e2e8f0'} 100%)`,
-                                                        }}
-                                                    />
-                                                    <style
-                                                        dangerouslySetInnerHTML={{
-                                                            __html: `
-                                            .slider-thumb-black::-webkit-slider-thumb {
-                                                appearance: none;
-                                                width: 18px;
-                                                height: 18px;
-                                                background: #0f172a;
-                                                border: 3px solid #F4B000;
-                                                border-radius: 50%;
-                                                cursor: pointer;
-                                                box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-                                                transition: all 0.2s;
-                                            }
-                                            .slider-thumb-black::-webkit-slider-thumb:hover {
-                                                transform: scale(1.1);
-                                                background: #000;
-                                            }
-                                            .slider-thumb-black::-moz-range-thumb {
-                                                width: 18px;
-                                                height: 18px;
-                                                background: #0f172a;
-                                                border: 3px solid #F4B000;
-                                                border-radius: 50%;
-                                                cursor: pointer;
-                                                box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-                                            }
-                                        `,
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                        Tenure (Months)
-                                                    </span>
-                                                    <span className="text-[10px] font-black text-brand-primary italic">
-                                                        {tenure} Months
-                                                    </span>
-                                                </div>
-                                                <div className="grid grid-cols-4 gap-2">
-                                                    {(() => {
-                                                        const allTenures = [
-                                                            3, 6, 9, 12, 18, 24, 30, 36, 42, 48, 54, 60,
-                                                        ];
-                                                        const idx = allTenures.indexOf(tenure);
-                                                        const start = Math.max(
-                                                            0,
-                                                            Math.min(idx - 2, allTenures.length - 4)
-                                                        );
-
-                                                        return allTenures.slice(start, start + 4).map(t => (
-                                                            <button
-                                                                key={t}
-                                                                onClick={() => setTenure(t)}
-                                                                className={`py-3 rounded-2xl text-[10px] font-black transition-all duration-300 ${
-                                                                    tenure === t
-                                                                        ? 'bg-slate-900 text-white shadow-lg scale-105 ring-2 ring-brand-primary/20'
-                                                                        : 'bg-white/50 text-slate-400 hover:text-slate-600 hover:bg-white shadow-sm'
-                                                                }`}
-                                                            >
-                                                                {t.toString().padStart(2, '0')}
-                                                            </button>
-                                                        ));
-                                                    })()}
-                                                </div>
-                                            </div>
-
-                                            {/* Budget & EMI Filters nested in Calculator */}
-                                            <div className="space-y-6 pt-4 border-t border-slate-200/50">
-                                                <div className="space-y-4">
-                                                    <div className="flex justify-between items-end">
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                            Max On-Road Price
-                                                        </span>
-                                                        <span className="text-sm font-black text-slate-900 italic">
-                                                            {maxPrice >= 1000000 ? 'Any' : formatPriceLabel(maxPrice)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="relative flex items-center h-6">
-                                                        <input
-                                                            type="range"
-                                                            min="50000"
-                                                            max="1000000"
-                                                            step="10000"
-                                                            value={maxPrice}
-                                                            onChange={e => setMaxPrice(parseInt(e.target.value))}
-                                                            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 slider-thumb-black"
-                                                            style={{
-                                                                background: `linear-gradient(to right, #F4B000 0%, #F4B000 ${((maxPrice - 50000) / (1000000 - 50000)) * 100}%, ${typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? '#1e293b' : '#e2e8f0'} ${((maxPrice - 50000) / (1000000 - 50000)) * 100}%, ${typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? '#1e293b' : '#e2e8f0'} 100%)`,
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-4">
-                                                    <div className="flex justify-between items-end">
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                            Max Monthly EMI
-                                                        </span>
-                                                        <span className="text-sm font-black text-brand-primary italic">
-                                                            {maxEMI >= 20000
-                                                                ? 'Any'
-                                                                : `Under ₹${maxEMI.toLocaleString('en-IN')}`}
-                                                        </span>
-                                                    </div>
-                                                    <div className="relative flex items-center h-6">
-                                                        <input
-                                                            type="range"
-                                                            min="1000"
-                                                            max="20000"
-                                                            step="500"
-                                                            value={maxEMI}
-                                                            onChange={e => setMaxEMI(parseInt(e.target.value))}
-                                                            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900 slider-thumb-black"
-                                                            style={{
-                                                                background: `linear-gradient(to right, #F4B000 0%, #F4B000 ${((maxEMI - 1000) / (20000 - 1000)) * 100}%, ${typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? '#1e293b' : '#e2e8f0'} ${((maxEMI - 1000) / (20000 - 1000)) * 100}%, ${typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? '#1e293b' : '#e2e8f0'} 100%)`,
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
                                 {/* Search Bar moved to Navbar via DiscoveryContext */}
                                 {/* Filter Groups in Sidebar (List View) */}
                                 <div className="space-y-6">
@@ -1515,6 +1289,7 @@ export const DesktopCatalog = ({
                                         onToggle={(v: string) => toggleFilter(setSelectedMakes, v)}
                                         onReset={() => setSelectedMakes(makeOptions)}
                                         showReset={selectedMakes.length < makeOptions.length}
+                                        allVisible={true}
                                     />
                                     <FilterGroup
                                         title="CC Range"
@@ -1631,141 +1406,45 @@ export const DesktopCatalog = ({
 
                 {/* Mega Filter Overlay (Grid View Only) */}
                 {isFilterOpen && viewMode === 'grid' ? (
-                    <div
-                        className="fixed inset-x-0 bottom-0 md:bottom-0 z-[100] bg-white/95 backdrop-blur-xl border-t border-slate-200 flex flex-col animate-in fade-in duration-300 h-[85svh] md:h-auto rounded-t-3xl md:rounded-none pb-[env(safe-area-inset-bottom)]"
-                        style={{ top: 'var(--header-h)' }}
-                    >
-                        <div className="page-container flex flex-col h-full">
-                            {/* Overlay Header */}
-                            <div className="flex-shrink-0 py-5 md:py-8 border-b border-slate-100 flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-widest italic uppercase">
-                                        Customize
-                                    </h3>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">
-                                        Refine by brand, engine & fuel
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <button
-                                        onClick={clearAll}
-                                        className="flex items-center gap-2 px-6 py-3 rounded-full border border-slate-200 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 hover:border-rose-500/30 transition-all"
-                                    >
-                                        Reset
-                                    </button>
-                                    <button
-                                        onClick={() => setIsFilterOpen(false)}
-                                        className="p-3 hover:bg-slate-100 rounded-full transition-all"
-                                    >
-                                        <X size={22} className="text-slate-900" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Overlay Content */}
-                            <div className="flex-1 overflow-y-auto py-6 custom-scrollbar">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Left Column: EMI & Search */}
-                                    <div className="space-y-8">
-                                        <div className="space-y-4">
-                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-                                                Finance Settings
-                                            </h4>
-                                            <div className="p-6 bg-slate-50 border border-slate-200 rounded-[2rem]">
-                                                <div className="space-y-6">
-                                                    <div className="space-y-3">
-                                                        <div className="flex justify-between items-end">
-                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                                Downpayment
-                                                            </span>
-                                                            <span className="text-lg font-black text-[#F4B000]">
-                                                                ₹{downpayment.toLocaleString('en-IN')}
-                                                            </span>
-                                                        </div>
-                                                        <input
-                                                            type="range"
-                                                            min="5000"
-                                                            max="100000"
-                                                            step="5000"
-                                                            value={downpayment}
-                                                            onChange={e => setDownpayment(parseInt(e.target.value))}
-                                                            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F4B000]"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-3">
-                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                            Tenure (Months)
-                                                        </span>
-                                                        <div className="grid grid-cols-6 gap-2">
-                                                            {[12, 18, 24, 30, 36, 42, 48, 54, 60].map(t => (
-                                                                <button
-                                                                    key={t}
-                                                                    onClick={() => setTenure(t)}
-                                                                    className={`py-2.5 rounded-xl text-[9px] font-black transition-all ${tenure === t ? 'bg-[#F4B000] text-black shadow-lg scale-105' : 'bg-white border border-slate-200 text-slate-500'}`}
-                                                                >
-                                                                    {t}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                    <AnimatePresence>
+                        {isFilterOpen && viewMode === 'grid' && (
+                            <>
+                                {/* Backdrop */}
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setIsFilterOpen(false)}
+                                    className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm"
+                                />
+                                {/* Sidebar Panel */}
+                                <motion.div
+                                    initial={{ x: '100%' }}
+                                    animate={{ x: 0 }}
+                                    exit={{ x: '100%' }}
+                                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                    className="fixed top-0 bottom-0 right-0 z-[101] w-full md:w-[460px] bg-white shadow-2xl flex flex-col border-l border-slate-200"
+                                >
+                                    {/* Sidebar Header */}
+                                    <div className="flex-shrink-0 px-8 py-8 border-b border-slate-100 flex items-center justify-between bg-white pt-[max(env(safe-area-inset-top),32px)]">
+                                        <div>
+                                            <h3 className="text-2xl font-black text-slate-900 tracking-widest uppercase italic">
+                                                Filters
+                                            </h3>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                Refine your search
+                                            </p>
                                         </div>
-
-                                        <div className="space-y-4">
-                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-                                                Search
-                                            </h4>
-                                            <div className="relative">
-                                                <Search
-                                                    className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
-                                                    size={16}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    placeholder="SEARCH FOR BIKES..."
-                                                    value={searchQuery}
-                                                    onChange={e => setSearchQuery(e.target.value)}
-                                                    className="w-full py-4 pl-14 pr-6 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-black tracking-widest uppercase focus:ring-2 focus:ring-[#F4B000]/20 outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-                                                Special Filters
-                                            </h4>
-                                            <button
-                                                onClick={() => setShowOClubOnly(!showOClubOnly)}
-                                                className={`w-full p-6 rounded-[2rem] border transition-all flex items-center justify-between group ${showOClubOnly ? 'bg-[#F4B000]/10 border-[#F4B000]/30 shadow-lg shadow-[#F4B000]/5' : 'bg-slate-50 border-slate-200'}`}
-                                            >
-                                                <div className="flex items-center gap-4">
-                                                    <div
-                                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${showOClubOnly ? 'bg-[#F4B000] text-black' : 'bg-white text-slate-400'}`}
-                                                    >
-                                                        <Sparkles size={20} />
-                                                    </div>
-                                                    <div className="text-left">
-                                                        <span className="block text-xs font-black uppercase tracking-widest text-slate-900">
-                                                            O' Circle Premium
-                                                        </span>
-                                                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                            Exclusive O' Circle Offers
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    className={`w-10 h-6 rounded-full relative transition-colors ${showOClubOnly ? 'bg-[#F4B000]' : 'bg-slate-200'}`}
-                                                >
-                                                    <div
-                                                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${showOClubOnly ? 'left-5' : 'left-1'}`}
-                                                    />
-                                                </div>
-                                            </button>
-                                        </div>
+                                        <button
+                                            onClick={() => setIsFilterOpen(false)}
+                                            className="p-3 hover:bg-slate-100 rounded-full transition-all text-slate-700 hover:text-black"
+                                        >
+                                            <X size={20} />
+                                        </button>
                                     </div>
 
-                                    {/* Right Column: Filters */}
-                                    <div className="space-y-8">
+                                    {/* Sidebar Content */}
+                                    <div className="flex-1 overflow-y-auto px-8 py-8 custom-scrollbar space-y-8 bg-slate-50 pb-[120px]">
                                         <FilterGroup
                                             title="Brands"
                                             options={makeOptions}
@@ -1773,6 +1452,7 @@ export const DesktopCatalog = ({
                                             onToggle={(v: string) => toggleFilter(setSelectedMakes, v)}
                                             onReset={() => setSelectedMakes(makeOptions)}
                                             showReset={selectedMakes.length < makeOptions.length}
+                                            allVisible={true}
                                         />
                                         <FilterGroup
                                             title="Engine Displacement"
@@ -1815,26 +1495,26 @@ export const DesktopCatalog = ({
                                             showReset
                                         />
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* Overlay Footer */}
-                            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                                <button
-                                    onClick={clearAll}
-                                    className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
-                                >
-                                    Clear all filters
-                                </button>
-                                <button
-                                    onClick={() => setIsFilterOpen(false)}
-                                    className="px-10 py-4 bg-[#F4B000] text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-[#F4B000]/20 hover:scale-105 transition-all"
-                                >
-                                    Show {results.length} {results.length === 1 ? 'Result' : 'Results'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                                    {/* Sidebar Footer */}
+                                    <div className="absolute pl-8 pr-8 bottom-0 w-full p-6 border-t border-slate-200 bg-white flex items-center justify-between shadow-[0_-10px_30px_rgba(0,0,0,0.05)] pb-[max(env(safe-area-inset-bottom),24px)]">
+                                        <button
+                                            onClick={clearAll}
+                                            className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-colors"
+                                        >
+                                            Clear all filters
+                                        </button>
+                                        <button
+                                            onClick={() => setIsFilterOpen(false)}
+                                            className="px-8 py-4 bg-[#F4B000] text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-[#F4B000]/20 hover:scale-105 transition-all"
+                                        >
+                                            Show {results.length} {results.length === 1 ? 'Result' : 'Results'}
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>
                 ) : null}
 
                 {/* Mobile Filter Drawer + Trigger (phone only) */}

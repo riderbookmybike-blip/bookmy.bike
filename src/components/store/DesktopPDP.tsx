@@ -166,6 +166,7 @@ export function DesktopPDP({
 }: DesktopPDPProps) {
     const params = useSearchParams();
     const { language } = useI18n();
+
     // Configuration Constants
     const REFERRAL_BONUS = 5000; // Member referral discount amount
 
@@ -532,6 +533,7 @@ export function DesktopPDP({
             <div data-parity-section="pricing" style={{ display: 'none' }} aria-hidden="true" />
             <div data-parity-section="finance" style={{ display: 'none' }} aria-hidden="true" />
             <div data-parity-section="finance-summary" style={{ display: 'none' }} aria-hidden="true" />
+
             {/* Cinematic Mesh Background */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div

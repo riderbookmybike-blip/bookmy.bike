@@ -791,7 +791,11 @@ export async function getLeadIndexAction(input: {
 
     if (slaFilter === 'ALL') {
         const baseQuery = applyLeadBaseFilters(
-            supabase.from('crm_leads').select('*', { count: 'exact' }).order('created_at', { ascending: false }),
+            supabase
+                .from('crm_leads')
+                .select('*', { count: 'exact' })
+                .order('updated_at', { ascending: false, nullsFirst: false })
+                .order('created_at', { ascending: false }),
             {
                 tenantId: input.tenantId,
                 status,
@@ -813,7 +817,11 @@ export async function getLeadIndexAction(input: {
         totalRows = count || 0;
     } else {
         const baseQuery = applyLeadBaseFilters(
-            supabase.from('crm_leads').select('*').order('created_at', { ascending: false }),
+            supabase
+                .from('crm_leads')
+                .select('*')
+                .order('updated_at', { ascending: false, nullsFirst: false })
+                .order('created_at', { ascending: false }),
             {
                 tenantId: input.tenantId,
                 status,
@@ -996,10 +1004,36 @@ export async function getLeadEventsAction(
 
     const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(500, Math.floor(limit))) : 120;
 
+    const { data: sourceLead, error: sourceLeadError } = await adminClient
+        .from('crm_leads')
+        .select('id, customer_id')
+        .eq('id', leadId)
+        .maybeSingle();
+    if (sourceLeadError) {
+        console.error('getLeadEventsAction source lead fetch error:', sourceLeadError);
+    }
+
+    const customerId = ((sourceLead as any)?.customer_id as string | null) || null;
+    let scopedLeadIds: string[] = [leadId];
+
+    if (customerId) {
+        const { data: customerLeads, error: customerLeadErr } = await adminClient
+            .from('crm_leads')
+            .select('id')
+            .eq('customer_id', customerId)
+            .eq('is_deleted', false);
+        if (customerLeadErr) {
+            console.error('getLeadEventsAction customer lead scope error:', customerLeadErr);
+        } else {
+            const ids = (customerLeads || []).map((row: any) => String(row.id || '')).filter(Boolean);
+            if (ids.length > 0) scopedLeadIds = ids;
+        }
+    }
+
     const { data, error } = await adminClient
         .from('crm_lead_events')
         .select('id, lead_id, event_type, notes, changed_value, actor_user_id, actor_tenant_id, created_at')
-        .eq('lead_id', leadId)
+        .in('lead_id', scopedLeadIds)
         .order('created_at', { ascending: false })
         .limit(safeLimit);
 

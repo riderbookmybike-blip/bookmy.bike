@@ -32,6 +32,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatDisplayId } from '@/utils/displayId';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { toast } from 'sonner';
+import UnifiedInboxPanel from '@/components/modules/shared/UnifiedInboxPanel';
 
 export interface MemberProfile {
     member: {
@@ -243,7 +244,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
 
     const [activeTab, setActiveTab] = useState<
-        'MEMBER' | 'OCLUB' | 'TRANSACTIONS' | 'TASKS' | 'NOTES' | 'DOCUMENTS' | 'TIMELINE'
+        'MEMBER' | 'OCLUB' | 'TRANSACTIONS' | 'TASKS' | 'NOTES' | 'DOCUMENTS' | 'INBOX' | 'TIMELINE'
     >('MEMBER');
     const [groups, setGroups] = useState({
         transactionLeads: true,
@@ -402,6 +403,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
             { key: 'TASKS', label: 'TASKS', count: 0 },
             { key: 'NOTES', label: 'NOTES', count: 0 },
             { key: 'DOCUMENTS', label: 'DOCUMENTS', count: 0 },
+            { key: 'INBOX', label: 'INBOX', count: 0 },
             { key: 'TIMELINE', label: 'TIMELINE', count: timelineCount },
         ],
         [leadCount, quoteCount, bookingCount, receiptCount, timelineCount, profile.oclubLedger?.length]
@@ -569,6 +571,19 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                 </div>
                             )}
                         </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Inbox">
+                        <UnifiedInboxPanel
+                            memberId={profile.member?.id || null}
+                            phone={profile.member?.primary_phone || null}
+                            email={profile.member?.primary_email || null}
+                            timelineEvents={(profile.events || []).map((event: any, idx: number) => ({
+                                id: String(event.id || idx),
+                                title: String(event.event_type || 'EVENT'),
+                                timestamp: event.created_at || null,
+                            }))}
+                        />
                     </PhoneSection>
                 </div>
             </div>
@@ -1113,14 +1128,14 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
 
             {/* Tabs - Sticky */}
             <div className="sticky top-0 z-10 bg-white/20 dark:bg-white/[0.03] backdrop-blur-xl mx-4 mt-4 rounded-2xl overflow-hidden border border-white/20 dark:border-white/5 shadow-sm">
-                <div className="grid grid-cols-7 text-[9px] font-black uppercase tracking-widest w-full">
+                <div className="grid grid-cols-8 text-[9px] font-black uppercase tracking-widest w-full">
                     {tabs.map((tab, idx) => (
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key as any)}
                             className={cn(
                                 'w-full py-3 text-center transition-all relative',
-                                idx < 6 ? 'border-r border-slate-100 dark:border-white/10' : '',
+                                idx < 7 ? 'border-r border-slate-100 dark:border-white/10' : '',
                                 activeTab === tab.key
                                     ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                                     : 'bg-transparent text-slate-400 hover:text-slate-600 hover:bg-white/30 dark:hover:bg-white/10'
@@ -2196,6 +2211,21 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                 <div className="px-6 py-6 text-xs text-slate-400">No timeline events.</div>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'INBOX' && (
+                    <div className="mx-4 mt-4">
+                        <UnifiedInboxPanel
+                            memberId={profile.member?.id || null}
+                            phone={profile.member?.primary_phone || null}
+                            email={profile.member?.primary_email || null}
+                            timelineEvents={(profile.events || []).map((event: any, idx: number) => ({
+                                id: String(event.id || idx),
+                                title: String(event.event_type || 'EVENT'),
+                                timestamp: event.created_at || null,
+                            }))}
+                        />
                     </div>
                 )}
             </div>

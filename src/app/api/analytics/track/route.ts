@@ -18,6 +18,104 @@ function asString(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
 }
 
+function normalizeEventChangedValue(changedValue?: unknown): string | null {
+    if (changedValue === undefined || changedValue === null) return null;
+    if (typeof changedValue === 'string') {
+        const normalized = changedValue.trim();
+        return normalized.length > 0 ? normalized.slice(0, 500) : null;
+    }
+    try {
+        return JSON.stringify(changedValue).slice(0, 500);
+    } catch {
+        return String(changedValue).slice(0, 500);
+    }
+}
+
+async function resolveActiveLeadId(explicitLeadId: string, userId: string): Promise<string | null> {
+    if (explicitLeadId) return explicitLeadId;
+    if (!userId) return null;
+
+    const { data, error } = await adminClient
+        .from('crm_leads')
+        .select('id, status')
+        .eq('customer_id', userId)
+        .eq('is_deleted', false)
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.error('Active lead resolution failed:', error);
+        return null;
+    }
+
+    return asString((data as any)?.id) || null;
+}
+
+async function bootstrapLeadForTracking(userId: string): Promise<string | null> {
+    if (!userId) return null;
+
+    const { data: member, error: memberErr } = await adminClient
+        .from('id_members')
+        .select('id, full_name, primary_phone, whatsapp')
+        .eq('id', userId)
+        .maybeSingle();
+    if (memberErr || !member) return null;
+
+    const phone = asString((member as any).primary_phone) || asString((member as any).whatsapp);
+    if (!phone) return null;
+
+    const { data: created, error: createErr } = await adminClient
+        .from('crm_leads')
+        .insert({
+            customer_id: userId,
+            customer_name: asString((member as any).full_name) || 'Website Member',
+            customer_phone: phone,
+            source: 'WEBSITE_TRACKING',
+            status: 'NEW',
+            utm_source: 'WEBSITE_TRACKING',
+            interest_text: 'Web visit tracked',
+            is_deleted: false,
+        })
+        .select('id')
+        .maybeSingle();
+
+    if (createErr) {
+        console.error('Tracking lead bootstrap failed:', createErr);
+        return null;
+    }
+
+    return asString((created as any)?.id) || null;
+}
+
+async function ensureLeadForTracking(explicitLeadId: string, userId: string): Promise<string | null> {
+    const resolved = await resolveActiveLeadId(explicitLeadId, userId);
+    if (resolved) return resolved;
+    return bootstrapLeadForTracking(userId);
+}
+
+function mapEventNameToLeadEventType(eventName: string): string {
+    switch (eventName) {
+        case 'sku_dwell':
+            return 'SKU_DWELL';
+        case 'sku_view':
+            return 'SKU_VISIT';
+        case 'catalog_vehicle_click':
+            return 'CATALOG_VEHICLE_CLICK';
+        case 'pdp_visit':
+            return 'PDP_VISIT';
+        case 'pdp_share_quote':
+            return 'PDP_SHARE_QUOTE';
+        case 'pdp_save_quote':
+            return 'PDP_SAVE_QUOTE';
+        case 'wishlist_toggle':
+            return 'WISHLIST_TOGGLE';
+        default:
+            return 'MEMBER_ACTIVITY';
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const userAgent = req.headers.get('user-agent') || '';
@@ -104,42 +202,72 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false }, { status: 500 });
         }
 
-        // 3. Mirror SKU engagement into lead activity stream when lead context exists.
-        const leadEventRows = events
-            .map((event: any) => {
-                const metadata = asObject(event?.metadata);
-                const leadId = asString(metadata.lead_id);
-                const skuId = asString(metadata.sku_id);
-                if (!leadId || !skuId) return null;
+        // 3. Mirror engagement into lead activity stream.
+        const leadEventRows = (
+            await Promise.all(
+                events.map(async (event: any) => {
+                    const normalizedName = asString(event?.name).toLowerCase();
+                    const eventType = mapEventNameToLeadEventType(normalizedName);
+                    if (!eventType) return null;
 
-                const normalizedName = asString(event?.name).toLowerCase();
-                const eventType = normalizedName === 'sku_dwell' ? 'SKU_DWELL' : 'SKU_VISIT';
-                const dwellMs = Number(metadata.dwell_ms || metadata.dwellMs || 0);
+                    const metadata = asObject(event?.metadata);
+                    const explicitLeadId = asString(metadata.lead_id);
+                    const resolvedLeadId = await ensureLeadForTracking(explicitLeadId, asString(userId));
+                    if (!resolvedLeadId) return null;
 
-                return {
-                    lead_id: leadId,
-                    actor_user_id: userId || null,
-                    event_type: eventType,
-                    payload: {
-                        sku_id: skuId,
+                    const changedValue = {
+                        sku_id: asString(metadata.sku_id) || null,
+                        make_slug: asString(metadata.make_slug) || null,
                         model_slug: asString(metadata.model_slug) || null,
                         variant_slug: asString(metadata.variant_slug) || null,
-                        make_slug: asString(metadata.make_slug) || null,
-                        source: asString(metadata.source) || 'STORE_PDP',
+                        color_name: asString(metadata.color_name) || null,
+                        color_id: asString(metadata.color_id) || null,
+                        quote_id: asString(metadata.quote_id) || null,
+                        share_channel: asString(metadata.share_channel) || null,
+                        action: asString(metadata.action) || null,
                         reason: asString(metadata.reason) || null,
-                        dwell_ms: Number.isFinite(dwellMs) ? Math.max(0, Math.round(dwellMs)) : 0,
+                        dwell_ms: Number(metadata.dwell_ms || metadata.dwellMs || 0) || 0,
+                        source: asString(metadata.source) || 'STORE',
                         page_path: asString(event?.path) || null,
                         session_id: sessionId,
-                    },
-                    created_at: event.timestamp || new Date().toISOString(),
-                };
-            })
-            .filter(Boolean);
+                    };
+
+                    return {
+                        lead_id: resolvedLeadId,
+                        actor_user_id: userId || null,
+                        event_type: eventType,
+                        notes: `${eventType} via ${changedValue.source}`,
+                        changed_value: normalizeEventChangedValue(changedValue),
+                        created_at: event.timestamp || new Date().toISOString(),
+                    };
+                })
+            )
+        ).filter(Boolean);
 
         if (leadEventRows.length > 0) {
             const { error: leadEventError } = await adminClient.from('crm_lead_events').insert(leadEventRows as any[]);
             if (leadEventError) {
-                console.error('Lead SKU tracking insert failed:', leadEventError);
+                console.error('Lead engagement tracking insert failed:', leadEventError);
+            }
+
+            const touchedLeadIds = Array.from(
+                new Set(
+                    leadEventRows
+                        .map((row: any) => asString(row?.lead_id))
+                        .filter((leadId): leadId is string => Boolean(leadId))
+                )
+            );
+            if (touchedLeadIds.length > 0) {
+                const nowIso = new Date().toISOString();
+                const { error: leadTouchErr } = await (adminClient.from('crm_leads') as any)
+                    .update({
+                        updated_at: nowIso,
+                        last_activity_at: nowIso,
+                    })
+                    .in('id', touchedLeadIds);
+                if (leadTouchErr) {
+                    console.error('Lead last activity touch failed:', leadTouchErr);
+                }
             }
         }
 

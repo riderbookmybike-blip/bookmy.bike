@@ -83,6 +83,7 @@ import { getBookingStageHistory } from '@/actions/bookingStage';
 import { updateFinanceStatus } from '@/actions/finance';
 import { PremiumQuoteTemplate } from './PremiumQuoteTemplate';
 import MemberMediaManager from './MemberMediaManager';
+import UnifiedInboxPanel from '@/components/modules/shared/UnifiedInboxPanel';
 import { createClient } from '@/lib/supabase/client';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import { formatDisplayId } from '@/utils/displayId';
@@ -349,7 +350,7 @@ interface QuoteEditorTableProps {
     isEditable?: boolean;
     mode?: 'quote' | 'booking' | 'receipt';
     dynamicTabLabel?: string;
-    defaultTab?: 'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'HISTORY';
+    defaultTab?: 'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'INBOX' | 'TIMELINE' | 'NOTES' | 'HISTORY';
     booking?: {
         id?: string | null;
         status?: string | null;
@@ -825,7 +826,7 @@ export default function QuoteEditorTable({
     const [pendingChanges, setPendingChanges] = useState<QuoteChange[]>([]);
     const [pendingPayload, setPendingPayload] = useState<Partial<QuoteData> | null>(null);
     const [activeTab, setActiveTab] = useState<
-        'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'TIMELINE' | 'NOTES' | 'HISTORY'
+        'DYNAMIC' | 'FINANCE' | 'MEMBER' | 'TASKS' | 'DOCUMENTS' | 'INBOX' | 'TIMELINE' | 'NOTES' | 'HISTORY'
     >(defaultTab);
     const [financeMode, setFinanceMode] = useState<'CASH' | 'LOAN'>(quote.financeMode || 'CASH');
     const [docCount, setDocCount] = useState(0);
@@ -2467,7 +2468,7 @@ export default function QuoteEditorTable({
                         <div
                             className={cn(
                                 'text-[9px] font-black uppercase tracking-widest w-full',
-                                isPhone ? 'flex overflow-x-auto no-scrollbar' : 'grid grid-cols-8'
+                                isPhone ? 'flex overflow-x-auto no-scrollbar' : 'grid grid-cols-9'
                             )}
                         >
                             {(
@@ -2483,6 +2484,7 @@ export default function QuoteEditorTable({
                                     { key: 'NOTES', label: 'NOTES', count: 0 },
                                     { key: 'DOCUMENTS', label: 'DOCUMENTS', count: docCount },
                                     { key: 'MEMBER', label: 'MEMBER', count: 0 },
+                                    { key: 'INBOX', label: 'INBOX', count: 0 },
                                     { key: 'TIMELINE', label: 'TIMELINE', count: quote.timeline?.length || 0 },
                                 ] as { key: string; label: string; count: number }[]
                             ).map((tab, idx) => (
@@ -2492,7 +2494,7 @@ export default function QuoteEditorTable({
                                     className={cn(
                                         'py-3 text-center transition-all relative whitespace-nowrap',
                                         isPhone ? 'min-w-[80px] shrink-0 px-3' : 'w-full',
-                                        idx < 7 ? 'border-r border-slate-100 dark:border-white/10' : '',
+                                        idx < 8 ? 'border-r border-slate-100 dark:border-white/10' : '',
                                         activeTab === tab.key
                                             ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                                             : 'bg-transparent text-slate-400 hover:text-slate-600 hover:bg-white/30 dark:hover:bg-white/10'
@@ -3351,6 +3353,23 @@ export default function QuoteEditorTable({
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+                    {activeTab === 'INBOX' && (
+                        <div className="p-6">
+                            <UnifiedInboxPanel
+                                memberId={quote.customer?.memberId || quote.customerProfile?.memberId || null}
+                                leadId={quote.leadId || null}
+                                quoteId={quote.id || null}
+                                bookingId={booking?.id || null}
+                                phone={quote.customer?.phone || quote.customerProfile?.phone || null}
+                                email={quote.customerProfile?.email || null}
+                                timelineEvents={(quote.timeline || []).map((ev: any, idx: number) => ({
+                                    id: String(idx),
+                                    title: String(ev.event || 'EVENT'),
+                                    timestamp: ev.timestamp || null,
+                                }))}
+                            />
                         </div>
                     )}
 

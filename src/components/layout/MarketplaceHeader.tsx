@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, Heart, Home as HomeIcon, Search } from 'lucide-react';
+import { Menu, X, Heart, Home as HomeIcon } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
-import { usePathname } from 'next/navigation';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
-
 import { AppHeaderShell } from './AppHeaderShell';
 import { ProfileDropdown } from './ProfileDropdown';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
-import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 interface MarketplaceHeaderProps {
     onLoginClick: () => void;
@@ -20,25 +16,17 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [scrolled, setScrolled] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const pathname = usePathname();
-    const { device } = useBreakpoint();
-    const { showDiscoveryBar } = useDiscovery();
-    const isPhone = device === 'phone';
-    const isDesktopLike = device === 'desktop';
 
     useEffect(() => {
         const handleScroll = () => {
-            const currentScrollY = window.scrollY;
-            setScrolled(currentScrollY > 100);
+            setScrolled(window.scrollY > 100);
             setIsVisible(true);
         };
-
         const handleShowHeader = () => setIsVisible(true);
+        const handleMenuToggle = () => setIsSidebarOpen(prev => !prev);
+
         window.addEventListener('scroll', handleScroll, { passive: true });
         window.addEventListener('showHeader', handleShowHeader);
-
-        // Listen for bottom nav menu toggle
-        const handleMenuToggle = () => setIsSidebarOpen(prev => !prev);
         window.addEventListener('toggleMobileMenu', handleMenuToggle);
 
         return () => {
@@ -48,47 +36,34 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
     }, []);
 
-    const isHome = pathname === '/' || pathname === '/store' || pathname?.match(/^\/d[2-8]$/);
-    const isPdpRoute = Boolean(pathname?.match(/^\/store\/[^/]+\/[^/]+\/[^/]+/));
-
-    // Quick rollback: set navPreset to 'wide'.
-    const navPreset: 'tight' | 'wide' = 'tight';
-    const rightGapClass = navPreset === 'tight' ? 'gap-3 lg:gap-6' : 'gap-4 lg:gap-10';
-
-    const isHeaderTransparent = isHome && !isPdpRoute;
-
-    const mobileMenuButtonClass = isHeaderTransparent ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/5';
-
-    const desktopNavButtonClass = `w-10 h-10 rounded-full transition-all duration-300 group flex items-center justify-center ${
-        isHeaderTransparent ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/5'
-    }`;
+    // Universal: same transparent-dark header on every single page
+    const navBtnClass =
+        'w-10 h-10 rounded-full transition-all duration-300 flex items-center justify-center text-white hover:bg-white/10';
 
     return (
         <AppHeaderShell
             scrolled={scrolled}
-            visible={isPdpRoute ? true : isVisible}
+            visible={isVisible}
             transparentAtTop={true}
             variant="marketplace"
-            className={`${isHeaderTransparent || (isPhone && isHome) ? 'header-transparent' : ''} ${isPdpRoute ? 'header-solid-pdp' : ''}`}
+            className="header-transparent"
             left={
                 <Link href="/" className="flex items-center group h-full">
-                    <div className="flex items-center justify-center transition-all duration-300">
-                        <Logo mode={isHeaderTransparent ? 'dark' : 'auto'} size={30} variant="full" />
-                    </div>
+                    <Logo mode="dark" size={30} variant="full" />
                 </Link>
             }
             center={null}
             right={
-                <div className={`flex items-center ${rightGapClass}`}>
-                    {/* Desktop Navigation Group */}
-                    <div className={`${isDesktopLike ? 'flex' : 'hidden'} lg:flex items-center gap-3`}>
-                        <Link href="/" className={desktopNavButtonClass}>
+                <div className="flex items-center gap-3 lg:gap-6">
+                    {/* Desktop nav icons */}
+                    <div className="hidden lg:flex items-center gap-3">
+                        <Link href="/" className={navBtnClass}>
                             <HomeIcon size={18} />
                         </Link>
-                        <Link href="/store/catalog" className={desktopNavButtonClass}>
+                        <Link href="/store/catalog" className={navBtnClass}>
                             <MotorcycleIcon size={20} />
                         </Link>
-                        <Link href="/wishlist" className={`${desktopNavButtonClass} relative`}>
+                        <Link href="/wishlist" className={`${navBtnClass} relative`}>
                             <Heart size={18} />
                             {favorites.length > 0 && (
                                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in duration-300">
@@ -100,16 +75,16 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
                     <ProfileDropdown
                         onLoginClick={onLoginClick}
-                        scrolled={!isHeaderTransparent || isPdpRoute}
-                        theme={isHeaderTransparent ? 'dark' : 'light'}
-                        tone={isHeaderTransparent ? 'dark' : 'light'}
+                        scrolled={false}
+                        theme="dark"
+                        tone="dark"
                         externalOpen={isSidebarOpen}
                         onOpenChange={setIsSidebarOpen}
                     />
 
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className={`w-10 h-10 rounded-xl transition-all lg:hidden ${isPhone ? 'hidden' : 'flex'} items-center justify-center ${mobileMenuButtonClass}`}
+                        className="w-10 h-10 rounded-xl transition-all lg:hidden flex items-center justify-center text-white hover:bg-white/10"
                     >
                         {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>

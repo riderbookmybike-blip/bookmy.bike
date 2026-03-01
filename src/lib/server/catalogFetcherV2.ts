@@ -558,12 +558,16 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
 // ============================================================
 
 export async function fetchCatalogV2(stateCode: string = 'MH'): Promise<ProductVariant[]> {
-    const rawRows = await withCache(() => fetchCatalogV2Raw(stateCode), ['catalog-v2', stateCode], {
-        revalidate: 300,
-        tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global],
-    });
-
-    if (!rawRows || rawRows.length === 0) return [];
-
-    return mapV2ToProductVariants(rawRows);
+    return withCache(
+        async () => {
+            const rawRows = await fetchCatalogV2Raw(stateCode);
+            if (!rawRows || rawRows.length === 0) return [];
+            return mapV2ToProductVariants(rawRows);
+        },
+        ['catalog-v2-mapped', stateCode],
+        {
+            revalidate: 300,
+            tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global],
+        }
+    );
 }

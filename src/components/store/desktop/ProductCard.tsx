@@ -30,6 +30,7 @@ import { coinsNeededForPrice, discountForCoins } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
+import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
     const fullStars = Math.floor(rating);
@@ -122,6 +123,7 @@ export const ProductCard = ({
     onTogglePricingMode?: () => void;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
+    const { trackEvent } = useAnalytics();
     const { language } = useI18n();
     const isSaved = isFavorite(v.id);
     const [selectedColorImage, setSelectedColorImage] = useState<string | null>(v.imageUrl || null);
@@ -372,6 +374,14 @@ export const ProductCard = ({
         basePath,
     }).url;
     const handleCardClick = () => {
+        trackEvent('INTENT_SIGNAL', 'catalog_vehicle_click', {
+            lead_id: leadId || undefined,
+            sku_id: v.availableColors?.[0]?.id || undefined,
+            make_slug: slugify(v.make || ''),
+            model_slug: slugify(v.model || ''),
+            variant_slug: slugify(v.variant || ''),
+            source: 'STORE_CATALOG',
+        });
         router.push(variantUrl);
     };
 
@@ -657,6 +667,16 @@ export const ProductCard = ({
                                                 basePath,
                                             }).url
                                         }
+                                        onClick={() =>
+                                            trackEvent('INTENT_SIGNAL', 'catalog_vehicle_click', {
+                                                lead_id: leadId || undefined,
+                                                sku_id: v.availableColors?.[0]?.id || undefined,
+                                                make_slug: slugify(v.make || ''),
+                                                model_slug: slugify(v.model || ''),
+                                                variant_slug: slugify(v.variant || ''),
+                                                source: 'STORE_CATALOG',
+                                            })
+                                        }
                                         className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                     >
                                         Know More
@@ -744,6 +764,15 @@ export const ProductCard = ({
                                 imageUrl: v.imageUrl,
                             });
                             toast.success(isSaved ? 'Removed from Wishlist' : 'Added to Wishlist');
+                            trackEvent('INTENT_SIGNAL', 'wishlist_toggle', {
+                                lead_id: leadId || undefined,
+                                sku_id: v.availableColors?.[0]?.id || undefined,
+                                make_slug: slugify(v.make || ''),
+                                model_slug: slugify(v.model || ''),
+                                variant_slug: slugify(v.variant || ''),
+                                action: isSaved ? 'removed' : 'added',
+                                source: 'STORE_CATALOG',
+                            });
                         }}
                         className={`w-8 h-8 backdrop-blur-xl border border-slate-200 rounded-full flex items-center justify-center transition-all shadow-sm bg-white/60 ${isSaved ? 'text-rose-500 opacity-100' : 'text-slate-400 hover:text-rose-500 opacity-60 hover:opacity-100 hover:scale-110'}`}
                         title={isSaved ? 'Saved to Wishlist' : 'Save to Wishlist'}
