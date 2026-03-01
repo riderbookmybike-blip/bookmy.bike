@@ -257,33 +257,38 @@ export function DesktopPDP({
     } = handlers;
 
     // Smooth DP slider animation (click = slow animate, drag = instant)
-    const dpAnimRef = useRef<number | null>(null);
-    const dpClickRef = useRef({ preVal: 0, time: 0, x: 0, targetVal: 0 });
-    const animateDP = useCallback(
-        (fromVal: number, targetVal: number) => {
-            if (dpAnimRef.current) cancelAnimationFrame(dpAnimRef.current);
-            const diff = targetVal - fromVal;
-            if (diff === 0) return;
-            const fullRange = maxDownPayment - minDownPayment;
-            const duration = fullRange > 0 ? (Math.abs(diff) / fullRange) * 10000 : 500; // 0→max = 10s
-            const startTime = performance.now();
-            const step = (now: number) => {
-                const elapsed = now - startTime;
-                const progress = Math.min(elapsed / Math.max(duration, 1), 1);
-                const eased = 1 - Math.pow(1 - progress, 3);
-                const current = Math.round((fromVal + diff * eased) / 500) * 500;
-                if (setUserDownPayment) setUserDownPayment(current);
-                if (progress < 1) {
-                    dpAnimRef.current = requestAnimationFrame(step);
-                } else {
-                    if (setUserDownPayment) setUserDownPayment(targetVal);
-                    dpAnimRef.current = null;
-                }
-            };
-            dpAnimRef.current = requestAnimationFrame(step);
-        },
-        [maxDownPayment, minDownPayment, setUserDownPayment]
-    );
+    const [cachedScheme, setCachedScheme] = useState<{
+        interestRate: number;
+        interestType?: 'FLAT' | 'REDUCING';
+        schemeName?: string;
+        bankName?: string;
+    } | null>(null);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const raw = localStorage.getItem('bmb_finance_scheme_cache');
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (parsed?.expiresAt && Date.now() > parsed.expiresAt) return;
+            if (parsed?.scheme?.interestRate) {
+                setCachedScheme({
+                    interestRate: parsed.scheme.interestRate,
+                    interestType: parsed.scheme.interestType,
+                    schemeName: parsed.scheme.name || parsed.scheme.id || undefined,
+                    bankName: parsed.bankName || undefined,
+                });
+            }
+        } catch {}
+    }, []);
+    const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>('finance');
+    const [isFlipping, setIsFlipping] = useState(false);
+
+    const handleFlip = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const nextMode = cardPricingMode === 'cash' ? 'finance' : 'cash';
+        setCardPricingMode(nextMode);
+    };
 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
     const activeColorAssets = activeColorConfig?.assets || [];
@@ -486,7 +491,6 @@ export function DesktopPDP({
             icon: Camera,
         },
         { id: 'PRICING', label: 'Pricing', subtext: `₹${displayOnRoad.toLocaleString()}`, icon: Wallet },
-        { id: 'FINANCE', label: 'Finance', subtext: '', icon: Banknote },
         { id: 'FINANCE_SUMMARY', label: 'Summary', subtext: `${emiTenure}mo Plan`, icon: SlidersHorizontal },
     ];
 
@@ -716,56 +720,64 @@ export function DesktopPDP({
                                                 ) : (
                                                     <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col pl-[76px] pr-[76px] pt-2 pb-4">
                                                         {card.id === 'PRICING' && (
-                                                            <div>
-                                                                <PricingCard
-                                                                    product={product}
-                                                                    variantName={displayVariant}
-                                                                    activeColor={{
-                                                                        name: displayColor || activeColorConfig.name,
-                                                                        hex: activeColorConfig.hex,
-                                                                    }}
-                                                                    totalOnRoad={displayOnRoad}
-                                                                    totalSavings={totalSavings}
-                                                                    originalPrice={totalOnRoad + totalSavings}
-                                                                    coinPricing={coinPricing}
-                                                                    showOClubPrompt={showOClubPrompt}
-                                                                    priceBreakup={priceBreakupData}
-                                                                    productImage={getProductImage()}
-                                                                    pricingSource={
-                                                                        [
-                                                                            initialLocation?.district,
-                                                                            bestOffer?.dealer?.business_name,
-                                                                        ]
-                                                                            .filter(Boolean)
-                                                                            .join(' • ') || data.pricingSource
-                                                                    }
-                                                                    leadName={leadContext?.name}
-                                                                    isGated={isGated}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        {card.id === 'FINANCE' && (
-                                                            <div>
-                                                                <FinanceCard
-                                                                    emi={emi}
-                                                                    emiTenure={emiTenure}
-                                                                    setEmiTenure={setEmiTenure}
-                                                                    downPayment={userDownPayment || 0}
-                                                                    setUserDownPayment={setUserDownPayment}
-                                                                    minDownPayment={minDownPayment}
-                                                                    maxDownPayment={maxDownPayment}
-                                                                    totalOnRoad={displayOnRoad}
-                                                                    loanAmount={Math.max(
-                                                                        0,
-                                                                        displayOnRoad - (userDownPayment || 0)
-                                                                    )}
-                                                                    annualInterest={annualInterest}
-                                                                    interestType={interestType}
-                                                                    schemeId={initialFinance?.scheme?.id}
-                                                                    financeCharges={financeCharges}
-                                                                    bank={initialFinance?.bank}
-                                                                    scheme={initialFinance?.scheme}
-                                                                />
+                                                            <div className="perspective-[1000px] w-full min-h-[360px] relative">
+                                                                <div
+                                                                    className={`w-full relative preserve-3d transition-transform duration-700 ${cardPricingMode === 'cash' ? 'rotate-y-180' : ''}`}
+                                                                >
+                                                                    {/* Front Face - Finance */}
+                                                                    <div className="absolute inset-0 backface-hidden">
+                                                                        <FinanceCard
+                                                                            emi={emi}
+                                                                            emiTenure={emiTenure}
+                                                                            setEmiTenure={setEmiTenure}
+                                                                            downPayment={userDownPayment || 0}
+                                                                            setUserDownPayment={setUserDownPayment}
+                                                                            minDownPayment={minDownPayment}
+                                                                            maxDownPayment={maxDownPayment}
+                                                                            totalOnRoad={displayOnRoad}
+                                                                            loanAmount={Math.max(
+                                                                                0,
+                                                                                displayOnRoad - (userDownPayment || 0)
+                                                                            )}
+                                                                            annualInterest={annualInterest}
+                                                                            interestType={interestType}
+                                                                            schemeId={initialFinance?.scheme?.id}
+                                                                            financeCharges={financeCharges}
+                                                                            bank={initialFinance?.bank}
+                                                                            scheme={initialFinance?.scheme}
+                                                                        />
+                                                                    </div>
+                                                                    {/* Back Face - Cash */}
+                                                                    <div className="absolute inset-0 backface-hidden rotate-y-180">
+                                                                        <PricingCard
+                                                                            product={product}
+                                                                            variantName={displayVariant}
+                                                                            activeColor={{
+                                                                                name:
+                                                                                    displayColor ||
+                                                                                    activeColorConfig.name,
+                                                                                hex: activeColorConfig.hex,
+                                                                            }}
+                                                                            totalOnRoad={displayOnRoad}
+                                                                            totalSavings={totalSavings}
+                                                                            originalPrice={totalOnRoad + totalSavings}
+                                                                            coinPricing={coinPricing}
+                                                                            showOClubPrompt={showOClubPrompt}
+                                                                            priceBreakup={priceBreakupData}
+                                                                            productImage={getProductImage()}
+                                                                            pricingSource={
+                                                                                [
+                                                                                    initialLocation?.district,
+                                                                                    bestOffer?.dealer?.business_name,
+                                                                                ]
+                                                                                    .filter(Boolean)
+                                                                                    .join(' • ') || data.pricingSource
+                                                                            }
+                                                                            leadName={leadContext?.name}
+                                                                            isGated={isGated}
+                                                                        />
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         )}
                                                         {card.id === 'FINANCE_SUMMARY' && (
@@ -803,7 +815,42 @@ export function DesktopPDP({
 
                                 {/* Section 3: Footer — Offer Price (PRICING only, shrink-0) */}
                                 {isActive && card.id === 'PRICING' && (
-                                    <div className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03] relative z-10">
+                                    <div className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03] relative z-10 flex flex-col gap-3">
+                                        <div className="flex bg-slate-100/80 backdrop-blur-md rounded-2xl p-1 shadow-inner relative max-w-[200px] border border-black/[0.04]">
+                                            <div
+                                                className={`absolute inset-y-1 w-[calc(50%-4px)] rounded-xl transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                                                    cardPricingMode === 'finance'
+                                                        ? 'bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] translate-x-1'
+                                                        : 'bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] translate-x-[calc(100%+3px)]'
+                                                }`}
+                                            />
+                                            <button
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    if (cardPricingMode !== 'finance') handleFlip(e);
+                                                }}
+                                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-colors relative z-10 ${
+                                                    cardPricingMode === 'finance'
+                                                        ? 'text-[#F4B000]'
+                                                        : 'text-slate-400 hover:text-slate-600'
+                                                }`}
+                                            >
+                                                Finance
+                                            </button>
+                                            <button
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    if (cardPricingMode !== 'cash') handleFlip(e);
+                                                }}
+                                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-colors relative z-10 ${
+                                                    cardPricingMode === 'cash'
+                                                        ? 'text-slate-900'
+                                                        : 'text-slate-400 hover:text-slate-600'
+                                                }`}
+                                            >
+                                                Cash
+                                            </button>
+                                        </div>
                                         <div className="flex justify-between items-end">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-1">
@@ -872,25 +919,10 @@ export function DesktopPDP({
                                     </div>
                                 )}
 
-                                {/* Section 3: Footer — Down Payment (FINANCE only, shrink-0) */}
-                                {isActive && card.id === 'FINANCE' && maxDownPayment > minDownPayment && (
-                                    <DownPaymentSlider
-                                        userDownPayment={userDownPayment || 0}
-                                        minDownPayment={minDownPayment}
-                                        maxDownPayment={maxDownPayment}
-                                        displayOnRoad={displayOnRoad}
-                                        setUserDownPayment={setUserDownPayment}
-                                        animateDP={animateDP}
-                                    />
+                                {/* Bottom Fade — skip for Gallery and Pricing */}
+                                {isActive && card.id !== 'GALLERY' && card.id !== 'PRICING' && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
                                 )}
-
-                                {/* Bottom Fade — skip for Gallery and Finance */}
-                                {isActive &&
-                                    card.id !== 'GALLERY' &&
-                                    card.id !== 'FINANCE' &&
-                                    card.id !== 'PRICING' && (
-                                        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
-                                    )}
                             </motion.div>
                         );
                     })}

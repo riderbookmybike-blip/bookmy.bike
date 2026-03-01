@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import {
     Heart,
     Star,
@@ -158,6 +158,54 @@ export const ProductCard = ({
     }, []);
     const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>(globalPricingMode);
     const [isFlipping, setIsFlipping] = useState(false);
+
+    // 3D tilt effect
+    const cardRef = useRef<HTMLDivElement>(null);
+    const rawTiltX = useMotionValue(0);
+    const rawTiltY = useMotionValue(0);
+    const tiltX = useSpring(rawTiltX, { stiffness: 300, damping: 30, mass: 0.5 });
+    const tiltY = useSpring(rawTiltY, { stiffness: 300, damping: 30, mass: 0.5 });
+    const scaleSpring = useSpring(1, { stiffness: 300, damping: 30 });
+    // Glare: compute position as percentage of tilt
+    const glareX = useSpring(50, { stiffness: 200, damping: 30 });
+    const glareY = useSpring(50, { stiffness: 200, damping: 30 });
+    const glareOpacity = useSpring(0, { stiffness: 200, damping: 30 });
+    const glareBackground = useTransform(
+        [glareX, glareY],
+        ([x, y]: number[]) => `radial-gradient(circle at ${x}% ${y}%, rgba(255,255,255,0.55) 0%, transparent 65%)`
+    );
+
+    const handleMouseMove = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            const el = cardRef.current;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dx = (e.clientX - cx) / (rect.width / 2); // -1 … 1
+            const dy = (e.clientY - cy) / (rect.height / 2); // -1 … 1
+            rawTiltX.set(-dy * 8);
+            rawTiltY.set(dx * 8);
+            // Glare moves to follow the cursor (0-100%)
+            glareX.set(50 + dx * 50);
+            glareY.set(50 + dy * 50);
+            glareOpacity.set(0.14);
+        },
+        [rawTiltX, rawTiltY, glareX, glareY, glareOpacity]
+    );
+
+    const handleMouseLeave = useCallback(() => {
+        rawTiltX.set(0);
+        rawTiltY.set(0);
+        scaleSpring.set(1);
+        glareX.set(50);
+        glareY.set(50);
+        glareOpacity.set(0);
+    }, [rawTiltX, rawTiltY, scaleSpring, glareX, glareY, glareOpacity]);
+
+    const handleMouseEnter = useCallback(() => {
+        scaleSpring.set(1.015);
+    }, [scaleSpring]);
 
     useEffect(() => {
         setCardPricingMode(globalPricingMode);
@@ -695,637 +743,713 @@ export const ProductCard = ({
         );
     }
 
-    // ── Hex color tokens for the pricing fold card ─────────────────────────
-    const _isLight = (hex: string | null): boolean => {
-        if (!hex) return false;
-        const h = hex.replace('#', '');
-        if (h.length < 6) return false;
-        const r = parseInt(h.slice(0, 2), 16);
-        const g = parseInt(h.slice(2, 4), 16);
-        const b = parseInt(h.slice(4, 6), 16);
-        return (r * 299 + g * 587 + b * 114) / 1000 > 140;
-    };
-    const _hex = selectedHex;
-    const _light = _isLight(_hex);
-    // Finance face — saturated hex
-    const finBg = _hex
-        ? `linear-gradient(135deg, ${_hex}F0 0%, ${_hex} 60%, ${_hex}D0 100%)`
-        : 'linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%)';
-    const finBoxShadow = _light
-        ? 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.08)'
-        : 'inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3)';
-    const finText = _light ? '#0f172a' : '#ffffff';
-    const finSub = _light ? 'rgba(15,23,42,0.5)' : 'rgba(255,255,255,0.45)';
-    const finAccent = _light ? '#0f172a' : '#F4B000';
-    const finDiv = _light ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)';
-    // Cash face — light ~14% hex tint (matches vehicle image bg)
-    const cashBg = _hex
-        ? `linear-gradient(135deg, ${_hex}22 0%, ${_hex}2E 55%, ${_hex}1A 100%)`
-        : 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 55%, #f8fafc 100%)';
-    const cashBorder = _hex ? `1px solid ${_hex}40` : '1px solid rgba(16,185,129,0.15)';
-    const cashBoxShadow = 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.04)';
-    // Cash bg is always ~14% on white → always appears light → always dark text
-    const cashText = '#1a2a4a';
-    const cashSub = 'rgba(15,23,42,0.50)';
-    const cashLabel = _hex ? `${_hex}CC` : 'rgb(5,150,105)';
-    const cashDiv = _hex ? `${_hex}40` : 'rgb(226,232,240)';
-    // ────────────────────────────────────────────────────────────────────────
-
     return (
-        <div
-            key={v.id}
-            data-testid="catalog-product-card"
-            data-product-id={v.id}
-            data-dealer-id={v.dealerId || bestOffer?.dealerId || fallbackDealerId || ''}
-            data-offer-delta={offerDeltaForParity}
-            data-district={districtLabelDisplay || ''}
-            onClick={handleCardClick}
-            className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-all duration-700 hover:-translate-y-2 ${isTv ? 'min-h-[328px]' : 'min-h-[580px] md:min-h-[660px]'}`}
-        >
-            <div
-                className={`${isTv ? 'h-[170px]' : 'h-[340px] md:h-[344px] lg:h-[384px]'} bg-slate-50 flex items-center justify-center relative p-4 border-b border-black/[0.04] overflow-hidden group/card`}
-                style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
+        /* Perspective wrapper — gives depth to outer card tilt WITHOUT sharing 3D context with children */
+        <div style={{ perspective: '1200px', transformStyle: 'flat' }}>
+            <motion.div
+                ref={cardRef}
+                key={v.id}
+                data-testid="catalog-product-card"
+                data-product-id={v.id}
+                data-dealer-id={v.dealerId || bestOffer?.dealerId || fallbackDealerId || ''}
+                data-offer-delta={offerDeltaForParity}
+                data-district={districtLabelDisplay || ''}
+                onClick={handleCardClick}
+                onMouseMove={handleMouseMove}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                style={{
+                    rotateX: tiltX,
+                    rotateY: tiltY,
+                    scale: scaleSpring,
+                    transformStyle: 'flat',
+                    transformOrigin: 'center center',
+                }}
+                className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-[border-color,box-shadow] duration-700 ${isTv ? 'min-h-[328px]' : 'min-h-[580px] md:min-h-[660px]'}`}
             >
-                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 z-0" />
-
-                <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-                    {/* Primary Discount Pill (from catalog data) - SAVE for positive, SURGE for negative */}
-                    {(v.price?.discount || 0) > 0 && !bestOffer && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] border border-emerald-400/30 transition-all hover:scale-105">
-                            <Sparkles size={10} className="fill-white text-white" />
-                            <span className="text-[10px] font-black uppercase tracking-wider">
-                                Save ₹{formatRoundedPrice(v.price.discount)}
-                            </span>
-                        </div>
-                    )}
-                    {/* SURGE Pill for negative discount (price increase) */}
-                    {(v.price?.discount || 0) < 0 && !bestOffer && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 text-white rounded-xl shadow-[0_4px_12px_rgba(244,63,94,0.3)] border border-rose-400/30 transition-all hover:scale-105">
-                            <Zap size={10} className="fill-white text-white" />
-                            <span className="text-[10px] font-black uppercase tracking-wider">
-                                Surge ₹{formatRoundedPrice(Math.abs(v.price.discount || 0))}
-                            </span>
-                        </div>
-                    )}
-                </div>
-
-                <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-                    {onCompare && (
-                        <button
-                            onClick={e => {
-                                e.stopPropagation();
-                                onCompare();
-                            }}
-                            className={`w-8 h-8 rounded-full border flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105 ${isInCompare ? 'bg-[#F4B000]/20 border-[#F4B000]/40 text-[#F4B000]' : 'bg-white/80 border-slate-200 text-slate-400 hover:text-[#F4B000]'}`}
-                            title={isInCompare ? 'Remove from Compare' : 'Add to Compare'}
-                        >
-                            <GitCompareArrows size={14} />
-                        </button>
-                    )}
-                    {onExplodeColors && (
-                        <button
-                            onClick={e => {
-                                e.stopPropagation();
-                                onExplodeColors();
-                            }}
-                            className="w-8 h-8 rounded-full bg-white/80 border border-slate-200 text-slate-500 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105"
-                            title="Explode colors"
-                        >
-                            <Layers size={14} />
-                        </button>
-                    )}
-                    <button
-                        onClick={e => {
-                            e.stopPropagation();
-                            toggleFavorite({
-                                id: v.id,
-                                model: v.model,
-                                variant: v.variant,
-                                slug: v.slug,
-                                imageUrl: v.imageUrl,
-                            });
-                            toast.success(isSaved ? 'Removed from Wishlist' : 'Added to Wishlist');
-                            trackEvent('INTENT_SIGNAL', 'wishlist_toggle', {
-                                lead_id: leadId || undefined,
-                                sku_id: v.availableColors?.[0]?.id || undefined,
-                                make_slug: slugify(v.make || ''),
-                                model_slug: slugify(v.model || ''),
-                                variant_slug: slugify(v.variant || ''),
-                                action: isSaved ? 'removed' : 'added',
-                                source: 'STORE_CATALOG',
-                            });
-                        }}
-                        className={`w-8 h-8 backdrop-blur-xl border border-slate-200 rounded-full flex items-center justify-center transition-all shadow-sm bg-white/60 ${isSaved ? 'text-rose-500 opacity-100' : 'text-slate-400 hover:text-rose-500 opacity-60 hover:opacity-100 hover:scale-110'}`}
-                        title={isSaved ? 'Saved to Wishlist' : 'Save to Wishlist'}
-                    >
-                        <motion.div
-                            key={isSaved ? 'saved' : 'unsaved'}
-                            initial={{ scale: 0.8 }}
-                            animate={{ scale: isSaved ? [1, 1.4, 1] : 1 }}
-                            transition={{ duration: 0.3, ease: 'backOut' }}
-                        >
-                            <Heart size={14} className={isSaved ? 'fill-current' : ''} />
-                        </motion.div>
-                    </button>
-                </div>
-
-                {bestOffer && bestOffer.price !== 0 && (
-                    <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.3 }}
-                        className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${
-                            bestOffer.price < 0
-                                ? 'bg-emerald-500 text-white border-emerald-400/30'
-                                : 'bg-rose-500 text-white border-rose-400/30'
-                        }`}
-                    >
-                        <motion.div
-                            animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                            className="flex items-center justify-center"
-                        >
-                            {bestOffer.price < 0 ? (
-                                <Sparkles
-                                    size={12}
-                                    className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"
-                                />
-                            ) : (
-                                <Zap
-                                    size={12}
-                                    className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"
-                                />
-                            )}
-                        </motion.div>
-                        <span className="text-[10px] font-black uppercase tracking-wider relative z-10">
-                            {bestOffer.price < 0 ? 'SAVE' : 'SURGE'} ₹{formatRoundedPrice(Math.abs(bestOffer.price))}
-                        </span>
-                        {/* Shimmer Effect */}
-                        <div className="absolute inset-0 w-full h-full overflow-hidden rounded-xl pointer-events-none">
-                            <motion.div
-                                animate={{ x: ['-150%', '300%'] }}
-                                transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
-                                className="w-1/3 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
-                            />
-                        </div>
-                    </motion.div>
-                )}
-
-                <motion.img
-                    initial={{ scale: 1.15, opacity: 0 }}
-                    animate={{
-                        scale: selectedColorZoom !== null ? selectedColorZoom : v.zoomFactor || 1.15,
-                        scaleX: (selectedColorFlip !== undefined ? selectedColorFlip : v.isFlipped) ? -1 : 1,
-                        x: selectedColorOffsetX !== undefined ? selectedColorOffsetX : v.offsetX || 0,
-                        y: selectedColorOffsetY !== undefined ? selectedColorOffsetY : v.offsetY || 0,
-                        opacity: 1,
+                {/* Glare overlay */}
+                <motion.div
+                    aria-hidden
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: 'inherit',
+                        pointerEvents: 'none',
+                        zIndex: 50,
+                        opacity: glareOpacity,
+                        background: glareBackground,
                     }}
-                    whileHover={{ scale: (selectedColorZoom || v.zoomFactor || 1.15) + 0.05 }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
-                    src={
-                        selectedColorImage ||
-                        v.imageUrl ||
-                        (v.bodyType === 'SCOOTER'
-                            ? '/images/categories/scooter_nobg.png'
-                            : '/images/categories/motorcycle_nobg.png')
-                    }
-                    alt={v.model}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full object-contain z-10"
                 />
+                <div
+                    className={`${isTv ? 'h-[170px]' : 'h-[340px] md:h-[344px] lg:h-[384px]'} bg-slate-50 flex items-center justify-center relative p-4 border-b border-black/[0.04] overflow-hidden group/card`}
+                    style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
+                >
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 z-0" />
 
-                {/* Very Light Brand Watermark */}
-                <span className="absolute font-black text-[70px] uppercase tracking-[0.2em] opacity-[0.1] italic text-slate-900 select-none whitespace-nowrap z-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                    {displayMake}
-                </span>
-            </div>
-
-            <div
-                className={`${isTv ? 'p-3' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative bg-[#FAFAFA] z-10`}
-            >
-                <div className="relative z-10">
-                    <div className="flex items-center justify-between">
-                        <h3
-                            className={`${isTv ? 'text-lg' : 'text-lg md:text-xl'} font-black uppercase tracking-tighter italic text-slate-900 leading-none`}
-                        >
-                            {displayModel}
-                        </h3>
-                        {/* Swatches (Standardized) */}
-                        {(() => {
-                            const swatches =
-                                (v.availableColors || []).filter(
-                                    c => typeof c?.hexCode === 'string' && c.hexCode.trim().length > 0
-                                ) || [];
-                            if (swatches.length === 0) return null;
-
-                            return (
-                                <div className="flex items-center min-h-[1.25rem] flex-nowrap">
-                                    <div className="flex items-center gap-2 cursor-default">
-                                        {[...swatches]
-                                            .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
-                                            .map((c, i) => (
-                                                <div
-                                                    key={i}
-                                                    onClick={e => {
-                                                        e.stopPropagation();
-                                                        if (c.imageUrl) {
-                                                            setSelectedColorImage(c.imageUrl);
-                                                            setSelectedColorZoom(c.zoomFactor || null);
-                                                            setSelectedColorFlip(c.isFlipped || false);
-                                                            setSelectedColorOffsetX(c.offsetX || 0);
-                                                            setSelectedColorOffsetY(c.offsetY || 0);
-                                                            setSelectedColorFinish(c.finish || null);
-                                                        }
-                                                        if (c.hexCode) {
-                                                            setSelectedHex(c.hexCode);
-                                                        }
-                                                        // Trigger callback if provided (e.g., in PDP)
-                                                        if (onColorChange && c.id) {
-                                                            onColorChange(c.id);
-                                                        }
-                                                    }}
-                                                    className="w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden"
-                                                    style={{ background: c.hexCode }}
-                                                    title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
-                                                >
-                                                    {c.finish?.toUpperCase() === 'GLOSS' && (
-                                                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
-                                                    )}
-                                                    {c.finish?.toUpperCase() === 'MATTE' && (
-                                                        <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
-                                                    )}
-                                                </div>
-                                            ))}
-                                    </div>
-                                </div>
-                            );
-                        })()}
-                    </div>
-
-                    <div className="flex flex-col mt-1">
-                        <div className="flex items-center gap-2">
-                            <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-full text-left">
-                                {displayVariant}
-                            </p>
-                        </div>
-                        {v.suitableFor && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                                {v.suitableFor
-                                    .split(',')
-                                    .filter(Boolean)
-                                    .map(tag => (
-                                        <span
-                                            key={tag}
-                                            className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[8px] font-black uppercase tracking-wider border border-indigo-100 italic"
-                                        >
-                                            {tag.trim()}
-                                        </span>
-                                    ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* ── Pricing Fold Card — 2D scaleX, works under overflow-hidden ── */}
-                <div className="mt-3 md:mt-5 border-t border-slate-100 pt-3 md:pt-5 relative">
-                    {/* ── FRONT · Finance ── */}
-                    <motion.div
-                        initial={false}
-                        animate={{
-                            scaleX: cardPricingMode === 'finance' ? 1 : 0,
-                            opacity: cardPricingMode === 'finance' ? 1 : 0,
-                        }}
-                        transition={{
-                            scaleX: {
-                                duration: 0.28,
-                                ease: cardPricingMode === 'finance' ? [0.0, 0.0, 0.2, 1] : [0.4, 0, 1, 1],
-                                delay: cardPricingMode === 'finance' ? 0.28 : 0,
-                            },
-                            opacity: {
-                                duration: 0.18,
-                                delay: cardPricingMode === 'finance' ? 0.28 : 0,
-                            },
-                        }}
-                        className={`w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
-                        style={{
-                            originX: '50%',
-                            background: finBg,
-                            boxShadow: finBoxShadow,
-                        }}
-                    >
-                        {/* Left: Downpayment */}
-                        <div className="flex-1 flex flex-col items-start">
-                            <button
-                                onClick={e => {
-                                    e.stopPropagation();
-                                    onEditDownpayment?.();
-                                }}
-                                className="flex items-center gap-1.5 group/edit mb-1"
-                            >
-                                <p
-                                    style={{ color: finAccent }}
-                                    className="text-[9px] font-black uppercase tracking-wider italic leading-none"
-                                >
-                                    Downpayment
-                                </p>
-                                <Pencil
-                                    size={9}
-                                    style={{ color: finAccent, opacity: 0.5 }}
-                                    className="group-hover/edit:opacity-100 transition-opacity"
-                                />
-                            </button>
-                            <span
-                                style={{ color: finText }}
-                                className={`font-black italic leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
-                            >
-                                ₹{formatRoundedPrice(downpayment || 0)}
-                            </span>
-                            {showBcoinBadge && (
-                                <div className="flex items-center gap-1 mt-1">
-                                    <Logo variant="icon" size={10} />
-                                    <span
-                                        style={{ color: finSub }}
-                                        className="text-[9px] font-bold italic uppercase tracking-wider leading-none"
-                                    >
-                                        {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')} COINS
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Divider */}
-                        <div style={{ backgroundColor: finDiv }} className="w-px h-10 mx-2 md:mx-4 shrink-0" />
-
-                        {/* Right: EMI */}
-                        <div className="flex-1 flex flex-col items-end">
-                            <p
-                                style={{ color: finAccent }}
-                                className="text-[9px] font-black uppercase tracking-wider mb-1 italic"
-                            >
-                                Lowest EMI
-                            </p>
-                            <span
-                                style={{ color: finText }}
-                                className={`font-black italic leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
-                            >
-                                {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
-                            </span>
-                            <div className="flex items-center gap-1 mt-1">
-                                <Clock size={9} style={{ color: finSub }} />
-                                <span
-                                    style={{ color: finSub }}
-                                    className="text-[9px] font-bold italic uppercase tracking-wider leading-none"
-                                >
-                                    {activeTenure} MONTHS
+                    <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+                        {/* Primary Discount Pill (from catalog data) - SAVE for positive, SURGE for negative */}
+                        {(v.price?.discount || 0) > 0 && !bestOffer && (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] border border-emerald-400/30 transition-all hover:scale-105">
+                                <Sparkles size={10} className="fill-white text-white" />
+                                <span className="text-[10px] font-black uppercase tracking-wider">
+                                    Save ₹{formatRoundedPrice(v.price.discount)}
                                 </span>
                             </div>
-                        </div>
-                    </motion.div>
-
-                    {/* ── BACK · Cash — absolute overlay, phases in when finance phases out ── */}
-                    <motion.div
-                        initial={false}
-                        animate={{
-                            scaleX: cardPricingMode === 'cash' ? 1 : 0,
-                            opacity: cardPricingMode === 'cash' ? 1 : 0,
-                        }}
-                        transition={{
-                            scaleX: {
-                                duration: 0.28,
-                                ease: cardPricingMode === 'cash' ? [0.0, 0.0, 0.2, 1] : [0.4, 0, 1, 1],
-                                delay: cardPricingMode === 'cash' ? 0.28 : 0,
-                            },
-                            opacity: {
-                                duration: 0.18,
-                                delay: cardPricingMode === 'cash' ? 0.28 : 0,
-                            },
-                        }}
-                        className={`absolute inset-0 rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
-                        style={{
-                            originX: '50%',
-                            background: cashBg,
-                            boxShadow: cashBoxShadow,
-                            border: cashBorder,
-                        }}
-                    >
-                        {/* Left: On-Road Price with Breakdown Tooltip */}
-                        <div className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}>
-                            <div className="group/pricing relative">
-                                <div className="flex items-center gap-1.5 mb-1 cursor-help">
-                                    <p
-                                        style={{ color: cashLabel }}
-                                        className="text-[9px] font-black uppercase tracking-wider italic leading-none"
-                                    >
-                                        On-Road Price
-                                    </p>
-                                    <CircleHelp size={10} style={{ color: cashLabel, opacity: 0.5 }} />
-
-                                    {/* Premium Breakup Tooltip */}
-                                    <div className="absolute left-0 bottom-full mb-4 z-50 w-max min-w-[280px] p-5 rounded-[2rem] bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.15)] opacity-0 invisible group-hover/pricing:opacity-100 group-hover/pricing:visible transition-all duration-500 pointer-events-none origin-bottom-left scale-90 group-hover/pricing:scale-100 ring-1 ring-black/5">
-                                        <div className="absolute -bottom-1.5 left-6 w-3 h-3 bg-white border-r border-b border-slate-200 rotate-45" />
-                                        <div className="space-y-5 relative z-10">
-                                            <div className="pb-3 border-b border-slate-100 flex justify-between items-end">
-                                                <div>
-                                                    <p className="text-[11px] font-black uppercase tracking-[0.15em] text-brand-primary mb-0.5">
-                                                        Pricing Breakup
-                                                    </p>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                                                        Detailed Statement
-                                                    </p>
-                                                </div>
-                                                <div className="px-2 py-0.5 bg-slate-100 rounded-md text-[8px] font-black text-slate-500 uppercase tracking-widest">
-                                                    {priceSourceDisplay}
-                                                </div>
-                                            </div>
-                                            <div className="space-y-3">
-                                                {(() => {
-                                                    const tEx =
-                                                        (v.price as any)?.exShowroom ||
-                                                        (v as any)?.serverPricing?.ex_showroom ||
-                                                        0;
-                                                    const tRto =
-                                                        (v.price as any)?.rtoTotal ||
-                                                        (v as any)?.serverPricing?.rto?.total ||
-                                                        0;
-                                                    const tIns =
-                                                        (v.price as any)?.insuranceTotal ||
-                                                        (v as any)?.serverPricing?.insurance?.total ||
-                                                        0;
-                                                    const tOcircle = bcoinAdjustment || 0;
-                                                    const rawOnRoad = onRoad > 0 ? onRoad : tEx + tRto + tIns;
-                                                    const tOthers = Math.max(0, rawOnRoad - (tEx + tRto + tIns));
-                                                    const rows = [
-                                                        { label: 'Ex-Showroom', val: tEx },
-                                                        { label: 'Registration (State)', val: tRto },
-                                                        { label: 'Insurance', val: tIns },
-                                                        { label: 'Insurance Add-ons', val: 0 },
-                                                        { label: 'Mandatory Accessories', val: 0 },
-                                                        { label: 'Optional Accessories', val: 0 },
-                                                        { label: 'Services & Others', val: tOthers },
-                                                    ];
-                                                    return (
-                                                        <>
-                                                            <div className="space-y-2">
-                                                                {rows.map((row, idx) => (
-                                                                    <div
-                                                                        key={idx}
-                                                                        className="flex justify-between items-center group/row"
-                                                                    >
-                                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover/row:text-slate-900 transition-colors">
-                                                                            {row.label}
-                                                                        </span>
-                                                                        <span className="text-[11px] font-mono font-black text-slate-900">
-                                                                            ₹{formatRoundedPrice(row.val)}
-                                                                        </span>
-                                                                    </div>
-                                                                ))}
-                                                                <div className="flex justify-between items-center group/row">
-                                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover/row:text-slate-900 transition-colors">
-                                                                        Delivery TAT
-                                                                    </span>
-                                                                    <span className="text-[11px] font-black text-slate-900 uppercase">
-                                                                        7-10 Days
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            {savings + tOcircle > 0 && (
-                                                                <div className="mt-4 p-3 bg-[#F4B000]/5 border border-[#F4B000]/20 rounded-2xl">
-                                                                    <div className="flex justify-between items-center">
-                                                                        <div className="flex flex-col">
-                                                                            <span className="text-[10px] font-black uppercase tracking-widest text-[#F4B000]">
-                                                                                O' Circle Privileged
-                                                                            </span>
-                                                                            <span className="text-[8px] font-bold text-[#F4B000]/60 uppercase tracking-tight">
-                                                                                Exclusive Member Reward
-                                                                            </span>
-                                                                        </div>
-                                                                        <span className="text-[13px] font-mono font-black text-[#F4B000]">
-                                                                            -₹{formatRoundedPrice(savings + tOcircle)}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-                                            <div className="pt-4 border-t-2 border-slate-900/5 flex justify-between items-center">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">
-                                                        Net Offer Price
-                                                    </span>
-                                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">
-                                                        Final Payable Amount
-                                                    </span>
-                                                </div>
-                                                <span className="text-[18px] font-black text-brand-primary font-mono italic leading-none">
-                                                    ₹{formatRoundedPrice(effectiveOfferPrice)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col items-start gap-0.5">
-                                    <span
-                                        style={{ color: cashText }}
-                                        className="text-[24px] md:text-[28px] font-black italic leading-none"
-                                    >
-                                        ₹{formatRoundedPrice(effectiveOfferPrice)}
-                                    </span>
-                                </div>
+                        )}
+                        {/* SURGE Pill for negative discount (price increase) */}
+                        {(v.price?.discount || 0) < 0 && !bestOffer && (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 text-white rounded-xl shadow-[0_4px_12px_rgba(244,63,94,0.3)] border border-rose-400/30 transition-all hover:scale-105">
+                                <Zap size={10} className="fill-white text-white" />
+                                <span className="text-[10px] font-black uppercase tracking-wider">
+                                    Surge ₹{formatRoundedPrice(Math.abs(v.price.discount || 0))}
+                                </span>
                             </div>
-                        </div>
+                        )}
+                    </div>
 
-                        {/* Center Divider */}
-                        <div style={{ backgroundColor: cashDiv }} className="w-px h-10" />
-
-                        {/* Right: O'Circle Privileged */}
-                        <div className={`${isTv ? 'pl-3' : 'pl-5'} flex-1 flex flex-col items-end`}>
-                            <p
-                                style={{ color: cashLabel }}
-                                className="text-[9px] font-black uppercase tracking-wider mb-1 italic"
-                            >
-                                O'Circle Privileged
-                            </p>
-                            <div className="flex flex-col items-end gap-0.5">
-                                {showBcoinBadge && (
-                                    <div className="flex items-center gap-2">
-                                        <Logo variant="icon" size={16} />
-                                        <span
-                                            style={{ color: cashText }}
-                                            className="text-[24px] md:text-[28px] font-black italic leading-none"
-                                        >
-                                            {coinsNeededForPrice(effectiveOfferPrice).toLocaleString('en-IN')}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
-
-                {/* Optional Mileage Line (Subtle) */}
-
-                {!isPdp && (
-                    <div
-                        className={`${isTv ? 'mt-1 space-y-1' : 'mt-1.5 md:mt-4 space-y-1.5 md:space-y-2'} relative z-20 w-full`}
-                    >
-                        {isUnserviceable ? (
-                            <button
-                                onClick={handleGetQuoteClick}
-                                title={`We are not serviceable in ${safeServiceability.location || 'your area'} yet. We will notify you when we launch there.`}
-                                className={`w-full ${isTv ? 'h-8 text-[9px]' : 'h-11 text-[10px]'} bg-slate-100 text-slate-400 rounded-xl font-black uppercase tracking-[0.2em] cursor-not-allowed flex items-center justify-center`}
-                            >
-                                Not Serviceable
-                            </button>
-                        ) : variantCount && variantCount > 1 && onExplore ? (
+                    <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                        {onCompare && (
                             <button
                                 onClick={e => {
                                     e.stopPropagation();
-                                    onExplore();
+                                    onCompare();
                                 }}
-                                className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all`}
+                                className={`w-8 h-8 rounded-full border flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105 ${isInCompare ? 'bg-[#F4B000]/20 border-[#F4B000]/40 text-[#F4B000]' : 'bg-white/80 border-slate-200 text-slate-400 hover:text-[#F4B000]'}`}
+                                title={isInCompare ? 'Remove from Compare' : 'Add to Compare'}
                             >
-                                Compare Variants
-                                <ArrowRight
-                                    size={12}
-                                    className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
-                                />
+                                <GitCompareArrows size={14} />
                             </button>
-                        ) : (
-                            <Link
-                                href={
-                                    buildProductUrl({
-                                        make: v.make,
-                                        model: v.model,
-                                        variant: v.variant,
-                                        color: v.availableColors?.[0]?.name
-                                            ? slugify(v.availableColors?.[0]?.name)
-                                            : undefined,
-                                        district: navigableDistrict,
-                                        leadId: leadId,
-                                        basePath,
-                                    }).url
-                                }
-                                className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all`}
-                            >
-                                Know More
-                                <ArrowRight
-                                    size={12}
-                                    className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
-                                />
-                            </Link>
                         )}
+                        {onExplodeColors && (
+                            <button
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    onExplodeColors();
+                                }}
+                                className="w-8 h-8 rounded-full bg-white/80 border border-slate-200 text-slate-500 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105"
+                                title="Explode colors"
+                            >
+                                <Layers size={14} />
+                            </button>
+                        )}
+                        <button
+                            onClick={e => {
+                                e.stopPropagation();
+                                toggleFavorite({
+                                    id: v.id,
+                                    model: v.model,
+                                    variant: v.variant,
+                                    slug: v.slug,
+                                    imageUrl: v.imageUrl,
+                                });
+                                toast.success(isSaved ? 'Removed from Wishlist' : 'Added to Wishlist');
+                                trackEvent('INTENT_SIGNAL', 'wishlist_toggle', {
+                                    lead_id: leadId || undefined,
+                                    sku_id: v.availableColors?.[0]?.id || undefined,
+                                    make_slug: slugify(v.make || ''),
+                                    model_slug: slugify(v.model || ''),
+                                    variant_slug: slugify(v.variant || ''),
+                                    action: isSaved ? 'removed' : 'added',
+                                    source: 'STORE_CATALOG',
+                                });
+                            }}
+                            className={`w-8 h-8 backdrop-blur-xl border border-slate-200 rounded-full flex items-center justify-center transition-all shadow-sm bg-white/60 ${isSaved ? 'text-rose-500 opacity-100' : 'text-slate-400 hover:text-rose-500 opacity-60 hover:opacity-100 hover:scale-110'}`}
+                            title={isSaved ? 'Saved to Wishlist' : 'Save to Wishlist'}
+                        >
+                            <motion.div
+                                key={isSaved ? 'saved' : 'unsaved'}
+                                initial={{ scale: 0.8 }}
+                                animate={{ scale: isSaved ? [1, 1.4, 1] : 1 }}
+                                transition={{ duration: 0.3, ease: 'backOut' }}
+                            >
+                                <Heart size={14} className={isSaved ? 'fill-current' : ''} />
+                            </motion.div>
+                        </button>
                     </div>
-                )}
-                {!isTv && (
-                    <div className="flex items-center justify-center gap-2 opacity-80 pt-1 mt-1">
-                        <StarRating rating={v.rating || 4.5} size={9} />
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                            • {getStableReviewCount(v)} Ratings
-                        </span>
+
+                    {bestOffer && bestOffer.price !== 0 && (
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                            className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${
+                                bestOffer.price < 0
+                                    ? 'bg-emerald-500 text-white border-emerald-400/30'
+                                    : 'bg-rose-500 text-white border-rose-400/30'
+                            }`}
+                        >
+                            <motion.div
+                                animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
+                                transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                                className="flex items-center justify-center"
+                            >
+                                {bestOffer.price < 0 ? (
+                                    <Sparkles
+                                        size={12}
+                                        className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                                    />
+                                ) : (
+                                    <Zap
+                                        size={12}
+                                        className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                                    />
+                                )}
+                            </motion.div>
+                            <span className="text-[10px] font-black uppercase tracking-wider relative z-10">
+                                {bestOffer.price < 0 ? 'SAVE' : 'SURGE'} ₹
+                                {formatRoundedPrice(Math.abs(bestOffer.price))}
+                            </span>
+                            {/* Shimmer Effect */}
+                            <div className="absolute inset-0 w-full h-full overflow-hidden rounded-xl pointer-events-none">
+                                <motion.div
+                                    animate={{ x: ['-150%', '300%'] }}
+                                    transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+                                    className="w-1/3 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                                />
+                            </div>
+                        </motion.div>
+                    )}
+
+                    <motion.img
+                        initial={{ scale: 1.15, opacity: 0 }}
+                        animate={{
+                            scale: selectedColorZoom !== null ? selectedColorZoom : v.zoomFactor || 1.15,
+                            scaleX: (selectedColorFlip !== undefined ? selectedColorFlip : v.isFlipped) ? -1 : 1,
+                            x: selectedColorOffsetX !== undefined ? selectedColorOffsetX : v.offsetX || 0,
+                            y: selectedColorOffsetY !== undefined ? selectedColorOffsetY : v.offsetY || 0,
+                            opacity: 1,
+                        }}
+                        whileHover={{ scale: (selectedColorZoom || v.zoomFactor || 1.15) + 0.05 }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                        src={
+                            selectedColorImage ||
+                            v.imageUrl ||
+                            (v.bodyType === 'SCOOTER'
+                                ? '/images/categories/scooter_nobg.png'
+                                : '/images/categories/motorcycle_nobg.png')
+                        }
+                        alt={v.model}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full object-contain z-10"
+                    />
+
+                    {/* Very Light Brand Watermark */}
+                    <span className="absolute font-black text-[70px] uppercase tracking-[0.2em] opacity-[0.1] italic text-slate-900 select-none whitespace-nowrap z-0 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                        {displayMake}
+                    </span>
+                </div>
+
+                <div
+                    className={`${isTv ? 'p-3' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative bg-[#FAFAFA] z-10`}
+                >
+                    <div className="relative z-10">
+                        <div className="flex items-center justify-between">
+                            <h3
+                                className={`${isTv ? 'text-lg' : 'text-lg md:text-xl'} font-black uppercase tracking-tighter italic text-slate-900 leading-none`}
+                            >
+                                {displayModel}
+                            </h3>
+                            {/* Swatches (Standardized) */}
+                            {(() => {
+                                const swatches =
+                                    (v.availableColors || []).filter(
+                                        c => typeof c?.hexCode === 'string' && c.hexCode.trim().length > 0
+                                    ) || [];
+                                if (swatches.length === 0) return null;
+
+                                return (
+                                    <div className="flex items-center min-h-[1.25rem] flex-nowrap">
+                                        <div className="flex items-center gap-2 cursor-default">
+                                            {[...swatches]
+                                                .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+                                                .map((c, i) => (
+                                                    <div
+                                                        key={i}
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            if (c.imageUrl) {
+                                                                setSelectedColorImage(c.imageUrl);
+                                                                setSelectedColorZoom(c.zoomFactor || null);
+                                                                setSelectedColorFlip(c.isFlipped || false);
+                                                                setSelectedColorOffsetX(c.offsetX || 0);
+                                                                setSelectedColorOffsetY(c.offsetY || 0);
+                                                                setSelectedColorFinish(c.finish || null);
+                                                            }
+                                                            if (c.hexCode) {
+                                                                setSelectedHex(c.hexCode);
+                                                            }
+                                                            // Trigger callback if provided (e.g., in PDP)
+                                                            if (onColorChange && c.id) {
+                                                                onColorChange(c.id);
+                                                            }
+                                                        }}
+                                                        className="w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden"
+                                                        style={{ background: c.hexCode }}
+                                                        title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
+                                                    >
+                                                        {c.finish?.toUpperCase() === 'GLOSS' && (
+                                                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                        )}
+                                                        {c.finish?.toUpperCase() === 'MATTE' && (
+                                                            <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                                                        )}
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        <div className="flex flex-col mt-1">
+                            <div className="flex items-center gap-2">
+                                <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-full text-left">
+                                    {displayVariant}
+                                </p>
+                            </div>
+                            {v.suitableFor && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                    {v.suitableFor
+                                        .split(',')
+                                        .filter(Boolean)
+                                        .map(tag => (
+                                            <span
+                                                key={tag}
+                                                className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[8px] font-black uppercase tracking-wider border border-indigo-100 italic"
+                                            >
+                                                {tag.trim()}
+                                            </span>
+                                        ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                )}
-            </div>
+
+                    {/* ── Pricing Flip Card — hex-adaptive colors ── */}
+                    {(() => {
+                        // Parse hex → {r,g,b}
+                        const parseHex = (h: string | null) => {
+                            if (!h) return null;
+                            const c = h.replace('#', '');
+                            if (c.length !== 6) return null;
+                            return {
+                                r: parseInt(c.slice(0, 2), 16),
+                                g: parseInt(c.slice(2, 4), 16),
+                                b: parseInt(c.slice(4, 6), 16),
+                            };
+                        };
+                        const rgb = parseHex(selectedHex);
+                        // Relative luminance (WCAG)
+                        const luminance = rgb
+                            ? 0.2126 * (rgb.r / 255) + 0.7152 * (rgb.g / 255) + 0.0722 * (rgb.b / 255)
+                            : 0.5;
+
+                        // Finance face: saturated dark tint — mix hex at ~55% with dark base
+                        // This ensures even very dark hex codes (#1C1C1C) show visible color
+                        const dr = 12,
+                            dg = 14,
+                            db = 18; // dark base (near-black tinted blue)
+                        const finBg = rgb
+                            ? `linear-gradient(135deg,
+                            rgb(${Math.round(rgb.r * 0.52 + dr)}, ${Math.round(rgb.g * 0.42 + dg)}, ${Math.round(rgb.b * 0.52 + db)}) 0%,
+                            rgb(${Math.round(rgb.r * 0.62 + dr + 8)}, ${Math.round(rgb.g * 0.5 + dg + 6)}, ${Math.round(rgb.b * 0.62 + db + 8)}) 50%,
+                            rgb(${Math.round(rgb.r * 0.48 + dr)}, ${Math.round(rgb.g * 0.38 + dg)}, ${Math.round(rgb.b * 0.48 + db)}) 100%)`
+                            : 'linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%)';
+
+                        // Cash face: clear light tint so vehicle color shows
+                        const cashBg = rgb
+                            ? `linear-gradient(135deg,
+                            rgba(${rgb.r},${rgb.g},${rgb.b},0.18) 0%,
+                            rgba(${rgb.r},${rgb.g},${rgb.b},0.10) 55%,
+                            rgba(255,255,255,0.0) 100%)`
+                            : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+                        const cashBgBase = rgb ? `rgba(${rgb.r},${rgb.g},${rgb.b},0.12)` : '#f8fafc';
+
+                        // Text & accent on finance face: always white (background is always dark)
+                        const finText = '#ffffff';
+                        const finSubText = 'rgba(255,255,255,0.5)';
+                        const finDivider = 'rgba(255,255,255,0.1)';
+
+                        // Text on cash face: dark if background is light (which it always is)
+                        const cashPrimaryText = '#0f172a';
+                        const cashLabelColor = rgb
+                            ? `rgb(${Math.round(rgb.r * 0.55 + 20)}, ${Math.round(rgb.g * 0.4 + 15)}, ${Math.round(rgb.b * 0.3 + 10)})`
+                            : '#059669'; // fallback emerald
+                        const cashDivider = rgb ? `rgba(${rgb.r},${rgb.g},${rgb.b},0.2)` : 'rgba(0,0,0,0.06)';
+                        const cashBorder = rgb ? `rgba(${rgb.r},${rgb.g},${rgb.b},0.18)` : 'rgba(16,185,129,0.15)';
+
+                        return (
+                            <div
+                                className="mt-3 md:mt-5 border-t border-slate-100 pt-3 md:pt-5"
+                                style={{ perspective: '1400px' }}
+                            >
+                                {/* Shadow wrapper — filter here is fine because it's outside the preserve-3d container */}
+                                <motion.div
+                                    initial={false}
+                                    animate={{
+                                        boxShadow: isFlipping
+                                            ? '0 20px 36px rgba(0,0,0,0.22)'
+                                            : '0 2px 8px rgba(0,0,0,0.06)',
+                                    }}
+                                    transition={{ duration: 0.35 }}
+                                    className="rounded-2xl"
+                                >
+                                    <motion.div
+                                        initial={false}
+                                        animate={{ rotateY: cardPricingMode === 'finance' ? 0 : 180 }}
+                                        transition={{ rotateY: { duration: 0.72, ease: [0.25, 0.46, 0.45, 0.94] } }}
+                                        style={{ transformStyle: 'preserve-3d' }}
+                                        className="relative w-full"
+                                    >
+                                        {/* ── FRONT · Finance ── */}
+                                        <div
+                                            className={`w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
+                                            style={{
+                                                backfaceVisibility: 'hidden',
+                                                background: finBg,
+                                                boxShadow:
+                                                    'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.3)',
+                                            }}
+                                        >
+                                            {/* Left: Downpayment */}
+                                            <div className="flex-1 flex flex-col items-start">
+                                                <button
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        onEditDownpayment?.();
+                                                    }}
+                                                    className="flex items-center gap-1.5 group/edit mb-1"
+                                                >
+                                                    <p
+                                                        className="text-[9px] font-black uppercase tracking-wider italic leading-none"
+                                                        style={{ color: 'rgba(255,255,255,0.55)' }}
+                                                    >
+                                                        Downpayment
+                                                    </p>
+                                                    <Pencil size={9} style={{ color: 'rgba(255,255,255,0.25)' }} />
+                                                </button>
+                                                <span
+                                                    className={`font-black italic leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
+                                                    style={{ color: finText }}
+                                                >
+                                                    ₹{formatRoundedPrice(downpayment || 0)}
+                                                </span>
+                                                {showBcoinBadge && (
+                                                    <div className="flex items-center gap-1 mt-1">
+                                                        <Logo variant="icon" size={10} />
+                                                        <span
+                                                            className="text-[9px] font-bold italic uppercase tracking-wider leading-none"
+                                                            style={{ color: finSubText }}
+                                                        >
+                                                            {coinsNeededForPrice(downpayment || 0).toLocaleString(
+                                                                'en-IN'
+                                                            )}{' '}
+                                                            COINS
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Divider */}
+                                            <div
+                                                className="w-px h-10 mx-2 md:mx-4 shrink-0"
+                                                style={{ backgroundColor: finDivider }}
+                                            />
+
+                                            {/* Right: EMI */}
+                                            <div className="flex-1 flex flex-col items-end">
+                                                <p className="text-[9px] font-black text-[#F4B000] uppercase tracking-wider mb-1 italic">
+                                                    Lowest EMI
+                                                </p>
+                                                <span
+                                                    className={`font-black italic leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
+                                                    style={{ color: finText }}
+                                                >
+                                                    {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
+                                                </span>
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <Clock size={9} style={{ color: finSubText }} />
+                                                    <span
+                                                        className="text-[9px] font-bold italic uppercase tracking-wider leading-none"
+                                                        style={{ color: finSubText }}
+                                                    >
+                                                        {activeTenure} MONTHS
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* ── BACK · Cash ── */}
+                                        <div
+                                            className={`absolute inset-0 w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
+                                            style={{
+                                                backfaceVisibility: 'hidden',
+                                                transform: 'rotateY(180deg)',
+                                                background: cashBg,
+                                                backgroundColor: cashBgBase,
+                                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)',
+                                                border: `1px solid ${cashBorder}`,
+                                            }}
+                                        >
+                                            {/* Left: On-Road Price with Breakdown Tooltip */}
+                                            <div
+                                                className={`${isTv ? 'pr-3' : 'pr-5'} flex-1 flex flex-col items-start`}
+                                            >
+                                                <div className="group/pricing relative">
+                                                    <div className="flex items-center gap-1.5 mb-1 cursor-help">
+                                                        <p
+                                                            className="text-[9px] font-black uppercase tracking-wider italic leading-none"
+                                                            style={{ color: cashLabelColor }}
+                                                        >
+                                                            On-Road Price
+                                                        </p>
+                                                        <CircleHelp size={10} className="text-emerald-500/50" />
+
+                                                        {/* Premium Breakup Tooltip (PDP Parity: High-Fidelity) */}
+                                                        <div className="absolute left-0 bottom-full mb-4 z-50 w-max min-w-[280px] p-5 rounded-[2rem] bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.15)] opacity-0 invisible group-hover/pricing:opacity-100 group-hover/pricing:visible transition-all duration-500 pointer-events-none origin-bottom-left scale-90 group-hover/pricing:scale-100 ring-1 ring-black/5">
+                                                            {/* Triangle pointer */}
+                                                            <div className="absolute -bottom-1.5 left-6 w-3 h-3 bg-white border-r border-b border-slate-200 rotate-45" />
+
+                                                            <div className="space-y-5 relative z-10">
+                                                                <div className="pb-3 border-b border-slate-100 flex justify-between items-end">
+                                                                    <div>
+                                                                        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-brand-primary mb-0.5">
+                                                                            Pricing Breakup
+                                                                        </p>
+                                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                                                                            Detailed Statement
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="px-2 py-0.5 bg-slate-100 rounded-md text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                                                                        {priceSourceDisplay}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="space-y-3">
+                                                                    {(() => {
+                                                                        const tEx =
+                                                                            (v.price as any)?.exShowroom ||
+                                                                            (v as any)?.serverPricing?.ex_showroom ||
+                                                                            0;
+                                                                        const tRto =
+                                                                            (v.price as any)?.rtoTotal ||
+                                                                            (v as any)?.serverPricing?.rto?.total ||
+                                                                            0;
+                                                                        const tIns =
+                                                                            (v.price as any)?.insuranceTotal ||
+                                                                            (v as any)?.serverPricing?.insurance
+                                                                                ?.total ||
+                                                                            0;
+                                                                        const tOcircle = bcoinAdjustment || 0;
+
+                                                                        const rawOnRoad =
+                                                                            onRoad > 0 ? onRoad : tEx + tRto + tIns;
+                                                                        const residual =
+                                                                            rawOnRoad - (tEx + tRto + tIns);
+                                                                        const tOthers = Math.max(0, residual);
+
+                                                                        const rows = [
+                                                                            { label: 'Ex-Showroom', val: tEx },
+                                                                            {
+                                                                                label: 'Registration (State)',
+                                                                                val: tRto,
+                                                                            },
+                                                                            { label: 'Insurance', val: tIns },
+                                                                            { label: 'Insurance Add-ons', val: 0 },
+                                                                            { label: 'Mandatory Accessories', val: 0 },
+                                                                            { label: 'Optional Accessories', val: 0 },
+                                                                            {
+                                                                                label: 'Services & Others',
+                                                                                val: tOthers,
+                                                                            },
+                                                                        ];
+
+                                                                        return (
+                                                                            <>
+                                                                                <div className="space-y-2">
+                                                                                    {rows.map((row, idx) => (
+                                                                                        <div
+                                                                                            key={idx}
+                                                                                            className="flex justify-between items-center group/row"
+                                                                                        >
+                                                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover/row:text-slate-900 transition-colors">
+                                                                                                {row.label}
+                                                                                            </span>
+                                                                                            <span className="text-[11px] font-mono font-black text-slate-900">
+                                                                                                ₹
+                                                                                                {formatRoundedPrice(
+                                                                                                    row.val
+                                                                                                )}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    ))}
+
+                                                                                    {/* Row: Delivery TAT */}
+                                                                                    <div className="flex justify-between items-center group/row">
+                                                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover/row:text-slate-900 transition-colors">
+                                                                                            Delivery TAT
+                                                                                        </span>
+                                                                                        <span className="text-[11px] font-black text-slate-900 uppercase">
+                                                                                            7-10 Days
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {/* Unified O' Circle Privileged (Dealer + Coin Discounts) */}
+                                                                                {savings + tOcircle > 0 && (
+                                                                                    <div className="mt-4 p-3 bg-[#F4B000]/5 border border-[#F4B000]/20 rounded-2xl">
+                                                                                        <div className="flex justify-between items-center">
+                                                                                            <div className="flex flex-col">
+                                                                                                <span className="text-[10px] font-black uppercase tracking-widest text-[#F4B000]">
+                                                                                                    O' Circle Privileged
+                                                                                                </span>
+                                                                                                <span className="text-[8px] font-bold text-[#F4B000]/60 uppercase tracking-tight">
+                                                                                                    Exclusive Member
+                                                                                                    Reward
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <span className="text-[13px] font-mono font-black text-[#F4B000]">
+                                                                                                -₹
+                                                                                                {formatRoundedPrice(
+                                                                                                    savings + tOcircle
+                                                                                                )}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+                                                                            </>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+
+                                                                <div className="pt-4 border-t-2 border-slate-900/5 flex justify-between items-center group/total">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">
+                                                                            Net Offer Price
+                                                                        </span>
+                                                                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">
+                                                                            Final Payable Amount
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex flex-col items-end">
+                                                                        <span className="text-[18px] font-black text-brand-primary font-mono italic leading-none">
+                                                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex flex-col items-start gap-0.5">
+                                                        <span
+                                                            className="text-[24px] md:text-[28px] font-black italic leading-none"
+                                                            style={{ color: cashPrimaryText }}
+                                                        >
+                                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Center Divider */}
+                                            <div className="w-px h-10" style={{ backgroundColor: cashDivider }} />
+
+                                            {/* Right Panel: O'Circle Privileged */}
+                                            <div className={`${isTv ? 'pl-3' : 'pl-5'} flex-1 flex flex-col items-end`}>
+                                                <p
+                                                    className="text-[9px] font-black uppercase tracking-wider mb-1 italic"
+                                                    style={{ color: cashLabelColor }}
+                                                >
+                                                    O'Circle Privileged
+                                                </p>
+
+                                                <div className="flex flex-col items-end gap-0.5">
+                                                    {showBcoinBadge && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Logo variant="icon" size={16} />
+                                                            <span
+                                                                className="text-[24px] md:text-[28px] font-black italic leading-none"
+                                                                style={{ color: cashPrimaryText }}
+                                                            >
+                                                                {coinsNeededForPrice(
+                                                                    effectiveOfferPrice
+                                                                ).toLocaleString('en-IN')}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* Optional Mileage Line (Subtle) */}
+
+                    {!isPdp && (
+                        <div
+                            className={`${isTv ? 'mt-1 space-y-1' : 'mt-1.5 md:mt-4 space-y-1.5 md:space-y-2'} relative z-20 w-full`}
+                        >
+                            {isUnserviceable ? (
+                                <button
+                                    onClick={handleGetQuoteClick}
+                                    title={`We are not serviceable in ${safeServiceability.location || 'your area'} yet. We will notify you when we launch there.`}
+                                    className={`w-full ${isTv ? 'h-8 text-[9px]' : 'h-11 text-[10px]'} bg-slate-100 text-slate-400 rounded-xl font-black uppercase tracking-[0.2em] cursor-not-allowed flex items-center justify-center`}
+                                >
+                                    Not Serviceable
+                                </button>
+                            ) : variantCount && variantCount > 1 && onExplore ? (
+                                <button
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        onExplore();
+                                    }}
+                                    className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all`}
+                                >
+                                    Compare Variants
+                                    <ArrowRight
+                                        size={12}
+                                        className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
+                                    />
+                                </button>
+                            ) : (
+                                <Link
+                                    href={
+                                        buildProductUrl({
+                                            make: v.make,
+                                            model: v.model,
+                                            variant: v.variant,
+                                            color: v.availableColors?.[0]?.name
+                                                ? slugify(v.availableColors?.[0]?.name)
+                                                : undefined,
+                                            district: navigableDistrict,
+                                            leadId: leadId,
+                                            basePath,
+                                        }).url
+                                    }
+                                    className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all`}
+                                >
+                                    Know More
+                                    <ArrowRight
+                                        size={12}
+                                        className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
+                                    />
+                                </Link>
+                            )}
+                        </div>
+                    )}
+                    {!isTv && (
+                        <div className="flex items-center justify-center gap-2 opacity-80 pt-1 mt-1">
+                            <StarRating rating={v.rating || 4.5} size={9} />
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                • {getStableReviewCount(v)} Ratings
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </motion.div>
         </div>
     );
 };
