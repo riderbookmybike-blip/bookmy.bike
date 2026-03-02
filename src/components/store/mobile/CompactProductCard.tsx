@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Heart, Pencil, CircleHelp, ArrowRight, Zap } from 'lucide-react';
+import { Heart, Pencil, CircleHelp, ArrowRight, Zap, Layers } from 'lucide-react';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 import type { ProductVariant } from '@/types/productMaster';
@@ -23,6 +23,8 @@ interface CompactProductCardProps {
     fallbackDealerId?: string | null;
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
+    onExplodeColors?: () => void;
+    isExploded?: boolean;
 }
 
 export function CompactProductCard({
@@ -35,6 +37,8 @@ export function CompactProductCard({
     fallbackDealerId,
     walletCoins,
     showOClubPrompt,
+    onExplodeColors,
+    isExploded = false,
 }: CompactProductCardProps) {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { trackEvent } = useAnalytics();
@@ -163,6 +167,24 @@ export function CompactProductCard({
                     strokeWidth={isSaved ? 2.5 : 1.5}
                 />
             </button>
+            {/* Explode Colours Button */}
+            {onExplodeColors && (v.availableColors?.length || 0) > 1 && (
+                <button
+                    onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onExplodeColors();
+                    }}
+                    title={isExploded ? 'Collapse colours' : 'Explode colours'}
+                    className={`absolute top-2 right-11 z-10 w-8 h-8 rounded-full shadow-sm flex items-center justify-center transition-all border ${
+                        isExploded
+                            ? 'bg-[#F4B000] border-[#F4B000] text-black'
+                            : 'bg-white border-slate-100 text-slate-400 hover:text-[#F4B000]'
+                    }`}
+                >
+                    <Layers size={13} />
+                </button>
+            )}
 
             {/* Vehicle Image */}
             <Link

@@ -14,6 +14,30 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
                 hostname: 'www.heromotocorp.com',
             },
+            {
+                protocol: 'https',
+                hostname: 'vespaindia.com',
+            },
+            {
+                protocol: 'https',
+                hostname: '**.tvsmotorcycle.com',
+            },
+            {
+                protocol: 'https',
+                hostname: '**.hondamotorcycle.co.in',
+            },
+            {
+                protocol: 'https',
+                hostname: '**.yamahamotorinddia.com',
+            },
+            {
+                protocol: 'https',
+                hostname: '**.bajajfinserv.in',
+            },
+            {
+                protocol: 'https',
+                hostname: 'cdni.iconscout.com',
+            },
         ],
     },
     async headers() {

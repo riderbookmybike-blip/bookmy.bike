@@ -979,11 +979,10 @@ export const DesktopCatalog = ({
     }, [isSmart, results, smartModel, smartVariant]);
 
     const displayResults = useMemo(() => {
-        if (!isSmart) return results;
+        // Source pool: smart mode uses smartFilteredResults, normal mode uses results
+        const pool = isSmart ? smartFilteredResults : results;
         if (explodedVariant) {
-            const explodedOnly = smartFilteredResults.filter(
-                v => `${v.make}::${v.model}::${v.variant}` === explodedVariant
-            );
+            const explodedOnly = pool.filter(v => `${v.make}::${v.model}::${v.variant}` === explodedVariant);
             return explodedOnly.flatMap(v => {
                 const colors = Array.isArray(v.availableColors) ? v.availableColors : [];
                 const filteredColors = smartColor
@@ -1002,11 +1001,22 @@ export const DesktopCatalog = ({
                 }));
             });
         }
-        return smartFilteredResults;
+        return pool;
     }, [isSmart, results, smartFilteredResults, smartColor, explodedVariant]);
 
     // Group displayResults by model — show only cheapest variant per model family
+    // When explodedVariant is set, skip grouping so every colour appears as its own card
     const groupedDisplayResults = useMemo(() => {
+        if (explodedVariant) {
+            // Each item in displayResults is already a colour-specific card — render 1:1
+            return displayResults.map(v => ({
+                representative: v,
+                variantCount: 1,
+                make: v.make,
+                model: v.model,
+                modelSlug: v.modelSlug,
+            }));
+        }
         const groups = groupProductsByModel(displayResults);
         return groups.map(group => {
             // Sort by exShowroom price (ascending) and pick cheapest
@@ -1019,7 +1029,7 @@ export const DesktopCatalog = ({
                 modelSlug: group.modelSlug,
             };
         });
-    }, [displayResults]);
+    }, [displayResults, explodedVariant]);
 
     // Sync stats to discovery context
     useEffect(() => {
@@ -1385,14 +1395,10 @@ export const DesktopCatalog = ({
                                                   }
                                                 : undefined
                                         }
-                                        onExplodeColors={
-                                            isSmart
-                                                ? () => {
-                                                      const key = `${v.make}::${v.model}::${v.variant}`;
-                                                      setExplodedVariant(prev => (prev === key ? null : key));
-                                                  }
-                                                : undefined
-                                        }
+                                        onExplodeColors={() => {
+                                            const key = `${v.make}::${v.model}::${v.variant}`;
+                                            setExplodedVariant(prev => (prev === key ? null : key));
+                                        }}
                                         pricingMode={pricingMode}
                                         onTogglePricingMode={() =>
                                             setPricingMode(prev => (prev === 'cash' ? 'finance' : 'cash'))

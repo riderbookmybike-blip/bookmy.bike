@@ -117,6 +117,8 @@ export const MobileCatalog = ({
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
     const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
     const [compareItems, setCompareItems] = useState<CompareItem[]>([]);
+    const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
+    const normalize = (s: string) => s.toLowerCase().trim();
 
     const toggleCompare = (item: CompareItem) => {
         setCompareItems(prev => {
@@ -326,47 +328,111 @@ export const MobileCatalog = ({
                     </div>
                 ) : results.length > 0 ? (
                     <div className="flex flex-col gap-8">
-                        {groupProductsByModel(finalResults).map(group => (
-                            <div
-                                key={group.modelSlug}
-                                className="flex flex-col border-b border-slate-200 pb-8 last:border-0 last:pb-0"
-                            >
-                                {/* Model Header block */}
-                                <div className="flex items-end justify-between mb-3 px-1">
-                                    <div>
-                                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">
-                                            {group.make}
-                                        </div>
-                                        <h3 className="text-xl font-black italic uppercase tracking-wider text-slate-900 leading-none">
-                                            {group.model}
-                                        </h3>
-                                    </div>
-                                    <div className="text-[9px] font-bold text-[#F4B000] bg-[#F4B000]/10 px-2 py-1 rounded-full uppercase tracking-wider">
-                                        {group.variants.length} Variant{group.variants.length > 1 ? 's' : ''}
-                                    </div>
-                                </div>
+                        {explodedVariant
+                            ? /* Exploded view: show each colour as its own card in a grid */
+                              (() => {
+                                  const [eMake, eModel, eVariant] = explodedVariant.split('::');
+                                  const sourceVariant = finalResults.find(
+                                      v =>
+                                          normalize(v.make) === normalize(eMake) &&
+                                          normalize(v.model) === normalize(eModel) &&
+                                          normalize(v.variant) === normalize(eVariant)
+                                  );
+                                  if (!sourceVariant) return null;
+                                  const colors = sourceVariant.availableColors || [];
+                                  const colourCards = colors.map(color => ({
+                                      ...sourceVariant,
+                                      color: color.name,
+                                      imageUrl: color.imageUrl || sourceVariant.imageUrl,
+                                      availableColors: [color, ...colors.filter(c => c.id !== color.id)],
+                                  }));
+                                  return (
+                                      <div>
+                                          <div className="flex items-center justify-between mb-4 px-1">
+                                              <div>
+                                                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                      {sourceVariant.make}
+                                                  </div>
+                                                  <h3 className="text-lg font-black italic uppercase text-slate-900">
+                                                      {sourceVariant.model}
+                                                  </h3>
+                                                  <p className="text-[10px] text-slate-500 font-semibold">
+                                                      {sourceVariant.variant} — All Colours
+                                                  </p>
+                                              </div>
+                                              <button
+                                                  onClick={() => setExplodedVariant(null)}
+                                                  className="text-[9px] font-black uppercase tracking-wider text-[#F4B000] bg-[#F4B000]/10 px-3 py-1.5 rounded-full border border-[#F4B000]/20"
+                                              >
+                                                  Collapse
+                                              </button>
+                                          </div>
+                                          <div className="grid grid-cols-2 gap-3">
+                                              {colourCards.map((v, idx) => (
+                                                  <CompactProductCard
+                                                      key={`${v.id}-${v.color || idx}`}
+                                                      v={v}
+                                                      downpayment={downpayment}
+                                                      tenure={tenure}
+                                                      basePath={basePath}
+                                                      leadId={leadId}
+                                                      fallbackDealerId={resolvedDealerId}
+                                                      onEditDownpayment={() => setIsMobileFilterOpen(true)}
+                                                  />
+                                              ))}
+                                          </div>
+                                      </div>
+                                  );
+                              })()
+                            : /* Normal grouped view */
+                              groupProductsByModel(finalResults).map(group => (
+                                  <div
+                                      key={group.modelSlug}
+                                      className="flex flex-col border-b border-slate-200 pb-8 last:border-0 last:pb-0"
+                                  >
+                                      {/* Model Header block */}
+                                      <div className="flex items-end justify-between mb-3 px-1">
+                                          <div>
+                                              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">
+                                                  {group.make}
+                                              </div>
+                                              <h3 className="text-xl font-black italic uppercase tracking-wider text-slate-900 leading-none">
+                                                  {group.model}
+                                              </h3>
+                                          </div>
+                                          <div className="text-[9px] font-bold text-[#F4B000] bg-[#F4B000]/10 px-2 py-1 rounded-full uppercase tracking-wider">
+                                              {group.variants.length} Variant{group.variants.length > 1 ? 's' : ''}
+                                          </div>
+                                      </div>
 
-                                {/* Variants Swipe Container */}
-                                <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 hide-scrollbar pb-2 items-stretch">
-                                    {group.variants.map((v, idx) => (
-                                        <div
-                                            key={v.id}
-                                            className="w-[85%] max-w-[320px] shrink-0 snap-center first:pl-1 last:pr-1"
-                                        >
-                                            <CompactProductCard
-                                                v={v}
-                                                downpayment={downpayment}
-                                                tenure={tenure}
-                                                basePath={basePath}
-                                                leadId={leadId}
-                                                fallbackDealerId={resolvedDealerId}
-                                                onEditDownpayment={() => setIsMobileFilterOpen(true)}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+                                      {/* Variants Swipe Container */}
+                                      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 hide-scrollbar pb-2 items-stretch">
+                                          {group.variants.map((v, idx) => (
+                                              <div
+                                                  key={v.id}
+                                                  className="w-[85%] max-w-[320px] shrink-0 snap-center first:pl-1 last:pr-1"
+                                              >
+                                                  <CompactProductCard
+                                                      v={v}
+                                                      downpayment={downpayment}
+                                                      tenure={tenure}
+                                                      basePath={basePath}
+                                                      leadId={leadId}
+                                                      fallbackDealerId={resolvedDealerId}
+                                                      onEditDownpayment={() => setIsMobileFilterOpen(true)}
+                                                      onExplodeColors={() => {
+                                                          const key = `${v.make}::${v.model}::${v.variant}`;
+                                                          setExplodedVariant(prev => (prev === key ? null : key));
+                                                      }}
+                                                      isExploded={
+                                                          explodedVariant === `${v.make}::${v.model}::${v.variant}`
+                                                      }
+                                                  />
+                                              </div>
+                                          ))}
+                                      </div>
+                                  </div>
+                              ))}
                     </div>
                 ) : (
                     <div className="py-20 flex flex-col items-center justify-center text-center">
