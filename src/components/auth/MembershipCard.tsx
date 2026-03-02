@@ -88,14 +88,16 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                 <motion.div
                     animate={{ rotateY: flipped ? 180 : 0 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ transformStyle: 'preserve-3d' }}
+                    style={{ WebkitTransformStyle: 'preserve-3d', transformStyle: 'preserve-3d' }}
                     className="relative w-full h-full"
                 >
                     {/* ═══════════════ FRONT FACE ═══════════════ */}
                     <motion.div
                         style={{
                             ...(flipped ? {} : { rotateX, rotateY }),
+                            WebkitTransformStyle: 'preserve-3d',
                             transformStyle: 'preserve-3d',
+                            WebkitBackfaceVisibility: 'hidden',
                             backfaceVisibility: 'hidden',
                         }}
                         initial={{ rotateZ: -2 }}
@@ -278,7 +280,11 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                     {/* ═══════════════ BACK FACE — WALLET BREAKDOWN ═══════════════ */}
                     <div
                         className="absolute inset-0 rounded-[24px] shadow-[0_45px_100px_-20px_rgba(0,0,0,0.8)] overflow-hidden border border-white/10"
-                        style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                        style={{
+                            WebkitBackfaceVisibility: 'hidden',
+                            backfaceVisibility: 'hidden',
+                            transform: 'rotateY(180deg)',
+                        }}
                     >
                         {/* BLACK METAL FINISH */}
                         <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] to-[#111118]" />

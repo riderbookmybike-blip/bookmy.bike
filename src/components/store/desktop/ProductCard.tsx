@@ -745,7 +745,14 @@ export const ProductCard = ({
 
     return (
         /* Perspective wrapper — gives depth to outer card tilt WITHOUT sharing 3D context with children */
-        <div style={{ perspective: '1200px', transformStyle: 'flat' }}>
+        <div
+            style={{
+                WebkitPerspective: '1200px',
+                perspective: '1200px',
+                WebkitTransformStyle: 'flat',
+                transformStyle: 'flat',
+            }}
+        >
             <motion.div
                 ref={cardRef}
                 key={v.id}
@@ -1080,7 +1087,7 @@ export const ProductCard = ({
                         return (
                             <div
                                 className="mt-3 md:mt-5 border-t border-slate-100 pt-3 md:pt-5"
-                                style={{ perspective: '1400px' }}
+                                style={{ WebkitPerspective: '1400px', perspective: '1400px' }}
                             >
                                 {/* Shadow wrapper — filter here is fine because it's outside the preserve-3d container */}
                                 <motion.div
@@ -1097,13 +1104,14 @@ export const ProductCard = ({
                                         initial={false}
                                         animate={{ rotateY: cardPricingMode === 'finance' ? 0 : 180 }}
                                         transition={{ rotateY: { duration: 0.72, ease: [0.25, 0.46, 0.45, 0.94] } }}
-                                        style={{ transformStyle: 'preserve-3d' }}
+                                        style={{ WebkitTransformStyle: 'preserve-3d', transformStyle: 'preserve-3d' }}
                                         className="relative w-full"
                                     >
                                         {/* ── FRONT · Finance ── */}
                                         <div
                                             className={`w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
                                             style={{
+                                                WebkitBackfaceVisibility: 'hidden',
                                                 backfaceVisibility: 'hidden',
                                                 background: finBg,
                                                 boxShadow:
@@ -1182,6 +1190,7 @@ export const ProductCard = ({
                                         <div
                                             className={`absolute inset-0 w-full rounded-2xl flex items-center justify-between ${isTv ? 'px-3 py-2.5' : 'px-4 md:px-5 py-3 md:py-4'}`}
                                             style={{
+                                                WebkitBackfaceVisibility: 'hidden',
                                                 backfaceVisibility: 'hidden',
                                                 transform: 'rotateY(180deg)',
                                                 background: cashBg,
