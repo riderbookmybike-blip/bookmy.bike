@@ -527,6 +527,30 @@ export async function reorderColours(modelId: string, orderedIds: string[]) {
     return true;
 }
 
+/**
+ * Propagates a colour rename to all linked SKUs.
+ * - Always updates `color_name` (denormalised display field).
+ * - For VEHICLE SKUs the `name` field IS the colour name, so we update that too.
+ * Call this whenever a colour's name is changed after SKUs may already exist.
+ */
+export async function propagateColourRenameToSkus(colourId: string, newName: string, productType: ProductType) {
+    const skuUpdate: Record<string, any> = {
+        color_name: newName,
+        updated_at: new Date().toISOString(),
+    };
+
+    // For VEHICLE the SKU name == colour name, so overwrite name + slug too.
+    if (productType === 'VEHICLE') {
+        skuUpdate.name = newName;
+        skuUpdate.slug = slugify(newName);
+    }
+
+    const { error } = await adminClient.from('cat_skus').update(skuUpdate).eq('colour_id', colourId);
+
+    if (error) throw new Error(`propagateColourRenameToSkus failed: ${error.message}`);
+    return true;
+}
+
 // ============================================================
 // SUITABLE FOR — Junction table (cat_accessory_suitable_for)
 // ============================================================

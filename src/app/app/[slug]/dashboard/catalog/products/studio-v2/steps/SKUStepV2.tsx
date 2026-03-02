@@ -30,6 +30,7 @@ interface SKUStepProps {
     skus: CatalogSku[];
     onUpdate: (skus: CatalogSku[]) => void;
     onUpdateColours: (colours: CatalogColour[]) => void;
+    brandName?: string;
 }
 
 // Helpers — convert between flat cat_skus columns and SKUMediaManager arrays
@@ -54,7 +55,15 @@ function skuToPdfArray(sku: CatalogSku): string[] {
     return sku.pdf_url_1 ? [sku.pdf_url_1] : [];
 }
 
-export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: SKUStepProps) {
+export default function SKUStepV2({
+    model,
+    variants,
+    colours,
+    skus,
+    onUpdate,
+    onUpdateColours,
+    brandName,
+}: SKUStepProps) {
     const productType = (model.product_type || 'VEHICLE') as ProductType;
     const labels = getHierarchyLabels(productType);
     const poolLabel = labels.pool;
@@ -545,6 +554,49 @@ export default function SKUStepV2({ model, variants, colours, skus, onUpdate }: 
                                                   </th>
                                               );
                                           })}
+                                </tr>
+                                {/* Sub-header: Brand / Model / Variant context row */}
+                                <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
+                                    <th className="px-5 py-2 text-left sticky left-0 bg-slate-50/80 dark:bg-slate-900/80 z-10">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">
+                                            Brand · Model · {labels.variant}
+                                        </span>
+                                    </th>
+                                    {productType === 'ACCESSORY'
+                                        ? sortedColours.map(colour => (
+                                              <th key={colour.id} className="px-3 py-2 text-center">
+                                                  <div className="flex flex-col items-center gap-0.5">
+                                                      {brandName && (
+                                                          <span className="text-[7px] font-black uppercase tracking-widest text-indigo-400">
+                                                              {brandName}
+                                                          </span>
+                                                      )}
+                                                      <span className="text-[7px] font-bold uppercase tracking-wider text-slate-400">
+                                                          {model.name}
+                                                      </span>
+                                                      <span className="text-[7px] font-bold text-slate-300">
+                                                          {colour.name}
+                                                      </span>
+                                                  </div>
+                                              </th>
+                                          ))
+                                        : variants.map((variant: any) => (
+                                              <th key={variant.id} className="px-3 py-2 text-center">
+                                                  <div className="flex flex-col items-center gap-0.5">
+                                                      {brandName && (
+                                                          <span className="text-[7px] font-black uppercase tracking-widest text-indigo-400">
+                                                              {brandName}
+                                                          </span>
+                                                      )}
+                                                      <span className="text-[7px] font-bold uppercase tracking-wider text-slate-400">
+                                                          {model.name}
+                                                      </span>
+                                                      <span className="text-[7px] font-bold text-slate-300">
+                                                          {variant.name}
+                                                      </span>
+                                                  </div>
+                                              </th>
+                                          ))}
                                 </tr>
                             </thead>
                             <tbody>

@@ -15,7 +15,13 @@ import {
     Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createColour, updateColour, deleteColour, reorderColours } from '@/actions/catalog/catalogV2Actions';
+import {
+    createColour,
+    updateColour,
+    deleteColour,
+    reorderColours,
+    propagateColourRenameToSkus,
+} from '@/actions/catalog/catalogV2Actions';
 import type { CatalogModel, CatalogColour } from '@/types/catalog';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import CopyableId from '@/components/ui/CopyableId';
@@ -110,10 +116,20 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
         if (!data) return;
         setIsSaving(id);
         try {
+            // 1. Update the colour record itself
             const updated = await updateColour(id, data);
             onUpdate(colours.map(c => (c.id === id ? updated : c)));
+
+            // 2. If name changed → propagate to all linked SKUs (overwrite color_name, and name for VEHICLE)
+            const originalColour = colours.find(c => c.id === id);
+            if (data.name && data.name !== originalColour?.name) {
+                await propagateColourRenameToSkus(id, data.name, model.product_type as any);
+                toast.success(`${poolLabel} updated · SKU names synced ✓`);
+            } else {
+                toast.success(`${poolLabel} updated`);
+            }
+
             setEditingId(null);
-            toast.success(`${poolLabel} updated`);
         } catch (err) {
             toast.error(`Failed to update ${poolLabelLower}`);
         } finally {
@@ -586,6 +602,11 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                                 <div>
                                                     <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
                                                         Name
+                                                        {data.name !== colour.name && (
+                                                            <span className="ml-2 text-amber-500 normal-case font-semibold">
+                                                                ↳ will rename linked SKUs
+                                                            </span>
+                                                        )}
                                                     </label>
                                                     <input
                                                         type="text"
