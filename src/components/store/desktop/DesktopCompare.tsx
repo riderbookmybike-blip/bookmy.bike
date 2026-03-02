@@ -562,8 +562,20 @@ export default function DesktopCompare() {
                                                         compactColorImages[v.id] ||
                                                         v.imageUrl ||
                                                         '/images/categories/motorcycle_nobg.png';
-                                                    const currentHex =
+                                                    const currentHexRaw =
                                                         compactColorHexes[v.id] || swatches[0]?.hexCode || null;
+                                                    let currentHex = currentHexRaw
+                                                        ? currentHexRaw.replace('#', '').trim()
+                                                        : null;
+                                                    if (currentHex && currentHex.length === 3) {
+                                                        currentHex = currentHex
+                                                            .split('')
+                                                            .map((c: string) => c + c)
+                                                            .join('');
+                                                    }
+                                                    currentHex =
+                                                        currentHex && currentHex.length === 6 ? `#${currentHex}` : null;
+
                                                     return (
                                                         <div
                                                             key={v.id}
@@ -573,11 +585,11 @@ export default function DesktopCompare() {
                                                                     : 'border border-transparent'
                                                             }`}
                                                             style={{
-                                                                backgroundColor: currentHex
-                                                                    ? `${currentHex}1A`
+                                                                background: currentHex
+                                                                    ? `linear-gradient(0deg, ${currentHex}1A, ${currentHex}1A), #f8fafc`
                                                                     : isCheapest
                                                                       ? 'rgba(244,176,0,0.05)'
-                                                                      : 'rgba(248,250,252,0.6)',
+                                                                      : '#f8fafc',
                                                             }}
                                                         >
                                                             {/* Remove Button */}
