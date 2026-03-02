@@ -476,7 +476,7 @@ export default function DesktopCompare() {
                                 initial={false}
                                 animate={{
                                     rotateX: compactMode && allSpecs.length > 0 ? -180 : 0,
-                                    height: compactMode && allSpecs.length > 0 ? '72px' : '56px',
+                                    height: compactMode && allSpecs.length > 0 ? '80px' : '56px',
                                 }}
                                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                                 style={{ transformStyle: 'preserve-3d' }}
@@ -510,7 +510,7 @@ export default function DesktopCompare() {
                                     }}
                                 >
                                     {allSpecs.length > 0 && (
-                                        <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-0 py-2 h-full flex items-center">
+                                        <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-4 py-2 h-full flex items-center">
                                             <div className="flex items-stretch w-full">
                                                 {/* Left label column */}
                                                 <div className="w-[180px] shrink-0 flex flex-col items-center justify-center px-3 border-r border-black/[0.04]">
@@ -530,7 +530,7 @@ export default function DesktopCompare() {
                                                 </div>
                                                 {/* Variant cards grid */}
                                                 <div
-                                                    className="grid gap-1.5 flex-1 px-2"
+                                                    className="grid gap-3 flex-1 px-2"
                                                     style={{
                                                         gridTemplateColumns: `repeat(${activeVariants.length}, 1fr)`,
                                                     }}
@@ -568,7 +568,7 @@ export default function DesktopCompare() {
                                                         return (
                                                             <div
                                                                 key={v.id}
-                                                                className={`relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl transition-all ${
+                                                                className={`relative flex items-center gap-3 px-4 py-2 rounded-xl transition-all ${
                                                                     isCheapest
                                                                         ? 'border border-[#F4B000]/20'
                                                                         : 'border border-transparent'
@@ -604,11 +604,11 @@ export default function DesktopCompare() {
                                                                     <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 truncate leading-tight">
                                                                         {v.make} {v.model}
                                                                     </p>
-                                                                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-900 truncate leading-tight mt-0.5">
+                                                                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-900 truncate leading-tight mt-1">
                                                                         {v.variant}
                                                                     </p>
                                                                     {swatches.length > 0 && (
-                                                                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                                                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                                                             {swatches.map((c, ci) => {
                                                                                 let swatchHex = c.hexCode
                                                                                     ? c.hexCode.replace('#', '').trim()
