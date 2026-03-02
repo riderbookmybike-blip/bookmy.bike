@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import { updateSku, createSku, deleteSku, createColour } from '@/actions/catalog/catalogV2Actions';
-import type { CatalogModel, CatalogSku, CatalogColour, ProductType } from '@/actions/catalog/catalogV2Actions';
+import type { CatalogModel, CatalogSku, CatalogColour, ProductType } from '@/types/catalog';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
 import { getErrorMessage } from '@/lib/utils/errorMessage';

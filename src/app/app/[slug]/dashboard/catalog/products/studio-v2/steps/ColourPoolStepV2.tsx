@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createColour, updateColour, deleteColour, reorderColours } from '@/actions/catalog/catalogV2Actions';
-import type { CatalogModel, CatalogColour } from '@/actions/catalog/catalogV2Actions';
+import type { CatalogModel, CatalogColour } from '@/types/catalog';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import CopyableId from '@/components/ui/CopyableId';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';

@@ -5,7 +5,7 @@ import { CheckCircle2, XCircle, Grid3X3, Palette, Layers, Edit2 } from 'lucide-r
 import { toast } from 'sonner';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import { updateSku } from '@/actions/catalog/catalogV2Actions';
-import type { CatalogModel, CatalogSku, CatalogColour, ProductType } from '@/actions/catalog/catalogV2Actions';
+import type { CatalogModel, CatalogSku, CatalogColour, ProductType } from '@/types/catalog';
 
 interface MatrixStepProps {
     model: CatalogModel;

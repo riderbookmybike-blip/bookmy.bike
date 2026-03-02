@@ -5,7 +5,7 @@ import { Loader2, Plus, Edit2, Box, Trash2, CheckCircle2, Image as ImageIcon, Up
 import { toast } from 'sonner';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import { listModels, createModel, updateModel, deleteModel } from '@/actions/catalog/catalogV2Actions';
-import type { CatalogModel, ProductType } from '@/actions/catalog/catalogV2Actions';
+import type { CatalogModel, ProductType } from '@/types/catalog';
 import CopyableId from '@/components/ui/CopyableId';
 import Modal from '@/components/ui/Modal';
 import SKUMediaManager from '@/components/catalog/SKUMediaManager';

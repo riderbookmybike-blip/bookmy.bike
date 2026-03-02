@@ -1,219 +1,25 @@
 'use server';
 
 import { adminClient } from '@/lib/supabase/admin';
-import { sot_price_seed } from '@/actions/sot_price_seed';
+// NOTE: sot_price_seed is imported inline inside upsertPricing to avoid
+// bundling the heavy pricing chain into the Turbopack client synthetic module.
 
-// ============================================================
-// Types
-// ============================================================
-
-export type ProductType = 'VEHICLE' | 'ACCESSORY' | 'SERVICE';
-export type ItemStatus = 'DRAFT' | 'ACTIVE';
-export type PublishStage = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-
-export interface CatalogModel {
-    id: string;
-    brand_id: string;
-    name: string;
-    slug: string;
-    product_type: ProductType;
-    body_type: string | null;
-    engine_cc: number | null;
-    fuel_type: string | null;
-    emission_standard: string | null;
-    hsn_code: string | null;
-    item_tax_rate: number | null;
-    position: number;
-    status: ItemStatus;
-    // Media
-    primary_image?: string | null;
-    gallery_img_1?: string | null;
-    gallery_img_2?: string | null;
-    gallery_img_3?: string | null;
-    gallery_img_4?: string | null;
-    gallery_img_5?: string | null;
-    gallery_img_6?: string | null;
-    video_url_1?: string | null;
-    video_url_2?: string | null;
-    pdf_url_1?: string | null;
-    zoom_factor?: number | null;
-    is_flipped?: boolean;
-    offset_x?: number | null;
-    offset_y?: number | null;
-    media_shared?: boolean;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface CatalogVariantVehicle {
-    id: string;
-    model_id: string;
-    name: string;
-    slug: string;
-    position: number;
-    status: ItemStatus;
-    // Engine
-    engine_type: string | null;
-    displacement: number | null; // NUMERIC(6,1) in DB
-    max_power: string | null;
-    max_torque: string | null;
-    num_valves: number | null;
-    transmission: string | null;
-    air_filter: string | null;
-    mileage: number | null; // NUMERIC(5,1) in DB
-    start_type: string | null;
-    // Brakes
-    front_brake: string | null;
-    rear_brake: string | null;
-    braking_system: string | null;
-    front_suspension: string | null;
-    rear_suspension: string | null;
-    // Dimensions
-    kerb_weight: number | null; // INTEGER in DB
-    seat_height: number | null;
-    ground_clearance: number | null;
-    wheelbase: number | null;
-    fuel_capacity: number | null; // NUMERIC(4,1) in DB
-    // Electrical
-    console_type: string | null;
-    led_headlamp: boolean | null;
-    led_tail_lamp: boolean | null;
-    usb_charging: boolean | null;
-    bluetooth: boolean | null;
-    navigation: boolean | null; // BOOLEAN in DB (not TEXT)
-    ride_modes: string | null;
-    // Tyres
-    front_tyre: string | null;
-    rear_tyre: string | null;
-    tyre_type: string | null;
-    // EV
-    battery_type: string | null;
-    battery_capacity: string | null;
-    range_km: number | null; // INTEGER in DB
-    charging_time: string | null;
-    motor_power: string | null;
-    // Timestamps
-    created_at: string;
-    updated_at: string;
-    // Media
-    primary_image?: string | null;
-    gallery_img_1?: string | null;
-    gallery_img_2?: string | null;
-    gallery_img_3?: string | null;
-    gallery_img_4?: string | null;
-    gallery_img_5?: string | null;
-    gallery_img_6?: string | null;
-    video_url_1?: string | null;
-    video_url_2?: string | null;
-    pdf_url_1?: string | null;
-    zoom_factor?: number | null;
-    is_flipped?: boolean;
-    offset_x?: number | null;
-    offset_y?: number | null;
-    media_shared?: boolean;
-}
-
-export interface CatalogVariantAccessory {
-    id: string;
-    model_id: string;
-    name: string;
-    slug: string;
-    position: number;
-    status: ItemStatus;
-    material: string | null;
-    weight: number | null;
-    finish: string | null;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface CatalogVariantService {
-    id: string;
-    model_id: string;
-    name: string;
-    slug: string;
-    position: number;
-    status: ItemStatus;
-    duration_months: number | null;
-    coverage_type: string | null;
-    labor_included: boolean | null;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface CatalogColour {
-    id: string;
-    model_id: string;
-    name: string;
-    hex_primary: string | null;
-    hex_secondary: string | null;
-    finish: string | null;
-    primary_image?: string | null;
-    // Gallery
-    gallery_img_1?: string | null;
-    gallery_img_2?: string | null;
-    gallery_img_3?: string | null;
-    gallery_img_4?: string | null;
-    gallery_img_5?: string | null;
-    gallery_img_6?: string | null;
-    // Video & PDF
-    video_url_1?: string | null;
-    video_url_2?: string | null;
-    pdf_url_1?: string | null;
-    // Display
-    zoom_factor?: number | null;
-    is_flipped?: boolean;
-    offset_x?: number | null;
-    offset_y?: number | null;
-    is_popular?: boolean;
-    media_shared?: boolean;
-    position: number;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface CatalogSku {
-    id: string;
-    sku_code: string | null;
-    sku_type: ProductType;
-    brand_id: string;
-    model_id: string;
-    vehicle_variant_id: string | null;
-    accessory_variant_id: string | null;
-    service_variant_id: string | null;
-    colour_id: string | null;
-    name: string;
-    slug: string;
-    status: ItemStatus;
-    position: number;
-    is_primary: boolean;
-    price_base: number | null;
-    // Colour (denormalized cache — SOT is cat_colours via colour_id)
-    hex_primary: string | null;
-    hex_secondary: string | null;
-    color_name: string | null;
-    finish: string | null;
-    // Media
-    primary_image: string | null;
-    gallery_img_1: string | null;
-    gallery_img_2: string | null;
-    gallery_img_3: string | null;
-    gallery_img_4: string | null;
-    gallery_img_5: string | null;
-    gallery_img_6: string | null;
-    video_url_1: string | null;
-    video_url_2: string | null;
-    pdf_url_1: string | null;
-    has_360: boolean;
-    // Display
-    zoom_factor: number | null;
-    is_flipped: boolean;
-    offset_x: number | null;
-    offset_y: number | null;
-    media_shared: boolean;
-    created_at: string;
-    updated_at: string;
-}
+// ────────────────────────────────────────────────────────────────────────────
+// Types — defined in @/types/catalog and re-exported here for backward compat.
+// DO NOT re-declare them in this file to avoid mixed module boundary issues.
+// ────────────────────────────────────────────────────────────────────────────
+export type {
+    ProductType,
+    ItemStatus,
+    PublishStage,
+    CatalogModel,
+    CatalogVariantVehicle,
+    CatalogVariantAccessory,
+    CatalogVariantService,
+    CatalogColour,
+    CatalogSku,
+} from '@/types/catalog';
+import type { ProductType, ItemStatus, CatalogModel, CatalogColour, CatalogSku } from '@/types/catalog';
 
 // ============================================================
 // Helpers
@@ -629,6 +435,8 @@ export async function upsertPricing(payload: {
 
     if (error) throw new Error(`upsertPricing failed: ${error.message}`);
 
+    // Dynamic import to prevent bundling this heavy chain into the client module.
+    const { sot_price_seed } = await import('@/actions/sot_price_seed');
     const seedResult = await sot_price_seed([
         {
             sku_id: payload.sku_id,

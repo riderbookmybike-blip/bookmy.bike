@@ -20,7 +20,7 @@ import {
 import { toast } from 'sonner';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
 import { createVariant, updateVariant, deleteVariant, reorderVariants } from '@/actions/catalog/catalogV2Actions';
-import type { CatalogModel, ProductType } from '@/actions/catalog/catalogV2Actions';
+import type { CatalogModel, ProductType } from '@/types/catalog';
 import CopyableId from '@/components/ui/CopyableId';
 import { createClient } from '@/lib/supabase/client';
 import { getErrorMessage } from '@/lib/utils/errorMessage';

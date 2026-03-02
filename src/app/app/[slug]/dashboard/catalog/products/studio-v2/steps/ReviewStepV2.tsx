@@ -5,7 +5,7 @@ import { Loader2, AlertTriangle, Layers, X, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getFullProductTree, deleteSku } from '@/actions/catalog/catalogV2Actions';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
-import type { ProductType } from '@/actions/catalog/catalogV2Actions';
+import type { ProductType } from '@/types/catalog';
 
 interface ReviewStepProps {
     modelId: string;

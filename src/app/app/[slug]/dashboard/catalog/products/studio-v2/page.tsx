@@ -19,15 +19,16 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import { toast } from 'sonner';
 import AddBrandModal from '@/components/catalog/AddBrandModal';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
-import type { ProductType, CatalogModel, CatalogSku, CatalogColour } from '@/actions/catalog/catalogV2Actions';
+// Types from neutral file (no 'use server' boundary)
+import type { ProductType, CatalogModel, CatalogSku, CatalogColour } from '@/types/catalog';
+// Lean page-level actions — no heavy pricing chain (see catalogPageActions.ts)
 import {
-    listBrands,
-    listModels,
-    listVariants,
-    listSkusByModel,
-    listColours,
-    getFullProductTree,
-} from '@/actions/catalog/catalogV2Actions';
+    listBrandsForPage,
+    listVariantsForPage,
+    listSkusByModelForPage,
+    listColoursForPage,
+    getFullProductTreeForPage,
+} from '@/actions/catalog/catalogPageActions';
 
 // V2 Step Components
 import BrandStepV2 from './steps/BrandStepV2';
@@ -135,7 +136,7 @@ export default function StudioV2Page() {
     const fetchInitialData = async () => {
         setIsLoading(true);
         try {
-            const brandData = await listBrands();
+            const brandData = await listBrandsForPage();
             setBrands(brandData || []);
 
             // Resume from URL if brandId + modelId present
@@ -148,7 +149,7 @@ export default function StudioV2Page() {
             }
 
             if (urlModelId) {
-                const tree = await getFullProductTree(urlModelId);
+                const tree = await getFullProductTreeForPage(urlModelId);
                 if (tree) {
                     setModelData(tree.model);
                     setVariants(tree.variants || []);
@@ -180,9 +181,9 @@ export default function StudioV2Page() {
     const loadModelChildren = async (modelId: string) => {
         try {
             const [variantData, colourData, skuData] = await Promise.all([
-                listVariants(modelId, modelData?.product_type || 'VEHICLE'),
-                listColours(modelId),
-                listSkusByModel(modelId),
+                listVariantsForPage(modelId, modelData?.product_type || 'VEHICLE'),
+                listColoursForPage(modelId),
+                listSkusByModelForPage(modelId),
             ]);
             setVariants(variantData || []);
             setColours(colourData || []);

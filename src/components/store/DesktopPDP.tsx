@@ -720,64 +720,32 @@ export function DesktopPDP({
                                                 ) : (
                                                     <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col pl-[76px] pr-[76px] pt-2 pb-4">
                                                         {card.id === 'PRICING' && (
-                                                            <div className="perspective-[1000px] w-full min-h-[360px] relative">
-                                                                <div
-                                                                    className={`w-full relative preserve-3d transition-transform duration-700 ${cardPricingMode === 'cash' ? 'rotate-y-180' : ''}`}
-                                                                >
-                                                                    {/* Front Face - Finance */}
-                                                                    <div className="absolute inset-0 backface-hidden">
-                                                                        <FinanceCard
-                                                                            emi={emi}
-                                                                            emiTenure={emiTenure}
-                                                                            setEmiTenure={setEmiTenure}
-                                                                            downPayment={userDownPayment || 0}
-                                                                            setUserDownPayment={setUserDownPayment}
-                                                                            minDownPayment={minDownPayment}
-                                                                            maxDownPayment={maxDownPayment}
-                                                                            totalOnRoad={displayOnRoad}
-                                                                            loanAmount={Math.max(
-                                                                                0,
-                                                                                displayOnRoad - (userDownPayment || 0)
-                                                                            )}
-                                                                            annualInterest={annualInterest}
-                                                                            interestType={interestType}
-                                                                            schemeId={initialFinance?.scheme?.id}
-                                                                            financeCharges={financeCharges}
-                                                                            bank={initialFinance?.bank}
-                                                                            scheme={initialFinance?.scheme}
-                                                                        />
-                                                                    </div>
-                                                                    {/* Back Face - Cash */}
-                                                                    <div className="absolute inset-0 backface-hidden rotate-y-180">
-                                                                        <PricingCard
-                                                                            product={product}
-                                                                            variantName={displayVariant}
-                                                                            activeColor={{
-                                                                                name:
-                                                                                    displayColor ||
-                                                                                    activeColorConfig.name,
-                                                                                hex: activeColorConfig.hex,
-                                                                            }}
-                                                                            totalOnRoad={displayOnRoad}
-                                                                            totalSavings={totalSavings}
-                                                                            originalPrice={totalOnRoad + totalSavings}
-                                                                            coinPricing={coinPricing}
-                                                                            showOClubPrompt={showOClubPrompt}
-                                                                            priceBreakup={priceBreakupData}
-                                                                            productImage={getProductImage()}
-                                                                            pricingSource={
-                                                                                [
-                                                                                    initialLocation?.district,
-                                                                                    bestOffer?.dealer?.business_name,
-                                                                                ]
-                                                                                    .filter(Boolean)
-                                                                                    .join(' • ') || data.pricingSource
-                                                                            }
-                                                                            leadName={leadContext?.name}
-                                                                            isGated={isGated}
-                                                                        />
-                                                                    </div>
-                                                                </div>
+                                                            <div>
+                                                                <PricingCard
+                                                                    product={product}
+                                                                    variantName={displayVariant}
+                                                                    activeColor={{
+                                                                        name: displayColor || activeColorConfig.name,
+                                                                        hex: activeColorConfig.hex,
+                                                                    }}
+                                                                    totalOnRoad={displayOnRoad}
+                                                                    totalSavings={totalSavings}
+                                                                    originalPrice={totalOnRoad + totalSavings}
+                                                                    coinPricing={coinPricing}
+                                                                    showOClubPrompt={showOClubPrompt}
+                                                                    priceBreakup={priceBreakupData}
+                                                                    productImage={getProductImage()}
+                                                                    pricingSource={
+                                                                        [
+                                                                            initialLocation?.district,
+                                                                            bestOffer?.dealer?.business_name,
+                                                                        ]
+                                                                            .filter(Boolean)
+                                                                            .join(' • ') || data.pricingSource
+                                                                    }
+                                                                    leadName={leadContext?.name}
+                                                                    isGated={isGated}
+                                                                />
                                                             </div>
                                                         )}
                                                         {card.id === 'FINANCE_SUMMARY' && (
@@ -816,41 +784,6 @@ export function DesktopPDP({
                                 {/* Section 3: Footer — Offer Price (PRICING only, shrink-0) */}
                                 {isActive && card.id === 'PRICING' && (
                                     <div className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03] relative z-10 flex flex-col gap-3">
-                                        <div className="flex bg-slate-100/80 backdrop-blur-md rounded-2xl p-1 shadow-inner relative max-w-[200px] border border-black/[0.04]">
-                                            <div
-                                                className={`absolute inset-y-1 w-[calc(50%-4px)] rounded-xl transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                                                    cardPricingMode === 'finance'
-                                                        ? 'bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] translate-x-1'
-                                                        : 'bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] translate-x-[calc(100%+3px)]'
-                                                }`}
-                                            />
-                                            <button
-                                                onClick={e => {
-                                                    e.stopPropagation();
-                                                    if (cardPricingMode !== 'finance') handleFlip(e);
-                                                }}
-                                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-colors relative z-10 ${
-                                                    cardPricingMode === 'finance'
-                                                        ? 'text-[#F4B000]'
-                                                        : 'text-slate-400 hover:text-slate-600'
-                                                }`}
-                                            >
-                                                Finance
-                                            </button>
-                                            <button
-                                                onClick={e => {
-                                                    e.stopPropagation();
-                                                    if (cardPricingMode !== 'cash') handleFlip(e);
-                                                }}
-                                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-colors relative z-10 ${
-                                                    cardPricingMode === 'cash'
-                                                        ? 'text-slate-900'
-                                                        : 'text-slate-400 hover:text-slate-600'
-                                                }`}
-                                            >
-                                                Cash
-                                            </button>
-                                        </div>
                                         <div className="flex justify-between items-end">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-1">
