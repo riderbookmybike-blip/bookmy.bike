@@ -703,9 +703,9 @@ export default function DesktopCompare() {
 
                     {/* ────── Sticky Compact Bar + Specs (same parent so sticky persists) ────── */}
                     {allSpecs.length > 0 && (
-                        <div>
-                            <div className="page-container py-6">
-                                <div className="bg-white border border-black/[0.04] rounded-2xl overflow-hidden shadow-sm">
+                        <div className="max-w-[1440px] mx-auto px-4 lg:px-6">
+                            <div className="py-6">
+                                <div className="bg-white border border-black/[0.06] rounded-[2rem] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
                                     {/* ── Financial Comparison Section ── */}
                                     <div>
                                         <div className="px-4 py-2.5 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
