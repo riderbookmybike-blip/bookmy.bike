@@ -703,342 +703,260 @@ export default function DesktopCompare() {
 
                     {/* ────── Sticky Compact Bar + Specs (same parent so sticky persists) ────── */}
                     {allSpecs.length > 0 && (
-                        <div className="max-w-[1440px] mx-auto px-4 lg:px-6">
-                            <div className="py-6">
-                                <div className="bg-white border border-black/[0.06] rounded-[2rem] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
-                                    {/* ── Financial Comparison Section ── */}
-                                    <div>
-                                        <div className="px-4 py-2.5 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
-                                            <div className="flex items-center gap-2">
-                                                <IndianRupee size={12} className="text-[#F4B000]/60" />
-                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
-                                                    Pricing & Finance
-                                                </span>
-                                            </div>
+                        <div className="py-6">
+                            <div className="bg-white border border-black/[0.06] rounded-[2rem] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+                                {/* ── Financial Comparison Section ── */}
+                                <div>
+                                    <div className="px-4 py-2.5 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
+                                        <div className="flex items-center gap-2">
+                                            <IndianRupee size={12} className="text-[#F4B000]/60" />
+                                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
+                                                Pricing & Finance
+                                            </span>
                                         </div>
-                                        {/* 1. On-Road Price */}
-                                        <div
-                                            className="grid border-b border-black/[0.04]"
-                                            style={{
-                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                            }}
-                                        >
-                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                <IndianRupee size={12} className="text-slate-300 shrink-0" />
-                                                <span className="text-[10px] font-bold text-slate-500">
-                                                    On-Road Price
+                                    </div>
+                                    {/* 1. On-Road Price */}
+                                    <div
+                                        className="grid border-b border-black/[0.04]"
+                                        style={{
+                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                        }}
+                                    >
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                            <IndianRupee size={12} className="text-slate-300 shrink-0" />
+                                            <span className="text-[10px] font-bold text-slate-500">On-Road Price</span>
+                                        </div>
+                                        {activeVariants.map((v, vIdx) => (
+                                            <div
+                                                key={vIdx}
+                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                            >
+                                                <span className="text-[11px] font-bold text-slate-600">
+                                                    ₹
+                                                    {(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString(
+                                                        'en-IN'
+                                                    )}
                                                 </span>
                                             </div>
-                                            {activeVariants.map((v, vIdx) => (
+                                        ))}
+                                    </div>
+                                    {/* 2. Discount / Surge */}
+                                    <div
+                                        className="grid border-b border-black/[0.04]"
+                                        style={{
+                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                        }}
+                                    >
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                            <TrendingDown size={12} className="text-slate-300 shrink-0" />
+                                            <span className="text-[10px] font-bold text-slate-500">
+                                                Platform Discount / Surge Charges
+                                            </span>
+                                        </div>
+                                        {activeVariants.map((v, vIdx) => {
+                                            const disc = v.price?.discount || 0;
+                                            const isDiscount = disc > 0;
+                                            const isSurge = disc < 0;
+                                            return (
                                                 <div
                                                     key={vIdx}
                                                     className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                                 >
-                                                    <span className="text-[11px] font-bold text-slate-600">
-                                                        ₹
-                                                        {(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString(
-                                                            'en-IN'
-                                                        )}
+                                                    <span
+                                                        className={`text-[11px] font-black ${isDiscount ? 'text-emerald-600' : isSurge ? 'text-red-500' : 'text-slate-400'}`}
+                                                    >
+                                                        {isDiscount
+                                                            ? `−₹${disc.toLocaleString('en-IN')}`
+                                                            : isSurge
+                                                              ? `+₹${Math.abs(disc).toLocaleString('en-IN')}`
+                                                              : '—'}
                                                     </span>
                                                 </div>
-                                            ))}
+                                            );
+                                        })}
+                                    </div>
+                                    {/* 3. Offer Price (INR) + B Coin side by side */}
+                                    <div
+                                        className="grid border-b border-black/[0.04] bg-[#F4B000]/[0.04]"
+                                        style={{
+                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                        }}
+                                    >
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                            <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
+                                            <span className="text-[10px] font-bold text-slate-700">Offer Price</span>
                                         </div>
-                                        {/* 2. Discount / Surge */}
-                                        <div
-                                            className="grid border-b border-black/[0.04]"
-                                            style={{
-                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                            }}
-                                        >
-                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                <TrendingDown size={12} className="text-slate-300 shrink-0" />
-                                                <span className="text-[10px] font-bold text-slate-500">
-                                                    Platform Discount / Surge Charges
-                                                </span>
-                                            </div>
-                                            {activeVariants.map((v, vIdx) => {
-                                                const disc = v.price?.discount || 0;
-                                                const isDiscount = disc > 0;
-                                                const isSurge = disc < 0;
-                                                return (
-                                                    <div
-                                                        key={vIdx}
-                                                        className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                    >
-                                                        <span
-                                                            className={`text-[11px] font-black ${isDiscount ? 'text-emerald-600' : isSurge ? 'text-red-500' : 'text-slate-400'}`}
-                                                        >
-                                                            {isDiscount
-                                                                ? `−₹${disc.toLocaleString('en-IN')}`
-                                                                : isSurge
-                                                                  ? `+₹${Math.abs(disc).toLocaleString('en-IN')}`
-                                                                  : '—'}
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        {/* 3. Offer Price (INR) + B Coin side by side */}
-                                        <div
-                                            className="grid border-b border-black/[0.04] bg-[#F4B000]/[0.04]"
-                                            style={{
-                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                            }}
-                                        >
-                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                <span className="text-[10px] font-bold text-slate-700">
-                                                    Offer Price
-                                                </span>
-                                            </div>
-                                            {activeVariants.map((v, vIdx) => {
-                                                const offerPrice = getDisplayPrice(v);
-                                                const bCoin = coinsNeededForPrice(offerPrice);
-                                                return (
-                                                    <div
-                                                        key={vIdx}
-                                                        className={`px-4 py-3 flex items-center justify-center gap-2 text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                    >
-                                                        <span className="text-[12px] font-black text-slate-900">
-                                                            ₹{offerPrice.toLocaleString('en-IN')}
-                                                        </span>
-                                                        <span className="text-[8px] text-slate-300">|</span>
-                                                        <span className="flex items-center gap-0.5">
-                                                            <Logo variant="icon" size={10} />
-                                                            <span className="text-[10px] font-black text-[#F4B000] italic">
-                                                                {bCoin.toLocaleString('en-IN')}
-                                                            </span>
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        {/* 4. Downpayment (editable, shared) */}
-                                        <div
-                                            className="grid border-b border-black/[0.04]"
-                                            style={{
-                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                            }}
-                                        >
-                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                <CreditCard size={12} className="text-slate-300 shrink-0" />
-                                                <span className="text-[10px] font-bold text-slate-500">
-                                                    Downpayment
-                                                </span>
-                                                <button
-                                                    onClick={() => {
-                                                        setEditingDownpayment(true);
-                                                        setDpInputValue(String(downpayment));
-                                                    }}
-                                                    className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
-                                                    title="Edit downpayment for all variants"
-                                                >
-                                                    <Pencil size={10} />
-                                                </button>
-                                            </div>
-                                            {activeVariants.map((_, vIdx) => (
+                                        {activeVariants.map((v, vIdx) => {
+                                            const offerPrice = getDisplayPrice(v);
+                                            const bCoin = coinsNeededForPrice(offerPrice);
+                                            return (
                                                 <div
                                                     key={vIdx}
-                                                    className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                                    className={`px-4 py-3 flex items-center justify-center gap-2 text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
                                                 >
-                                                    {editingDownpayment ? (
-                                                        <input
-                                                            type="number"
-                                                            value={dpInputValue}
-                                                            onChange={e => setDpInputValue(e.target.value)}
-                                                            onBlur={() => {
+                                                    <span className="text-[12px] font-black text-slate-900">
+                                                        ₹{offerPrice.toLocaleString('en-IN')}
+                                                    </span>
+                                                    <span className="text-[8px] text-slate-300">|</span>
+                                                    <span className="flex items-center gap-0.5">
+                                                        <Logo variant="icon" size={10} />
+                                                        <span className="text-[10px] font-black text-[#F4B000] italic">
+                                                            {bCoin.toLocaleString('en-IN')}
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {/* 4. Downpayment (editable, shared) */}
+                                    <div
+                                        className="grid border-b border-black/[0.04]"
+                                        style={{
+                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                        }}
+                                    >
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                            <CreditCard size={12} className="text-slate-300 shrink-0" />
+                                            <span className="text-[10px] font-bold text-slate-500">Downpayment</span>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingDownpayment(true);
+                                                    setDpInputValue(String(downpayment));
+                                                }}
+                                                className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
+                                                title="Edit downpayment for all variants"
+                                            >
+                                                <Pencil size={10} />
+                                            </button>
+                                        </div>
+                                        {activeVariants.map((_, vIdx) => (
+                                            <div
+                                                key={vIdx}
+                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                            >
+                                                {editingDownpayment ? (
+                                                    <input
+                                                        type="number"
+                                                        value={dpInputValue}
+                                                        onChange={e => setDpInputValue(e.target.value)}
+                                                        onBlur={() => {
+                                                            const val = parseInt(dpInputValue);
+                                                            if (!isNaN(val) && val >= 0) setDownpayment(val);
+                                                            setEditingDownpayment(false);
+                                                        }}
+                                                        onKeyDown={e => {
+                                                            if (e.key === 'Enter') {
                                                                 const val = parseInt(dpInputValue);
                                                                 if (!isNaN(val) && val >= 0) setDownpayment(val);
                                                                 setEditingDownpayment(false);
-                                                            }}
-                                                            onKeyDown={e => {
-                                                                if (e.key === 'Enter') {
-                                                                    const val = parseInt(dpInputValue);
-                                                                    if (!isNaN(val) && val >= 0) setDownpayment(val);
-                                                                    setEditingDownpayment(false);
-                                                                }
-                                                            }}
-                                                            autoFocus={vIdx === 0}
-                                                            className="w-20 text-center text-[11px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
-                                                        />
-                                                    ) : (
-                                                        <span className="text-[11px] font-bold text-slate-600">
-                                                            ₹{downpayment.toLocaleString('en-IN')}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {/* 5. Tenure (editable, shared) */}
-                                        <div
-                                            className="grid border-b border-black/[0.04]"
-                                            style={{
-                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                            }}
-                                        >
-                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                <Calendar size={12} className="text-slate-300 shrink-0" />
-                                                <span className="text-[10px] font-bold text-slate-500">Tenure</span>
-                                                <button
-                                                    onClick={() => setEditingTenure(!editingTenure)}
-                                                    className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
-                                                    title="Change tenure for all variants"
-                                                >
-                                                    <Pencil size={10} />
-                                                </button>
-                                            </div>
-                                            {activeVariants.map((_, vIdx) => (
-                                                <div
-                                                    key={vIdx}
-                                                    className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                >
-                                                    {editingTenure ? (
-                                                        <div className="flex gap-1 flex-wrap justify-center">
-                                                            {TENURE_OPTIONS.map(t => (
-                                                                <button
-                                                                    key={t}
-                                                                    onClick={() => {
-                                                                        setTenure(t);
-                                                                        setEditingTenure(false);
-                                                                    }}
-                                                                    className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${
-                                                                        tenure === t
-                                                                            ? 'bg-[#F4B000] text-black'
-                                                                            : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
-                                                                    }`}
-                                                                >
-                                                                    {t}mo
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-[11px] font-bold text-slate-600">
-                                                            {tenure} months
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {/* 6. EMI */}
-                                        <div
-                                            className="grid border-b-2 border-[#F4B000]/20"
-                                            style={{
-                                                gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                            }}
-                                        >
-                                            <div className="px-4 py-3 bg-[#F4B000]/[0.06] border-r border-black/[0.04] flex items-center gap-1.5">
-                                                <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                <span className="text-[10px] font-bold text-[#F4B000]">EMI</span>
-                                            </div>
-                                            {activeVariants.map((v, vIdx) => (
-                                                <div
-                                                    key={vIdx}
-                                                    className={`px-4 py-3 flex items-center justify-center text-center bg-[#F4B000]/[0.04] ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                >
-                                                    <span className="text-[12px] font-black text-[#F4B000]">
-                                                        ₹{getEmi(v, downpayment, tenure).toLocaleString('en-IN')}/mo
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* ── Smart Spec Rows ── */}
-                                    {/* Section 1: What's Different */}
-                                    {smartSpecs.diffSpecs.length > 0 && (
-                                        <div>
-                                            <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
-                                                <div className="flex items-center gap-2">
-                                                    <GitCompareArrows size={12} className="text-[#F4B000]/60" />
-                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
-                                                        What&apos;s Different
-                                                    </span>
-                                                    <span className="px-1.5 py-0.5 bg-[#F4B000]/10 text-[#F4B000] text-[8px] font-black rounded-md">
-                                                        {smartSpecs.diffSpecs.length}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            {smartSpecs.diffSpecs.map((row, rIdx) => {
-                                                const bestIdx = findBestValueIndex(row);
-                                                return (
-                                                    <div
-                                                        key={`diff-${rIdx}`}
-                                                        className="grid border-b border-black/[0.04] last:border-b-0 bg-[#F4B000]/[0.04] hover:bg-[#F4B000]/[0.08] transition-colors"
-                                                        style={{
-                                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                            }
                                                         }}
-                                                    >
-                                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                            {(() => {
-                                                                const SpecIcon = getSpecIcon(row.label);
-                                                                return (
-                                                                    <SpecIcon
-                                                                        size={12}
-                                                                        className="shrink-0 text-[#F4B000]/70"
-                                                                    />
-                                                                );
-                                                            })()}
-                                                            <span className="text-[10px] font-bold text-slate-700">
-                                                                {row.label}
-                                                            </span>
-                                                        </div>
-                                                        {row.values.map((val, vIdx) => {
-                                                            const isBest = bestIdx === vIdx;
-                                                            const isUnique =
-                                                                val && row.values.filter(v => v === val).length === 1;
-                                                            const barPct = NUMERIC_BAR_SPECS.has(
-                                                                row.label.toLowerCase()
-                                                            )
-                                                                ? getBarPercent(val, row.values)
-                                                                : null;
-                                                            return (
-                                                                <div
-                                                                    key={vIdx}
-                                                                    className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''} ${isBest ? 'bg-emerald-50/60' : ''}`}
-                                                                >
-                                                                    <span
-                                                                        className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : isBest ? 'text-emerald-600 font-black' : isUnique ? 'text-[#F4B000] font-bold' : 'text-slate-700'}`}
-                                                                    >
-                                                                        {isBest && (
-                                                                            <Trophy
-                                                                                size={10}
-                                                                                className="inline mr-1 -mt-0.5"
-                                                                            />
-                                                                        )}
-                                                                        {formatSpecValue(val, row.label)}
-                                                                    </span>
-                                                                    {barPct !== null && (
-                                                                        <div className="w-full max-w-[80px] h-1 rounded-full bg-slate-100 overflow-hidden">
-                                                                            <div
-                                                                                className={`h-full rounded-full transition-all ${isBest ? 'bg-emerald-400' : 'bg-[#F4B000]/40'}`}
-                                                                                style={{ width: `${barPct}%` }}
-                                                                            />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-
-                                    {/* Section 2: All Specifications */}
-                                    {smartSpecs.restSpecs.length > 0 && (
-                                        <div>
-                                            <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-slate-100/60 to-transparent">
-                                                <div className="flex items-center gap-2">
-                                                    <CircleDot size={12} className="text-slate-400" />
-                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-                                                        All Specifications
+                                                        autoFocus={vIdx === 0}
+                                                        className="w-20 text-center text-[11px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
+                                                    />
+                                                ) : (
+                                                    <span className="text-[11px] font-bold text-slate-600">
+                                                        ₹{downpayment.toLocaleString('en-IN')}
                                                     </span>
-                                                </div>
+                                                )}
                                             </div>
-                                            {smartSpecs.restSpecs.map((row, rIdx) => (
+                                        ))}
+                                    </div>
+                                    {/* 5. Tenure (editable, shared) */}
+                                    <div
+                                        className="grid border-b border-black/[0.04]"
+                                        style={{
+                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                        }}
+                                    >
+                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                            <Calendar size={12} className="text-slate-300 shrink-0" />
+                                            <span className="text-[10px] font-bold text-slate-500">Tenure</span>
+                                            <button
+                                                onClick={() => setEditingTenure(!editingTenure)}
+                                                className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
+                                                title="Change tenure for all variants"
+                                            >
+                                                <Pencil size={10} />
+                                            </button>
+                                        </div>
+                                        {activeVariants.map((_, vIdx) => (
+                                            <div
+                                                key={vIdx}
+                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                            >
+                                                {editingTenure ? (
+                                                    <div className="flex gap-1 flex-wrap justify-center">
+                                                        {TENURE_OPTIONS.map(t => (
+                                                            <button
+                                                                key={t}
+                                                                onClick={() => {
+                                                                    setTenure(t);
+                                                                    setEditingTenure(false);
+                                                                }}
+                                                                className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${
+                                                                    tenure === t
+                                                                        ? 'bg-[#F4B000] text-black'
+                                                                        : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
+                                                                }`}
+                                                            >
+                                                                {t}mo
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[11px] font-bold text-slate-600">
+                                                        {tenure} months
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {/* 6. EMI */}
+                                    <div
+                                        className="grid border-b-2 border-[#F4B000]/20"
+                                        style={{
+                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                        }}
+                                    >
+                                        <div className="px-4 py-3 bg-[#F4B000]/[0.06] border-r border-black/[0.04] flex items-center gap-1.5">
+                                            <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
+                                            <span className="text-[10px] font-bold text-[#F4B000]">EMI</span>
+                                        </div>
+                                        {activeVariants.map((v, vIdx) => (
+                                            <div
+                                                key={vIdx}
+                                                className={`px-4 py-3 flex items-center justify-center text-center bg-[#F4B000]/[0.04] ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                            >
+                                                <span className="text-[12px] font-black text-[#F4B000]">
+                                                    ₹{getEmi(v, downpayment, tenure).toLocaleString('en-IN')}/mo
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* ── Smart Spec Rows ── */}
+                                {/* Section 1: What's Different */}
+                                {smartSpecs.diffSpecs.length > 0 && (
+                                    <div>
+                                        <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-[#F4B000]/5 to-transparent">
+                                            <div className="flex items-center gap-2">
+                                                <GitCompareArrows size={12} className="text-[#F4B000]/60" />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
+                                                    What&apos;s Different
+                                                </span>
+                                                <span className="px-1.5 py-0.5 bg-[#F4B000]/10 text-[#F4B000] text-[8px] font-black rounded-md">
+                                                    {smartSpecs.diffSpecs.length}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {smartSpecs.diffSpecs.map((row, rIdx) => {
+                                            const bestIdx = findBestValueIndex(row);
+                                            return (
                                                 <div
-                                                    key={`rest-${rIdx}`}
-                                                    className={`grid border-b border-black/[0.04] last:border-b-0 hover:bg-slate-50/50 transition-colors ${rIdx % 2 === 1 ? 'bg-slate-50/30' : ''}`}
+                                                    key={`diff-${rIdx}`}
+                                                    className="grid border-b border-black/[0.04] last:border-b-0 bg-[#F4B000]/[0.04] hover:bg-[#F4B000]/[0.08] transition-colors"
                                                     style={{
                                                         gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
                                                     }}
@@ -1049,40 +967,109 @@ export default function DesktopCompare() {
                                                             return (
                                                                 <SpecIcon
                                                                     size={12}
-                                                                    className="shrink-0 text-slate-300"
+                                                                    className="shrink-0 text-[#F4B000]/70"
                                                                 />
                                                             );
                                                         })()}
-                                                        <span className="text-[10px] font-bold text-slate-500">
+                                                        <span className="text-[10px] font-bold text-slate-700">
                                                             {row.label}
                                                         </span>
                                                     </div>
                                                     {row.values.map((val, vIdx) => {
-                                                        const isNumeric =
-                                                            val &&
-                                                            NUMERIC_BAR_SPECS.has(row.label.toLowerCase()) &&
-                                                            extractNumeric(val) !== null;
+                                                        const isBest = bestIdx === vIdx;
+                                                        const isUnique =
+                                                            val && row.values.filter(v => v === val).length === 1;
+                                                        const barPct = NUMERIC_BAR_SPECS.has(row.label.toLowerCase())
+                                                            ? getBarPercent(val, row.values)
+                                                            : null;
                                                         return (
                                                             <div
                                                                 key={vIdx}
-                                                                className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                                                className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''} ${isBest ? 'bg-emerald-50/60' : ''}`}
                                                             >
                                                                 <span
-                                                                    className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : 'text-slate-700'}`}
+                                                                    className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : isBest ? 'text-emerald-600 font-black' : isUnique ? 'text-[#F4B000] font-bold' : 'text-slate-700'}`}
                                                                 >
+                                                                    {isBest && (
+                                                                        <Trophy
+                                                                            size={10}
+                                                                            className="inline mr-1 -mt-0.5"
+                                                                        />
+                                                                    )}
                                                                     {formatSpecValue(val, row.label)}
                                                                 </span>
-                                                                {isNumeric && (
-                                                                    <div className="w-full max-w-[60px] h-[2px] rounded-full bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200" />
+                                                                {barPct !== null && (
+                                                                    <div className="w-full max-w-[80px] h-1 rounded-full bg-slate-100 overflow-hidden">
+                                                                        <div
+                                                                            className={`h-full rounded-full transition-all ${isBest ? 'bg-emerald-400' : 'bg-[#F4B000]/40'}`}
+                                                                            style={{ width: `${barPct}%` }}
+                                                                        />
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         );
                                                     })}
                                                 </div>
-                                            ))}
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Section 2: All Specifications */}
+                                {smartSpecs.restSpecs.length > 0 && (
+                                    <div>
+                                        <div className="px-4 py-2 border-b border-black/[0.04] bg-gradient-to-r from-slate-100/60 to-transparent">
+                                            <div className="flex items-center gap-2">
+                                                <CircleDot size={12} className="text-slate-400" />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                                                    All Specifications
+                                                </span>
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
+                                        {smartSpecs.restSpecs.map((row, rIdx) => (
+                                            <div
+                                                key={`rest-${rIdx}`}
+                                                className={`grid border-b border-black/[0.04] last:border-b-0 hover:bg-slate-50/50 transition-colors ${rIdx % 2 === 1 ? 'bg-slate-50/30' : ''}`}
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                                    {(() => {
+                                                        const SpecIcon = getSpecIcon(row.label);
+                                                        return (
+                                                            <SpecIcon size={12} className="shrink-0 text-slate-300" />
+                                                        );
+                                                    })()}
+                                                    <span className="text-[10px] font-bold text-slate-500">
+                                                        {row.label}
+                                                    </span>
+                                                </div>
+                                                {row.values.map((val, vIdx) => {
+                                                    const isNumeric =
+                                                        val &&
+                                                        NUMERIC_BAR_SPECS.has(row.label.toLowerCase()) &&
+                                                        extractNumeric(val) !== null;
+                                                    return (
+                                                        <div
+                                                            key={vIdx}
+                                                            className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                                        >
+                                                            <span
+                                                                className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : 'text-slate-700'}`}
+                                                            >
+                                                                {formatSpecValue(val, row.label)}
+                                                            </span>
+                                                            {isNumeric && (
+                                                                <div className="w-full max-w-[60px] h-[2px] rounded-full bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200" />
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
