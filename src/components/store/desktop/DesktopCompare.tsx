@@ -50,6 +50,7 @@ import {
     Share2,
     type LucideIcon,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { ProductCard } from '@/components/store/desktop/ProductCard';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
@@ -236,22 +237,9 @@ export default function DesktopCompare() {
 
     // Scroll-morph state
     const [compactMode, setCompactMode] = useState(false);
-    const [stickyHeight, setStickyHeight] = useState(0);
     const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>('finance');
     const fullCardsRef = useRef<HTMLDivElement>(null);
     const scrollAnchorRef = useRef<HTMLDivElement>(null);
-
-    // Measure full cards height on mount
-    useEffect(() => {
-        const el = fullCardsRef.current;
-        if (el && stickyHeight === 0) {
-            // Wait for cards to render
-            const t = setTimeout(() => {
-                setStickyHeight(el.offsetHeight);
-            }, 500);
-            return () => clearTimeout(t);
-        }
-    }, [items, stickyHeight]);
 
     // Scroll listener: when scroll anchor goes above viewport → switch to compact
     useEffect(() => {
@@ -261,6 +249,7 @@ export default function DesktopCompare() {
             const rect = anchor.getBoundingClientRect();
             setCompactMode(rect.bottom < 160);
         };
+        onScroll(); // Fix: sync on mount
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
@@ -477,16 +466,219 @@ export default function DesktopCompare() {
             <div className="min-h-screen bg-slate-50 transition-colors duration-500">
                 {/* Main content with header + cards — same structure as Catalog */}
                 <div className="flex-1 page-container pt-0 pb-10 md:pb-16">
-                    <DiscoveryBar
-                        onFilterClick={() => router.push('/store/catalog')}
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                        onShareClick={handleShare}
-                        shareLabel=""
-                        shareActive={shareTooltip}
-                        pricingMode={pricingMode}
-                        onPricingModeChange={setPricingMode}
-                    />
+                    {/* ────── 3D Flip Sticky Header ────── */}
+                    <div
+                        className="sticky z-[90] w-full transition-all duration-500 ease-in-out"
+                        style={{ top: 'var(--header-h)', marginTop: '20px' }}
+                    >
+                        <div style={{ perspective: '1200px' }}>
+                            <motion.div
+                                initial={false}
+                                animate={{
+                                    rotateX: compactMode && allSpecs.length > 0 ? -180 : 0,
+                                    height: compactMode && allSpecs.length > 0 ? '72px' : '56px',
+                                }}
+                                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ transformStyle: 'preserve-3d' }}
+                                className="relative w-full"
+                            >
+                                {/* ── FRONT FACE: Discovery Bar ── */}
+                                <div
+                                    className="absolute inset-0 w-full"
+                                    style={{ WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
+                                >
+                                    <DiscoveryBar
+                                        disableSticky={true}
+                                        onFilterClick={() => router.push('/store/catalog')}
+                                        searchQuery={searchQuery}
+                                        onSearchChange={setSearchQuery}
+                                        onShareClick={handleShare}
+                                        shareLabel=""
+                                        shareActive={shareTooltip}
+                                        pricingMode={pricingMode}
+                                        onPricingModeChange={setPricingMode}
+                                    />
+                                </div>
+
+                                {/* ── BACK FACE: Mini Compare Cards ── */}
+                                <div
+                                    className="absolute inset-0 w-full"
+                                    style={{
+                                        WebkitBackfaceVisibility: 'hidden',
+                                        backfaceVisibility: 'hidden',
+                                        transform: 'rotateX(180deg)',
+                                    }}
+                                >
+                                    {allSpecs.length > 0 && (
+                                        <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-0 py-2 h-full flex items-center">
+                                            <div className="flex items-stretch w-full">
+                                                {/* Left label column */}
+                                                <div className="w-[180px] shrink-0 flex flex-col items-center justify-center px-3 border-r border-black/[0.04]">
+                                                    <GitCompareArrows size={18} className="text-[#F4B000] mb-1.5" />
+                                                    <span className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400 text-center leading-tight">
+                                                        {activeVariants.length} Variants
+                                                    </span>
+                                                    {removedVariantIds.size > 0 && (
+                                                        <button
+                                                            onClick={restoreAllVariants}
+                                                            className="mt-1.5 px-2 py-0.5 rounded-md bg-[#F4B000]/10 text-[#F4B000] text-[7px] font-black uppercase tracking-widest hover:bg-[#F4B000]/20 transition-colors"
+                                                            title="Restore removed variants"
+                                                        >
+                                                            +{removedVariantIds.size} back
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {/* Variant cards grid */}
+                                                <div
+                                                    className="grid gap-1.5 flex-1 px-2"
+                                                    style={{
+                                                        gridTemplateColumns: `repeat(${activeVariants.length}, 1fr)`,
+                                                    }}
+                                                >
+                                                    {activeVariants.map((v, i) => {
+                                                        const isCheapest = i === 0;
+                                                        const swatches = (v.availableColors || [])
+                                                            .filter(
+                                                                c =>
+                                                                    typeof c?.hexCode === 'string' &&
+                                                                    c.hexCode.trim().length > 0
+                                                            )
+                                                            .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+                                                        const currentImage =
+                                                            compactColorImages[v.id] ||
+                                                            v.imageUrl ||
+                                                            '/images/categories/motorcycle_nobg.png';
+
+                                                        const currentHexRaw =
+                                                            compactColorHexes[v.id] || swatches[0]?.hexCode || null;
+                                                        let currentHex = currentHexRaw
+                                                            ? currentHexRaw.replace('#', '').trim()
+                                                            : null;
+                                                        if (currentHex && currentHex.length === 3) {
+                                                            currentHex = currentHex
+                                                                .split('')
+                                                                .map((c: string) => c + c)
+                                                                .join('');
+                                                        }
+                                                        currentHex =
+                                                            currentHex && currentHex.length === 6
+                                                                ? `#${currentHex}`
+                                                                : null;
+
+                                                        return (
+                                                            <div
+                                                                key={v.id}
+                                                                className={`relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl transition-all ${
+                                                                    isCheapest
+                                                                        ? 'border border-[#F4B000]/20'
+                                                                        : 'border border-transparent'
+                                                                }`}
+                                                                style={{
+                                                                    background: currentHex
+                                                                        ? `linear-gradient(0deg, ${currentHex}1A, ${currentHex}1A), #f8fafc`
+                                                                        : isCheapest
+                                                                          ? 'rgba(244,176,0,0.05)'
+                                                                          : '#f8fafc',
+                                                                }}
+                                                            >
+                                                                {activeVariants.length > 2 && (
+                                                                    <button
+                                                                        onClick={e => {
+                                                                            e.stopPropagation();
+                                                                            removeVariant(v.id);
+                                                                        }}
+                                                                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center hover:bg-red-500 hover:text-white text-slate-400 transition-all z-10"
+                                                                        title="Remove from comparison"
+                                                                    >
+                                                                        <X size={10} />
+                                                                    </button>
+                                                                )}
+                                                                <div className="w-12 h-12 shrink-0">
+                                                                    <img
+                                                                        src={currentImage}
+                                                                        alt={v.variant}
+                                                                        className="w-full h-full object-contain transition-all duration-300"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 truncate leading-tight">
+                                                                        {v.make} {v.model}
+                                                                    </p>
+                                                                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-900 truncate leading-tight mt-0.5">
+                                                                        {v.variant}
+                                                                    </p>
+                                                                    {swatches.length > 0 && (
+                                                                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                                                            {swatches.map((c, ci) => {
+                                                                                let swatchHex = c.hexCode
+                                                                                    ? c.hexCode.replace('#', '').trim()
+                                                                                    : null;
+                                                                                if (swatchHex && swatchHex.length === 3)
+                                                                                    swatchHex = swatchHex
+                                                                                        .split('')
+                                                                                        .map(
+                                                                                            (char: string) =>
+                                                                                                char + char
+                                                                                        )
+                                                                                        .join('');
+                                                                                swatchHex =
+                                                                                    swatchHex && swatchHex.length === 6
+                                                                                        ? `#${swatchHex}`
+                                                                                        : null;
+                                                                                return (
+                                                                                    <button
+                                                                                        key={ci}
+                                                                                        onClick={e => {
+                                                                                            e.stopPropagation();
+                                                                                            if (c.imageUrl)
+                                                                                                setCompactColorImages(
+                                                                                                    prev => ({
+                                                                                                        ...prev,
+                                                                                                        [v.id]: c.imageUrl!,
+                                                                                                    })
+                                                                                                );
+                                                                                            if (c.hexCode)
+                                                                                                setCompactColorHexes(
+                                                                                                    prev => ({
+                                                                                                        ...prev,
+                                                                                                        [v.id]: c.hexCode,
+                                                                                                    })
+                                                                                                );
+                                                                                        }}
+                                                                                        className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${
+                                                                                            currentHex === swatchHex
+                                                                                                ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
+                                                                                                : ''
+                                                                                        }`}
+                                                                                        style={{
+                                                                                            background:
+                                                                                                swatchHex || c.hexCode,
+                                                                                        }}
+                                                                                        title={c.name}
+                                                                                    >
+                                                                                        {c.finish?.toUpperCase() ===
+                                                                                            'GLOSS' && (
+                                                                                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                                                        )}
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        </div>
+                    </div>
+                    {/* Spacer to maintain flow height for the absolute faces */}
+                    <div className="h-14 mb-6 hidden md:block" />
 
                     {/* ────── Full Cards (normal flow — scrolls away) ────── */}
                     <div ref={fullCardsRef}>

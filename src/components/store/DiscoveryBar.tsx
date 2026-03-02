@@ -30,6 +30,8 @@ interface DiscoveryBarProps {
      * Defaults to 'opacity-100 translate-y-0'.
      */
     className?: string;
+    /** Disable sticky positioning and top margins (used for embedding in 3D flip containers) */
+    disableSticky?: boolean;
 }
 
 /**
@@ -51,11 +53,12 @@ export function DiscoveryBar({
     shareActive = false,
     centerContent,
     className = '',
+    disableSticky = false,
 }: DiscoveryBarProps) {
     return (
         <header
-            className={`hidden md:block sticky z-[90] py-0 mb-6 transition-all duration-700 ease-in-out ${className}`}
-            style={{ top: 'var(--header-h)', marginTop: '20px' }}
+            className={`hidden md:block ${disableSticky ? '' : 'sticky z-[90] mb-6'} py-0 transition-all duration-700 ease-in-out ${className}`}
+            style={disableSticky ? {} : { top: 'var(--header-h)', marginTop: '20px' }}
         >
             <div className="w-full">
                 <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
