@@ -476,7 +476,7 @@ export default function DesktopCompare() {
                                 initial={false}
                                 animate={{
                                     rotateX: compactMode && allSpecs.length > 0 ? -180 : 0,
-                                    height: compactMode && allSpecs.length > 0 ? '80px' : '56px',
+                                    height: compactMode && allSpecs.length > 0 ? '92px' : '56px',
                                 }}
                                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                                 style={{ transformStyle: 'preserve-3d' }}
@@ -665,6 +665,21 @@ export default function DesktopCompare() {
                                                                             })}
                                                                         </div>
                                                                     )}
+                                                                    {/* ── Offer Price Pill ── */}
+                                                                    <div
+                                                                        className="mt-2 px-2.5 py-1 rounded-full border text-[10px] font-black tracking-wider inline-flex items-center leading-none"
+                                                                        style={{
+                                                                            backgroundColor: currentHex
+                                                                                ? `${currentHex}15`
+                                                                                : 'rgba(0,0,0,0.04)',
+                                                                            borderColor: currentHex
+                                                                                ? `${currentHex}30`
+                                                                                : 'rgba(0,0,0,0.08)',
+                                                                            color: currentHex || '#000',
+                                                                        }}
+                                                                    >
+                                                                        ₹{getDisplayPrice(v).toLocaleString('en-IN')}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         );
@@ -776,38 +791,7 @@ export default function DesktopCompare() {
                                         })}
                                     </div>
                                     {/* 3. Offer Price (INR) + B Coin side by side */}
-                                    <div
-                                        className="grid border-b border-black/[0.04] bg-[#F4B000]/[0.04]"
-                                        style={{
-                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                        }}
-                                    >
-                                        <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                            <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                            <span className="text-[10px] font-bold text-slate-700">Offer Price</span>
-                                        </div>
-                                        {activeVariants.map((v, vIdx) => {
-                                            const offerPrice = getDisplayPrice(v);
-                                            const bCoin = coinsNeededForPrice(offerPrice);
-                                            return (
-                                                <div
-                                                    key={vIdx}
-                                                    className={`px-4 py-3 flex items-center justify-center gap-2 text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                >
-                                                    <span className="text-[12px] font-black text-slate-900">
-                                                        ₹{offerPrice.toLocaleString('en-IN')}
-                                                    </span>
-                                                    <span className="text-[8px] text-slate-300">|</span>
-                                                    <span className="flex items-center gap-0.5">
-                                                        <Logo variant="icon" size={10} />
-                                                        <span className="text-[10px] font-black text-[#F4B000] italic">
-                                                            {bCoin.toLocaleString('en-IN')}
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+
                                     {/* 4. Downpayment (editable, shared) */}
                                     <div
                                         className="grid border-b border-black/[0.04]"
