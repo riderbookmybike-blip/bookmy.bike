@@ -196,6 +196,7 @@ export default function DesktopCompare() {
     const {
         makeSlug,
         modelSlug,
+        isMixedMode,
         items,
         isLoading,
         needsLocation,
@@ -430,13 +431,13 @@ export default function DesktopCompare() {
         );
     }
 
-    if (!modelGroup || sortedVariants.length === 0) {
+    if (!isMixedMode && (!modelGroup || sortedVariants.length === 0)) {
         // If items haven't loaded yet (e.g. due to a race between StrictMode abort
         // and the second fetch), keep showing the spinner — don't flash "Model not found".
-        if (items.length === 0) {
+        if (items.length === 0 || isLoading) {
             return (
                 <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
+                    <div className="flex-col items-center gap-4 flex">
                         <div className="w-10 h-10 border-2 border-[#F4B000] border-t-transparent rounded-full animate-spin" />
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
                             Loading variants...
@@ -450,6 +451,22 @@ export default function DesktopCompare() {
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-center space-y-4">
                     <p className="text-lg font-black uppercase tracking-widest text-slate-400">Model not found</p>
+                    <button
+                        onClick={() => router.push('/store/catalog')}
+                        className="px-6 py-3 bg-[#F4B000] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em]"
+                    >
+                        Back to Catalog
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (activeVariants.length === 0 && !isLoading) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="text-center space-y-4">
+                    <p className="text-lg font-black uppercase tracking-widest text-slate-400">Nothing to compare</p>
                     <button
                         onClick={() => router.push('/store/catalog')}
                         className="px-6 py-3 bg-[#F4B000] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em]"
@@ -476,7 +493,7 @@ export default function DesktopCompare() {
                                 initial={false}
                                 animate={{
                                     rotateX: compactMode && allSpecs.length > 0 ? -180 : 0,
-                                    height: compactMode && allSpecs.length > 0 ? '80px' : '56px',
+                                    height: compactMode && allSpecs.length > 0 ? '104px' : '56px',
                                 }}
                                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                                 style={{ transformStyle: 'preserve-3d' }}
@@ -510,121 +527,119 @@ export default function DesktopCompare() {
                                     }}
                                 >
                                     {allSpecs.length > 0 && (
-                                        <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-[2rem] shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-4 py-2 h-full flex items-center">
-                                            <div className="flex items-stretch w-full">
-                                                {/* Left label column */}
-                                                <div className="w-[180px] shrink-0 flex flex-col items-center justify-center px-3 border-r border-black/[0.04]">
-                                                    <GitCompareArrows size={18} className="text-[#F4B000] mb-1.5" />
-                                                    <span className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400 text-center leading-tight">
-                                                        {activeVariants.length} Variants
-                                                    </span>
-                                                    {removedVariantIds.size > 0 && (
-                                                        <button
-                                                            onClick={restoreAllVariants}
-                                                            className="mt-1.5 px-2 py-0.5 rounded-md bg-[#F4B000]/10 text-[#F4B000] text-[7px] font-black uppercase tracking-widest hover:bg-[#F4B000]/20 transition-colors"
-                                                            title="Restore removed variants"
-                                                        >
-                                                            +{removedVariantIds.size} back
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                {/* Variant cards grid */}
-                                                <div
-                                                    className="grid gap-3 flex-1 px-2"
-                                                    style={{
-                                                        gridTemplateColumns: `repeat(${activeVariants.length}, 1fr)`,
-                                                    }}
-                                                >
-                                                    {activeVariants.map((v, i) => {
-                                                        const isCheapest = i === 0;
-                                                        const swatches = (v.availableColors || [])
-                                                            .filter(
-                                                                c =>
-                                                                    typeof c?.hexCode === 'string' &&
-                                                                    c.hexCode.trim().length > 0
-                                                            )
-                                                            .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
-                                                        const currentImage =
-                                                            compactColorImages[v.id] ||
-                                                            v.imageUrl ||
-                                                            '/images/categories/motorcycle_nobg.png';
+                                        <div className="flex flex-col gap-2 h-full">
+                                            <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-[2.5rem] shadow-[0_12px_44px_rgba(0,0,0,0.15)] px-5 py-2.5 flex-none flex items-center h-[96px]">
+                                                <div className="flex items-stretch w-full">
+                                                    {/* Left label column */}
+                                                    <div className="w-[180px] shrink-0 flex flex-col items-center justify-center px-4 border-r border-black/[0.04]">
+                                                        <div className="bg-[#F4B000]/10 p-2.5 rounded-2xl mb-2">
+                                                            <GitCompareArrows size={22} className="text-[#F4B000]" />
+                                                        </div>
+                                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-center leading-tight">
+                                                            {isMixedMode
+                                                                ? `Comparing ${activeVariants.length} Models`
+                                                                : `${activeVariants.length} Variants`}
+                                                        </span>
+                                                    </div>
 
-                                                        const currentHexRaw =
-                                                            compactColorHexes[v.id] || swatches[0]?.hexCode || null;
-                                                        let currentHex = currentHexRaw
-                                                            ? currentHexRaw.replace('#', '').trim()
-                                                            : null;
-                                                        if (currentHex && currentHex.length === 3) {
-                                                            currentHex = currentHex
-                                                                .split('')
-                                                                .map((c: string) => c + c)
-                                                                .join('');
-                                                        }
-                                                        currentHex =
-                                                            currentHex && currentHex.length === 6
-                                                                ? `#${currentHex}`
+                                                    {/* Variant cards grid */}
+                                                    <div
+                                                        className="grid gap-4 flex-1 px-4"
+                                                        style={{
+                                                            gridTemplateColumns: `repeat(${activeVariants.length}, 1fr)`,
+                                                        }}
+                                                    >
+                                                        {activeVariants.map((v, i) => {
+                                                            const isCheapest = i === 0;
+                                                            const swatches = (v.availableColors || [])
+                                                                .filter(
+                                                                    c =>
+                                                                        typeof c?.hexCode === 'string' &&
+                                                                        c.hexCode.trim().length > 0
+                                                                )
+                                                                .sort(
+                                                                    (a, b) => (a.position ?? 999) - (b.position ?? 999)
+                                                                );
+                                                            const currentImage =
+                                                                compactColorImages[v.id] ||
+                                                                v.imageUrl ||
+                                                                '/images/categories/motorcycle_nobg.png';
+
+                                                            const currentHexRaw =
+                                                                compactColorHexes[v.id] || swatches[0]?.hexCode || null;
+                                                            let currentHex = currentHexRaw
+                                                                ? currentHexRaw.replace('#', '').trim()
                                                                 : null;
+                                                            if (currentHex && currentHex.length === 3) {
+                                                                currentHex = currentHex
+                                                                    .split('')
+                                                                    .map((c: string) => c + c)
+                                                                    .join('');
+                                                            }
+                                                            currentHex =
+                                                                currentHex && currentHex.length === 6
+                                                                    ? `#${currentHex}`
+                                                                    : null;
 
-                                                        return (
-                                                            <div
-                                                                key={v.id}
-                                                                className={`relative flex items-center gap-3 px-4 py-2 rounded-xl transition-all ${
-                                                                    isCheapest
-                                                                        ? 'border border-[#F4B000]/20'
-                                                                        : 'border border-transparent'
-                                                                }`}
-                                                                style={{
-                                                                    background: currentHex
-                                                                        ? `linear-gradient(0deg, ${currentHex}1A, ${currentHex}1A), #f8fafc`
-                                                                        : isCheapest
-                                                                          ? 'rgba(244,176,0,0.05)'
-                                                                          : '#f8fafc',
-                                                                }}
-                                                            >
-                                                                {activeVariants.length > 2 && (
-                                                                    <button
-                                                                        onClick={e => {
-                                                                            e.stopPropagation();
-                                                                            removeVariant(v.id);
-                                                                        }}
-                                                                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center hover:bg-red-500 hover:text-white text-slate-400 transition-all z-10"
-                                                                        title="Remove from comparison"
-                                                                    >
-                                                                        <X size={10} />
-                                                                    </button>
-                                                                )}
-                                                                <div className="w-12 h-12 shrink-0">
-                                                                    <img
-                                                                        src={currentImage}
-                                                                        alt={v.variant}
-                                                                        className="w-full h-full object-contain transition-all duration-300"
-                                                                    />
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 truncate leading-tight">
-                                                                        {v.make} {v.model}
-                                                                    </p>
-                                                                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-900 truncate leading-tight mt-1">
-                                                                        {v.variant}
-                                                                    </p>
-                                                                    {swatches.length > 0 && (
-                                                                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                                            return (
+                                                                <div
+                                                                    key={v.id}
+                                                                    className={`relative flex items-center gap-5 px-5 py-3 rounded-2xl transition-all duration-300 h-[76px]`}
+                                                                    style={{
+                                                                        background: currentHex
+                                                                            ? `linear-gradient(135deg, ${currentHex}26, ${currentHex}0D), #f8fafc`
+                                                                            : isCheapest
+                                                                              ? 'rgba(244,176,0,0.08)'
+                                                                              : '#f8fafc',
+                                                                    }}
+                                                                >
+                                                                    {activeVariants.length > 2 && (
+                                                                        <button
+                                                                            onClick={e => {
+                                                                                e.stopPropagation();
+                                                                                removeVariant(v.id);
+                                                                            }}
+                                                                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white shadow-md border border-black/5 flex items-center justify-center hover:bg-red-500 hover:text-white text-slate-400 hover:scale-110 transition-all z-10"
+                                                                        >
+                                                                            <X size={12} />
+                                                                        </button>
+                                                                    )}
+                                                                    <div className="w-16 h-16 shrink-0 relative group">
+                                                                        <img
+                                                                            src={currentImage}
+                                                                            alt={v.variant}
+                                                                            className="w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.15)] transform group-hover:scale-110 transition-transform duration-500"
+                                                                        />
+                                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/[0.02] to-transparent pointer-events-none" />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0 text-right">
+                                                                        <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-slate-400 truncate leading-tight mb-1">
+                                                                            {v.model}
+                                                                        </p>
+                                                                        <p className="text-[12px] font-black uppercase tracking-wider text-slate-900 truncate leading-tight mb-2">
+                                                                            {v.variant}
+                                                                        </p>
+                                                                        <div className="flex items-center justify-end gap-2 mt-auto flex-wrap">
                                                                             {swatches.map((c, ci) => {
-                                                                                let swatchHex = c.hexCode
-                                                                                    ? c.hexCode.replace('#', '').trim()
-                                                                                    : null;
-                                                                                if (swatchHex && swatchHex.length === 3)
-                                                                                    swatchHex = swatchHex
+                                                                                let sHex =
+                                                                                    c.hexCode?.replace('#', '') ||
+                                                                                    '000';
+                                                                                if (sHex.length === 3)
+                                                                                    sHex = sHex
                                                                                         .split('')
-                                                                                        .map(
-                                                                                            (char: string) =>
-                                                                                                char + char
-                                                                                        )
+                                                                                        .map(x => x + x)
                                                                                         .join('');
-                                                                                swatchHex =
-                                                                                    swatchHex && swatchHex.length === 6
-                                                                                        ? `#${swatchHex}`
-                                                                                        : null;
+                                                                                const sHexFull = `#${sHex}`;
+                                                                                const finish = (
+                                                                                    c.finish || ''
+                                                                                ).toUpperCase();
+                                                                                const isGlossy =
+                                                                                    finish.includes('GLOSS');
+                                                                                const isMatte =
+                                                                                    finish.includes('MATTE');
+                                                                                const isMetallic =
+                                                                                    finish.includes('METALLIC');
+
                                                                                 return (
                                                                                     <button
                                                                                         key={ci}
@@ -632,43 +647,45 @@ export default function DesktopCompare() {
                                                                                             e.stopPropagation();
                                                                                             if (c.imageUrl)
                                                                                                 setCompactColorImages(
-                                                                                                    prev => ({
-                                                                                                        ...prev,
+                                                                                                    p => ({
+                                                                                                        ...p,
                                                                                                         [v.id]: c.imageUrl!,
                                                                                                     })
                                                                                                 );
                                                                                             if (c.hexCode)
                                                                                                 setCompactColorHexes(
-                                                                                                    prev => ({
-                                                                                                        ...prev,
+                                                                                                    p => ({
+                                                                                                        ...p,
                                                                                                         [v.id]: c.hexCode,
                                                                                                     })
                                                                                                 );
                                                                                         }}
-                                                                                        className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${
-                                                                                            currentHex === swatchHex
-                                                                                                ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
-                                                                                                : ''
-                                                                                        }`}
+                                                                                        className={`w-3.5 h-3.5 rounded-full relative overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.2)] hover:scale-150 transition-all duration-300 ${currentHex === sHexFull ? 'ring-2 ring-[#F4B000] ring-offset-2' : 'hover:ring-1 hover:ring-[#F4B000]'}`}
                                                                                         style={{
-                                                                                            background:
-                                                                                                swatchHex || c.hexCode,
+                                                                                            backgroundColor: sHexFull,
                                                                                         }}
-                                                                                        title={c.name}
+                                                                                        title={`${c.name} (${c.finish || 'Standard'})`}
                                                                                     >
-                                                                                        {c.finish?.toUpperCase() ===
-                                                                                            'GLOSS' && (
+                                                                                        {/* Surface Effects */}
+                                                                                        {isGlossy && (
                                                                                             <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
                                                                                         )}
+                                                                                        {isMatte && (
+                                                                                            <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                                                                                        )}
+                                                                                        {isMetallic && (
+                                                                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_rgba(255,255,255,0.4)_0%,_transparent_60%)] pointer-events-none" />
+                                                                                        )}
+                                                                                        <div className="absolute inset-0 shadow-[inset_0_1px_2px_rgba(255,255,255,0.1),inset_0_-1px_2px_rgba(0,0,0,0.1)] pointer-events-none" />
                                                                                     </button>
                                                                                 );
                                                                             })}
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

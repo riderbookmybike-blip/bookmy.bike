@@ -232,11 +232,11 @@ export const DesktopCatalog = ({
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Compare state
-    const [compareItems, setCompareItems] = useState<CompareItem[]>([]);
-    const toggleCompare = (item: CompareItem) => {
+    const [compareItems, setCompareItems] = useState<(CompareItem & { id: string })[]>([]);
+    const toggleCompare = (item: CompareItem & { id: string }) => {
         setCompareItems(prev => {
-            const exists = prev.find(c => c.modelSlug === item.modelSlug);
-            if (exists) return prev.filter(c => c.modelSlug !== item.modelSlug);
+            const exists = prev.find(c => c.id === item.id);
+            if (exists) return prev.filter(c => c.id !== item.id);
             if (prev.length >= 3) {
                 toast.error('Max 3 models to compare');
                 return prev;
@@ -245,12 +245,22 @@ export const DesktopCatalog = ({
             return [...prev, item];
         });
     };
-    const removeCompare = (modelSlug: string) => setCompareItems(prev => prev.filter(c => c.modelSlug !== modelSlug));
+    const removeCompare = (id: string) => setCompareItems(prev => prev.filter(c => c.id !== id));
     const clearCompare = () => setCompareItems([]);
     const handleCompareNow = () => {
         if (compareItems.length === 0) return;
-        const item = compareItems[0];
-        router.push(`/store/compare/${item.make.toLowerCase()}/${item.modelSlug}`);
+
+        // If all items are from the same model, we can use the pretty URL,
+        // otherwise we must use the query param mode for mixed comparison.
+        const firstItem = compareItems[0];
+        const allSameModel = compareItems.every(i => i.modelSlug === firstItem.modelSlug);
+
+        if (allSameModel && compareItems.length === 1) {
+            router.push(`/store/compare/${firstItem.make.toLowerCase()}/${firstItem.modelSlug}`);
+        } else {
+            const ids = compareItems.map(i => i.id).join(',');
+            router.push(`/store/compare?skus=${ids}`);
+        }
     };
 
     // Downpayment edit popover
@@ -1358,13 +1368,14 @@ export const DesktopCatalog = ({
                                         variantCount={group.variantCount}
                                         onCompare={() =>
                                             toggleCompare({
+                                                id: v.id,
                                                 make: group.make,
                                                 model: group.model,
                                                 modelSlug: group.modelSlug,
                                                 imageUrl: v.imageUrl || '',
                                             })
                                         }
-                                        isInCompare={compareItems.some(c => c.modelSlug === group.modelSlug)}
+                                        isInCompare={compareItems.some(c => c.id === v.id)}
                                         onEditDownpayment={openDpEdit}
                                         onExplore={
                                             group.variantCount > 1

@@ -6,16 +6,18 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
-import { groupProductsByModel } from '@/utils/variantGrouping';
+import { groupProductsByModel, type ModelGroup } from '@/utils/variantGrouping';
 import { slugify } from '@/utils/slugs';
 import type { ProductVariant } from '@/types/productMaster';
 
 export function useSystemCompareLogic() {
     const params = useParams();
+    const searchParams = useSearchParams();
     const makeSlug = (params.make as string) || '';
     const modelSlug = (params.model as string) || '';
+    const skuIdsParam = searchParams.get('skus');
 
     const { items, isLoading, needsLocation } = useSystemCatalogLogic(undefined, { allowStateOnly: true });
 
@@ -24,7 +26,7 @@ export function useSystemCompareLogic() {
 
     // ── Model group resolution ──
     const modelGroup = useMemo(() => {
-        if (!items.length) return null;
+        if (!items.length || !makeSlug || !modelSlug) return null;
         const groups = groupProductsByModel(items);
         return (
             groups.find(g => {
@@ -45,9 +47,14 @@ export function useSystemCompareLogic() {
 
     // ── Sorted variants (cheapest first) ──
     const sortedVariants = useMemo(() => {
+        if (skuIdsParam) {
+            const ids = skuIdsParam.split(',').filter(Boolean);
+            // Return exactly the items requested in the order they were requested if possible
+            return ids.map(id => items.find(v => v.id === id)).filter(Boolean) as ProductVariant[];
+        }
         if (!modelGroup) return [];
         return [...modelGroup.variants].sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
-    }, [modelGroup]);
+    }, [items, skuIdsParam, modelGroup]);
 
     // ── Active variants (excluding removed) ──
     const activeVariants = useMemo(
@@ -55,10 +62,14 @@ export function useSystemCompareLogic() {
         [sortedVariants, removedVariantIds]
     );
 
+    const isMixedMode =
+        !!skuIdsParam ||
+        (activeVariants.length > 0 && activeVariants.some(v => v.modelSlug !== activeVariants[0].modelSlug));
+
     // ── Variant management ──
     const removeVariant = useCallback(
         (id: string) => {
-            if (activeVariants.length <= 2) return;
+            if (activeVariants.length <= 1) return; // Allow down to 1 in mixed mode?
             setRemovedVariantIds(prev => {
                 const next = new Set(prev);
                 next.add(id);
@@ -70,7 +81,7 @@ export function useSystemCompareLogic() {
 
     const removeVariantBySlug = useCallback(
         (slug: string) => {
-            if (activeVariants.length <= 2) return;
+            if (activeVariants.length <= 1) return;
             const target = activeVariants.find(v => v.slug === slug);
             if (target) {
                 setRemovedVariantIds(prev => new Set(prev).add(target.id));
@@ -106,6 +117,7 @@ export function useSystemCompareLogic() {
         // Route params
         makeSlug,
         modelSlug,
+        isMixedMode,
 
         // Data
         items,

@@ -6,6 +6,7 @@ import { X, GitCompareArrows, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 
 export interface CompareItem {
+    id: string;
     make: string;
     model: string;
     modelSlug: string;
@@ -15,7 +16,7 @@ export interface CompareItem {
 
 interface CompareTrayProps {
     items: CompareItem[];
-    onRemove: (modelSlug: string) => void;
+    onRemove: (id: string) => void;
     onCompareNow: () => void;
     onClear: () => void;
 }
@@ -44,9 +45,7 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
                                         Compare
                                     </p>
-                                    <p className="text-[10px] font-bold text-slate-600">
-                                        {items.length} selected
-                                    </p>
+                                    <p className="text-[10px] font-bold text-slate-600">{items.length} selected</p>
                                 </div>
                             </div>
 
@@ -57,7 +56,7 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                             <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
                                 {items.map(item => (
                                     <motion.div
-                                        key={item.modelSlug}
+                                        key={item.id}
                                         initial={{ scale: 0, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
                                         exit={{ scale: 0, opacity: 0 }}
@@ -81,7 +80,7 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                                             </p>
                                         </div>
                                         <button
-                                            onClick={() => onRemove(item.modelSlug)}
+                                            onClick={() => onRemove(item.id)}
                                             className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
                                         >
                                             <X size={10} />
@@ -95,9 +94,7 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                                         key={`empty-${i}`}
                                         className="w-[120px] h-[46px] rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center shrink-0"
                                     >
-                                        <span className="text-[9px] font-bold text-slate-300">
-                                            + Add
-                                        </span>
+                                        <span className="text-[9px] font-bold text-slate-300">+ Add</span>
                                     </div>
                                 ))}
                             </div>

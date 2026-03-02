@@ -111,7 +111,8 @@ function getSpecIcon(label: string): LucideIcon {
 export function MobileCompare() {
     const router = useRouter();
 
-    const { activeVariants, removeVariantBySlug, downpayment, setDownpayment, tenure } = useSystemCompareLogic();
+    const { activeVariants, isMixedMode, removeVariantBySlug, downpayment, setDownpayment, tenure } =
+        useSystemCompareLogic();
 
     const onRemoveVariant = removeVariantBySlug;
 
@@ -172,7 +173,9 @@ export function MobileCompare() {
                 <div className="flex-1">
                     <h1 className="text-lg font-black uppercase tracking-widest text-[#F4B000]">Compare</h1>
                     <p className="text-[10px] font-semibold text-slate-400 tracking-widest leading-none">
-                        {activeVariants.length} VEHICLES SELECTED
+                        {isMixedMode
+                            ? `COMPARING ${activeVariants.length} MODELS`
+                            : `${activeVariants.length} VEHICLES SELECTED`}
                     </p>
                 </div>
             </div>
