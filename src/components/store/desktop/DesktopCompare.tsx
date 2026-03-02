@@ -516,7 +516,7 @@ export default function DesktopCompare() {
                             <div
                                 className="sticky z-[50] transition-all duration-500 ease-in-out"
                                 style={{
-                                    top: 'var(--header-h, 80px)',
+                                    top: 'calc(var(--header-h, 80px) + 80px)',
                                     maxHeight: compactMode ? '160px' : '0px',
                                     opacity: compactMode ? 1 : 0,
                                     overflow: 'hidden',
