@@ -622,38 +622,61 @@ export default function DesktopCompare() {
                                                                 {/* Color Swatches */}
                                                                 {swatches.length > 0 && (
                                                                     <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                                                                        {swatches.map((c, ci) => (
-                                                                            <button
-                                                                                key={ci}
-                                                                                onClick={e => {
-                                                                                    e.stopPropagation();
-                                                                                    if (c.imageUrl) {
-                                                                                        setCompactColorImages(prev => ({
-                                                                                            ...prev,
-                                                                                            [v.id]: c.imageUrl!,
-                                                                                        }));
-                                                                                    }
-                                                                                    if (c.hexCode) {
-                                                                                        setCompactColorHexes(prev => ({
-                                                                                            ...prev,
-                                                                                            [v.id]: c.hexCode,
-                                                                                        }));
-                                                                                    }
-                                                                                }}
-                                                                                className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${
-                                                                                    currentHex === c.hexCode
-                                                                                        ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
-                                                                                        : ''
-                                                                                }`}
-                                                                                style={{ background: c.hexCode }}
-                                                                                title={c.name}
-                                                                            >
-                                                                                {c.finish?.toUpperCase() ===
-                                                                                    'GLOSS' && (
-                                                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
-                                                                                )}
-                                                                            </button>
-                                                                        ))}
+                                                                        {swatches.map((c, ci) => {
+                                                                            let swatchHex = c.hexCode
+                                                                                ? c.hexCode.replace('#', '').trim()
+                                                                                : null;
+                                                                            if (swatchHex && swatchHex.length === 3) {
+                                                                                swatchHex = swatchHex
+                                                                                    .split('')
+                                                                                    .map((char: string) => char + char)
+                                                                                    .join('');
+                                                                            }
+                                                                            swatchHex =
+                                                                                swatchHex && swatchHex.length === 6
+                                                                                    ? `#${swatchHex}`
+                                                                                    : null;
+
+                                                                            return (
+                                                                                <button
+                                                                                    key={ci}
+                                                                                    onClick={e => {
+                                                                                        e.stopPropagation();
+                                                                                        if (c.imageUrl) {
+                                                                                            setCompactColorImages(
+                                                                                                prev => ({
+                                                                                                    ...prev,
+                                                                                                    [v.id]: c.imageUrl!,
+                                                                                                })
+                                                                                            );
+                                                                                        }
+                                                                                        if (c.hexCode) {
+                                                                                            setCompactColorHexes(
+                                                                                                prev => ({
+                                                                                                    ...prev,
+                                                                                                    [v.id]: c.hexCode,
+                                                                                                })
+                                                                                            );
+                                                                                        }
+                                                                                    }}
+                                                                                    className={`w-3 h-3 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] hover:scale-125 transition-all duration-200 cursor-pointer relative overflow-hidden ${
+                                                                                        currentHex === swatchHex
+                                                                                            ? 'ring-1.5 ring-[#F4B000] ring-offset-1'
+                                                                                            : ''
+                                                                                    }`}
+                                                                                    style={{
+                                                                                        background:
+                                                                                            swatchHex || c.hexCode,
+                                                                                    }}
+                                                                                    title={c.name}
+                                                                                >
+                                                                                    {c.finish?.toUpperCase() ===
+                                                                                        'GLOSS' && (
+                                                                                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                                                    )}
+                                                                                </button>
+                                                                            );
+                                                                        })}
                                                                     </div>
                                                                 )}
                                                             </div>
