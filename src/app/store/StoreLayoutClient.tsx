@@ -125,7 +125,7 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
 
     const pathname = usePathname();
     const isLandingPage = pathname === '/store' || pathname === '/' || pathname?.match(/^\/d[2-8]$/);
-    const hideFooter = isPhone && (pathname === '/' || Boolean(pathname?.match(/^\/d[2-8]$/)));
+    const hideFooter = false; // Always show footer
 
     return (
         <FavoritesProvider>
@@ -157,13 +157,7 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
                             {children}
                         </main>
 
-                        {!hideFooter &&
-                            !(
-                                isPhone &&
-                                (pathname?.startsWith('/store/catalog') ||
-                                    pathname?.startsWith('/store/ocircle') ||
-                                    pathname?.match(/^\/store\/[^/]+\/[^/]+/))
-                            ) && <MarketplaceFooter />}
+                        {!hideFooter && <MarketplaceFooter />}
 
                         {/* Shopper Bottom HUD (phone only) */}
                         {isPhone && <ShopperBottomNav />}

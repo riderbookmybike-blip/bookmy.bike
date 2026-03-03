@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 const nextConfig: NextConfig = {
     typescript: {
         ignoreBuildErrors: true,
@@ -41,6 +43,19 @@ const nextConfig: NextConfig = {
         ],
     },
     async headers() {
+        if (isDev) {
+            return [
+                {
+                    source: '/:path*',
+                    headers: [
+                        { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' },
+                        { key: 'Pragma', value: 'no-cache' },
+                        { key: 'Expires', value: '0' },
+                    ],
+                },
+            ];
+        }
+
         return [
             // Always fetch fresh HTML so users get the latest asset manifest after deploy.
             {
