@@ -20,15 +20,18 @@ import {
     User2,
     CalendarClock,
     Flag,
+    X,
 } from 'lucide-react';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns';
 import { useParams, useRouter } from 'next/navigation';
 import NewRequisitionModal from './components/NewRequisitionModal';
+import { fetchSkuDisplayMap, type SkuDisplayCard } from '@/lib/inventory/skuDisplay';
 
 interface Requisition {
     id: string;
     display_id: string | null;
+    sku_id: string | null;
     status: string;
     source_type: string;
     booking_id: string | null;
@@ -54,8 +57,29 @@ interface Requisition {
         description: string | null;
     }>;
     quotes: Array<{ id: string; status: string }>;
-    orders: Array<{ id: string; display_id: string | null; po_status: string; expected_delivery_date: string | null }>;
+    orders: Array<{
+        id: string;
+        display_id: string | null;
+        po_status: string;
+        expected_delivery_date: string | null;
+        id_tenants?: { name: string | null } | { name: string | null }[] | null;
+    }>;
 }
+
+type UnitBreakdown = {
+    available: number;
+    transit: number;
+    order: number;
+    requisition: number;
+};
+
+type GroupMode = 'NONE' | 'BRAND' | 'SUPPLIER';
+type GroupNode = {
+    key: string;
+    label: string;
+    count: number;
+    children: GroupNode[];
+};
 
 const STATUS_COLORS: Record<string, string> = {
     QUOTING:
@@ -101,6 +125,14 @@ function formatDateValue(value?: string | null, fallback = 'Not Scheduled'): str
     return format(parsed, 'dd MMM yyyy');
 }
 
+function formatTripletId(raw?: string | null): string {
+    if (!raw) return 'NA';
+    const clean = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (clean.length <= 3) return clean;
+    if (clean.length <= 6) return `${clean.slice(0, 3)}-${clean.slice(3)}`;
+    return `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6, 9)}`;
+}
+
 function resolvePriority(req: Requisition): RequestPriority {
     if (req.status === 'CANCELLED') return 'CANCELLED';
     if (req.status === 'RECEIVED') return 'CLOSED';
@@ -130,8 +162,12 @@ export default function RequisitionsPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
+    const [groupMode, setGroupMode] = useState<GroupMode>('NONE');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [creatorNameMap, setCreatorNameMap] = useState<Record<string, string>>({});
+    const [skuMap, setSkuMap] = useState<Record<string, SkuDisplayCard>>({});
+    const [skuUnitMap, setSkuUnitMap] = useState<Record<string, UnitBreakdown>>({});
+    const [previewSku, setPreviewSku] = useState<{ label: string; image: string } | null>(null);
 
     const fetchRequisitions = useCallback(async () => {
         if (!tenantId) return;
@@ -141,7 +177,7 @@ export default function RequisitionsPage() {
                 .from('inv_requests')
                 .select(
                     `
-                    id, display_id, status, source_type, booking_id, delivery_branch_id, created_by, created_at,
+                    id, display_id, sku_id, status, source_type, booking_id, delivery_branch_id, created_by, created_at,
                     items:inv_request_items (
                         id, cost_type, expected_amount, description
                     ),
@@ -149,7 +185,8 @@ export default function RequisitionsPage() {
                         id, status
                     ),
                     orders:inv_purchase_orders(
-                        id, display_id, po_status, expected_delivery_date
+                        id, display_id, po_status, expected_delivery_date,
+                        id_tenants:dealer_tenant_id(name)
                     ),
                     booking:crm_bookings(
                         id, display_id, delivery_date, qty, status
@@ -171,6 +208,85 @@ export default function RequisitionsPage() {
 
             const rows = (data as Requisition[]) || [];
             setRequisitions(rows);
+
+            const skuIds = Array.from(new Set(rows.map(row => row.sku_id).filter(Boolean))) as string[];
+            if (skuIds.length > 0) {
+                const nextSkuMap = await fetchSkuDisplayMap(supabase, skuIds);
+                setSkuMap(nextSkuMap);
+
+                const { data: allReqRows } = await supabase
+                    .from('inv_requests')
+                    .select('id, sku_id, status')
+                    .eq('tenant_id', tenantId)
+                    .in('sku_id', skuIds);
+
+                const typedReqRows =
+                    (allReqRows as Array<{ id: string; sku_id: string | null; status: string | null }>) || [];
+                const requestIds = typedReqRows.map(r => r.id);
+
+                const { data: poRows } =
+                    requestIds.length > 0
+                        ? await supabase
+                              .from('inv_purchase_orders')
+                              .select('request_id, po_status')
+                              .in('request_id', requestIds)
+                        : ({ data: [] } as any);
+
+                const { data: stockRows } = await supabase
+                    .from('inv_stock')
+                    .select('sku_id, status')
+                    .eq('tenant_id', tenantId)
+                    .in('sku_id', skuIds);
+
+                const reqIdToSku = new Map<string, string>();
+                for (const req of typedReqRows) {
+                    if (req.id && req.sku_id) reqIdToSku.set(req.id, req.sku_id);
+                }
+
+                const nextUnits: Record<string, UnitBreakdown> = {};
+                for (const skuId of skuIds) {
+                    nextUnits[skuId] = { available: 0, transit: 0, order: 0, requisition: 0 };
+                }
+
+                for (const req of typedReqRows) {
+                    if (!req.sku_id || !nextUnits[req.sku_id]) continue;
+                    const reqStatus = (req.status || '').toUpperCase();
+                    if (reqStatus === 'QUOTING') nextUnits[req.sku_id].requisition += 1;
+                }
+
+                for (const po of (poRows || []) as Array<{ request_id: string | null; po_status: string | null }>) {
+                    if (!po.request_id) continue;
+                    const skuId = reqIdToSku.get(po.request_id);
+                    if (!skuId || !nextUnits[skuId]) continue;
+                    const poStatus = (po.po_status || '').toUpperCase();
+                    const isTransit =
+                        poStatus.includes('TRANSIT') ||
+                        poStatus.includes('DISPATCH') ||
+                        poStatus.includes('SHIPPED') ||
+                        poStatus.includes('IN_ROUTE');
+                    const isClosed = poStatus.includes('RECEIVED') || poStatus.includes('CANCEL');
+                    if (isTransit) nextUnits[skuId].transit += 1;
+                    if (!isClosed && !isTransit) nextUnits[skuId].order += 1;
+                }
+
+                for (const stock of (stockRows || []) as Array<{ sku_id: string | null; status: string | null }>) {
+                    if (!stock.sku_id || !nextUnits[stock.sku_id]) continue;
+                    const stockStatus = (stock.status || '').toUpperCase();
+                    const isUnavailable =
+                        stockStatus.includes('SOLD') ||
+                        stockStatus.includes('DELIVERED') ||
+                        stockStatus.includes('RETURN') ||
+                        stockStatus.includes('SCRAP') ||
+                        stockStatus.includes('CANCEL') ||
+                        stockStatus.includes('TRANSIT');
+                    if (!isUnavailable) nextUnits[stock.sku_id].available += 1;
+                }
+
+                setSkuUnitMap(nextUnits);
+            } else {
+                setSkuMap({});
+                setSkuUnitMap({});
+            }
 
             const creatorIds = Array.from(new Set(rows.map(row => row.created_by).filter(Boolean))) as string[];
             if (creatorIds.length > 0) {
@@ -213,7 +329,7 @@ export default function RequisitionsPage() {
                 (req.created_by ? `User ${req.created_by.slice(0, 6).toUpperCase()}` : 'System');
             const bookingLabel =
                 req.booking?.display_id ||
-                (req.booking_id ? `BK-${req.booking_id.slice(0, 8).toUpperCase()}` : 'Direct');
+                (req.booking_id ? `BK-${req.booking_id.slice(0, 8).toUpperCase()}` : 'Not Applicable');
             const deliveryBranchLabel = req.delivery_branch?.name || 'Branch Not Set';
             const priority = resolvePriority(req);
 
@@ -245,6 +361,49 @@ export default function RequisitionsPage() {
             .toLowerCase();
         return searchableText.includes(query);
     });
+
+    const getSupplierName = useCallback((req: Requisition) => {
+        const primaryOrder = req.orders?.[0];
+        const supplierRef = Array.isArray(primaryOrder?.id_tenants)
+            ? primaryOrder?.id_tenants?.[0]
+            : primaryOrder?.id_tenants;
+        return supplierRef?.name || 'Pending';
+    }, []);
+
+    const groupedNodes = useMemo(() => {
+        if (groupMode === 'NONE') return [] as GroupNode[];
+
+        const root = new Map<string, GroupNode>();
+        for (const req of filteredRequisitions) {
+            const sku = req.sku_id ? skuMap[req.sku_id] : undefined;
+            const brand = sku?.brand || 'NA';
+            const model = sku?.model || 'NA';
+            const variant = sku?.variant || 'NA';
+            const colour = sku?.colour || 'NA';
+            const supplier = getSupplierName(req);
+            const path =
+                groupMode === 'SUPPLIER' ? [supplier, brand, model, variant, colour] : [brand, model, variant, colour];
+
+            let levelMap = root;
+            let parentNode: GroupNode | null = null;
+            path.forEach((segment, index) => {
+                const compositeKey = `${index}:${segment}:${parentNode?.key || 'root'}`;
+                let node = levelMap.get(compositeKey);
+                if (!node) {
+                    node = { key: compositeKey, label: segment, count: 0, children: [] };
+                    levelMap.set(compositeKey, node);
+                    if (parentNode) parentNode.children.push(node);
+                }
+                node.count += 1;
+                parentNode = node;
+                const childMap = new Map<string, GroupNode>();
+                node.children.forEach(child => childMap.set(child.key, child));
+                levelMap = childMap;
+            });
+        }
+
+        return Array.from(root.values()).sort((a, b) => b.count - a.count);
+    }, [filteredRequisitions, getSupplierName, groupMode, skuMap]);
 
     const stats = {
         quoting: requisitions.filter(r => r.status === 'QUOTING').length,
@@ -334,6 +493,17 @@ export default function RequisitionsPage() {
                         </button>
                     ))}
                 </div>
+                <div className="w-full md:w-auto shrink-0">
+                    <select
+                        value={groupMode}
+                        onChange={e => setGroupMode(e.target.value as GroupMode)}
+                        className="w-full md:w-[190px] bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 rounded-2xl py-2.5 px-3 text-[10px] font-black text-slate-700 dark:text-slate-100 uppercase tracking-widest"
+                    >
+                        <option value="NONE">Group: None</option>
+                        <option value="BRAND">Group: Brand Cascade</option>
+                        <option value="SUPPLIER">Group: Supplier Cascade</option>
+                    </select>
+                </div>
             </div>
 
             {/* Table */}
@@ -359,6 +529,53 @@ export default function RequisitionsPage() {
                             </p>
                         </div>
                     </div>
+                ) : groupMode !== 'NONE' ? (
+                    <div className="p-4 md:p-6 space-y-3">
+                        {groupedNodes.length === 0 ? (
+                            <div className="py-10 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                                No grouped rows
+                            </div>
+                        ) : (
+                            (() => {
+                                const levelLabels =
+                                    groupMode === 'SUPPLIER'
+                                        ? ['Supplier', 'Brand', 'Model', 'Variant', 'Colour']
+                                        : ['Brand', 'Model', 'Variant', 'Colour'];
+                                const renderNodes = (nodes: GroupNode[], level = 0): React.ReactNode =>
+                                    nodes
+                                        .sort((a, b) => b.count - a.count)
+                                        .map(node => (
+                                            <div
+                                                key={node.key}
+                                                className={`rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/30 ${
+                                                    level > 0 ? 'mt-2' : ''
+                                                }`}
+                                                style={{ marginLeft: `${level * 16}px` }}
+                                            >
+                                                <div className="px-4 py-3 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                            {levelLabels[level] || 'Group'}
+                                                        </span>
+                                                        <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                                                            {node.label}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-300 uppercase tracking-wider">
+                                                        {node.count} Req
+                                                    </span>
+                                                </div>
+                                                {node.children.length > 0 && (
+                                                    <div className="px-2 pb-2">
+                                                        {renderNodes(node.children, level + 1)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ));
+                                return renderNodes(groupedNodes);
+                            })()
+                        )}
+                    </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
@@ -368,34 +585,25 @@ export default function RequisitionsPage() {
                                         ID
                                     </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        SKU
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Unit
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Source
                                     </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Booking
+                                        Supplier
                                     </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Raised By
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Delivery Plan
+                                        Raised
                                     </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Priority
                                     </th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Cost Lines
-                                    </th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Quotes
-                                    </th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        PO
-                                    </th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Status
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Created
                                     </th>
                                     <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         Action
@@ -415,116 +623,193 @@ export default function RequisitionsPage() {
                                         }
                                         className="group border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/2 transition-colors cursor-pointer"
                                     >
-                                        <td className="px-6 py-4">
-                                            <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                                                {req.display_id || `REQ-${req.id.slice(0, 8).toUpperCase()}`}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest ${
-                                                    req.source_type === 'BOOKING'
-                                                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 border-purple-200 dark:border-purple-500/20'
-                                                        : 'bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10'
-                                                }`}
-                                            >
-                                                {req.source_type === 'BOOKING' ? (
-                                                    <Bookmark size={10} />
-                                                ) : (
-                                                    <Zap size={10} />
-                                                )}
-                                                {req.source_type}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                                                    {req.bookingLabel}
-                                                </span>
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                                                    {req.source_type === 'BOOKING'
-                                                        ? `Qty ${req.booking?.qty || 1}`
-                                                        : 'NO BOOKING LINK'}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="inline-flex items-center gap-2">
-                                                <span className="p-1.5 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-400">
-                                                    <User2 size={12} />
-                                                </span>
-                                                <span className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                                                    {req.createdByName}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-300">
-                                                    <CalendarClock size={12} />
-                                                    <span className="text-[10px] font-black uppercase tracking-wider">
-                                                        {formatDateValue(req.scheduleDate)}
-                                                    </span>
-                                                </div>
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                                                    {req.deliveryBranchLabel} • {req.scheduleSource}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest ${
-                                                    PRIORITY_BADGES[req.priority]
-                                                }`}
-                                            >
-                                                <Flag size={10} />
-                                                {req.priority}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className="text-sm font-black text-slate-900 dark:text-white">
-                                                {req.items?.length || 0}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-300">
-                                                {req.quotes?.length || 0}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span
-                                                className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
-                                                    (req.orders?.length || 0) > 0
-                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
-                                                        : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10'
-                                                }`}
-                                            >
-                                                {(req.orders?.length || 0) > 0 ? 'Linked' : 'Pending'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${
-                                                    STATUS_COLORS[req.status] || STATUS_COLORS.QUOTING
-                                                }`}
-                                            >
-                                                {STATUS_ICONS[req.status] || <Clock size={14} />}
-                                                {req.status.replace('_', ' ')}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-1.5 text-slate-400">
-                                                <Calendar size={12} />
-                                                <span className="text-[10px] font-bold">
-                                                    {format(new Date(req.created_at), 'dd MMM yyyy')}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-all">
-                                                <ChevronRight size={20} />
-                                            </button>
-                                        </td>
+                                        {(() => {
+                                            const fallbackSkuLabel = req.sku_id
+                                                ? `SKU ${req.sku_id.slice(0, 8).toUpperCase()}`
+                                                : 'SKU NA';
+                                            const skuCard = req.sku_id ? skuMap[req.sku_id] : undefined;
+                                            const skuLabel = skuCard?.fullLabel || fallbackSkuLabel;
+                                            const skuImage = skuCard?.image || null;
+                                            const skuHex = skuCard?.colorHex || null;
+                                            const brand = skuCard?.brand || 'NA';
+                                            const modelAndVariant =
+                                                [skuCard?.model, skuCard?.variant].filter(Boolean).join(' - ') || 'NA';
+                                            const colour = skuCard?.colour || 'NA';
+                                            return (
+                                                <>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                                            {formatTripletId(req.display_id || req.id)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div
+                                                            className={`flex items-center gap-2 ${skuImage ? 'cursor-zoom-in' : ''}`}
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                if (skuImage)
+                                                                    setPreviewSku({ label: skuLabel, image: skuImage });
+                                                            }}
+                                                        >
+                                                            <div
+                                                                className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-[#F8FAFC] dark:bg-[#0B1220] flex items-center justify-center p-1.5 shrink-0"
+                                                                style={
+                                                                    skuHex
+                                                                        ? { backgroundColor: `${skuHex}4D` }
+                                                                        : undefined
+                                                                }
+                                                            >
+                                                                {skuImage ? (
+                                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                                    <img
+                                                                        src={skuImage}
+                                                                        alt={skuLabel}
+                                                                        className="w-full h-full object-contain"
+                                                                    />
+                                                                ) : (
+                                                                    <Package size={14} className="text-slate-400" />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col leading-tight">
+                                                                <span className="text-[10px] font-black text-slate-800 dark:text-slate-100 tracking-wide">
+                                                                    {brand}
+                                                                </span>
+                                                                <span className="text-[9px] font-bold text-slate-700 dark:text-slate-200 tracking-wide">
+                                                                    {modelAndVariant}
+                                                                </span>
+                                                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 tracking-wide">
+                                                                    {colour}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {(() => {
+                                                            const unit = req.sku_id
+                                                                ? skuUnitMap[req.sku_id] || {
+                                                                      available: 0,
+                                                                      transit: 0,
+                                                                      order: 0,
+                                                                      requisition: 0,
+                                                                  }
+                                                                : {
+                                                                      available: 0,
+                                                                      transit: 0,
+                                                                      order: 0,
+                                                                      requisition: 0,
+                                                                  };
+                                                            return (
+                                                                <div className="flex flex-col gap-1 leading-tight min-w-[98px]">
+                                                                    <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                                                                        Available-{unit.available}
+                                                                    </span>
+                                                                    <span className="text-[9px] font-black text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">
+                                                                        Transit-{unit.transit}
+                                                                    </span>
+                                                                    <span className="text-[9px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
+                                                                        Order-{unit.order}
+                                                                    </span>
+                                                                    <span className="text-[9px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+                                                                        Requisition-{unit.requisition}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col gap-1">
+                                                            <span
+                                                                className={`inline-flex w-fit items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest ${
+                                                                    req.source_type === 'BOOKING'
+                                                                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 border-purple-200 dark:border-purple-500/20'
+                                                                        : 'bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10'
+                                                                }`}
+                                                            >
+                                                                {req.source_type === 'BOOKING' ? (
+                                                                    <Bookmark size={10} />
+                                                                ) : (
+                                                                    <Zap size={10} />
+                                                                )}
+                                                                {req.source_type}
+                                                            </span>
+                                                            {req.source_type === 'BOOKING' && (
+                                                                <>
+                                                                    <span className="text-[10px] font-black text-slate-900 dark:text-white tracking-wider">
+                                                                        {req.bookingLabel}
+                                                                    </span>
+                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                        Qty {req.booking?.qty || 1}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {(() => {
+                                                            const supplierName = getSupplierName(req);
+                                                            return supplierName !== 'Pending' ? (
+                                                                <span className="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">
+                                                                    {supplierName}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10">
+                                                                    Pending
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="inline-flex items-center gap-2">
+                                                            <span className="p-1.5 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-400">
+                                                                <User2 size={12} />
+                                                            </span>
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                                                                    {req.createdByName}
+                                                                </span>
+                                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                    {format(new Date(req.created_at), 'dd MMM yyyy')}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {req.source_type === 'BOOKING' && req.scheduleDate ? (
+                                                            <div className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-300">
+                                                                <CalendarClock size={12} />
+                                                                <span className="text-[10px] font-black uppercase tracking-wider">
+                                                                    {formatDateValue(req.scheduleDate)}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span
+                                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest ${
+                                                                    PRIORITY_BADGES[req.priority]
+                                                                }`}
+                                                            >
+                                                                <Flag size={10} />
+                                                                {req.priority}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span
+                                                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${
+                                                                STATUS_COLORS[req.status] || STATUS_COLORS.QUOTING
+                                                            }`}
+                                                        >
+                                                            {STATUS_ICONS[req.status] || <Clock size={14} />}
+                                                            {req.status.replace('_', ' ')}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <button className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-all">
+                                                            <ChevronRight size={20} />
+                                                        </button>
+                                                    </td>
+                                                </>
+                                            );
+                                        })()}
                                     </tr>
                                 ))}
                             </tbody>
@@ -539,6 +824,38 @@ export default function RequisitionsPage() {
                 onSuccess={fetchRequisitions}
                 tenantId={tenantId || ''}
             />
+
+            {previewSku && (
+                <div
+                    className="fixed inset-0 z-[120] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setPreviewSku(null)}
+                >
+                    <div
+                        className="relative w-full max-w-2xl rounded-3xl border border-white/20 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10">
+                            <p className="text-xs font-black text-slate-900 dark:text-white tracking-wide">
+                                {previewSku.label}
+                            </p>
+                            <button
+                                onClick={() => setPreviewSku(null)}
+                                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <div className="p-4 flex items-center justify-center bg-slate-50 dark:bg-slate-950/40">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={previewSku.image}
+                                alt={previewSku.label}
+                                className="max-h-[70vh] w-auto rounded-xl"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

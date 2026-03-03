@@ -111,7 +111,7 @@ const DEFAULT_SERVICE_CITIES = [
 /* ═══════════════════════════════════════════════════════════
    M2 HOME — Phone-First Premium Homepage
    ═══════════════════════════════════════════════════════════ */
-export function M2Home({
+export function StoreHomePage({
     heroImage,
     initialItems,
     initialDevice = 'desktop',

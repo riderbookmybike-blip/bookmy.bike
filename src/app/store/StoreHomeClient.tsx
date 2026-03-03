@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { M2Home } from '@/components/store/mobile/M2Home';
+import { StoreHomePage } from '@/components/store/mobile/StoreHomePage';
 
 interface StoreHomeClientProps {
     initialItems?: any[];
@@ -9,5 +9,5 @@ interface StoreHomeClientProps {
 }
 
 export default function StoreHomeClient({ initialItems, initialDevice = 'desktop' }: StoreHomeClientProps) {
-    return <M2Home heroImage="/images/hero_d8.jpg" initialItems={initialItems} initialDevice={initialDevice} />;
+    return <StoreHomePage heroImage="/images/hero_d8.jpg" initialItems={initialItems} initialDevice={initialDevice} />;
 }

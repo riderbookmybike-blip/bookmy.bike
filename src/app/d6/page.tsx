@@ -1,6 +1,6 @@
 import { isMobileDevice } from '@/lib/utils/device';
 import StoreLayoutClient from '@/app/store/StoreLayoutClient';
-import { M2Home } from '@/components/store/mobile/M2Home';
+import { StoreHomePage } from '@/components/store/mobile/StoreHomePage';
 
 export default async function D6Page() {
     const isMobile = await isMobileDevice();
@@ -8,7 +8,7 @@ export default async function D6Page() {
 
     return (
         <StoreLayoutClient initialDevice={initialDevice}>
-            <M2Home heroImage="/images/wp4.jpg" initialDevice={initialDevice} />
+            <StoreHomePage heroImage="/images/wp4.jpg" initialDevice={initialDevice} />
         </StoreLayoutClient>
     );
 }
