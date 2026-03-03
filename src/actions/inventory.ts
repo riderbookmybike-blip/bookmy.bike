@@ -860,8 +860,8 @@ export async function deleteDealerQuote(quoteId: string): Promise<ActionResult> 
             return { success: false, message: `Cannot delete quote: requisition is ${request.status}` };
         }
 
-        await adminClient.from('inv_quote_line_items').delete().eq('quote_id', quote.id);
-        await adminClient.from('inv_quote_terms').delete().eq('quote_id', quote.id);
+        await (adminClient as any).from('inv_quote_line_items').delete().eq('quote_id', quote.id);
+        await (adminClient as any).from('inv_quote_terms').delete().eq('quote_id', quote.id);
 
         const { error: deleteErr } = await adminClient.from('inv_dealer_quotes').delete().eq('id', quote.id);
         if (deleteErr) return { success: false, message: deleteErr.message || 'Failed to delete quote' };
@@ -1131,6 +1131,10 @@ export async function updateDispatchDetails(input: {
     branch_id?: string | null;
     chassis_number?: string | null;
     engine_number?: string | null;
+    transporter_contact?: string | null;
+    dispatch_date?: string | null;
+    dispatch_doc_url?: string | null;
+    supplier_warehouse?: string | null;
 }): Promise<ActionResult> {
     try {
         const user = await getAuthUser();
@@ -1143,11 +1147,15 @@ export async function updateDispatchDetails(input: {
             .single();
         if (poErr || !po) return { success: false, message: 'PO not found' };
 
-        const { error: poUpdateErr } = await adminClient
+        const { error: poUpdateErr } = await (adminClient as any)
             .from('inv_purchase_orders')
             .update({
                 transporter_name: input.transporter_name || null,
                 docket_number: input.docket_number || null,
+                transporter_contact: input.transporter_contact || null,
+                dispatch_date: input.dispatch_date || null,
+                dispatch_doc_url: input.dispatch_doc_url || null,
+                supplier_warehouse: input.supplier_warehouse || null,
                 updated_at: new Date().toISOString(),
                 updated_by: user.id,
             })

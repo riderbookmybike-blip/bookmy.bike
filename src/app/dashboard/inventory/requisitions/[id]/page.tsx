@@ -427,6 +427,9 @@ export default function RequisitionDetailPage() {
         deliveryNote: string;
         warehouseInchargeName: string;
         warehouseInchargeContact: string;
+        dispatchDate: string;
+        dispatchDocUrl: string;
+        supplierWarehouse: string;
     }>({
         dispatchId: 'NA',
         supplier: 'NA',
@@ -440,6 +443,9 @@ export default function RequisitionDetailPage() {
         deliveryNote: 'NA',
         warehouseInchargeName: 'NA',
         warehouseInchargeContact: 'NA',
+        dispatchDate: '',
+        dispatchDocUrl: '',
+        supplierWarehouse: '',
     });
     const [dispatchEditMode, setDispatchEditMode] = useState(false);
     const [isSavingDispatch, setIsSavingDispatch] = useState(false);
@@ -525,11 +531,11 @@ export default function RequisitionDetailPage() {
                 const { data } = await (supabase as any)
                     .from('id_members')
                     .select('full_name')
-                    .eq('id', request.created_by)
+                    .eq('id', request.created_by!)
                     .maybeSingle();
-                setCreatedByName(data?.full_name || `User ${request.created_by.slice(0, 6).toUpperCase()}`);
+                setCreatedByName(data?.full_name || `User ${(request.created_by || '').slice(0, 6).toUpperCase()}`);
             } catch {
-                setCreatedByName(`User ${request.created_by.slice(0, 6).toUpperCase()}`);
+                setCreatedByName(`User ${(request.created_by || '').slice(0, 6).toUpperCase()}`);
             }
         };
         hydrateCreator();
@@ -577,6 +583,9 @@ export default function RequisitionDetailPage() {
                 deliveryNote: 'NA',
                 warehouseInchargeName: 'NA',
                 warehouseInchargeContact: 'NA',
+                dispatchDate: '',
+                dispatchDocUrl: '',
+                supplierWarehouse: '',
             });
             return;
         }
@@ -630,6 +639,13 @@ export default function RequisitionDetailPage() {
                     }
                 }
 
+                // Fetch dispatch_date, transporter_contact, supplier_warehouse from PO
+                const { data: poExtra } = await (supabase as any)
+                    .from('inv_purchase_orders')
+                    .select('transporter_contact, dispatch_date, dispatch_doc_url, supplier_warehouse')
+                    .eq('id', currentPo.id)
+                    .maybeSingle();
+
                 setDispatchDetails({
                     dispatchId,
                     supplier,
@@ -637,12 +653,15 @@ export default function RequisitionDetailPage() {
                     warehouse,
                     warehouseId,
                     transporterName,
-                    transporterContact: 'NA',
+                    transporterContact: poExtra?.transporter_contact || 'NA',
                     chassisNumber,
                     engineNumber,
                     deliveryNote,
                     warehouseInchargeName,
                     warehouseInchargeContact,
+                    dispatchDate: poExtra?.dispatch_date ? poExtra.dispatch_date.slice(0, 16) : '',
+                    dispatchDocUrl: poExtra?.dispatch_doc_url || '',
+                    supplierWarehouse: poExtra?.supplier_warehouse || '',
                 });
             } catch {
                 setDispatchDetails({
@@ -663,6 +682,9 @@ export default function RequisitionDetailPage() {
                     deliveryNote: currentPo.docket_number || 'NA',
                     warehouseInchargeName: 'NA',
                     warehouseInchargeContact: 'NA',
+                    dispatchDate: '',
+                    dispatchDocUrl: '',
+                    supplierWarehouse: '',
                 });
             }
         };
@@ -1279,7 +1301,7 @@ export default function RequisitionDetailPage() {
         if (primaryPo?.po_status === 'SHIPPED') idx = Math.max(idx, 4);
         if (primaryPo?.payment_status === 'FULLY_PAID') idx = Math.max(idx, 5);
         if (request.status === 'RECEIVED') idx = Math.max(idx, 6);
-        if (request.status === 'RECEIVED' && terminalStageLabel !== 'RETURN / ALLOTTED') idx = Math.max(idx, 7);
+        if (request.status === 'RECEIVED' && terminalStageLabel !== 'RETURN') idx = Math.max(idx, 7);
         return idx;
     }, [primaryPo?.payment_status, primaryPo?.po_status, request?.source_type, request?.status, terminalStageLabel]);
 
@@ -1571,6 +1593,11 @@ export default function RequisitionDetailPage() {
                 branch_id: dispatchDetails.warehouseId || null,
                 chassis_number: dispatchDetails.chassisNumber === 'NA' ? null : dispatchDetails.chassisNumber,
                 engine_number: dispatchDetails.engineNumber === 'NA' ? null : dispatchDetails.engineNumber,
+                transporter_contact:
+                    dispatchDetails.transporterContact === 'NA' ? null : dispatchDetails.transporterContact,
+                dispatch_date: dispatchDetails.dispatchDate || null,
+                dispatch_doc_url: dispatchDetails.dispatchDocUrl || null,
+                supplier_warehouse: dispatchDetails.supplierWarehouse || null,
             });
             if (!result.success) {
                 toast.error(result.message || 'Failed to update dispatch details');
@@ -2710,80 +2737,321 @@ export default function RequisitionDetailPage() {
 
             {isPoIssued && primaryPo && (
                 <>
-                    <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                        Dispatch Details
-                    </p>
-                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 px-4 py-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Dispatch Ref
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                {dispatchDetails.dispatchId}
-                            </p>
+                    <div className="px-1 flex items-center justify-between gap-3">
+                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                            Dispatch Details
+                        </p>
+                        {primaryPo.po_status !== 'RECEIVED' && (
+                            <button
+                                type="button"
+                                onClick={() => setDispatchEditMode(prev => !prev)}
+                                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-lg border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+                            >
+                                <Pencil size={10} />
+                                {dispatchEditMode ? 'Cancel' : 'Edit'}
+                            </button>
+                        )}
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                        {/* Header row — Dispatch Ref + PO status badge */}
+                        <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    Dispatch Ref
+                                </p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                    {dispatchDetails.dispatchId}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                        primaryPo.po_status === 'RECEIVED'
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                            : primaryPo.po_status === 'SHIPPED'
+                                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                              : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                    }`}
+                                >
+                                    {primaryPo.po_status}
+                                </span>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Warehouse</p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                {dispatchDetails.warehouse}
-                            </p>
+
+                        {/* Fields grid */}
+                        <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4">
+                            {/* Supplier */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Supplier
+                                </p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                    {dispatchDetails.supplier}
+                                </p>
+                            </div>
+
+                            {/* Supplier Warehouse / Dispatch Point */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Supplier Warehouse / Dispatch Point
+                                </p>
+                                {dispatchEditMode ? (
+                                    <input
+                                        type="text"
+                                        value={dispatchDetails.supplierWarehouse}
+                                        placeholder="e.g. Honda Yard, Pune"
+                                        onChange={e =>
+                                            setDispatchDetails(prev => ({ ...prev, supplierWarehouse: e.target.value }))
+                                        }
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                    />
+                                ) : (
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.supplierWarehouse || 'NA'}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Warehouse */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Receiving Warehouse
+                                </p>
+                                {dispatchEditMode ? (
+                                    <select
+                                        value={dispatchDetails.warehouseId}
+                                        onChange={e => {
+                                            const opt = warehouseOptions.find(w => w.id === e.target.value);
+                                            setDispatchDetails(prev => ({
+                                                ...prev,
+                                                warehouseId: e.target.value,
+                                                warehouse: opt?.name || 'NA',
+                                            }));
+                                        }}
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                    >
+                                        <option value="">Select warehouse</option>
+                                        {warehouseOptions.map(w => (
+                                            <option key={w.id} value={w.id}>
+                                                {w.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.warehouse}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Dispatch Date */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Dispatch Date
+                                </p>
+                                {dispatchEditMode ? (
+                                    <input
+                                        type="datetime-local"
+                                        value={dispatchDetails.dispatchDate}
+                                        onChange={e =>
+                                            setDispatchDetails(prev => ({ ...prev, dispatchDate: e.target.value }))
+                                        }
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                    />
+                                ) : (
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.dispatchDate
+                                            ? format(new Date(dispatchDetails.dispatchDate), 'dd MMM yyyy, hh:mm a')
+                                            : 'NA'}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Chassis Number */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Chassis Number
+                                </p>
+                                {dispatchEditMode ? (
+                                    <input
+                                        type="text"
+                                        value={
+                                            dispatchDetails.chassisNumber === 'NA' ? '' : dispatchDetails.chassisNumber
+                                        }
+                                        placeholder="e.g. ME4JF505XRT123456"
+                                        onChange={e =>
+                                            setDispatchDetails(prev => ({
+                                                ...prev,
+                                                chassisNumber: e.target.value || 'NA',
+                                            }))
+                                        }
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case"
+                                    />
+                                ) : (
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.chassisNumber}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Engine Number */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Engine Number
+                                </p>
+                                {dispatchEditMode ? (
+                                    <input
+                                        type="text"
+                                        value={
+                                            dispatchDetails.engineNumber === 'NA' ? '' : dispatchDetails.engineNumber
+                                        }
+                                        placeholder="e.g. JF505E23456"
+                                        onChange={e =>
+                                            setDispatchDetails(prev => ({
+                                                ...prev,
+                                                engineNumber: e.target.value || 'NA',
+                                            }))
+                                        }
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case"
+                                    />
+                                ) : (
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.engineNumber}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Delivery Note / LR */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Delivery Note / LR#
+                                </p>
+                                {dispatchEditMode ? (
+                                    <input
+                                        type="text"
+                                        value={
+                                            dispatchDetails.deliveryNote === 'NA' ? '' : dispatchDetails.deliveryNote
+                                        }
+                                        placeholder="Lorry receipt / docket number"
+                                        onChange={e =>
+                                            setDispatchDetails(prev => ({
+                                                ...prev,
+                                                deliveryNote: e.target.value || 'NA',
+                                            }))
+                                        }
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                    />
+                                ) : (
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.deliveryNote}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Transporter Name */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Transporter Name
+                                </p>
+                                {dispatchEditMode ? (
+                                    <input
+                                        type="text"
+                                        value={
+                                            dispatchDetails.transporterName === 'NA'
+                                                ? ''
+                                                : dispatchDetails.transporterName
+                                        }
+                                        placeholder="e.g. VRL Logistics"
+                                        onChange={e =>
+                                            setDispatchDetails(prev => ({
+                                                ...prev,
+                                                transporterName: e.target.value || 'NA',
+                                            }))
+                                        }
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                    />
+                                ) : (
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.transporterName}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Transporter Contact */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Transporter Contact
+                                </p>
+                                {dispatchEditMode ? (
+                                    <input
+                                        type="tel"
+                                        value={
+                                            dispatchDetails.transporterContact === 'NA'
+                                                ? ''
+                                                : dispatchDetails.transporterContact
+                                        }
+                                        placeholder="10-digit mobile"
+                                        maxLength={10}
+                                        onChange={e =>
+                                            setDispatchDetails(prev => ({
+                                                ...prev,
+                                                transporterContact: e.target.value || 'NA',
+                                            }))
+                                        }
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                    />
+                                ) : (
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.transporterContact}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Warehouse Incharge */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Warehouse Incharge
+                                </p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                    {dispatchDetails.warehouseInchargeName}
+                                    {dispatchDetails.warehouseInchargeContact !== 'NA' && (
+                                        <span className="ml-2 text-slate-400">
+                                            • {dispatchDetails.warehouseInchargeContact}
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Chassis Number
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                {dispatchDetails.chassisNumber}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Engine Number
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                {dispatchDetails.engineNumber}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Delivery Note#
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                {dispatchDetails.deliveryNote}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Warehouse Incharge Name
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                {dispatchDetails.warehouseInchargeName}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Warehouse Incharge Contact
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                {dispatchDetails.warehouseInchargeContact}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Transporter Name
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                {dispatchDetails.transporterName}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Transporter Contact
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                {dispatchDetails.transporterContact}
-                            </p>
-                        </div>
+
+                        {/* Actions footer */}
+                        {dispatchEditMode && primaryPo.po_status !== 'RECEIVED' && (
+                            <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    Save dispatch details before marking as shipped
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveDispatch}
+                                        disabled={isSavingDispatch}
+                                        className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50 hover:bg-slate-50 transition-all"
+                                    >
+                                        {isSavingDispatch ? 'Saving...' : 'Save Details'}
+                                    </button>
+                                    {primaryPo.po_status === 'SENT' && (
+                                        <button
+                                            type="button"
+                                            onClick={handleMoveDispatchNext}
+                                            disabled={isMovingDispatch || isSavingDispatch}
+                                            className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
+                                        >
+                                            <Truck size={12} />
+                                            {isMovingDispatch ? 'Updating...' : 'Mark as Shipped'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </>
             )}
