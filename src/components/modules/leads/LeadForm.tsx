@@ -79,7 +79,7 @@ export default function LeadForm({
         memberId: string;
         name: string | null;
         phone: string | null;
-        referralCode: string | null;
+        membershipId: string | null;
     } | null>(null);
 
     React.useEffect(() => {
@@ -231,7 +231,7 @@ export default function LeadForm({
         const normalizedReferrerCode = referredByCode.trim().toUpperCase();
         const hasReferralInput = !!(normalizedReferrerCode || normalizedReferrerPhone);
         if (!hasActiveDelivery && !hasReferralInput) {
-            alert('Referral is mandatory. Enter referral code or referrer contact.');
+            alert("Referral is mandatory. Enter O' Circle Membership ID or referrer contact.");
             return;
         }
         if (normalizedReferrerPhone && normalizedReferrerPhone.length !== 10) {
@@ -245,7 +245,7 @@ export default function LeadForm({
             !referredByName.trim() &&
             !resolvedReferrer
         ) {
-            alert('Referral code not found. Add referrer phone or name.');
+            alert("O' Circle Membership ID not found. Add referrer phone or name.");
             return;
         }
 
@@ -503,7 +503,7 @@ export default function LeadForm({
                                 onChange={e =>
                                     setReferredByCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
                                 }
-                                placeholder="Referral Code"
+                                placeholder="O' Circle Membership ID"
                                 className="w-full px-4 py-3 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-xl text-xs font-black tracking-wider text-slate-900 dark:text-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none uppercase"
                             />
                             <input
@@ -533,7 +533,7 @@ export default function LeadForm({
                             <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 ml-1">
                                 {referredByPhone || referredByName
                                     ? 'No member match. External referral will be captured.'
-                                    : 'Referral code not found. Add referrer phone or name.'}
+                                    : "O' Circle Membership ID not found. Add referrer phone or name."}
                             </p>
                         ) : null}
                         {hasActiveDelivery && (

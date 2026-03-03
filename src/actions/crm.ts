@@ -428,14 +428,21 @@ type LeadReferrerLookup = {
     memberId: string;
     name: string | null;
     phone: string | null;
-    referralCode: string | null;
+    membershipId: string | null;
 };
 
 async function findLeadReferrerByCodeOrPhone(input: {
     referralCode?: string;
     referralPhone?: string;
 }): Promise<LeadReferrerLookup | null> {
-    const code = (input.referralCode || '').trim().toUpperCase();
+    const normalizedCode = String(input.referralCode || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
+    const canonicalCode = normalizedCode.slice(0, 9);
+    const code =
+        canonicalCode.length === 9
+            ? `${canonicalCode.slice(0, 3)}-${canonicalCode.slice(3, 6)}-${canonicalCode.slice(6, 9)}`
+            : normalizedCode;
     const normalizedPhone = toAppStorageFormat(input.referralPhone || '');
 
     if (!code && (!normalizedPhone || normalizedPhone.length !== 10)) {
@@ -445,8 +452,8 @@ async function findLeadReferrerByCodeOrPhone(input: {
     if (code) {
         const { data } = await adminClient
             .from('id_members')
-            .select('id, full_name, referral_code, primary_phone, whatsapp')
-            .eq('referral_code', code)
+            .select('id, full_name, display_id, primary_phone, whatsapp')
+            .eq('display_id', code)
             .maybeSingle();
 
         if (data?.id) {
@@ -454,7 +461,7 @@ async function findLeadReferrerByCodeOrPhone(input: {
                 memberId: data.id,
                 name: data.full_name || null,
                 phone: data.primary_phone || data.whatsapp || null,
-                referralCode: data.referral_code || null,
+                membershipId: data.display_id || null,
             };
         }
     }
@@ -463,7 +470,7 @@ async function findLeadReferrerByCodeOrPhone(input: {
         // Identity lookup: primary_phone ONLY (see MEMBERSHIP IDENTITY GOVERNANCE)
         const { data } = await adminClient
             .from('id_members')
-            .select('id, full_name, referral_code, primary_phone, whatsapp')
+            .select('id, full_name, display_id, primary_phone, whatsapp')
             .eq('primary_phone', normalizedPhone)
             .maybeSingle();
 
@@ -472,7 +479,7 @@ async function findLeadReferrerByCodeOrPhone(input: {
                 memberId: data.id,
                 name: data.full_name || null,
                 phone: data.primary_phone || data.whatsapp || null,
-                referralCode: data.referral_code || null,
+                membershipId: data.display_id || null,
             };
         }
     }
@@ -1900,7 +1907,7 @@ export async function createLeadAction(data: {
                   resolved_referrer_member_id: resolvedReferrer?.memberId || null,
                   resolved_referrer_name: resolvedReferrer?.name || null,
                   resolved_referrer_phone: resolvedReferrer?.phone || null,
-                  resolved_referrer_code: resolvedReferrer?.referralCode || null,
+                  resolved_referrer_membership_id: resolvedReferrer?.membershipId || null,
                   referrer_type: resolvedReferrer?.memberId ? 'MEMBER' : 'EXTERNAL',
                   repeat_delivery_member: hasActiveDelivery,
                   referral_bonus_eligible: referralBenefitEligible,
@@ -2043,7 +2050,7 @@ export async function createLeadAction(data: {
         if (isCrmManualSource && referralBenefitEligible && !hasReferralInput) {
             return {
                 success: false,
-                message: 'Referral is mandatory for new lead. Enter referral code or referrer contact.',
+                message: "Referral is mandatory. Enter O' Circle Membership ID or referrer contact.",
             };
         }
 
@@ -2057,7 +2064,7 @@ export async function createLeadAction(data: {
         ) {
             return {
                 success: false,
-                message: 'Referral code not found. Add referrer phone or name to continue.',
+                message: "O' Circle Membership ID not found. Add referrer phone or name to continue.",
             };
         }
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase/admin';
-import { generateDisplayId } from '@/utils/displayId';
 import { getAuthPassword } from '@/lib/auth/password-utils';
 import { toAppStorageFormat, isValidPhone } from '@/lib/utils/phoneUtils';
 
@@ -84,8 +83,6 @@ export async function POST(req: NextRequest) {
         }
 
         const userId = newUser.user.id;
-        const referralCode = generateDisplayId();
-
         // 3. Create Profile (BMB_USER role by default)
         const { error: profileError } = await adminClient.from('id_members').insert({
             id: userId,
@@ -93,7 +90,6 @@ export async function POST(req: NextRequest) {
             phone: cleanPhone,
             primary_phone: cleanPhone,
             role: 'BMB_USER',
-            referral_code: referralCode,
             pincode: pincode || null,
             state: state || null,
             district: district || null,

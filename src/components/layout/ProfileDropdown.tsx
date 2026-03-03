@@ -43,6 +43,7 @@ import { OCircleMembershipCard, type WalletData } from '@/components/auth/OCircl
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { getDefaultAvatar, AVATAR_PRESETS } from '@/lib/avatars';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { formatMembershipCardCode } from '@/lib/oclub/membershipCardIdentity';
 
 const ADMIN_ROLES = new Set(['OWNER', 'ADMIN', 'SUPER_ADMIN', 'DEALERSHIP_ADMIN', 'MARKETPLACE_ADMIN']);
 
@@ -143,16 +144,16 @@ export function ProfileDropdown({
                 });
             });
 
-            // Fetch referral_code (9-char customer ID) for membership card
+            // Fetch display_id (canonical O' Circle membership ID) for membership card
             const supabase = createClient();
             supabase
                 .from('id_members')
-                .select('referral_code')
+                .select('display_id')
                 .eq('id', authUser.id)
                 .maybeSingle()
                 .then(({ data }) => {
-                    if (data?.referral_code) {
-                        setMemberCode(data.referral_code);
+                    if (data?.display_id) {
+                        setMemberCode(formatMembershipCardCode(data.display_id));
                     }
                 });
         } else {

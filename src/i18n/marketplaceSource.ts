@@ -241,7 +241,7 @@ export const MARKETPLACE_SOURCE_STRINGS = [
     'REAL-TIME STOCK',
     'Recent',
     'Redefining',
-    'referral_code, id',
+    'display_id, id',
     'referrer_tenant_id',
     'referrer_user_id',
     'rewards',

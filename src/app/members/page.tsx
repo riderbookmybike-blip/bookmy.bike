@@ -26,6 +26,7 @@ import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
+import { formatMembershipCardCode } from '@/lib/oclub/membershipCardIdentity';
 
 type WheelItem = {
     id: string;
@@ -127,8 +128,7 @@ export default function MembersHome() {
     const { userName, tenantId } = useTenant();
     const router = useRouter();
     const supabase = createClient();
-    const [referralCode, setReferralCode] = useState('FETCHING...');
-    const [memberId, setMemberId] = useState('...');
+    const [membershipId, setMembershipId] = useState('FETCHING...');
     const [copied, setCopied] = useState(false);
     const [loading, setLoading] = useState(true);
     const [mounted, setMounted] = useState(false);
@@ -160,15 +160,10 @@ export default function MembersHome() {
                 return;
             }
 
-            const { data: profile } = await supabase
-                .from('id_members')
-                .select('referral_code, id')
-                .eq('id', user.id)
-                .single();
+            const { data: profile } = await supabase.from('id_members').select('display_id').eq('id', user.id).single();
 
             if (profile) {
-                setReferralCode(profile.referral_code || 'GENERATE_ONE');
-                setMemberId(profile.id.slice(-6).toUpperCase());
+                setMembershipId(profile.display_id ? formatMembershipCardCode(profile.display_id) : 'PENDING');
             }
             setLoading(false);
         }
@@ -237,8 +232,8 @@ export default function MembersHome() {
     }, []);
 
     const copyToClipboard = () => {
-        if (referralCode === 'FETCHING...') return;
-        navigator.clipboard.writeText(referralCode);
+        if (membershipId === 'FETCHING...') return;
+        navigator.clipboard.writeText(membershipId);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -330,7 +325,7 @@ export default function MembersHome() {
                             </h1>
                             <div className="flex items-center gap-4">
                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-                                    ID: {memberId}
+                                    O&apos; Circle# {membershipId}
                                 </p>
                                 <span className="px-3 py-0.5 bg-rose-600/10 border border-rose-600 text-rose-600 text-[10px] font-black uppercase tracking-widest italic rounded">
                                     Founder Member
@@ -512,7 +507,7 @@ export default function MembersHome() {
                             <div className="relative group/copy">
                                 <div className="w-full p-6 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-between group-hover/copy:border-blue-600/50 transition-colors shadow-2xl">
                                     <span className="text-xl font-black tracking-[0.2em] text-blue-500 uppercase font-mono">
-                                        {referralCode}
+                                        O&apos; Circle# {membershipId}
                                     </span>
                                     <button
                                         onClick={copyToClipboard}
@@ -529,8 +524,8 @@ export default function MembersHome() {
                             </div>
 
                             <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic">
-                                Share your unique referral code. This code is permanently linked to your profile and
-                                unlocks Founder rewards.
+                                Share your O&apos; Circle Membership ID. This ID is permanently linked to your profile
+                                and unlocks Founder rewards.
                             </p>
                         </div>
 

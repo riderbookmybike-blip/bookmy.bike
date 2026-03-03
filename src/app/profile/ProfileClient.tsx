@@ -46,6 +46,7 @@ import { createClient } from '@/lib/supabase/client';
 import dynamic from 'next/dynamic';
 const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 import { getDefaultAvatar } from '@/lib/avatars';
+import { formatMembershipCardCode } from '@/lib/oclub/membershipCardIdentity';
 
 interface ProfileClientProps {
     user: any;
@@ -169,19 +170,19 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
         .join('')
         .toUpperCase();
     const avatarUrl = user?.user_metadata?.avatar_url;
-    const referralCode = member?.display_id || member?.referral_code || user?.id?.split('-')[0]?.toUpperCase() || 'REF';
+    const membershipId = member?.display_id ? formatMembershipCardCode(member.display_id) : 'PENDING';
 
     const handleCopyCode = () => {
-        navigator.clipboard.writeText(referralCode);
+        navigator.clipboard.writeText(membershipId);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
     const handleInviteFriend = async () => {
-        const shareUrl = `${window.location.origin}?ref=${referralCode}`;
+        const shareUrl = `${window.location.origin}?ref=${membershipId}`;
         const shareData = {
             title: "Join The O' Circle at BookMyBike",
-            text: `Hey! 🏍️ Join me on BookMyBike and get exclusive O' Circle benefits on your next bike booking. Use my referral code: ${referralCode}`,
+            text: `Hey! Join me on BookMyBike and get exclusive O' Circle benefits on your next bike booking. Use my O' Circle Membership ID: ${membershipId}`,
             url: shareUrl,
         };
 
@@ -202,8 +203,8 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
     };
 
     const handleSocialShare = (platform: string) => {
-        const shareUrl = `${window.location.origin}?ref=${referralCode}`;
-        const shareText = `Hey! 🏍️ Join me on BookMyBike and get exclusive O' Circle benefits on your next bike booking. Use my referral code: ${referralCode}`;
+        const shareUrl = `${window.location.origin}?ref=${membershipId}`;
+        const shareText = `Hey! Join me on BookMyBike and get exclusive O' Circle benefits on your next bike booking. Use my O' Circle Membership ID: ${membershipId}`;
         const fullMessage = `${shareText}\n${shareUrl}`;
 
         const encodedText = encodeURIComponent(fullMessage);
@@ -297,7 +298,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     </div>
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase text-slate-500 tracking-wider">
                                         <Shield size={12} className="text-emerald-500" />
-                                        MEMBER ID: {member?.display_id || 'PENDING'}
+                                        O&apos; Circle Membership ID: {membershipId}
                                     </div>
                                 </div>
                             </div>
