@@ -131,8 +131,8 @@ export function M2Home({
     const { device } = useBreakpoint(initialDevice);
     const isPhone = device === 'phone';
     const trendingItems = React.useMemo(
-        () => selectTrendingModels((items && items.length > 0 ? items : initialItems) || [], isPhone ? 3 : 6),
-        [items, initialItems, isPhone]
+        () => selectTrendingModels((items && items.length > 0 ? items : initialItems) || [], 6),
+        [items, initialItems]
     );
     const withLead = React.useCallback(
         (href: string) => {
@@ -486,32 +486,21 @@ export function M2Home({
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 md:gap-6 pb-4 max-w-[1440px] mx-auto">
-                        {trendingItems.map((item: any) =>
-                            isPhone ? (
-                                <CompactProductCard
-                                    key={item.id}
-                                    v={item}
-                                    downpayment={downpayment}
-                                    tenure={tenure}
-                                    walletCoins={isLoggedIn ? availableCoins : null}
-                                    showOClubPrompt={!isLoggedIn}
-                                />
-                            ) : (
-                                <ProductCard
-                                    key={item.id}
-                                    v={item}
-                                    downpayment={downpayment}
-                                    tenure={tenure}
-                                    walletCoins={isLoggedIn ? availableCoins : null}
-                                    showOClubPrompt={!isLoggedIn}
-                                    serviceability={{
-                                        status: parsedLocation ? 'serviceable' : 'unset',
-                                        location: trendingLocationName,
-                                        district: parsedLocation?.district || undefined,
-                                    }}
-                                />
-                            )
-                        )}
+                        {trendingItems.map((item: any) => (
+                            <ProductCard
+                                key={item.id}
+                                v={item}
+                                downpayment={downpayment}
+                                tenure={tenure}
+                                walletCoins={isLoggedIn ? availableCoins : null}
+                                showOClubPrompt={!isLoggedIn}
+                                serviceability={{
+                                    status: parsedLocation ? 'serviceable' : 'unset',
+                                    location: trendingLocationName,
+                                    district: parsedLocation?.district || undefined,
+                                }}
+                            />
+                        ))}
                     </div>
                 </section>
             )}
@@ -665,54 +654,58 @@ export function M2Home({
                     </h2>
 
                     <div className="grid grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-4">
-                        {brands.slice(0, 12).map((brand: any, i: number) => {
-                            const color = BRAND_COLORS[brand.name.toUpperCase()] || '#ffffff';
-                            const modelCount =
-                                items?.filter((item: any) => item.brandName?.toUpperCase() === brand.name.toUpperCase())
-                                    .length ?? 0;
-                            return (
-                                <motion.div
-                                    key={brand.id}
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    whileInView={{ opacity: 1, scale: 1 }}
-                                    viewport={{ once: true, margin: '-20px' }}
-                                    transition={{ delay: i * 0.04 }}
-                                >
-                                    <Link
-                                        href={withLead(`/store/catalog?brand=${brand.name.toUpperCase()}`)}
-                                        className="group flex flex-col items-center gap-2 py-4 rounded-2xl border border-slate-100 bg-white shadow-sm active:scale-[0.93] hover:border-slate-200 hover:shadow-md transition-all duration-300"
+                        {brands
+                            .filter(b => Object.keys(BRAND_COLORS).includes(b.name.toUpperCase()))
+                            .slice(0, 12)
+                            .map((brand: any, i: number) => {
+                                const color = BRAND_COLORS[brand.name.toUpperCase()] || '#ffffff';
+                                const modelCount =
+                                    items?.filter(
+                                        (item: any) => item.brandName?.toUpperCase() === brand.name.toUpperCase()
+                                    ).length ?? 0;
+                                return (
+                                    <motion.div
+                                        key={brand.id}
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        whileInView={{ opacity: 1, scale: 1 }}
+                                        viewport={{ once: true, margin: '-20px' }}
+                                        transition={{ delay: i * 0.04 }}
                                     >
-                                        <div
-                                            className="w-11 h-11 rounded-full flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform duration-300"
-                                            style={{ backgroundColor: color + '10' }}
+                                        <Link
+                                            href={withLead(`/store/catalog?brand=${brand.name.toUpperCase()}`)}
+                                            className="group flex flex-col items-center gap-2 py-4 rounded-2xl border border-slate-100 bg-white shadow-sm active:scale-[0.93] hover:border-slate-200 hover:shadow-md transition-all duration-300"
                                         >
-                                            {brand.brand_logos?.icon || brand.logo_svg ? (
-                                                <div
-                                                    className="w-5 h-5 opacity-80 [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
-                                                    dangerouslySetInnerHTML={{
-                                                        __html: sanitizeSvg(
-                                                            brand.brand_logos?.icon || brand.logo_svg || ''
-                                                        ),
-                                                    }}
-                                                />
-                                            ) : (
-                                                <span className="text-xs font-black text-slate-400">
-                                                    {brand.name[0]}
+                                            <div
+                                                className="w-11 h-11 rounded-full flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform duration-300"
+                                                style={{ backgroundColor: color + '10' }}
+                                            >
+                                                {brand.brand_logos?.icon || brand.logo_svg ? (
+                                                    <div
+                                                        className="w-5 h-5 opacity-80 [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: sanitizeSvg(
+                                                                brand.brand_logos?.icon || brand.logo_svg || ''
+                                                            ),
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <span className="text-xs font-black text-slate-400">
+                                                        {brand.name[0]}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 text-center leading-tight">
+                                                {brand.name}
+                                            </span>
+                                            {modelCount > 0 && (
+                                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    {modelCount} {modelCount === 1 ? 'model' : 'models'}
                                                 </span>
                                             )}
-                                        </div>
-                                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 text-center leading-tight">
-                                            {brand.name}
-                                        </span>
-                                        {modelCount > 0 && (
-                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-                                                {modelCount} {modelCount === 1 ? 'model' : 'models'}
-                                            </span>
-                                        )}
-                                    </Link>
-                                </motion.div>
-                            );
-                        })}
+                                        </Link>
+                                    </motion.div>
+                                );
+                            })}
                     </div>
                 </div>
             </section>
