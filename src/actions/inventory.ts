@@ -1135,6 +1135,7 @@ export async function updateDispatchDetails(input: {
     dispatch_date?: string | null;
     dispatch_doc_url?: string | null;
     supplier_warehouse?: string | null;
+    supplier_warehouse_id?: string | null;
 }): Promise<ActionResult> {
     try {
         const user = await getAuthUser();
@@ -1156,6 +1157,7 @@ export async function updateDispatchDetails(input: {
                 dispatch_date: input.dispatch_date || null,
                 dispatch_doc_url: input.dispatch_doc_url || null,
                 supplier_warehouse: input.supplier_warehouse || null,
+                supplier_warehouse_id: input.supplier_warehouse_id || null,
                 updated_at: new Date().toISOString(),
                 updated_by: user.id,
             })

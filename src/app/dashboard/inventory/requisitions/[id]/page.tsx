@@ -429,7 +429,8 @@ export default function RequisitionDetailPage() {
         warehouseInchargeContact: string;
         dispatchDate: string;
         dispatchDocUrl: string;
-        supplierWarehouse: string;
+        supplierWarehouseId: string;
+        supplierWarehouseName: string;
     }>({
         dispatchId: 'NA',
         supplier: 'NA',
@@ -445,12 +446,22 @@ export default function RequisitionDetailPage() {
         warehouseInchargeContact: 'NA',
         dispatchDate: '',
         dispatchDocUrl: '',
-        supplierWarehouse: '',
+        supplierWarehouseId: '',
+        supplierWarehouseName: '',
     });
     const [dispatchEditMode, setDispatchEditMode] = useState(false);
     const [isSavingDispatch, setIsSavingDispatch] = useState(false);
     const [isMovingDispatch, setIsMovingDispatch] = useState(false);
     const [warehouseOptions, setWarehouseOptions] = useState<Array<{ id: string; name: string }>>([]);
+    const [supplierWarehouseOptions, setSupplierWarehouseOptions] = useState<
+        Array<{
+            id: string;
+            name: string;
+            managerName: string;
+            managerPhone: string;
+            contactPhone: string;
+        }>
+    >([]);
 
     const fetchRequestDetail = useCallback(async () => {
         if (!requestId) {
@@ -585,7 +596,8 @@ export default function RequisitionDetailPage() {
                 warehouseInchargeContact: 'NA',
                 dispatchDate: '',
                 dispatchDocUrl: '',
-                supplierWarehouse: '',
+                supplierWarehouseId: '',
+                supplierWarehouseName: '',
             });
             return;
         }
@@ -602,10 +614,20 @@ export default function RequisitionDetailPage() {
                 let dispatchId = formatTripletId(currentPo.display_id || currentPo.id);
                 const selectedFromRequest =
                     (request?.inv_dealer_quotes || []).find((q: any) => q.status === 'SELECTED') || null;
-                const supplierId = selectedFromRequest?.dealer_tenant_id || '';
+                const supplierId = selectedFromRequest?.dealer_tenant_id || currentPo.supplier_tenant_id || '';
                 const supplier = parseTenantRef(selectedFromRequest?.id_tenants)?.name || 'NA';
                 let warehouseInchargeName = 'NA';
                 let warehouseInchargeContact = 'NA';
+
+                if (supplierId) {
+                    const { data: supplierTenant } = await (supabase as any)
+                        .from('id_tenants')
+                        .select('name, phone')
+                        .eq('id', supplierId)
+                        .maybeSingle();
+                    warehouseInchargeName = supplierTenant?.name || 'NA';
+                    warehouseInchargeContact = supplierTenant?.phone || 'NA';
+                }
 
                 const { data: stockRow } = await (supabase as any)
                     .from('inv_stock')
@@ -626,25 +648,29 @@ export default function RequisitionDetailPage() {
                             .maybeSingle();
                         warehouse = location?.name || 'NA';
                         warehouseId = stockRow.branch_id || '';
-                        warehouseInchargeContact = location?.contact_phone || 'NA';
-                        if (location?.manager_id) {
-                            const { data: manager } = await (supabase as any)
-                                .from('id_members')
-                                .select('full_name, phone')
-                                .eq('id', location.manager_id)
-                                .maybeSingle();
-                            warehouseInchargeName = manager?.full_name || 'NA';
-                            warehouseInchargeContact = manager?.phone || warehouseInchargeContact;
-                        }
                     }
                 }
 
                 // Fetch dispatch_date, transporter_contact, supplier_warehouse from PO
                 const { data: poExtra } = await (supabase as any)
                     .from('inv_purchase_orders')
-                    .select('transporter_contact, dispatch_date, dispatch_doc_url, supplier_warehouse')
+                    .select(
+                        'transporter_contact, dispatch_date, dispatch_doc_url, supplier_warehouse, supplier_warehouse_id'
+                    )
                     .eq('id', currentPo.id)
                     .maybeSingle();
+
+                // Resolve supplier warehouse name if we have an ID
+                let supplierWarehouseId = poExtra?.supplier_warehouse_id || '';
+                let supplierWarehouseName = poExtra?.supplier_warehouse || '';
+                if (supplierWarehouseId && !supplierWarehouseName) {
+                    const { data: swLoc } = await (supabase as any)
+                        .from('id_locations')
+                        .select('name')
+                        .eq('id', supplierWarehouseId)
+                        .maybeSingle();
+                    supplierWarehouseName = swLoc?.name || '';
+                }
 
                 setDispatchDetails({
                     dispatchId,
@@ -661,7 +687,8 @@ export default function RequisitionDetailPage() {
                     warehouseInchargeContact,
                     dispatchDate: poExtra?.dispatch_date ? poExtra.dispatch_date.slice(0, 16) : '',
                     dispatchDocUrl: poExtra?.dispatch_doc_url || '',
-                    supplierWarehouse: poExtra?.supplier_warehouse || '',
+                    supplierWarehouseId,
+                    supplierWarehouseName,
                 });
             } catch {
                 setDispatchDetails({
@@ -684,7 +711,8 @@ export default function RequisitionDetailPage() {
                     warehouseInchargeContact: 'NA',
                     dispatchDate: '',
                     dispatchDocUrl: '',
-                    supplierWarehouse: '',
+                    supplierWarehouseId: '',
+                    supplierWarehouseName: '',
                 });
             }
         };
@@ -714,6 +742,62 @@ export default function RequisitionDetailPage() {
         };
         hydrateWarehouses();
     }, [request?.tenant_id]);
+
+    // Fetch supplier's warehouses from their id_locations
+    useEffect(() => {
+        const supplierId =
+            (request?.inv_dealer_quotes || []).find((q: any) => q.status === 'SELECTED')?.dealer_tenant_id || '';
+        if (!supplierId) {
+            setSupplierWarehouseOptions([]);
+            return;
+        }
+        const hydrateSupplierWarehouses = async () => {
+            try {
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                const { data: locs } = await (supabase as any)
+                    .from('id_locations')
+                    .select('id, name, type, contact_phone, manager_id')
+                    .eq('tenant_id', supplierId)
+                    .eq('type', 'Warehouse')
+                    .eq('is_active', true)
+                    .order('name');
+
+                const locsArr = (locs || []) as Array<{
+                    id: string;
+                    name: string;
+                    contact_phone: string | null;
+                    manager_id: string | null;
+                }>;
+
+                // Fetch manager names in parallel
+                const managerIds = locsArr.map(l => l.manager_id).filter(Boolean) as string[];
+                let managerMap: Record<string, { full_name: string; phone: string }> = {};
+                if (managerIds.length > 0) {
+                    const { data: managers } = await (supabase as any)
+                        .from('id_members')
+                        .select('id, full_name, phone')
+                        .in('id', managerIds);
+                    for (const m of managers || []) {
+                        managerMap[m.id] = { full_name: m.full_name, phone: m.phone };
+                    }
+                }
+
+                setSupplierWarehouseOptions(
+                    locsArr.map(l => ({
+                        id: l.id,
+                        name: l.name,
+                        managerName: l.manager_id ? managerMap[l.manager_id]?.full_name || '' : '',
+                        managerPhone: l.manager_id ? managerMap[l.manager_id]?.phone || '' : '',
+                        contactPhone: l.contact_phone || '',
+                    }))
+                );
+            } catch {
+                setSupplierWarehouseOptions([]);
+            }
+        };
+        hydrateSupplierWarehouses();
+    }, [request?.inv_dealer_quotes]);
 
     useEffect(() => {
         if (!request?.sku_id) {
@@ -1597,7 +1681,8 @@ export default function RequisitionDetailPage() {
                     dispatchDetails.transporterContact === 'NA' ? null : dispatchDetails.transporterContact,
                 dispatch_date: dispatchDetails.dispatchDate || null,
                 dispatch_doc_url: dispatchDetails.dispatchDocUrl || null,
-                supplier_warehouse: dispatchDetails.supplierWarehouse || null,
+                supplier_warehouse_id: dispatchDetails.supplierWarehouseId || null,
+                supplier_warehouse: dispatchDetails.supplierWarehouseName || null,
             });
             if (!result.success) {
                 toast.error(result.message || 'Failed to update dispatch details');
@@ -2779,7 +2864,7 @@ export default function RequisitionDetailPage() {
                         </div>
 
                         {/* Fields grid */}
-                        <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4">
+                        <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-4">
                             {/* Supplier */}
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
@@ -2796,20 +2881,52 @@ export default function RequisitionDetailPage() {
                                     Supplier Warehouse / Dispatch Point
                                 </p>
                                 {dispatchEditMode ? (
-                                    <input
-                                        type="text"
-                                        value={dispatchDetails.supplierWarehouse}
-                                        placeholder="e.g. Honda Yard, Pune"
-                                        onChange={e =>
-                                            setDispatchDetails(prev => ({ ...prev, supplierWarehouse: e.target.value }))
-                                        }
+                                    <select
+                                        value={dispatchDetails.supplierWarehouseId}
+                                        onChange={e => {
+                                            const opt = supplierWarehouseOptions.find(w => w.id === e.target.value);
+                                            setDispatchDetails(prev => ({
+                                                ...prev,
+                                                supplierWarehouseId: e.target.value,
+                                                supplierWarehouseName: opt?.name || '',
+                                                // Auto-fill incharge from selected supplier warehouse
+                                                warehouseInchargeName: opt?.managerName || prev.warehouseInchargeName,
+                                                warehouseInchargeContact:
+                                                    opt?.managerPhone ||
+                                                    opt?.contactPhone ||
+                                                    prev.warehouseInchargeContact,
+                                            }));
+                                        }}
                                         className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                    />
+                                    >
+                                        <option value="">Select supplier warehouse</option>
+                                        {supplierWarehouseOptions.map(w => (
+                                            <option key={w.id} value={w.id}>
+                                                {w.name}
+                                                {w.managerName ? ` — ${w.managerName}` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
                                 ) : (
                                     <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.supplierWarehouse || 'NA'}
+                                        {dispatchDetails.supplierWarehouseName || 'NA'}
                                     </p>
                                 )}
+                            </div>
+
+                            {/* Warehouse Incharge */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Warehouse Incharge
+                                </p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                    {dispatchDetails.warehouseInchargeName}
+                                    {dispatchDetails.warehouseInchargeContact !== 'NA' && (
+                                        <span className="ml-2 text-slate-400">
+                                            • {dispatchDetails.warehouseInchargeContact}
+                                        </span>
+                                    )}
+                                </p>
                             </div>
 
                             {/* Warehouse */}
@@ -3005,21 +3122,6 @@ export default function RequisitionDetailPage() {
                                         {dispatchDetails.transporterContact}
                                     </p>
                                 )}
-                            </div>
-
-                            {/* Warehouse Incharge */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Warehouse Incharge
-                                </p>
-                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                    {dispatchDetails.warehouseInchargeName}
-                                    {dispatchDetails.warehouseInchargeContact !== 'NA' && (
-                                        <span className="ml-2 text-slate-400">
-                                            • {dispatchDetails.warehouseInchargeContact}
-                                        </span>
-                                    )}
-                                </p>
                             </div>
                         </div>
 
