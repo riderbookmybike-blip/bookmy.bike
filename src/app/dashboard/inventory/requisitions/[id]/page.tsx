@@ -18,6 +18,14 @@ import {
     Building2,
     Receipt,
     TrendingUp,
+    Bookmark,
+    FileText,
+    MessageSquareQuote,
+    ShoppingCart,
+    PackageCheck,
+    Wallet,
+    Undo2,
+    CheckCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -91,6 +99,7 @@ type RequisitionDetail = {
     inv_dealer_quotes: DealerQuote[];
     inv_purchase_orders: PurchaseOrder[];
 };
+const EMPTY_REQUEST_ITEMS: RequestItem[] = [];
 
 type ProgressStageKey =
     | 'BOOKING'
@@ -111,6 +120,70 @@ const BASE_PROGRESS_STAGES: Array<{ key: ProgressStageKey; label: string }> = [
     { key: 'PAYMENT', label: 'PAYMENT' },
     { key: 'RECEIVED', label: 'RECEIVED' },
 ];
+
+const STAGE_ICON_MAP: Record<ProgressStageKey, React.ComponentType<{ size?: number; className?: string }>> = {
+    BOOKING: Bookmark,
+    REQUISITION: FileText,
+    QUOTING: MessageSquareQuote,
+    PURCHASE_ORDER: ShoppingCart,
+    DISPATCH_ORDER: PackageCheck,
+    PAYMENT: Wallet,
+    RECEIVED: CheckCheck,
+    TERMINAL: Undo2,
+};
+
+const STAGE_TONE_MAP = {
+    BOOKING: {
+        base: 'bg-purple-50 border-purple-200 text-purple-600',
+        active: 'bg-purple-100 border-purple-300 text-purple-700',
+        done: 'bg-purple-600 border-purple-600 text-white',
+    },
+    REQUISITION: {
+        base: 'bg-blue-50 border-blue-200 text-blue-600',
+        active: 'bg-blue-100 border-blue-300 text-blue-700',
+        done: 'bg-blue-600 border-blue-600 text-white',
+    },
+    QUOTING: {
+        base: 'bg-amber-50 border-amber-200 text-amber-600',
+        active: 'bg-amber-100 border-amber-300 text-amber-700',
+        done: 'bg-amber-600 border-amber-600 text-white',
+    },
+    PURCHASE_ORDER: {
+        base: 'bg-indigo-50 border-indigo-200 text-indigo-600',
+        active: 'bg-indigo-100 border-indigo-300 text-indigo-700',
+        done: 'bg-indigo-600 border-indigo-600 text-white',
+    },
+    DISPATCH_ORDER: {
+        base: 'bg-cyan-50 border-cyan-200 text-cyan-600',
+        active: 'bg-cyan-100 border-cyan-300 text-cyan-700',
+        done: 'bg-cyan-600 border-cyan-600 text-white',
+    },
+    PAYMENT: {
+        base: 'bg-teal-50 border-teal-200 text-teal-600',
+        active: 'bg-teal-100 border-teal-300 text-teal-700',
+        done: 'bg-teal-600 border-teal-600 text-white',
+    },
+    RECEIVED: {
+        base: 'bg-emerald-50 border-emerald-200 text-emerald-600',
+        active: 'bg-emerald-100 border-emerald-300 text-emerald-700',
+        done: 'bg-emerald-600 border-emerald-600 text-white',
+    },
+    ALLOTTED: {
+        base: 'bg-slate-100 border-slate-300 text-slate-700',
+        active: 'bg-slate-200 border-slate-400 text-slate-800',
+        done: 'bg-slate-600 border-slate-600 text-white',
+    },
+    RETURN: {
+        base: 'bg-rose-50 border-rose-200 text-rose-600',
+        active: 'bg-rose-100 border-rose-300 text-rose-700',
+        done: 'bg-rose-600 border-rose-600 text-white',
+    },
+    DELIVERED: {
+        base: 'bg-green-50 border-green-200 text-green-600',
+        active: 'bg-green-100 border-green-300 text-green-700',
+        done: 'bg-green-600 border-green-600 text-white',
+    },
+} as const;
 
 const REQUEST_STATUS_STYLES: Record<RequestStatus, string> = {
     QUOTING:
@@ -178,9 +251,67 @@ export default function RequisitionDetailPage() {
     const [showRequisitionSection, setShowRequisitionSection] = useState(true);
     const [showCostSection, setShowCostSection] = useState(true);
     const [showQuoteSection, setShowQuoteSection] = useState(true);
-    const [showCostLines, setShowCostLines] = useState(true);
     const [showQuoteForm, setShowQuoteForm] = useState(false);
     const [showPurchaseOrders, setShowPurchaseOrders] = useState(true);
+    const [selectedDealer, setSelectedDealer] = useState<string>('');
+    const [quoteVisibleFields, setQuoteVisibleFields] = useState<
+        Record<
+            'exShowroom' | 'registration' | 'insurance' | 'insuranceAddons' | 'hypothecation' | 'transportation',
+            boolean
+        >
+    >({
+        exShowroom: true,
+        registration: false,
+        insurance: false,
+        insuranceAddons: false,
+        hypothecation: false,
+        transportation: false,
+    });
+    const [quoteAddField, setQuoteAddField] = useState<
+        '' | 'registration' | 'insurance' | 'insuranceAddons' | 'hypothecation' | 'transportation'
+    >('');
+    const [includedQuoteFields, setIncludedQuoteFields] = useState<
+        Record<
+            | 'exShowroom'
+            | 'registration'
+            | 'hypothecation'
+            | 'insurance'
+            | 'depreciationWaiver'
+            | 'insuranceAddons'
+            | 'transportation',
+            boolean
+        >
+    >({
+        exShowroom: true,
+        registration: true,
+        hypothecation: true,
+        insurance: true,
+        depreciationWaiver: true,
+        insuranceAddons: true,
+        transportation: true,
+    });
+    const [editableQuoteValues, setEditableQuoteValues] = useState<
+        Record<
+            | 'exShowroom'
+            | 'registration'
+            | 'hypothecation'
+            | 'insurance'
+            | 'depreciationWaiver'
+            | 'insuranceAddons'
+            | 'transportation'
+            | 'grandTotal',
+            number
+        >
+    >({
+        exShowroom: 0,
+        registration: 0,
+        hypothecation: 0,
+        insurance: 0,
+        depreciationWaiver: 0,
+        insuranceAddons: 0,
+        transportation: 0,
+        grandTotal: 0,
+    });
     const [createdByName, setCreatedByName] = useState('System');
     const [linkedStockStatuses, setLinkedStockStatuses] = useState<string[]>([]);
     const [skuCard, setSkuCard] = useState<{
@@ -199,6 +330,15 @@ export default function RequisitionDetailPage() {
         colour: 'NA',
         colorHex: null,
         fullLabel: 'NA',
+    });
+    const [lastPurchaseStats, setLastPurchaseStats] = useState<{
+        cost: number | null;
+        supplier: string;
+        date: string | null;
+    }>({
+        cost: null,
+        supplier: 'NA',
+        date: null,
     });
 
     const fetchRequestDetail = useCallback(async () => {
@@ -316,7 +456,52 @@ export default function RequisitionDetailPage() {
         hydrateStockStatus();
     }, [request?.inv_purchase_orders]);
 
-    const requestItems = request?.inv_request_items || [];
+    useEffect(() => {
+        if (!request?.sku_id) {
+            setLastPurchaseStats({ cost: null, supplier: 'NA', date: null });
+            return;
+        }
+        const hydrateLastPurchaseStats = async () => {
+            try {
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                const { data: lastPo } = await (supabase as any)
+                    .from('inv_purchase_orders')
+                    .select('total_po_value, created_at, supplier_tenant_id')
+                    .eq('sku_id', request.sku_id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (!lastPo) {
+                    setLastPurchaseStats({ cost: null, supplier: 'NA', date: null });
+                    return;
+                }
+
+                let supplierName = 'NA';
+                if (lastPo.supplier_tenant_id) {
+                    const { data: supplier } = await (supabase as any)
+                        .from('id_tenants')
+                        .select('name')
+                        .eq('id', lastPo.supplier_tenant_id)
+                        .maybeSingle();
+                    supplierName = supplier?.name || 'NA';
+                }
+
+                setLastPurchaseStats({
+                    cost: Number(lastPo.total_po_value || 0),
+                    supplier: supplierName,
+                    date: lastPo.created_at || null,
+                });
+            } catch {
+                setLastPurchaseStats({ cost: null, supplier: 'NA', date: null });
+            }
+        };
+        hydrateLastPurchaseStats();
+    }, [request?.sku_id]);
+
+    const requestItems = request?.inv_request_items ?? EMPTY_REQUEST_ITEMS;
+    const isQuoteLocked = request?.status !== 'QUOTING';
     const quotes = useMemo(() => (request?.inv_dealer_quotes || []).slice(), [request?.inv_dealer_quotes]);
     const purchaseOrders = request?.inv_purchase_orders || [];
 
@@ -324,6 +509,132 @@ export default function RequisitionDetailPage() {
         () => requestItems.reduce((sum, item) => sum + Number(item.expected_amount || 0), 0),
         [requestItems]
     );
+    const costSummary = useMemo(() => {
+        const summary = {
+            exShowroom: 0,
+            registration: 0,
+            hypothecation: 0,
+            insurance: 0,
+            depreciationWaiver: 0,
+            transportation: 0,
+            insuranceAddons: 0,
+        };
+        for (const item of requestItems) {
+            const key = (item.cost_type || '').toUpperCase();
+            const amount = Number(item.expected_amount || 0);
+            if (key.includes('EX_SHOWROOM') || key === 'EXSHOWROOM') {
+                summary.exShowroom += amount;
+                continue;
+            }
+            if (key.includes('HYPOTH')) {
+                summary.hypothecation += amount;
+                continue;
+            }
+            if (key.includes('RTO') || key.includes('REGISTRATION')) {
+                summary.registration += amount;
+                continue;
+            }
+            if (key.includes('TRANSPORT')) {
+                summary.transportation += amount;
+                continue;
+            }
+            if (key.includes('INSURANCE')) {
+                if (key.includes('ZD') || key.includes('ZERO_DEPR') || key.includes('DEPR')) {
+                    summary.depreciationWaiver += amount;
+                } else if (key.includes('ADDON') || key.includes('ADD_ON')) {
+                    summary.insuranceAddons += amount;
+                } else {
+                    summary.insurance += amount;
+                }
+            }
+        }
+        return summary;
+    }, [requestItems]);
+
+    useEffect(() => {
+        if (!request) return;
+        setEditableQuoteValues({
+            exShowroom: Number(costSummary.exShowroom || 0),
+            registration: Number(costSummary.registration || 0),
+            hypothecation: Number(costSummary.hypothecation || 0),
+            insurance: Number(costSummary.insurance || 0),
+            depreciationWaiver: Number(costSummary.depreciationWaiver || 0),
+            insuranceAddons: Number(costSummary.insuranceAddons || 0),
+            transportation: Number(costSummary.transportation || 0),
+            grandTotal: Number(totalExpected || 0),
+        });
+        setIncludedQuoteFields({
+            exShowroom: true,
+            registration: true,
+            hypothecation: true,
+            insurance: true,
+            depreciationWaiver: true,
+            insuranceAddons: true,
+            transportation: true,
+        });
+        setQuoteVisibleFields({
+            exShowroom: true,
+            registration: false,
+            insurance: false,
+            insuranceAddons: false,
+            hypothecation: false,
+            transportation: false,
+        });
+        setQuoteAddField('');
+    }, [request, costSummary, totalExpected]);
+
+    useEffect(() => {
+        // Booking-dependent components should refresh from backend values whenever booking link/source changes.
+        // Direct flow starts with all components included; user can exclude specific ones.
+        if (!request) return;
+        setEditableQuoteValues(prev => ({
+            ...prev,
+            hypothecation: Number(costSummary.hypothecation || 0),
+            depreciationWaiver: Number(costSummary.depreciationWaiver || 0),
+            insuranceAddons: Number(costSummary.insuranceAddons || 0),
+        }));
+    }, [
+        request?.booking_id,
+        request?.source_type,
+        costSummary.hypothecation,
+        costSummary.depreciationWaiver,
+        costSummary.insuranceAddons,
+    ]);
+
+    const quoteComputedTotal = useMemo(() => {
+        const keys: Array<keyof typeof includedQuoteFields> = [
+            'exShowroom',
+            'registration',
+            'hypothecation',
+            'insurance',
+            'depreciationWaiver',
+            'insuranceAddons',
+            'transportation',
+        ];
+        return keys.reduce((sum, key) => {
+            if (key === 'depreciationWaiver') return sum;
+            if (!quoteVisibleFields[key as keyof typeof quoteVisibleFields]) return sum;
+            return includedQuoteFields[key] ? sum + Number(editableQuoteValues[key] || 0) : sum;
+        }, 0);
+    }, [editableQuoteValues, includedQuoteFields, quoteVisibleFields]);
+
+    const quoteFinalOffer = Number(editableQuoteValues.grandTotal || 0);
+
+    const postOfferAdditions = useMemo(() => {
+        const defs: Array<{ key: keyof typeof includedQuoteFields; label: string }> = [
+            { key: 'hypothecation', label: 'Hypothecation' },
+            { key: 'depreciationWaiver', label: 'Depreciation Waiver' },
+            { key: 'insuranceAddons', label: 'Insurance Add-ons' },
+        ];
+        return defs
+            .filter(
+                def =>
+                    includedQuoteFields[def.key] &&
+                    Number(costSummary[def.key] || 0) === 0 &&
+                    Number(editableQuoteValues[def.key] || 0) > 0
+            )
+            .map(def => ({ label: def.label, amount: Number(editableQuoteValues[def.key] || 0) }));
+    }, [includedQuoteFields, costSummary, editableQuoteValues]);
 
     const selectedQuote = useMemo(() => quotes.find(q => q.status === 'SELECTED') || null, [quotes]);
     const submittedQuotes = useMemo(() => quotes.filter(q => q.status === 'SUBMITTED'), [quotes]);
@@ -361,6 +672,15 @@ export default function RequisitionDetailPage() {
     const referenceVariancePercent =
         totalExpected > 0 ? Math.round((referenceVarianceAmount / totalExpected) * 10000) / 100 : 0;
     const referenceDealerLabel = parseTenantRef(referenceQuote?.id_tenants)?.name || 'Dealer';
+    const quoteHeaderDealer =
+        parseTenantRef(selectedQuote?.id_tenants)?.name ||
+        parseTenantRef(bestQuote?.id_tenants)?.name ||
+        parseTenantRef(quotes[0]?.id_tenants)?.name ||
+        'Dealership';
+    const quoteDealerOptions = useMemo(() => {
+        const names = quotes.map(q => parseTenantRef(q.id_tenants)?.name).filter((name): name is string => !!name);
+        return Array.from(new Set(names));
+    }, [quotes]);
 
     const terminalStageLabel = useMemo(() => {
         const hasDelivered = linkedStockStatuses.some(status => status.includes('DELIVER'));
@@ -368,16 +688,22 @@ export default function RequisitionDetailPage() {
         const hasReturned = linkedStockStatuses.some(status => status.includes('RETURN'));
 
         if (hasDelivered) return 'DELIVERED';
-        if (hasAllotted) return 'ALLOTTED';
         if (hasReturned) return 'RETURN';
-        if (request?.status === 'RECEIVED') return 'RETURN / ALLOTTED';
-        return 'RETURN / ALLOTTED / DELIVERED';
+        if (hasAllotted) return 'ALLOTTED';
+        return 'ALLOTTED';
     }, [linkedStockStatuses, request?.status]);
 
     const progressStages = useMemo(
         () => [...BASE_PROGRESS_STAGES, { key: 'TERMINAL' as ProgressStageKey, label: terminalStageLabel }],
         [terminalStageLabel]
     );
+
+    const resolveStageTone = useCallback((stage: { key: ProgressStageKey; label: string }) => {
+        if (stage.key !== 'TERMINAL') return STAGE_TONE_MAP[stage.key];
+        if (stage.label === 'RETURN') return STAGE_TONE_MAP.RETURN;
+        if (stage.label === 'DELIVERED') return STAGE_TONE_MAP.DELIVERED;
+        return STAGE_TONE_MAP.ALLOTTED;
+    }, []);
 
     const progressIndex = useMemo(() => {
         if (!request) return 0;
@@ -556,610 +882,372 @@ export default function RequisitionDetailPage() {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl p-6">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Progress</p>
-                <div className="flex items-center gap-3 overflow-x-auto">
-                    {progressStages.map((stage, idx) => {
-                        const done = idx <= progressIndex;
-                        return (
-                            <React.Fragment key={stage.key}>
-                                <div
-                                    className={`px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${
-                                        done
-                                            ? 'bg-indigo-600 text-white border-indigo-600'
-                                            : 'bg-slate-50 dark:bg-white/5 text-slate-400 border-slate-200 dark:border-white/10'
-                                    }`}
-                                >
-                                    {stage.label}
-                                </div>
-                                {idx < progressStages.length - 1 && (
-                                    <ChevronRight
-                                        size={14}
-                                        className={done ? 'text-indigo-500 shrink-0' : 'text-slate-300 shrink-0'}
-                                    />
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
-                </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                        Requisition
-                    </h2>
-                    <button
-                        onClick={() => setShowRequisitionSection(prev => !prev)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300"
-                    >
-                        <ChevronDown
-                            size={12}
-                            className={
-                                showRequisitionSection ? 'rotate-180 transition-transform' : 'transition-transform'
-                            }
-                        />
-                        {showRequisitionSection ? 'Collapse' : 'Expand'}
-                    </button>
-                </div>
-                {showRequisitionSection && (
-                    <div className="p-6 space-y-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-2xl p-4">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                    Status
-                                </p>
-                                <span
-                                    className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${REQUEST_STATUS_STYLES[request.status]}`}
-                                >
-                                    {request.status}
-                                </span>
-                            </div>
-                            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-2xl p-4">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                    Source
-                                </p>
-                                <p className="text-xs font-black text-slate-900 dark:text-white uppercase">
-                                    {request.source_type}
-                                </p>
-                            </div>
-                            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-2xl p-4">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                    SKU
-                                </p>
-                                <p className="text-xs font-black text-slate-900 dark:text-white break-all">
-                                    {request.sku_id}
-                                </p>
-                            </div>
-                            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-2xl p-4">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                    Expected Cost
-                                </p>
-                                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                                    {formatCurrency(totalExpected)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Cost</h2>
-                    <button
-                        onClick={() => setShowCostSection(prev => !prev)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300"
-                    >
-                        <ChevronDown
-                            size={12}
-                            className={showCostSection ? 'rotate-180 transition-transform' : 'transition-transform'}
-                        />
-                        {showCostSection ? 'Collapse' : 'Expand'}
-                    </button>
-                </div>
-                {showCostSection && (
-                    <div>
-                        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-                            <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                Cost Lines
-                            </h2>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                                    {requestItems.length} items • Grand Total {formatCurrency(totalExpected)}
-                                </span>
-                                <button
-                                    onClick={() => setShowCostLines(prev => !prev)}
-                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300"
-                                >
-                                    <ChevronDown
-                                        size={12}
-                                        className={
-                                            showCostLines ? 'rotate-180 transition-transform' : 'transition-transform'
-                                        }
-                                    />
-                                    {showCostLines ? 'Collapse' : 'Expand'}
-                                </button>
-                            </div>
-                        </div>
-                        {showCostLines && (
-                            <>
-                                {requestItems.length === 0 ? (
-                                    <div className="p-8 text-center text-[11px] font-bold text-slate-400 uppercase">
-                                        No cost lines attached to this requisition.
-                                    </div>
-                                ) : (
-                                    <div className="divide-y divide-slate-100 dark:divide-white/10">
-                                        {requestItems.map(item => (
-                                            <div
-                                                key={item.id}
-                                                className="px-6 py-4 flex items-center justify-between gap-4"
-                                            >
-                                                <div>
-                                                    <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                                                        {item.cost_type.replace(/_/g, ' ')}
-                                                    </p>
-                                                    {item.description && (
-                                                        <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">
-                                                            {item.description}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white">
-                                                    {formatCurrency(item.expected_amount)}
-                                                </p>
-                                            </div>
-                                        ))}
-                                        <div className="px-6 py-4 flex items-center justify-between gap-4 bg-slate-50 dark:bg-white/5">
-                                            <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                                                Grand Total
-                                            </p>
-                                            <p className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                                                {formatCurrency(totalExpected)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="px-6 py-4 border-t border-slate-100 dark:border-white/10 bg-slate-50/70 dark:bg-white/5">
-                                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                            Actual Quote View (
-                                            {referenceQuote ? referenceDealerLabel : 'Awaiting Quote'})
-                                        </p>
-                                        <span
-                                            className={`inline-flex px-2 py-1 rounded-lg border text-[10px] font-black uppercase tracking-wider ${
-                                                referenceQuote
-                                                    ? referenceVarianceAmount <= 0
-                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
-                                                        : 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border-amber-200 dark:border-amber-500/30'
-                                                    : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10'
+            <div className="px-0">
+                <div className="w-full">
+                    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 w-full">
+                        {progressStages.map((stage, idx) => {
+                            const completed = idx < progressIndex;
+                            const active = idx === progressIndex;
+                            const tone = resolveStageTone(stage);
+                            return (
+                                <React.Fragment key={stage.key}>
+                                    <div
+                                        className={`w-full max-w-[135px] mx-auto rounded-xl border p-2 flex flex-col items-center justify-center text-center ${
+                                            completed ? tone.done : active ? tone.active : tone.base
+                                        }`}
+                                    >
+                                        <div
+                                            className={`w-6 h-6 rounded-full border flex items-center justify-center text-[9px] font-black transition-all ${
+                                                completed
+                                                    ? 'bg-white/20 border-white/30 text-white'
+                                                    : active
+                                                      ? 'bg-white/70 border-white/70 text-current'
+                                                      : 'bg-white/80 border-white/70 text-current'
                                             }`}
                                         >
-                                            {!referenceQuote
-                                                ? 'Pending'
-                                                : referenceVarianceAmount <= 0
-                                                  ? `Discount ${formatCurrency(Math.abs(referenceVarianceAmount))} (${Math.abs(referenceVariancePercent)}%)`
-                                                  : `Surge ${formatCurrency(referenceVarianceAmount)} (${referenceVariancePercent}%)`}
-                                        </span>
+                                            {(() => {
+                                                const Icon = STAGE_ICON_MAP[stage.key] || CheckCircle2;
+                                                return <Icon size={12} />;
+                                            })()}
+                                        </div>
+                                        <p
+                                            className={`mt-1.5 text-[9px] font-black uppercase tracking-wider leading-tight ${
+                                                completed || active
+                                                    ? completed
+                                                        ? 'text-white'
+                                                        : 'text-current'
+                                                    : 'text-current'
+                                            } ${active ? 'underline decoration-2 underline-offset-2 decoration-[#4f46e5]' : ''}`}
+                                        >
+                                            {stage.label}
+                                        </p>
                                     </div>
-                                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-                                        <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                Expected
-                                            </p>
-                                            <p className="text-sm font-black text-slate-900 dark:text-white">
-                                                {formatCurrency(totalExpected)}
-                                            </p>
-                                        </div>
-                                        <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                Dealer Actual
-                                            </p>
-                                            <p className="text-sm font-black text-slate-900 dark:text-white">
-                                                {referenceQuote ? formatCurrency(referenceBundledAmount) : '—'}
-                                            </p>
-                                        </div>
-                                        <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                Transport
-                                            </p>
-                                            <p className="text-sm font-black text-slate-900 dark:text-white">
-                                                {referenceQuote ? formatCurrency(referenceTransportAmount) : '—'}
-                                            </p>
-                                        </div>
-                                        <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                Total Offer
-                                            </p>
-                                            <p className="text-sm font-black text-indigo-600 dark:text-indigo-300">
-                                                {referenceQuote ? formatCurrency(referenceTotalAmount) : '—'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </>
-                        )}
+                                </React.Fragment>
+                            );
+                        })}
                     </div>
-                )}
+                </div>
             </div>
 
             <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-4">
+                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                        On-Road Price
+                    </h2>
+                    <div className="text-right">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last Purchase</p>
+                        <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                            {formatCurrency(lastPurchaseStats.cost)} • {lastPurchaseStats.supplier}
+                        </p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                            {lastPurchaseStats.date ? format(new Date(lastPurchaseStats.date), 'dd MMM yyyy') : 'NA'}
+                        </p>
+                    </div>
+                </div>
+                <div>
+                    {requestItems.length === 0 ? (
+                        <div className="p-8 text-center text-[11px] font-bold text-slate-400 uppercase">
+                            No cost lines attached to this requisition.
+                        </div>
+                    ) : (
+                        <>
+                            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10">
+                                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
+                                            Ex Showroom
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
+                                            {formatCurrency(costSummary.exShowroom)}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
+                                            Registration
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
+                                            {formatCurrency(costSummary.registration)}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
+                                            Hypothecation
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
+                                            {formatCurrency(costSummary.hypothecation)}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
+                                            Insurance
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
+                                            {formatCurrency(costSummary.insurance)}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
+                                            Depreciation Waiver
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
+                                            {formatCurrency(costSummary.depreciationWaiver)}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
+                                            Insurance Add-ons
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
+                                            {formatCurrency(costSummary.insuranceAddons)}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
+                                            Transportation
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
+                                            {formatCurrency(costSummary.transportation)}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 min-h-[108px] flex flex-col">
+                                        <p className="text-[9px] font-black text-emerald-600 dark:text-emerald-300 uppercase tracking-widest min-h-[30px]">
+                                            Grand Total
+                                        </p>
+                                        <p className="text-sm font-black text-emerald-700 dark:text-emerald-200 mt-auto">
+                                            {formatCurrency(totalExpected)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-4">
                     <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
                         Quote
                     </h2>
-                    <button
-                        onClick={() => setShowQuoteSection(prev => !prev)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300"
-                    >
-                        <ChevronDown
-                            size={12}
-                            className={showQuoteSection ? 'rotate-180 transition-transform' : 'transition-transform'}
-                        />
-                        {showQuoteSection ? 'Collapse' : 'Expand'}
-                    </button>
                 </div>
-                {showQuoteSection && (
-                    <>
-                        <div className="bg-white dark:bg-slate-900/60 border-b border-slate-200 dark:border-white/10 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-                                <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                    Quote Snapshot
-                                </h2>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                                        {quotes.length} quotes
-                                    </span>
-                                    {tenantId && request.status === 'QUOTING' && (
-                                        <button
-                                            onClick={() => setShowQuoteForm(prev => !prev)}
-                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-wider"
-                                        >
-                                            <ChevronDown
-                                                size={12}
-                                                className={
-                                                    showQuoteForm
-                                                        ? 'rotate-180 transition-transform'
-                                                        : 'transition-transform'
-                                                }
-                                            />
-                                            {showQuoteForm ? 'Hide Add/Edit Quote' : 'Add/Edit Quote'}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {tenantId && showQuoteForm && (
-                                <QuotePanel
-                                    requestId={request.id}
-                                    requestStatus={request.status}
-                                    requestItems={requestItems}
-                                    existingQuotes={quotes}
-                                    tenantId={tenantId}
-                                    onRefresh={fetchRequestDetail}
-                                />
-                            )}
-
-                            {activeQuotes.length > 0 && (
-                                <div className="px-6 pb-6">
-                                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4">
-                                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest inline-flex items-center gap-2">
-                                                <BarChart3 size={12} />
-                                                Comparison Snapshot
-                                            </p>
-                                            {bestQuote && (
-                                                <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-300 uppercase tracking-wider">
-                                                    Best: {parseTenantRef(bestQuote.id_tenants)?.name || 'Dealer'} •{' '}
-                                                    {formatCurrency(getQuoteTotal(bestQuote))}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-                                            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                    Quotes
-                                                </p>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white">
-                                                    {activeQuotes.length}
-                                                </p>
-                                            </div>
-                                            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                    Lowest Total
-                                                </p>
-                                                <p className="text-sm font-black text-emerald-600 dark:text-emerald-300">
-                                                    {bestQuote ? formatCurrency(getQuoteTotal(bestQuote)) : '—'}
-                                                </p>
-                                            </div>
-                                            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                    Spread
-                                                </p>
-                                                <p className="text-sm font-black text-amber-600 dark:text-amber-300">
-                                                    {formatCurrency(quoteSpread)}
-                                                </p>
-                                            </div>
-                                            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 px-3 py-2">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                    Selected
-                                                </p>
-                                                <p className="text-sm font-black text-indigo-600 dark:text-indigo-300">
-                                                    {selectedQuote
-                                                        ? formatCurrency(getQuoteTotal(selectedQuote))
-                                                        : 'Pending'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                <div>
+                    {requestItems.length === 0 ? (
+                        <div className="p-8 text-center text-[11px] font-bold text-slate-400 uppercase">
+                            No cost lines attached to this requisition.
                         </div>
-
-                        <div className="bg-white dark:bg-slate-900/60 overflow-hidden">
-                            {quotes.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                        No dealer quote yet. Add a quote before advancing to ORDERED.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-slate-100 dark:divide-white/10">
-                                    {quotes
-                                        .slice()
-                                        .sort((a, b) => getQuoteTotal(a) - getQuoteTotal(b))
-                                        .map(quote => {
-                                            const dealer = parseTenantRef(quote.id_tenants);
-                                            const total = getQuoteTotal(quote);
-                                            const canSelect =
-                                                request.status === 'QUOTING' && quote.status === 'SUBMITTED';
-                                            const isSelecting = selectingQuoteId === quote.id;
-                                            const isBest = !!bestQuote && bestQuote.id === quote.id;
-
+                    ) : (
+                        <>
+                            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10">
+                                <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
+                                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-3 p-4 border-b border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider self-center">
+                                            Dealership
+                                        </p>
+                                        <select
+                                            value={selectedDealer}
+                                            onChange={e => setSelectedDealer(e.target.value)}
+                                            disabled={isQuoteLocked}
+                                            className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
+                                        >
+                                            <option value="">Select dealer</option>
+                                            {quoteDealerOptions.map(name => (
+                                                <option key={name} value={name}>
+                                                    {name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_180px] gap-3 p-4 border-b border-slate-100 dark:border-white/10 items-center">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                            Add Item
+                                        </p>
+                                        <select
+                                            value={quoteAddField}
+                                            onChange={e =>
+                                                setQuoteAddField(
+                                                    e.target.value as
+                                                        | ''
+                                                        | 'registration'
+                                                        | 'insurance'
+                                                        | 'insuranceAddons'
+                                                        | 'hypothecation'
+                                                        | 'transportation'
+                                                )
+                                            }
+                                            disabled={isQuoteLocked}
+                                            className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
+                                        >
+                                            <option value="">Select item to add</option>
+                                            {!quoteVisibleFields.registration && (
+                                                <option value="registration">Registration</option>
+                                            )}
+                                            {!quoteVisibleFields.insurance && (
+                                                <option value="insurance">Insurance</option>
+                                            )}
+                                            {!quoteVisibleFields.insuranceAddons && (
+                                                <option value="insuranceAddons">Insurance Add-ons</option>
+                                            )}
+                                            {!quoteVisibleFields.hypothecation && (
+                                                <option value="hypothecation">Hypothecation</option>
+                                            )}
+                                            {!quoteVisibleFields.transportation && (
+                                                <option value="transportation">Transportation</option>
+                                            )}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            disabled={isQuoteLocked || !quoteAddField}
+                                            onClick={() => {
+                                                if (!quoteAddField) return;
+                                                setQuoteVisibleFields(prev => ({ ...prev, [quoteAddField]: true }));
+                                                setQuoteAddField('');
+                                            }}
+                                            className="h-10 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 disabled:opacity-50 text-[10px] font-black uppercase tracking-wider"
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_1fr_180px] gap-3 p-3 border-b border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                            Label
+                                        </p>
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                            Rate
+                                        </p>
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                            Offer Amount
+                                        </p>
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">
+                                            Surge/Discount
+                                        </p>
+                                    </div>
+                                    {(
+                                        [
+                                            { key: 'exShowroom', label: 'Ex Showroom' },
+                                            { key: 'registration', label: 'Registration' },
+                                            { key: 'insurance', label: 'Insurance' },
+                                            { key: 'insuranceAddons', label: 'Insurance Add-ons' },
+                                            { key: 'hypothecation', label: 'Hypothecation' },
+                                            { key: 'transportation', label: 'Transportation' },
+                                        ] as const
+                                    )
+                                        .filter(row => quoteVisibleFields[row.key])
+                                        .map(row => {
+                                            const included =
+                                                includedQuoteFields[row.key as keyof typeof includedQuoteFields];
+                                            const isMandatory = row.key === 'exShowroom';
+                                            const rateMap = {
+                                                exShowroom: costSummary.exShowroom,
+                                                registration: costSummary.registration,
+                                                insurance: costSummary.insurance,
+                                                insuranceAddons: costSummary.insuranceAddons,
+                                                hypothecation: costSummary.hypothecation,
+                                                transportation: costSummary.transportation,
+                                            } as const;
+                                            const rateValue = Number(rateMap[row.key] || 0);
+                                            const offerValue = included ? Number(editableQuoteValues[row.key] || 0) : 0;
+                                            const variance = offerValue - rateValue;
                                             return (
                                                 <div
-                                                    key={quote.id}
-                                                    className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                                                    key={row.key}
+                                                    className="grid grid-cols-1 md:grid-cols-[220px_1fr_1fr_180px] gap-3 p-4 border-b border-slate-100 dark:border-white/10 items-center"
                                                 >
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                        {row.label}
+                                                    </p>
+                                                    <p className="text-base font-black text-slate-900 dark:text-white">
+                                                        {formatCurrency(rateValue)}
+                                                    </p>
                                                     <div>
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                                {dealer?.name || 'Dealer'}
-                                                            </p>
-                                                            <span
-                                                                className={`inline-flex px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider ${QUOTE_STATUS_STYLES[quote.status]}`}
-                                                            >
-                                                                {quote.status}
-                                                            </span>
-                                                            {isBest && (
-                                                                <span className="inline-flex px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30">
-                                                                    Lowest Total
-                                                                </span>
-                                                            )}
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            value={editableQuoteValues[row.key]}
+                                                            onChange={e =>
+                                                                setEditableQuoteValues(prev => ({
+                                                                    ...prev,
+                                                                    [row.key]: Math.max(0, Number(e.target.value || 0)),
+                                                                }))
+                                                            }
+                                                            disabled={isQuoteLocked}
+                                                            className="h-10 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
+                                                        />
+                                                        <div className="mt-2 flex items-center justify-end">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isMandatory ? false : !included}
+                                                                disabled={isQuoteLocked || isMandatory}
+                                                                onChange={e => {
+                                                                    const excluded = e.target.checked;
+                                                                    setIncludedQuoteFields(prev => ({
+                                                                        ...prev,
+                                                                        [row.key]: !excluded,
+                                                                    }));
+                                                                }}
+                                                                className="h-3.5 w-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                                                            />
                                                         </div>
-                                                        <div className="mt-1 flex items-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                                            <span>Bundled: {formatCurrency(quote.bundled_amount)}</span>
-                                                            <span>
-                                                                Transport: {formatCurrency(quote.transport_amount)}
-                                                            </span>
-                                                            <span>Total: {formatCurrency(total)}</span>
-                                                            <span>
-                                                                Lines: {quote.inv_quote_line_items?.length || 0}
-                                                            </span>
-                                                            <span
-                                                                className={
-                                                                    Number(quote.variance_amount || 0) <= 0
-                                                                        ? 'text-emerald-500'
-                                                                        : 'text-amber-500'
-                                                                }
-                                                            >
-                                                                Variance: {formatCurrency(quote.variance_amount)}
-                                                            </span>
-                                                        </div>
-                                                        {quote.inv_quote_terms && (
-                                                            <div className="mt-1 text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                                                                Terms: {quote.inv_quote_terms.payment_mode || 'NA'}
-                                                                {quote.inv_quote_terms.credit_days !== null &&
-                                                                    ` • Credit ${quote.inv_quote_terms.credit_days}d`}
-                                                                {quote.inv_quote_terms.advance_percent !== null &&
-                                                                    ` • Advance ${quote.inv_quote_terms.advance_percent}%`}
-                                                                {quote.inv_quote_terms.expected_dispatch_days !==
-                                                                    null &&
-                                                                    ` • Dispatch ${quote.inv_quote_terms.expected_dispatch_days}d`}
-                                                            </div>
-                                                        )}
                                                     </div>
-
-                                                    <div className="flex items-center gap-2">
-                                                        {quote.status === 'SELECTED' && (
-                                                            <span className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20">
-                                                                <CheckCircle2 size={12} />
-                                                                Selected
-                                                            </span>
-                                                        )}
-                                                        {canSelect && (
-                                                            <button
-                                                                onClick={() => handleSelectQuote(quote.id)}
-                                                                disabled={isSelecting || selectingQuoteId !== null}
-                                                                className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider transition-all"
-                                                            >
-                                                                {isSelecting
-                                                                    ? 'Selecting...'
-                                                                    : 'Select & Move To Ordered'}
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                    <p
+                                                        className={`text-sm font-black text-right ${
+                                                            variance < 0
+                                                                ? 'text-emerald-600 dark:text-emerald-300'
+                                                                : variance > 0
+                                                                  ? 'text-amber-600 dark:text-amber-300'
+                                                                  : 'text-slate-500 dark:text-slate-300'
+                                                        }`}
+                                                    >
+                                                        {variance < 0
+                                                            ? `Discount ${formatCurrency(Math.abs(variance))}`
+                                                            : variance > 0
+                                                              ? `Surge ${formatCurrency(variance)}`
+                                                              : '—'}
+                                                    </p>
                                                 </div>
                                             );
                                         })}
-                                </div>
-                            )}
-
-                            {requestItems.length > 0 && activeQuotes.length > 0 && (
-                                <div className="px-6 pb-6">
-                                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
-                                        <div className="px-4 py-3 bg-slate-100 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
-                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                                Cost Line Coverage Matrix
-                                            </p>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full border-collapse">
-                                                <thead>
-                                                    <tr className="border-b border-slate-100 dark:border-white/10 bg-white dark:bg-slate-900/40">
-                                                        <th className="px-4 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                            Cost Line
-                                                        </th>
-                                                        <th className="px-4 py-3 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                            Expected
-                                                        </th>
-                                                        {activeQuotes.map(quote => (
-                                                            <th
-                                                                key={quote.id}
-                                                                className="px-4 py-3 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest"
-                                                            >
-                                                                {parseTenantRef(quote.id_tenants)?.name || 'Dealer'}
-                                                            </th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {requestItems.map(item => (
-                                                        <tr
-                                                            key={item.id}
-                                                            className="border-b border-slate-100 dark:border-white/10"
-                                                        >
-                                                            <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase">
-                                                                {item.cost_type.replace(/_/g, ' ')}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right text-[10px] font-black text-slate-900 dark:text-white">
-                                                                {formatCurrency(item.expected_amount)}
-                                                            </td>
-                                                            {activeQuotes.map(quote => {
-                                                                const included = (
-                                                                    quote.bundled_item_ids || []
-                                                                ).includes(item.id);
-                                                                return (
-                                                                    <td
-                                                                        key={`${quote.id}-${item.id}`}
-                                                                        className="px-4 py-3 text-center text-[10px] font-black uppercase"
-                                                                    >
-                                                                        <span
-                                                                            className={`inline-flex px-2 py-1 rounded-lg border ${
-                                                                                included
-                                                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
-                                                                                    : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/10'
-                                                                            }`}
-                                                                        >
-                                                                            {included ? 'Included' : 'Excluded'}
-                                                                        </span>
-                                                                    </td>
-                                                                );
-                                                            })}
-                                                        </tr>
-                                                    ))}
-                                                    <tr className="bg-slate-50 dark:bg-white/5">
-                                                        <td className="px-4 py-3 text-[10px] font-black text-slate-900 dark:text-white uppercase">
-                                                            Total Offer
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right text-[10px] font-black text-slate-400">
-                                                            —
-                                                        </td>
-                                                        {activeQuotes.map(quote => (
-                                                            <td
-                                                                key={`${quote.id}-total`}
-                                                                className="px-4 py-3 text-center"
-                                                            >
-                                                                <span className="text-[11px] font-black text-slate-900 dark:text-white">
-                                                                    {formatCurrency(getQuoteTotal(quote))}
-                                                                </span>
-                                                            </td>
-                                                        ))}
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_180px] gap-3 p-4 items-center bg-emerald-50 dark:bg-emerald-500/10">
+                                        <p className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                                            Final Offer
+                                        </p>
+                                        {editableQuoteFields.grandTotal && !isQuoteLocked ? (
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                value={editableQuoteValues.grandTotal}
+                                                onChange={e =>
+                                                    setEditableQuoteValues(prev => ({
+                                                        ...prev,
+                                                        grandTotal: Math.max(0, Number(e.target.value || 0)),
+                                                    }))
+                                                }
+                                                disabled={isQuoteLocked}
+                                                className="h-10 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-white dark:bg-slate-900/50 px-3 text-sm font-black text-emerald-700 dark:text-emerald-200 outline-none focus:ring-2 focus:ring-emerald-200 disabled:opacity-60"
+                                            />
+                                        ) : null}
+                                        <div className="flex justify-end" />
                                     </div>
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-900/60 border-t border-slate-200 dark:border-white/10 rounded-b-3xl overflow-hidden">
-                            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-                                <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                                    <Receipt size={14} className="text-indigo-500" />
-                                    Purchase Orders
-                                </h2>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => setShowPurchaseOrders(prev => !prev)}
-                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300"
-                                    >
-                                        <ChevronDown
-                                            size={12}
-                                            className={
-                                                showPurchaseOrders
-                                                    ? 'rotate-180 transition-transform'
-                                                    : 'transition-transform'
-                                            }
-                                        />
-                                        {showPurchaseOrders ? 'Collapse' : 'Expand'}
-                                    </button>
-                                    <button
-                                        onClick={() => router.push(ordersBasePath)}
-                                        className="text-[10px] font-black text-indigo-500 uppercase tracking-wider hover:underline"
-                                    >
-                                        Open Orders
-                                    </button>
-                                </div>
-                            </div>
-
-                            {showPurchaseOrders && purchaseOrders.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                        No purchase order linked yet.
-                                    </p>
-                                </div>
-                            ) : showPurchaseOrders ? (
-                                <div className="divide-y divide-slate-100 dark:divide-white/10">
-                                    {purchaseOrders.map(po => (
-                                        <div key={po.id} className="px-6 py-4 flex items-center justify-between gap-4">
-                                            <div>
-                                                <p className="text-xs font-black text-slate-900 dark:text-white tracking-tight">
-                                                    {po.display_id || `PO-${po.id.slice(0, 8).toUpperCase()}`}
-                                                </p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">
-                                                    {formatCurrency(po.total_po_value)} •{' '}
-                                                    {po.payment_status.replace(/_/g, ' ')}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
+                                {postOfferAdditions.length > 0 && (
+                                    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-amber-700">
+                                            Added Later (Not In Original Offer)
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap gap-2">
+                                            {postOfferAdditions.map(item => (
                                                 <span
-                                                    className={`inline-flex px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider ${PO_STATUS_STYLES[po.po_status]}`}
+                                                    key={item.label}
+                                                    className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[9px] font-black uppercase tracking-wider text-amber-700 border border-amber-200"
                                                 >
-                                                    {po.po_status}
+                                                    {item.label}: {formatCurrency(item.amount)}
                                                 </span>
-                                                <button
-                                                    onClick={() =>
-                                                        router.push(
-                                                            po.po_status === 'SHIPPED'
-                                                                ? `${ordersBasePath}/${po.id}/grn`
-                                                                : `${ordersBasePath}/${po.id}`
-                                                        )
-                                                    }
-                                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-wider"
-                                                >
-                                                    <TrendingUp size={12} />
-                                                    Open
-                                                </button>
-                                            </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                            ) : null}
-                        </div>
-                    </>
-                )}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
 
             {request.status === 'ORDERED' && primaryPo?.po_status !== 'RECEIVED' && (
