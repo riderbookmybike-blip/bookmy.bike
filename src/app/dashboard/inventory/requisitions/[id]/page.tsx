@@ -607,14 +607,10 @@ export default function RequisitionDetailPage() {
                 const supabase = createClient();
                 const transporterName = currentPo.transporter_name || 'NA';
                 const deliveryNote = currentPo.docket_number || 'NA';
-                let warehouse = 'NA';
-                let warehouseId = '';
-                let chassisNumber = 'NA';
-                let engineNumber = 'NA';
                 let dispatchId = formatTripletId(currentPo.display_id || currentPo.id);
                 const selectedFromRequest =
                     (request?.inv_dealer_quotes || []).find((q: any) => q.status === 'SELECTED') || null;
-                const supplierId = selectedFromRequest?.dealer_tenant_id || currentPo.supplier_tenant_id || '';
+                const supplierId = selectedFromRequest?.dealer_tenant_id || (currentPo as any).supplier_tenant_id || '';
                 const supplier = parseTenantRef(selectedFromRequest?.id_tenants)?.name || 'NA';
                 let warehouseInchargeName = 'NA';
                 let warehouseInchargeContact = 'NA';
@@ -629,6 +625,32 @@ export default function RequisitionDetailPage() {
                     warehouseInchargeContact = supplierTenant?.phone || 'NA';
                 }
 
+                // Primary: fetch all dispatch fields from inv_purchase_orders
+                // (chassis/engine saved here at dispatch stage before stock receipt)
+                const { data: poExtra } = await (supabase as any)
+                    .from('inv_purchase_orders')
+                    .select(
+                        'transporter_contact, dispatch_date, dispatch_doc_url, supplier_warehouse, supplier_warehouse_id, chassis_number, engine_number, receiving_branch_id'
+                    )
+                    .eq('id', currentPo.id)
+                    .maybeSingle();
+
+                let chassisNumber = poExtra?.chassis_number || 'NA';
+                let engineNumber = poExtra?.engine_number || 'NA';
+                let warehouse = 'NA';
+                let warehouseId = poExtra?.receiving_branch_id || '';
+
+                // Load receiving warehouse name from PO's receiving_branch_id
+                if (warehouseId) {
+                    const { data: recLoc } = await (supabase as any)
+                        .from('id_locations')
+                        .select('name')
+                        .eq('id', warehouseId)
+                        .maybeSingle();
+                    warehouse = recLoc?.name || 'NA';
+                }
+
+                // Secondary: if inv_stock exists (post-GRN), override with confirmed values
                 const { data: stockRow } = await (supabase as any)
                     .from('inv_stock')
                     .select('id, chassis_number, engine_number, branch_id')
@@ -638,27 +660,18 @@ export default function RequisitionDetailPage() {
 
                 if (stockRow) {
                     dispatchId = formatTripletId(stockRow.id);
-                    chassisNumber = stockRow.chassis_number || 'NA';
-                    engineNumber = stockRow.engine_number || 'NA';
+                    chassisNumber = stockRow.chassis_number || chassisNumber;
+                    engineNumber = stockRow.engine_number || engineNumber;
                     if (stockRow.branch_id) {
                         const { data: location } = await (supabase as any)
                             .from('id_locations')
                             .select('name, contact_phone, manager_id')
                             .eq('id', stockRow.branch_id)
                             .maybeSingle();
-                        warehouse = location?.name || 'NA';
-                        warehouseId = stockRow.branch_id || '';
+                        warehouse = location?.name || warehouse;
+                        warehouseId = stockRow.branch_id || warehouseId;
                     }
                 }
-
-                // Fetch dispatch_date, transporter_contact, supplier_warehouse from PO
-                const { data: poExtra } = await (supabase as any)
-                    .from('inv_purchase_orders')
-                    .select(
-                        'transporter_contact, dispatch_date, dispatch_doc_url, supplier_warehouse, supplier_warehouse_id'
-                    )
-                    .eq('id', currentPo.id)
-                    .maybeSingle();
 
                 // Resolve supplier warehouse name if we have an ID
                 let supplierWarehouseId = poExtra?.supplier_warehouse_id || '';

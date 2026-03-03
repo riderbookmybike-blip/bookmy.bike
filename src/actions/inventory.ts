@@ -1151,13 +1151,17 @@ export async function updateDispatchDetails(input: {
         const { error: poUpdateErr } = await (adminClient as any)
             .from('inv_purchase_orders')
             .update({
-                transporter_name: input.transporter_name || null,
-                docket_number: input.docket_number || null,
-                transporter_contact: input.transporter_contact || null,
-                dispatch_date: input.dispatch_date || null,
-                dispatch_doc_url: input.dispatch_doc_url || null,
-                supplier_warehouse: input.supplier_warehouse || null,
-                supplier_warehouse_id: input.supplier_warehouse_id || null,
+                transporter_name: input.transporter_name ?? null,
+                docket_number: input.docket_number ?? null,
+                transporter_contact: input.transporter_contact ?? null,
+                dispatch_date: input.dispatch_date ?? null,
+                dispatch_doc_url: input.dispatch_doc_url ?? null,
+                supplier_warehouse: input.supplier_warehouse ?? null,
+                supplier_warehouse_id: input.supplier_warehouse_id ?? null,
+                // Dispatch-stage pre-GRN vehicle identifiers
+                chassis_number: input.chassis_number ?? null,
+                engine_number: input.engine_number ?? null,
+                receiving_branch_id: input.branch_id ?? null,
                 updated_at: new Date().toISOString(),
                 updated_by: user.id,
             })
@@ -1165,6 +1169,7 @@ export async function updateDispatchDetails(input: {
         if (poUpdateErr)
             return { success: false, message: poUpdateErr.message || 'Failed to update PO dispatch details' };
 
+        // Also sync to inv_stock if GRN has already been done
         const { data: stockRow } = await (adminClient as any)
             .from('inv_stock')
             .select('id')
@@ -1173,17 +1178,15 @@ export async function updateDispatchDetails(input: {
             .maybeSingle();
 
         if (stockRow?.id) {
-            const { error: stockUpdateErr } = await (adminClient as any)
+            await (adminClient as any)
                 .from('inv_stock')
                 .update({
-                    ...(input.branch_id ? { branch_id: input.branch_id } : {}),
-                    ...(input.chassis_number ? { chassis_number: input.chassis_number } : {}),
-                    ...(input.engine_number ? { engine_number: input.engine_number } : {}),
+                    ...(input.branch_id !== undefined ? { branch_id: input.branch_id || null } : {}),
+                    ...(input.chassis_number !== undefined ? { chassis_number: input.chassis_number || null } : {}),
+                    ...(input.engine_number !== undefined ? { engine_number: input.engine_number || null } : {}),
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', stockRow.id);
-            if (stockUpdateErr)
-                return { success: false, message: stockUpdateErr.message || 'Failed to update linked stock details' };
         }
 
         revalidatePath('/dashboard/inventory');
