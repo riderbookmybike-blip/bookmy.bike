@@ -163,6 +163,7 @@ export interface CatalogColour {
 export interface CatalogSku {
     id: string;
     sku_code: string | null;
+    oem_sku: string | null;
     sku_type: ProductType;
     brand_id: string;
     model_id: string;

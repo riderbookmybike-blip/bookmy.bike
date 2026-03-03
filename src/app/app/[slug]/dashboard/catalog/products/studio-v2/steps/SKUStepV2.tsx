@@ -69,6 +69,8 @@ export default function SKUStepV2({
     const poolLabel = labels.pool;
     const [busyCells, setBusyCells] = useState<Set<string>>(new Set());
     const [activeMediaSku, setActiveMediaSku] = useState<CatalogSku | null>(null);
+    const [editingOemSku, setEditingOemSku] = useState<string | null>(null); // SKU id being edited
+    const [oemDraft, setOemDraft] = useState<string>('');
 
     // Get variant FK field name
     const variantFkField =
@@ -192,6 +194,21 @@ export default function SKUStepV2({
                 next.delete(cellKey);
                 return next;
             });
+        }
+    };
+
+    // ─── OEM SKU inline save ────────────────────────────────────────
+    const handleSaveOemSku = async (sku: CatalogSku) => {
+        try {
+            const updated = await updateSku(sku.id, { oem_sku: oemDraft.trim() || null } as any);
+            if (updated) {
+                onUpdate(skus.map(s => (s.id === sku.id ? { ...updated, oem_sku: oemDraft.trim() || null } : s)));
+                toast.success('OEM SKU saved');
+            }
+        } catch {
+            toast.error('Failed to save OEM SKU');
+        } finally {
+            setEditingOemSku(null);
         }
     };
 
@@ -1053,6 +1070,59 @@ export default function SKUStepV2({
                                                                               );
                                                                           })()}
                                                                       </button>
+                                                                  )}
+
+                                                                  {/* Row 3: SKU Code + OEM SKU */}
+                                                                  {sku && (
+                                                                      <div className="flex flex-col items-center gap-0.5 w-full">
+                                                                          {/* 9-char SKU Code badge */}
+                                                                          {sku.sku_code && (
+                                                                              <span className="font-mono text-[7px] font-black tracking-widest text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded">
+                                                                                  {sku.sku_code}
+                                                                              </span>
+                                                                          )}
+                                                                          {/* OEM SKU inline edit */}
+                                                                          {editingOemSku === sku.id ? (
+                                                                              <div className="flex items-center gap-0.5">
+                                                                                  <input
+                                                                                      autoFocus
+                                                                                      value={oemDraft}
+                                                                                      onChange={e =>
+                                                                                          setOemDraft(e.target.value)
+                                                                                      }
+                                                                                      onKeyDown={e => {
+                                                                                          if (e.key === 'Enter')
+                                                                                              handleSaveOemSku(sku);
+                                                                                          if (e.key === 'Escape')
+                                                                                              setEditingOemSku(null);
+                                                                                      }}
+                                                                                      placeholder="OEM code"
+                                                                                      className="w-16 text-[7px] font-mono border border-indigo-300 rounded px-1 py-0.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none"
+                                                                                  />
+                                                                                  <button
+                                                                                      onClick={() =>
+                                                                                          handleSaveOemSku(sku)
+                                                                                      }
+                                                                                      className="text-[7px] font-black text-emerald-600 hover:text-emerald-700 px-1"
+                                                                                  >
+                                                                                      ✓
+                                                                                  </button>
+                                                                              </div>
+                                                                          ) : (
+                                                                              <button
+                                                                                  onClick={() => {
+                                                                                      setEditingOemSku(sku.id);
+                                                                                      setOemDraft(
+                                                                                          (sku as any).oem_sku || ''
+                                                                                      );
+                                                                                  }}
+                                                                                  title="Set OEM SKU"
+                                                                                  className="text-[7px] font-mono text-slate-300 dark:text-slate-600 hover:text-indigo-500 transition-colors truncate max-w-[70px]"
+                                                                              >
+                                                                                  {(sku as any).oem_sku || '+ OEM'}
+                                                                              </button>
+                                                                          )}
+                                                                      </div>
                                                                   )}
                                                               </div>
                                                           </td>
