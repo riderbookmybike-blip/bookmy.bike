@@ -723,10 +723,6 @@ export async function updateDealerQuote(input: {
             return { success: false, message: 'Quote not found' };
         }
 
-        if (quote.status !== 'SUBMITTED') {
-            return { success: false, message: `Only submitted quotes can be edited. Current status: ${quote.status}` };
-        }
-
         const { data: request, error: requestErr } = await adminClient
             .from('inv_requests')
             .select('id, status')
@@ -737,8 +733,29 @@ export async function updateDealerQuote(input: {
             return { success: false, message: 'Requisition not found' };
         }
 
-        if (request.status !== 'QUOTING') {
-            return { success: false, message: `Cannot edit quote: requisition is ${request.status}` };
+        const isSubmittedInQuoting = quote.status === 'SUBMITTED' && request.status === 'QUOTING';
+        const isSelectedInOrdered = quote.status === 'SELECTED' && request.status === 'ORDERED';
+        if (!isSubmittedInQuoting && !isSelectedInOrdered) {
+            return {
+                success: false,
+                message: `Cannot edit quote in current state (quote: ${quote.status}, request: ${request.status})`,
+            };
+        }
+
+        if (isSelectedInOrdered) {
+            const { data: linkedStockRows, error: stockErr } = await adminClient
+                .from('inv_purchase_orders')
+                .select('id, inv_stock(id)')
+                .eq('quote_id', quote.id);
+            if (stockErr) {
+                return { success: false, message: stockErr.message || 'Failed to validate linked inventory' };
+            }
+            const hasLinkedInventory = (linkedStockRows || []).some((po: any) =>
+                Array.isArray(po.inv_stock) ? po.inv_stock.length > 0 : Boolean(po.inv_stock)
+            );
+            if (hasLinkedInventory) {
+                return { success: false, message: 'Issued quote is locked after inventory registration' };
+            }
         }
 
         const lineResolution = await resolveQuoteLineItemsForRequest({
@@ -785,6 +802,15 @@ export async function updateDealerQuote(input: {
             return { success: false, message: updateErr?.message || 'Failed to update quote' };
         }
 
+        if (quote.status === 'SELECTED') {
+            const totalPoValue =
+                Math.round((effectiveBundledAmount + toPositiveAmount(input.transport_amount || 0)) * 100) / 100;
+            await adminClient
+                .from('inv_purchase_orders')
+                .update({ total_po_value: totalPoValue, updated_at: new Date().toISOString(), updated_by: user.id })
+                .eq('quote_id', quote.id);
+        }
+
         const breakdownPersistResult = await persistQuoteBreakdown({
             quoteId: updatedQuote.id,
             lineItems: lineResolution.lineItems || [],
@@ -803,7 +829,52 @@ export async function updateDealerQuote(input: {
 }
 
 // =============================================================================
-// 4. SELECT QUOTE — Marks one quote as SELECTED, rejects others, creates PO
+// 4. DELETE DEALER QUOTE — remove submitted quote during QUOTING
+// =============================================================================
+
+export async function deleteDealerQuote(quoteId: string): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        const { data: quote, error: quoteErr } = await adminClient
+            .from('inv_dealer_quotes')
+            .select('id, request_id, status')
+            .eq('id', quoteId)
+            .single();
+
+        if (quoteErr || !quote) return { success: false, message: 'Quote not found' };
+
+        if (quote.status !== 'SUBMITTED') {
+            return { success: false, message: `Only submitted quotes can be deleted. Current status: ${quote.status}` };
+        }
+
+        const { data: request, error: requestErr } = await adminClient
+            .from('inv_requests')
+            .select('id, status')
+            .eq('id', quote.request_id)
+            .single();
+
+        if (requestErr || !request) return { success: false, message: 'Requisition not found' };
+        if (request.status !== 'QUOTING') {
+            return { success: false, message: `Cannot delete quote: requisition is ${request.status}` };
+        }
+
+        await adminClient.from('inv_quote_line_items').delete().eq('quote_id', quote.id);
+        await adminClient.from('inv_quote_terms').delete().eq('quote_id', quote.id);
+
+        const { error: deleteErr } = await adminClient.from('inv_dealer_quotes').delete().eq('id', quote.id);
+        if (deleteErr) return { success: false, message: deleteErr.message || 'Failed to delete quote' };
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, message: 'Quote deleted' };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 5. SELECT QUOTE — Marks one quote as SELECTED, rejects others, creates PO
 // =============================================================================
 
 export async function selectQuote(quoteId: string): Promise<ActionResult> {
@@ -1050,7 +1121,70 @@ export async function updatePurchaseOrder(input: {
 }
 
 // =============================================================================
-// 6. RECORD PAYMENT — Links advance/full payment to a PO
+// 6. UPDATE DISPATCH DETAILS — update PO + linked stock dispatch fields
+// =============================================================================
+
+export async function updateDispatchDetails(input: {
+    po_id: string;
+    transporter_name?: string | null;
+    docket_number?: string | null;
+    branch_id?: string | null;
+    chassis_number?: string | null;
+    engine_number?: string | null;
+}): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        const { data: po, error: poErr } = await adminClient
+            .from('inv_purchase_orders')
+            .select('id')
+            .eq('id', input.po_id)
+            .single();
+        if (poErr || !po) return { success: false, message: 'PO not found' };
+
+        const { error: poUpdateErr } = await adminClient
+            .from('inv_purchase_orders')
+            .update({
+                transporter_name: input.transporter_name || null,
+                docket_number: input.docket_number || null,
+                updated_at: new Date().toISOString(),
+                updated_by: user.id,
+            })
+            .eq('id', input.po_id);
+        if (poUpdateErr)
+            return { success: false, message: poUpdateErr.message || 'Failed to update PO dispatch details' };
+
+        const { data: stockRow } = await (adminClient as any)
+            .from('inv_stock')
+            .select('id')
+            .eq('po_id', input.po_id)
+            .limit(1)
+            .maybeSingle();
+
+        if (stockRow?.id) {
+            const { error: stockUpdateErr } = await (adminClient as any)
+                .from('inv_stock')
+                .update({
+                    ...(input.branch_id ? { branch_id: input.branch_id } : {}),
+                    ...(input.chassis_number ? { chassis_number: input.chassis_number } : {}),
+                    ...(input.engine_number ? { engine_number: input.engine_number } : {}),
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', stockRow.id);
+            if (stockUpdateErr)
+                return { success: false, message: stockUpdateErr.message || 'Failed to update linked stock details' };
+        }
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, message: 'Dispatch details updated' };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
+    }
+}
+
+// =============================================================================
+// 7. RECORD PAYMENT — Links advance/full payment to a PO
 // =============================================================================
 
 export async function recordPoPayment(poId: string, amountPaid: number, transactionId?: string): Promise<ActionResult> {

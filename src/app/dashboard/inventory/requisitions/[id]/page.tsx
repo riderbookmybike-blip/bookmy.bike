@@ -26,6 +26,9 @@ import {
     Wallet,
     Undo2,
     CheckCheck,
+    Trash2,
+    Pencil,
+    Copy,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -49,6 +52,7 @@ type QuoteTenantRef = {
 
 type DealerQuote = {
     id: string;
+    display_id?: string | null;
     dealer_tenant_id: string;
     bundled_item_ids?: string[] | null;
     bundled_amount: number;
@@ -80,6 +84,8 @@ type PurchaseOrder = {
     payment_status: 'UNPAID' | 'PARTIAL_PAID' | 'FULLY_PAID';
     total_po_value: number;
     expected_delivery_date: string | null;
+    transporter_name?: string | null;
+    docket_number?: string | null;
     created_at: string;
 };
 
@@ -99,6 +105,7 @@ type RequisitionDetail = {
     inv_dealer_quotes: DealerQuote[];
     inv_purchase_orders: PurchaseOrder[];
 };
+type DealerOption = { id: string; name: string };
 const EMPTY_REQUEST_ITEMS: RequestItem[] = [];
 
 type ProgressStageKey =
@@ -215,6 +222,19 @@ const PO_STATUS_STYLES: Record<PurchaseOrder['po_status'], string> = {
 
 const formatCurrency = (amount: number | null | undefined) => `₹${Number(amount || 0).toLocaleString('en-IN')}`;
 const getQuoteTotal = (quote: DealerQuote) => Number(quote.bundled_amount || 0) + Number(quote.transport_amount || 0);
+const classifyCostBucket = (costType: string) => {
+    const key = (costType || '').toUpperCase();
+    if (key.includes('EX_SHOWROOM') || key === 'EXSHOWROOM') return 'exShowroom';
+    if (key.includes('HYPOTH')) return 'hypothecation';
+    if (key.includes('RTO') || key.includes('REGISTRATION')) return 'registration';
+    if (key.includes('TRANSPORT')) return 'transportation';
+    if (key.includes('INSURANCE')) {
+        if (key.includes('ZD') || key.includes('ZERO_DEPR') || key.includes('DEPR')) return 'depreciationWaiver';
+        if (key.includes('ADDON') || key.includes('ADD_ON')) return 'insuranceAddons';
+        return 'insurance';
+    }
+    return 'other';
+};
 const formatTripletId = (raw?: string | null) => {
     if (!raw) return 'NA';
     const clean = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
@@ -222,6 +242,18 @@ const formatTripletId = (raw?: string | null) => {
     if (clean.length <= 6) return `${clean.slice(0, 3)}-${clean.slice(3)}`;
     return `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6, 9)}`;
 };
+
+const formatAddonLabelFromKey = (rawKey: string) =>
+    rawKey
+        .replace(/^addon_/, '')
+        .replace(/_total_amount$/, '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+const formatCostTypeLabel = (value?: string | null) =>
+    String(value || 'Item')
+        .toLowerCase()
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
 
 const parseTenantRef = (value: DealerQuote['id_tenants']) => {
     if (!value) return null;
@@ -253,7 +285,10 @@ export default function RequisitionDetailPage() {
     const [showQuoteSection, setShowQuoteSection] = useState(true);
     const [showQuoteForm, setShowQuoteForm] = useState(false);
     const [showPurchaseOrders, setShowPurchaseOrders] = useState(true);
+    const [isCreatingNewQuote, setIsCreatingNewQuote] = useState(false);
+    const [showQuoteEditor, setShowQuoteEditor] = useState(false);
     const [selectedDealer, setSelectedDealer] = useState<string>('');
+    const [dealerOptions, setDealerOptions] = useState<DealerOption[]>([]);
     const [quoteVisibleFields, setQuoteVisibleFields] = useState<
         Record<
             'exShowroom' | 'registration' | 'insurance' | 'insuranceAddons' | 'hypothecation' | 'transportation',
@@ -267,9 +302,48 @@ export default function RequisitionDetailPage() {
         hypothecation: false,
         transportation: false,
     });
-    const [quoteAddField, setQuoteAddField] = useState<
-        '' | 'registration' | 'insurance' | 'insuranceAddons' | 'hypothecation' | 'transportation'
-    >('');
+    const [quoteAddField, setQuoteAddField] = useState<string>('');
+    const [showAddItemSelector, setShowAddItemSelector] = useState(false);
+    const [customInsuranceAddons, setCustomInsuranceAddons] = useState<
+        Array<{ id: string; label: string; offer: number }>
+    >([]);
+    const [insuranceAddonCatalogOptions, setInsuranceAddonCatalogOptions] = useState<
+        Array<{ key: string; label: string; total: number }>
+    >([]);
+    const [registrationCatalogOptions, setRegistrationCatalogOptions] = useState<
+        Array<{ key: 'state' | 'bharat' | 'company'; label: string; total: number }>
+    >([]);
+    const [selectedRegistrationOption, setSelectedRegistrationOption] = useState<{
+        key: 'state' | 'bharat' | 'company';
+        label: string;
+        total: number;
+    } | null>(null);
+    const [quoteRowEditMode, setQuoteRowEditMode] = useState<
+        Record<
+            'exShowroom' | 'registration' | 'insurance' | 'insuranceAddons' | 'hypothecation' | 'transportation',
+            boolean
+        >
+    >({
+        exShowroom: false,
+        registration: false,
+        insurance: false,
+        insuranceAddons: false,
+        hypothecation: false,
+        transportation: false,
+    });
+    const [quoteRowSelected, setQuoteRowSelected] = useState<
+        Record<
+            'exShowroom' | 'registration' | 'insurance' | 'insuranceAddons' | 'hypothecation' | 'transportation',
+            boolean
+        >
+    >({
+        exShowroom: true,
+        registration: true,
+        insurance: true,
+        insuranceAddons: true,
+        hypothecation: true,
+        transportation: true,
+    });
     const [includedQuoteFields, setIncludedQuoteFields] = useState<
         Record<
             | 'exShowroom'
@@ -340,6 +414,37 @@ export default function RequisitionDetailPage() {
         supplier: 'NA',
         date: null,
     });
+    const [dispatchDetails, setDispatchDetails] = useState<{
+        dispatchId: string;
+        supplier: string;
+        supplierId: string;
+        warehouse: string;
+        warehouseId: string;
+        transporterName: string;
+        transporterContact: string;
+        chassisNumber: string;
+        engineNumber: string;
+        deliveryNote: string;
+        warehouseInchargeName: string;
+        warehouseInchargeContact: string;
+    }>({
+        dispatchId: 'NA',
+        supplier: 'NA',
+        supplierId: '',
+        warehouse: 'NA',
+        warehouseId: '',
+        transporterName: 'NA',
+        transporterContact: 'NA',
+        chassisNumber: 'NA',
+        engineNumber: 'NA',
+        deliveryNote: 'NA',
+        warehouseInchargeName: 'NA',
+        warehouseInchargeContact: 'NA',
+    });
+    const [dispatchEditMode, setDispatchEditMode] = useState(false);
+    const [isSavingDispatch, setIsSavingDispatch] = useState(false);
+    const [isMovingDispatch, setIsMovingDispatch] = useState(false);
+    const [warehouseOptions, setWarehouseOptions] = useState<Array<{ id: string; name: string }>>([]);
 
     const fetchRequestDetail = useCallback(async () => {
         if (!requestId) {
@@ -457,6 +562,138 @@ export default function RequisitionDetailPage() {
     }, [request?.inv_purchase_orders]);
 
     useEffect(() => {
+        const currentPo = request?.inv_purchase_orders?.[0] || null;
+        if (!currentPo?.id) {
+            setDispatchDetails({
+                dispatchId: 'NA',
+                supplier: 'NA',
+                supplierId: '',
+                warehouse: 'NA',
+                warehouseId: '',
+                transporterName: 'NA',
+                transporterContact: 'NA',
+                chassisNumber: 'NA',
+                engineNumber: 'NA',
+                deliveryNote: 'NA',
+                warehouseInchargeName: 'NA',
+                warehouseInchargeContact: 'NA',
+            });
+            return;
+        }
+        const hydrateDispatchDetails = async () => {
+            try {
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                const transporterName = currentPo.transporter_name || 'NA';
+                const deliveryNote = currentPo.docket_number || 'NA';
+                let warehouse = 'NA';
+                let warehouseId = '';
+                let chassisNumber = 'NA';
+                let engineNumber = 'NA';
+                let dispatchId = formatTripletId(currentPo.display_id || currentPo.id);
+                const selectedFromRequest =
+                    (request?.inv_dealer_quotes || []).find((q: any) => q.status === 'SELECTED') || null;
+                const supplierId = selectedFromRequest?.dealer_tenant_id || '';
+                const supplier = parseTenantRef(selectedFromRequest?.id_tenants)?.name || 'NA';
+                let warehouseInchargeName = 'NA';
+                let warehouseInchargeContact = 'NA';
+
+                const { data: stockRow } = await (supabase as any)
+                    .from('inv_stock')
+                    .select('id, chassis_number, engine_number, branch_id')
+                    .eq('po_id', currentPo.id)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (stockRow) {
+                    dispatchId = formatTripletId(stockRow.id);
+                    chassisNumber = stockRow.chassis_number || 'NA';
+                    engineNumber = stockRow.engine_number || 'NA';
+                    if (stockRow.branch_id) {
+                        const { data: location } = await (supabase as any)
+                            .from('id_locations')
+                            .select('name, contact_phone, manager_id')
+                            .eq('id', stockRow.branch_id)
+                            .maybeSingle();
+                        warehouse = location?.name || 'NA';
+                        warehouseId = stockRow.branch_id || '';
+                        warehouseInchargeContact = location?.contact_phone || 'NA';
+                        if (location?.manager_id) {
+                            const { data: manager } = await (supabase as any)
+                                .from('id_members')
+                                .select('full_name, phone')
+                                .eq('id', location.manager_id)
+                                .maybeSingle();
+                            warehouseInchargeName = manager?.full_name || 'NA';
+                            warehouseInchargeContact = manager?.phone || warehouseInchargeContact;
+                        }
+                    }
+                }
+
+                setDispatchDetails({
+                    dispatchId,
+                    supplier,
+                    supplierId,
+                    warehouse,
+                    warehouseId,
+                    transporterName,
+                    transporterContact: 'NA',
+                    chassisNumber,
+                    engineNumber,
+                    deliveryNote,
+                    warehouseInchargeName,
+                    warehouseInchargeContact,
+                });
+            } catch {
+                setDispatchDetails({
+                    dispatchId: formatTripletId(currentPo.display_id || currentPo.id),
+                    supplier:
+                        parseTenantRef(
+                            (request?.inv_dealer_quotes || []).find((q: any) => q.status === 'SELECTED')?.id_tenants
+                        )?.name || 'NA',
+                    supplierId:
+                        (request?.inv_dealer_quotes || []).find((q: any) => q.status === 'SELECTED')
+                            ?.dealer_tenant_id || '',
+                    warehouse: 'NA',
+                    warehouseId: '',
+                    transporterName: currentPo.transporter_name || 'NA',
+                    transporterContact: 'NA',
+                    chassisNumber: 'NA',
+                    engineNumber: 'NA',
+                    deliveryNote: currentPo.docket_number || 'NA',
+                    warehouseInchargeName: 'NA',
+                    warehouseInchargeContact: 'NA',
+                });
+            }
+        };
+        hydrateDispatchDetails();
+    }, [request?.inv_purchase_orders, request?.inv_dealer_quotes]);
+
+    useEffect(() => {
+        if (!request?.tenant_id) {
+            setWarehouseOptions([]);
+            return;
+        }
+        const hydrateWarehouses = async () => {
+            try {
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                const { data } = await (supabase as any)
+                    .from('id_locations')
+                    .select('id, name')
+                    .eq('tenant_id', request.tenant_id)
+                    .eq('is_active', true)
+                    .order('name');
+                const options = ((data || []) as Array<{ id: string; name: string }>).filter(Boolean);
+                setWarehouseOptions(options);
+            } catch {
+                setWarehouseOptions([]);
+            }
+        };
+        hydrateWarehouses();
+    }, [request?.tenant_id]);
+
+    useEffect(() => {
         if (!request?.sku_id) {
             setLastPurchaseStats({ cost: null, supplier: 'NA', date: null });
             return;
@@ -500,10 +737,94 @@ export default function RequisitionDetailPage() {
         hydrateLastPurchaseStats();
     }, [request?.sku_id]);
 
+    useEffect(() => {
+        if (!request?.sku_id) {
+            setInsuranceAddonCatalogOptions([]);
+            setRegistrationCatalogOptions([]);
+            setSelectedRegistrationOption(null);
+            return;
+        }
+        const hydrateInsuranceAddonOptions = async () => {
+            try {
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                const { data } = await (supabase as any)
+                    .from('cat_price_state_mh')
+                    .select('*')
+                    .eq('sku_id', request.sku_id)
+                    .eq('state_code', 'MH')
+                    .eq('publish_stage', 'PUBLISHED')
+                    .limit(1)
+                    .maybeSingle();
+                if (!data) {
+                    setInsuranceAddonCatalogOptions([]);
+                    setRegistrationCatalogOptions([]);
+                    setSelectedRegistrationOption(null);
+                    return;
+                }
+                const registrationOptions: Array<{
+                    key: 'state' | 'bharat' | 'company';
+                    label: string;
+                    total: number;
+                }> = [
+                    { key: 'state', label: 'Registration (State)', total: Number(data.rto_total_state || 0) },
+                    { key: 'bharat', label: 'Registration (Bharat)', total: Number(data.rto_total_bh || 0) },
+                    { key: 'company', label: 'Registration (Company)', total: Number(data.rto_total_company || 0) },
+                ];
+                setRegistrationCatalogOptions(registrationOptions.filter(item => item.total >= 0));
+                setSelectedRegistrationOption(
+                    registrationOptions.find(item => item.total > 0) || registrationOptions[0] || null
+                );
+                const options = Object.keys(data)
+                    .filter(key => key.startsWith('addon_') && key.endsWith('_total_amount'))
+                    .map(key => ({
+                        key,
+                        label: formatAddonLabelFromKey(key),
+                        total: Number(data[key] || 0),
+                    }))
+                    .filter(item => item.label.length > 0);
+                setInsuranceAddonCatalogOptions(options);
+            } catch {
+                setInsuranceAddonCatalogOptions([]);
+                setRegistrationCatalogOptions([]);
+                setSelectedRegistrationOption(null);
+            }
+        };
+        hydrateInsuranceAddonOptions();
+    }, [request?.sku_id]);
+
+    useEffect(() => {
+        const hydrateDealers = async () => {
+            try {
+                const { getSupplierTenants } = await import('@/actions/inventory');
+                const result = await getSupplierTenants();
+                const list = (result.success && Array.isArray(result.data) ? result.data : []) as Array<{
+                    id: string;
+                    name: string | null;
+                    type?: string | null;
+                }>;
+                const mapped = list
+                    .filter(item => {
+                        const tenantType = String(item.type || '').toUpperCase();
+                        return tenantType === 'DEALER' || tenantType === 'DEALERSHIP';
+                    })
+                    .filter(item => item.id !== tenantId)
+                    .map(item => ({ id: item.id, name: item.name || `Dealer ${item.id.slice(0, 8)}` }));
+                setDealerOptions(mapped);
+            } catch {
+                setDealerOptions([]);
+            }
+        };
+        hydrateDealers();
+    }, [tenantId]);
+
     const requestItems = request?.inv_request_items ?? EMPTY_REQUEST_ITEMS;
-    const isQuoteLocked = request?.status !== 'QUOTING';
     const quotes = useMemo(() => (request?.inv_dealer_quotes || []).slice(), [request?.inv_dealer_quotes]);
     const purchaseOrders = request?.inv_purchase_orders || [];
+    const selectedDealerQuoteStatus = quotes.find(q => q.dealer_tenant_id === selectedDealer)?.status;
+    const canEditIssuedQuote =
+        request?.status === 'ORDERED' && selectedDealerQuoteStatus === 'SELECTED' && linkedStockStatuses.length === 0;
+    const isQuoteLocked = !(request?.status === 'QUOTING' || canEditIssuedQuote);
 
     const totalExpected = useMemo(
         () => requestItems.reduce((sum, item) => sum + Number(item.expected_amount || 0), 0),
@@ -520,32 +841,34 @@ export default function RequisitionDetailPage() {
             insuranceAddons: 0,
         };
         for (const item of requestItems) {
-            const key = (item.cost_type || '').toUpperCase();
+            const key = classifyCostBucket(item.cost_type);
             const amount = Number(item.expected_amount || 0);
-            if (key.includes('EX_SHOWROOM') || key === 'EXSHOWROOM') {
+            if (key === 'exShowroom') {
                 summary.exShowroom += amount;
                 continue;
             }
-            if (key.includes('HYPOTH')) {
+            if (key === 'hypothecation') {
                 summary.hypothecation += amount;
                 continue;
             }
-            if (key.includes('RTO') || key.includes('REGISTRATION')) {
+            if (key === 'registration') {
                 summary.registration += amount;
                 continue;
             }
-            if (key.includes('TRANSPORT')) {
+            if (key === 'transportation') {
                 summary.transportation += amount;
                 continue;
             }
-            if (key.includes('INSURANCE')) {
-                if (key.includes('ZD') || key.includes('ZERO_DEPR') || key.includes('DEPR')) {
-                    summary.depreciationWaiver += amount;
-                } else if (key.includes('ADDON') || key.includes('ADD_ON')) {
-                    summary.insuranceAddons += amount;
-                } else {
-                    summary.insurance += amount;
-                }
+            if (key === 'depreciationWaiver') {
+                summary.depreciationWaiver += amount;
+                continue;
+            }
+            if (key === 'insuranceAddons') {
+                summary.insuranceAddons += amount;
+                continue;
+            }
+            if (key === 'insurance') {
+                summary.insurance += amount;
             }
         }
         return summary;
@@ -580,8 +903,26 @@ export default function RequisitionDetailPage() {
             hypothecation: false,
             transportation: false,
         });
+        setQuoteRowEditMode({
+            exShowroom: false,
+            registration: false,
+            insurance: false,
+            insuranceAddons: false,
+            hypothecation: false,
+            transportation: false,
+        });
+        setQuoteRowSelected({
+            exShowroom: true,
+            registration: true,
+            insurance: true,
+            insuranceAddons: true,
+            hypothecation: true,
+            transportation: true,
+        });
         setQuoteAddField('');
-    }, [request, costSummary, totalExpected]);
+        setShowAddItemSelector(false);
+        setCustomInsuranceAddons([]);
+    }, [request?.id]);
 
     useEffect(() => {
         // Booking-dependent components should refresh from backend values whenever booking link/source changes.
@@ -611,14 +952,107 @@ export default function RequisitionDetailPage() {
             'insuranceAddons',
             'transportation',
         ];
-        return keys.reduce((sum, key) => {
+        const baseTotal = keys.reduce((sum, key) => {
             if (key === 'depreciationWaiver') return sum;
             if (!quoteVisibleFields[key as keyof typeof quoteVisibleFields]) return sum;
+            if (!quoteRowSelected[key as keyof typeof quoteRowSelected]) return sum;
             return includedQuoteFields[key] ? sum + Number(editableQuoteValues[key] || 0) : sum;
         }, 0);
-    }, [editableQuoteValues, includedQuoteFields, quoteVisibleFields]);
+        const addonsTotal = customInsuranceAddons.reduce((sum, addon) => sum + Number(addon.offer || 0), 0);
+        return baseTotal + addonsTotal;
+    }, [editableQuoteValues, includedQuoteFields, quoteVisibleFields, customInsuranceAddons, quoteRowSelected]);
 
     const quoteFinalOffer = Number(editableQuoteValues.grandTotal || 0);
+    const [isSavingQuote, setIsSavingQuote] = useState(false);
+    const [isIssuingPo, setIsIssuingPo] = useState(false);
+    const [quoteWorkflowStage, setQuoteWorkflowStage] = useState<
+        Record<string, 'saved' | 'reviewed' | 'approved' | 'issued'>
+    >({});
+    const [poReviewState, setPoReviewState] = useState<Record<string, boolean>>({});
+    const [isOfferPriceEditing, setIsOfferPriceEditing] = useState(false);
+    const [isSupplierEditing, setIsSupplierEditing] = useState(false);
+    const isExOnlySelected =
+        quoteVisibleFields.exShowroom &&
+        quoteRowSelected.exShowroom &&
+        !quoteRowSelected.registration &&
+        !quoteRowSelected.insurance &&
+        !quoteRowSelected.insuranceAddons &&
+        !quoteRowSelected.hypothecation &&
+        !quoteRowSelected.transportation;
+    const isExRegInsSelected =
+        quoteVisibleFields.exShowroom &&
+        quoteVisibleFields.registration &&
+        quoteVisibleFields.insurance &&
+        quoteRowSelected.exShowroom &&
+        quoteRowSelected.registration &&
+        quoteRowSelected.insurance;
+
+    const requestItemsByBucket = useMemo(() => {
+        const buckets: Record<string, RequestItem[]> = {
+            exShowroom: [],
+            registration: [],
+            insurance: [],
+            insuranceAddons: [],
+            hypothecation: [],
+            transportation: [],
+            depreciationWaiver: [],
+            other: [],
+        };
+        for (const item of requestItems) {
+            const bucket = classifyCostBucket(item.cost_type);
+            buckets[bucket] = [...(buckets[bucket] || []), item];
+        }
+        return buckets;
+    }, [requestItems]);
+
+    useEffect(() => {
+        if (!request) return;
+        if (!selectedDealer) return;
+        const dealerQuote = quotes.find(q => q.dealer_tenant_id === selectedDealer);
+        if (!dealerQuote) return;
+
+        const idToBucket = new Map<string, string>();
+        for (const item of requestItems) {
+            idToBucket.set(item.id, classifyCostBucket(item.cost_type));
+        }
+
+        const bucketTotals: Record<string, number> = {
+            exShowroom: 0,
+            registration: 0,
+            insurance: 0,
+            insuranceAddons: 0,
+            hypothecation: 0,
+            transportation: Number(dealerQuote.transport_amount || 0),
+        };
+
+        const lineItems = dealerQuote.inv_quote_line_items || [];
+        for (const line of lineItems) {
+            const bucket = idToBucket.get(line.request_item_id);
+            if (!bucket || !(bucket in bucketTotals)) continue;
+            bucketTotals[bucket] += Number(line.offered_amount || 0);
+        }
+
+        setEditableQuoteValues(prev => ({
+            ...prev,
+            exShowroom: bucketTotals.exShowroom || prev.exShowroom,
+            registration: bucketTotals.registration || prev.registration,
+            insurance: bucketTotals.insurance || prev.insurance,
+            insuranceAddons: bucketTotals.insuranceAddons || prev.insuranceAddons,
+            hypothecation: bucketTotals.hypothecation || prev.hypothecation,
+            transportation: bucketTotals.transportation || prev.transportation,
+            grandTotal: Number(getQuoteTotal(dealerQuote) || prev.grandTotal),
+        }));
+
+        setQuoteVisibleFields(prev => ({
+            ...prev,
+            exShowroom: true,
+            registration: bucketTotals.registration > 0 || prev.registration,
+            insurance: bucketTotals.insurance > 0 || prev.insurance,
+            insuranceAddons: bucketTotals.insuranceAddons > 0 || prev.insuranceAddons,
+            hypothecation: bucketTotals.hypothecation > 0 || prev.hypothecation,
+            transportation: bucketTotals.transportation > 0 || prev.transportation,
+        }));
+    }, [quotes, request, requestItems, selectedDealer]);
 
     const postOfferAdditions = useMemo(() => {
         const defs: Array<{ key: keyof typeof includedQuoteFields; label: string }> = [
@@ -678,9 +1112,140 @@ export default function RequisitionDetailPage() {
         parseTenantRef(quotes[0]?.id_tenants)?.name ||
         'Dealership';
     const quoteDealerOptions = useMemo(() => {
-        const names = quotes.map(q => parseTenantRef(q.id_tenants)?.name).filter((name): name is string => !!name);
-        return Array.from(new Set(names));
-    }, [quotes]);
+        if (dealerOptions.length > 0) return dealerOptions;
+        const fallbackMap = new Map<string, DealerOption>();
+        for (const q of quotes) {
+            if (!q.dealer_tenant_id) continue;
+            const fallbackName = parseTenantRef(q.id_tenants)?.name || `Dealer ${q.dealer_tenant_id.slice(0, 8)}`;
+            fallbackMap.set(q.dealer_tenant_id, { id: q.dealer_tenant_id, name: fallbackName });
+        }
+        return Array.from(fallbackMap.values());
+    }, [dealerOptions, quotes]);
+    const activeQuoteDealerIdSet = useMemo(
+        () => new Set(quotes.filter(q => q.status !== 'REJECTED').map(q => q.dealer_tenant_id)),
+        [quotes]
+    );
+    const availableDealerOptionsForNewQuote = useMemo(
+        () => quoteDealerOptions.filter(option => !activeQuoteDealerIdSet.has(option.id)),
+        [activeQuoteDealerIdSet, quoteDealerOptions]
+    );
+    const existingQuoteSummaries = useMemo(
+        () =>
+            quotes.map(q => {
+                const dealerName =
+                    parseTenantRef(q.id_tenants)?.name ||
+                    quoteDealerOptions.find(option => option.id === q.dealer_tenant_id)?.name ||
+                    `Dealer ${q.dealer_tenant_id.slice(0, 8)}`;
+                const items = (q.inv_quote_line_items || [])
+                    .map(line => requestItems.find(item => item.id === line.request_item_id)?.cost_type || '')
+                    .filter(Boolean);
+                return {
+                    id: q.id,
+                    displayId: q.display_id || null,
+                    dealerTenantId: q.dealer_tenant_id,
+                    dealerName,
+                    total: getQuoteTotal(q),
+                    items: Array.from(new Set(items)).slice(0, 4),
+                    status: q.status,
+                };
+            }),
+        [quotes, quoteDealerOptions, requestItems]
+    );
+    const bestOfferQuoteId = useMemo(() => {
+        if (!existingQuoteSummaries.length) return '';
+        return existingQuoteSummaries.slice().sort((a, b) => a.total - b.total)[0]?.id || '';
+    }, [existingQuoteSummaries]);
+
+    const addItemOptions = useMemo(() => {
+        const options: Array<{ key: string; label: string }> = [];
+        if (!quoteVisibleFields.registration) {
+            for (const option of registrationCatalogOptions) {
+                options.push({ key: `registration:${option.key}`, label: option.label });
+            }
+        }
+        if (!quoteVisibleFields.insurance) {
+            options.push({ key: 'insurance', label: 'Insurance (Comprehensive + Liability)' });
+        }
+        for (const option of insuranceAddonCatalogOptions) {
+            options.push({ key: `insuranceAddon:${option.key}`, label: option.label });
+        }
+        if (!quoteVisibleFields.hypothecation) {
+            options.push({ key: 'hypothecation', label: 'Hypothecation' });
+        }
+        if (!quoteVisibleFields.transportation) {
+            options.push({ key: 'transportation', label: 'Transportation' });
+        }
+        return options;
+    }, [insuranceAddonCatalogOptions, quoteVisibleFields, registrationCatalogOptions]);
+
+    const selectedAddItem = useMemo(() => {
+        const q = quoteAddField.trim().toLowerCase();
+        if (!q) return null;
+        return (
+            addItemOptions.find(option => option.label.toLowerCase() === q) ||
+            addItemOptions.find(option => option.key.toLowerCase() === q) ||
+            null
+        );
+    }, [addItemOptions, quoteAddField]);
+    const selectedSupplierName = quoteDealerOptions.find(option => option.id === selectedDealer)?.name || 'NA';
+    const selectedDealerQuote = useMemo(
+        () => quotes.find(q => q.dealer_tenant_id === selectedDealer && q.status !== 'REJECTED') || null,
+        [quotes, selectedDealer]
+    );
+    const currentWorkflowStage: 'saved' | 'reviewed' | 'approved' | 'issued' = useMemo(() => {
+        if (!selectedDealer) return 'saved';
+        return quoteWorkflowStage[selectedDealer] || (selectedDealerQuote?.status === 'SELECTED' ? 'issued' : 'saved');
+    }, [quoteWorkflowStage, selectedDealer, selectedDealerQuote?.status]);
+    const poStatusLabel = useMemo(() => {
+        if (!primaryPo) return 'Draft';
+        if (primaryPo.po_status === 'DRAFT') return poReviewState[primaryPo.id] ? 'In Review' : 'Draft';
+        return 'Issued';
+    }, [poReviewState, primaryPo]);
+    const isPoIssued = !!primaryPo && primaryPo.po_status !== 'DRAFT';
+    const collapsedItemList = useMemo(() => {
+        const items: string[] = [];
+        if (quoteVisibleFields.exShowroom && quoteRowSelected.exShowroom) items.push('Ex Showroom');
+        if (quoteVisibleFields.registration && quoteRowSelected.registration) {
+            items.push(selectedRegistrationOption?.label || 'Registration');
+        }
+        if (quoteVisibleFields.insurance && quoteRowSelected.insurance) {
+            items.push('Insurance');
+        }
+        if (quoteVisibleFields.insuranceAddons && quoteRowSelected.insuranceAddons) {
+            items.push('Insurance Add-ons');
+        }
+        if (quoteVisibleFields.hypothecation && quoteRowSelected.hypothecation) {
+            items.push('Hypothecation');
+        }
+        if (quoteVisibleFields.transportation && quoteRowSelected.transportation) {
+            items.push('Transportation');
+        }
+        items.push(...customInsuranceAddons.map(addon => addon.label));
+        return items;
+    }, [customInsuranceAddons, quoteRowSelected, quoteVisibleFields, selectedRegistrationOption]);
+    const coreCollapsedItems = useMemo(() => {
+        const items: string[] = [];
+        if (quoteVisibleFields.exShowroom && quoteRowSelected.exShowroom) items.push('Ex Showroom');
+        if (quoteVisibleFields.registration && quoteRowSelected.registration) {
+            items.push(selectedRegistrationOption?.label || 'Registration');
+        }
+        if (quoteVisibleFields.insurance && quoteRowSelected.insurance) items.push('Insurance');
+        return items;
+    }, [quoteRowSelected, quoteVisibleFields, selectedRegistrationOption]);
+    const quoteVarianceAmount = Number(editableQuoteValues.grandTotal || 0) - Number(quoteComputedTotal || 0);
+
+    useEffect(() => {
+        if (!showQuoteEditor && !isCreatingNewQuote) {
+            setSelectedDealer('');
+            setIsSupplierEditing(false);
+        }
+    }, [showQuoteEditor, isCreatingNewQuote]);
+
+    useEffect(() => {
+        if (selectedDealerQuote?.status === 'SELECTED') {
+            setShowQuoteEditor(false);
+        }
+    }, [selectedDealerQuote?.status]);
 
     const terminalStageLabel = useMemo(() => {
         const hasDelivered = linkedStockStatuses.some(status => status.includes('DELIVER'));
@@ -719,14 +1284,6 @@ export default function RequisitionDetailPage() {
     }, [primaryPo?.payment_status, primaryPo?.po_status, request?.source_type, request?.status, terminalStageLabel]);
 
     const canAdvanceToOrdered = !!request && request.status === 'QUOTING' && !!(selectedQuote || defaultNextQuote);
-    const nextActionLabel = useMemo(() => {
-        if (!request) return 'Next Stage';
-        if (request.status === 'QUOTING')
-            return canAdvanceToOrdered ? 'Next Stage: Move To Ordered' : 'Next Stage Locked';
-        if (request.status === 'ORDERED') return primaryPo ? 'Open Purchase Order' : 'Open Orders';
-        if (request.status === 'RECEIVED') return 'Stage Complete';
-        return 'No Further Action';
-    }, [request, canAdvanceToOrdered, primaryPo]);
 
     const handleSelectQuote = useCallback(
         async (quoteId: string) => {
@@ -762,6 +1319,7 @@ export default function RequisitionDetailPage() {
                 return;
             }
             toast.success(result.message || 'Requisition cancelled');
+            setIsCreatingNewQuote(false);
             await fetchRequestDetail();
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Failed to cancel requisition');
@@ -804,6 +1362,344 @@ export default function RequisitionDetailPage() {
         toast.error('Cannot advance cancelled requisition.');
     }, [defaultNextQuote, handleSelectQuote, ordersBasePath, primaryPo, request, router, selectedQuote]);
 
+    const handleSaveQuote = useCallback(async (): Promise<boolean> => {
+        if (!request) return false;
+        const localCanEditIssuedQuote =
+            request.status === 'ORDERED' &&
+            selectedDealerQuote?.status === 'SELECTED' &&
+            linkedStockStatuses.length === 0;
+        if (!(request.status === 'QUOTING' || localCanEditIssuedQuote)) {
+            toast.error('Quote cannot be edited in current stage.');
+            return false;
+        }
+        if (!selectedDealer) {
+            toast.error('Select dealership first.');
+            return false;
+        }
+        if (isCreatingNewQuote && activeQuoteDealerIdSet.has(selectedDealer)) {
+            toast.error('This supplier already has a quote on this requisition. Choose another supplier.');
+            return false;
+        }
+
+        const saveKeys: Array<
+            'exShowroom' | 'registration' | 'insurance' | 'insuranceAddons' | 'hypothecation' | 'transportation'
+        > = ['exShowroom', 'registration', 'insurance', 'insuranceAddons', 'hypothecation', 'transportation'];
+
+        const lineItems: Array<{ request_item_id: string; offered_amount: number; notes?: string | null }> = [];
+        for (const key of saveKeys) {
+            if (!quoteVisibleFields[key]) continue;
+            if (key === 'transportation') continue;
+            const bucketItems = requestItemsByBucket[key] || [];
+            if (!bucketItems.length) continue;
+            const totalForBucket =
+                key === 'insuranceAddons'
+                    ? Math.max(0, Number(editableQuoteValues[key] || 0)) +
+                      customInsuranceAddons.reduce((sum, addon) => sum + Number(addon.offer || 0), 0)
+                    : Math.max(0, Number(editableQuoteValues[key] || 0));
+            const perItem = bucketItems.length > 0 ? totalForBucket / bucketItems.length : 0;
+            for (const item of bucketItems) {
+                lineItems.push({
+                    request_item_id: item.id,
+                    offered_amount: Number(perItem.toFixed(2)),
+                    notes: null,
+                });
+            }
+        }
+
+        const bundledItemIds = Array.from(new Set(lineItems.map(item => item.request_item_id)));
+        const bundledAmount = Number(
+            lineItems.reduce((sum, item) => sum + Number(item.offered_amount || 0), 0).toFixed(2)
+        );
+        const transportAmount = quoteVisibleFields.transportation
+            ? Math.max(0, Number(editableQuoteValues.transportation || 0))
+            : 0;
+
+        setIsSavingQuote(true);
+        try {
+            const existing = quotes.find(q => q.dealer_tenant_id === selectedDealer && q.status === 'SUBMITTED');
+            if (existing) {
+                const { updateDealerQuote } = await import('@/actions/inventory');
+                const result = await updateDealerQuote({
+                    quote_id: existing.id,
+                    bundled_item_ids: bundledItemIds,
+                    bundled_amount: bundledAmount,
+                    transport_amount: transportAmount,
+                    line_items: lineItems,
+                });
+                if (!result.success) {
+                    toast.error(result.message || 'Failed to update quote');
+                    return false;
+                }
+                toast.success('Quote updated');
+            } else {
+                const { addDealerQuote } = await import('@/actions/inventory');
+                const result = await addDealerQuote({
+                    request_id: request.id,
+                    dealer_tenant_id: selectedDealer,
+                    bundled_item_ids: bundledItemIds,
+                    bundled_amount: bundledAmount,
+                    transport_amount: transportAmount,
+                    line_items: lineItems,
+                });
+                if (!result.success) {
+                    toast.error(result.message || 'Failed to save quote');
+                    return false;
+                }
+                toast.success('Quote saved');
+            }
+            setQuoteWorkflowStage(prev => ({ ...prev, [selectedDealer]: 'saved' }));
+            await fetchRequestDetail();
+            return true;
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to save quote');
+            return false;
+        } finally {
+            setIsSavingQuote(false);
+        }
+    }, [
+        editableQuoteValues,
+        fetchRequestDetail,
+        quoteVisibleFields,
+        quotes,
+        request,
+        requestItemsByBucket,
+        customInsuranceAddons,
+        selectedDealer,
+        isCreatingNewQuote,
+        activeQuoteDealerIdSet,
+        selectedDealerQuote?.status,
+        linkedStockStatuses,
+    ]);
+
+    const handleDeleteQuote = useCallback(async () => {
+        if (!request || !selectedDealer) {
+            toast.error('Select quote supplier first.');
+            return;
+        }
+        const targetQuote = quotes.find(q => q.dealer_tenant_id === selectedDealer && q.status === 'SUBMITTED');
+        if (!targetQuote) {
+            toast.error('No submitted quote found for selected supplier.');
+            return;
+        }
+        try {
+            const { deleteDealerQuote } = await import('@/actions/inventory');
+            const result = await deleteDealerQuote(targetQuote.id);
+            if (!result.success) {
+                toast.error(result.message || 'Failed to delete quote');
+                return;
+            }
+            toast.success(result.message || 'Quote deleted');
+            setShowQuoteEditor(false);
+            setIsCreatingNewQuote(false);
+            setSelectedDealer('');
+            await fetchRequestDetail();
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to delete quote');
+        }
+    }, [fetchRequestDetail, quotes, request, selectedDealer]);
+
+    const handleApproveQuote = useCallback(async () => {
+        if (!selectedDealer) {
+            toast.error('Select supplier first.');
+            return;
+        }
+        const targetQuote = quotes.find(q => q.dealer_tenant_id === selectedDealer && q.status === 'SUBMITTED');
+        if (!targetQuote) {
+            toast.error('No submitted quote found for selected supplier.');
+            return;
+        }
+        const saved = await handleSaveQuote();
+        if (!saved) return;
+        setQuoteWorkflowStage(prev => ({ ...prev, [selectedDealer]: 'approved' }));
+        try {
+            await handleSelectQuote(targetQuote.id);
+            toast.success('Quote approved and PO generated');
+        } catch {
+            toast.error('Approval failed while generating PO');
+        }
+    }, [handleSaveQuote, handleSelectQuote, quotes, selectedDealer]);
+
+    const handleReviewPo = useCallback(() => {
+        if (!primaryPo?.id) {
+            toast.error('No purchase order found.');
+            return;
+        }
+        setPoReviewState(prev => ({ ...prev, [primaryPo.id]: true }));
+        toast.success('PO reviewed');
+    }, [primaryPo?.id]);
+
+    const handleIssuePo = useCallback(async () => {
+        if (!primaryPo?.id) {
+            toast.error('No purchase order found.');
+            return;
+        }
+        if (!poReviewState[primaryPo.id]) {
+            toast.error('Review PO before issuing.');
+            return;
+        }
+        if (primaryPo.po_status !== 'DRAFT') {
+            toast.message(`PO already ${primaryPo.po_status}`);
+            return;
+        }
+        setIsIssuingPo(true);
+        try {
+            const { updatePurchaseOrder } = await import('@/actions/inventory');
+            const result = await updatePurchaseOrder({ po_id: primaryPo.id, po_status: 'SENT' });
+            if (!result.success) {
+                toast.error(result.message || 'Failed to issue PO');
+                return;
+            }
+            toast.success('PO issued');
+            await fetchRequestDetail();
+        } finally {
+            setIsIssuingPo(false);
+        }
+    }, [fetchRequestDetail, poReviewState, primaryPo]);
+
+    const handleSaveDispatch = useCallback(async () => {
+        if (!primaryPo?.id) {
+            toast.error('No purchase order found.');
+            return false;
+        }
+        setIsSavingDispatch(true);
+        try {
+            const { updateDispatchDetails } = await import('@/actions/inventory');
+            const result = await updateDispatchDetails({
+                po_id: primaryPo.id,
+                transporter_name: dispatchDetails.transporterName === 'NA' ? null : dispatchDetails.transporterName,
+                docket_number: dispatchDetails.deliveryNote === 'NA' ? null : dispatchDetails.deliveryNote,
+                branch_id: dispatchDetails.warehouseId || null,
+                chassis_number: dispatchDetails.chassisNumber === 'NA' ? null : dispatchDetails.chassisNumber,
+                engine_number: dispatchDetails.engineNumber === 'NA' ? null : dispatchDetails.engineNumber,
+            });
+            if (!result.success) {
+                toast.error(result.message || 'Failed to update dispatch details');
+                return false;
+            }
+            toast.success(result.message || 'Dispatch details updated');
+            setDispatchEditMode(false);
+            await fetchRequestDetail();
+            return true;
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to update dispatch details');
+            return false;
+        } finally {
+            setIsSavingDispatch(false);
+        }
+    }, [dispatchDetails, fetchRequestDetail, primaryPo?.id]);
+
+    const handleMoveDispatchNext = useCallback(async () => {
+        if (!primaryPo?.id) {
+            toast.error('No purchase order found.');
+            return;
+        }
+        setIsMovingDispatch(true);
+        try {
+            const saved = await handleSaveDispatch();
+            if (!saved) return;
+            const { updatePurchaseOrder } = await import('@/actions/inventory');
+            const nextStatus =
+                primaryPo.po_status === 'DRAFT' ? 'SENT' : primaryPo.po_status === 'SENT' ? 'SHIPPED' : null;
+            if (!nextStatus) {
+                toast.message(`PO already at ${primaryPo.po_status}`);
+                return;
+            }
+            const result = await updatePurchaseOrder({ po_id: primaryPo.id, po_status: nextStatus as any });
+            if (!result.success) {
+                toast.error(result.message || 'Failed to move to next stage');
+                return;
+            }
+            toast.success(`Moved to ${nextStatus}`);
+            await fetchRequestDetail();
+        } finally {
+            setIsMovingDispatch(false);
+        }
+    }, [fetchRequestDetail, handleSaveDispatch, primaryPo]);
+
+    useEffect(() => {
+        if (!quotes.length) return;
+        setQuoteWorkflowStage(prev => {
+            const next = { ...prev };
+            for (const q of quotes) {
+                if (!q.dealer_tenant_id) continue;
+                if (q.status === 'SELECTED') next[q.dealer_tenant_id] = 'issued';
+                else if (q.status === 'SUBMITTED' && !next[q.dealer_tenant_id]) next[q.dealer_tenant_id] = 'saved';
+            }
+            return next;
+        });
+    }, [quotes]);
+
+    const handleOfferPriceChange = useCallback(
+        (rawValue: string) => {
+            if (isQuoteLocked) return;
+            const offerPrice = Math.max(0, Number(rawValue || 0));
+            setEditableQuoteValues(prev => {
+                const next = { ...prev, grandTotal: offerPrice };
+                if (isExRegInsSelected) {
+                    const regOffer = Number(next.registration || 0);
+                    const insOffer = Number(next.insurance || 0);
+                    const others =
+                        (quoteVisibleFields.insuranceAddons && quoteRowSelected.insuranceAddons
+                            ? Number(next.insuranceAddons || 0)
+                            : 0) +
+                        (quoteVisibleFields.hypothecation && quoteRowSelected.hypothecation
+                            ? Number(next.hypothecation || 0)
+                            : 0) +
+                        (quoteVisibleFields.transportation && quoteRowSelected.transportation
+                            ? Number(next.transportation || 0)
+                            : 0) +
+                        customInsuranceAddons.reduce((sum, addon) => sum + Number(addon.offer || 0), 0);
+                    next.exShowroom = Math.max(0, offerPrice - regOffer - insOffer - others);
+                }
+                return next;
+            });
+        },
+        [customInsuranceAddons, isExRegInsSelected, isQuoteLocked, quoteRowSelected, quoteVisibleFields]
+    );
+
+    const handleUpdateOffer = useCallback(() => {
+        if (isQuoteLocked) {
+            toast.error('Quote is locked for editing.');
+            return;
+        }
+        const registrationRate = Number(selectedRegistrationOption?.total || costSummary.registration || 0);
+        const insuranceRate = Number(costSummary.insurance || 0);
+        setEditableQuoteValues(prev => {
+            const nextValues = { ...prev };
+
+            if (quoteVisibleFields.registration && quoteRowSelected.registration)
+                nextValues.registration = registrationRate;
+            if (quoteVisibleFields.insurance && quoteRowSelected.insurance) nextValues.insurance = insuranceRate;
+
+            const otherRowsTotal =
+                (quoteVisibleFields.registration && quoteRowSelected.registration ? nextValues.registration : 0) +
+                (quoteVisibleFields.insurance && quoteRowSelected.insurance ? nextValues.insurance : 0) +
+                (quoteVisibleFields.insuranceAddons && quoteRowSelected.insuranceAddons
+                    ? Number(nextValues.insuranceAddons || 0)
+                    : 0) +
+                (quoteVisibleFields.hypothecation && quoteRowSelected.hypothecation
+                    ? Number(nextValues.hypothecation || 0)
+                    : 0) +
+                (quoteVisibleFields.transportation && quoteRowSelected.transportation
+                    ? Number(nextValues.transportation || 0)
+                    : 0) +
+                customInsuranceAddons.reduce((sum, addon) => sum + Number(addon.offer || 0), 0);
+
+            const netTarget = Math.max(0, Number(nextValues.grandTotal || 0));
+            nextValues.exShowroom = Math.max(0, netTarget - otherRowsTotal);
+            return nextValues;
+        });
+        toast.success('Offer updated');
+    }, [
+        costSummary.registration,
+        costSummary.insurance,
+        customInsuranceAddons,
+        isQuoteLocked,
+        quoteRowSelected,
+        quoteVisibleFields,
+        selectedRegistrationOption?.total,
+    ]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
@@ -831,12 +1727,12 @@ export default function RequisitionDetailPage() {
 
     return (
         <div className="space-y-8 pb-20 max-w-7xl mx-auto">
+            <p className="px-1 text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-widest underline underline-offset-4 decoration-2 decoration-slate-300 dark:decoration-slate-600">
+                {formatTripletId(request.display_id || request.id)}
+            </p>
             <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 p-5 md:p-6">
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
                     <div className="flex-1 min-h-24 flex flex-col justify-between">
-                        <div className="inline-block text-base md:text-lg font-black text-slate-900 dark:text-white uppercase tracking-widest underline underline-offset-4 decoration-2 decoration-slate-300 dark:decoration-slate-600">
-                            {formatTripletId(request.display_id || request.id)}
-                        </div>
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                             <FileBox size={12} className="inline mr-1.5 align-text-bottom text-slate-400" />
                             SKU: {skuCard.fullLabel}
@@ -929,11 +1825,11 @@ export default function RequisitionDetailPage() {
                 </div>
             </div>
 
+            <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                On-Road Price
+            </p>
             <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-4">
-                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                        On-Road Price
-                    </h2>
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-end gap-4">
                     <div className="text-right">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last Purchase</p>
                         <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wide">
@@ -1023,232 +1919,874 @@ export default function RequisitionDetailPage() {
                     )}
                 </div>
             </div>
-            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-4">
-                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                        Quote
-                    </h2>
-                </div>
-                <div>
-                    {requestItems.length === 0 ? (
-                        <div className="p-8 text-center text-[11px] font-bold text-slate-400 uppercase">
-                            No cost lines attached to this requisition.
+            <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Qoutes</p>
+            {existingQuoteSummaries.length > 0 && (
+                <div className="space-y-2">
+                    {existingQuoteSummaries.map(summary => (
+                        <div
+                            key={summary.id}
+                            className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 px-4 py-3 flex items-center justify-between gap-3"
+                        >
+                            <div>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                    Quote Ref: {formatTripletId(summary.displayId || summary.id)}
+                                </p>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                    Supplier
+                                </p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                    {summary.dealerName}
+                                </p>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-1">
+                                    {summary.items.length ? summary.items.join(', ') : 'Items mapped'}
+                                </p>
+                                <p
+                                    className={`inline-flex items-center rounded-md px-2 py-0.5 mt-1 text-[9px] font-black uppercase tracking-wider ${
+                                        summary.status === 'SELECTED'
+                                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                            : summary.status === 'REJECTED'
+                                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                    }`}
+                                >
+                                    {summary.status === 'SELECTED'
+                                        ? 'PO Issued'
+                                        : summary.status === 'REJECTED'
+                                          ? 'Superseded'
+                                          : 'Submitted'}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">
+                                    Offer Price
+                                </p>
+                                <p className="text-lg font-black text-emerald-700 dark:text-emerald-200">
+                                    {formatCurrency(summary.total)}
+                                </p>
+                                {summary.id === bestOfferQuoteId && (
+                                    <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+                                        Best Offer
+                                    </p>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedDealer(summary.dealerTenantId);
+                                        setIsCreatingNewQuote(false);
+                                        if (summary.status === 'SELECTED') {
+                                            setShowQuoteEditor(false);
+                                            setShowPurchaseOrders(true);
+                                        } else {
+                                            setShowQuoteSection(true);
+                                            setShowQuoteEditor(true);
+                                        }
+                                    }}
+                                    className="mt-1 inline-flex items-center justify-center h-7 w-7 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
+                                    title="Expand quote"
+                                >
+                                    <ChevronRight size={14} />
+                                </button>
+                            </div>
                         </div>
-                    ) : (
-                        <>
-                            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10">
-                                <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
-                                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-3 p-4 border-b border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/5">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider self-center">
-                                            Dealership
-                                        </p>
-                                        <select
-                                            value={selectedDealer}
-                                            onChange={e => setSelectedDealer(e.target.value)}
-                                            disabled={isQuoteLocked}
-                                            className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
-                                        >
-                                            <option value="">Select dealer</option>
-                                            {quoteDealerOptions.map(name => (
-                                                <option key={name} value={name}>
-                                                    {name}
-                                                </option>
-                                            ))}
-                                        </select>
+                    ))}
+                </div>
+            )}
+            {(request.status === 'QUOTING' || canEditIssuedQuote) &&
+                (showQuoteEditor || isCreatingNewQuote) &&
+                selectedDealerQuote?.status !== 'SELECTED' && (
+                    <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-4">
+                            <div className="text-left min-w-[260px]">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSupplierEditing(prev => !prev)}
+                                    disabled={isQuoteLocked}
+                                    className="inline-flex items-center gap-1 text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider disabled:opacity-50"
+                                >
+                                    Supplier
+                                </button>
+                                {isSupplierEditing && !isQuoteLocked ? (
+                                    <select
+                                        value={selectedDealer}
+                                        onChange={e => {
+                                            setSelectedDealer(e.target.value);
+                                            setIsCreatingNewQuote(false);
+                                        }}
+                                        className="mt-1 h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                    >
+                                        <option value="">Select dealer</option>
+                                        {(isCreatingNewQuote
+                                            ? availableDealerOptionsForNewQuote
+                                            : quoteDealerOptions
+                                        ).map(option => (
+                                            <option key={option.id} value={option.id}>
+                                                {option.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <p className="mt-1 text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {quoteDealerOptions.find(option => option.id === selectedDealer)?.name || 'NA'}
+                                    </p>
+                                )}
+                                <p className="mt-1 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                    {coreCollapsedItems.length ? coreCollapsedItems.join(', ') : 'No items'}
+                                </p>
+                            </div>
+                            <div className="text-right min-w-[260px]">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsOfferPriceEditing(prev => !prev)}
+                                    disabled={isQuoteLocked}
+                                    className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-600 dark:text-emerald-300 uppercase tracking-wider disabled:opacity-50"
+                                >
+                                    Offer Price
+                                </button>
+                                {isOfferPriceEditing && !isQuoteLocked ? (
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        value={editableQuoteValues.grandTotal}
+                                        onChange={e => handleOfferPriceChange(e.target.value)}
+                                        className="mt-1 h-9 w-full rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-white dark:bg-slate-900/50 px-3 text-sm font-black text-emerald-700 dark:text-emerald-200 outline-none focus:ring-2 focus:ring-emerald-200"
+                                    />
+                                ) : (
+                                    <p className="mt-1 text-xl font-black text-emerald-700 dark:text-emerald-200">
+                                        {formatCurrency(editableQuoteValues.grandTotal)}
+                                    </p>
+                                )}
+                                <div className="mt-2 flex items-center justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowQuoteSection(prev => !prev)}
+                                        className="h-8 w-8 rounded-lg border border-slate-200 dark:border-white/10 inline-flex items-center justify-center text-slate-600 dark:text-slate-300"
+                                        title={showQuoteSection ? 'Collapse' : 'Expand'}
+                                    >
+                                        {showQuoteSection ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {!showQuoteSection ? null : (
+                            <div>
+                                {requestItems.length === 0 ? (
+                                    <div className="p-8 text-center text-[11px] font-bold text-slate-400 uppercase">
+                                        No cost lines attached to this requisition.
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_180px] gap-3 p-4 border-b border-slate-100 dark:border-white/10 items-center">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                            Add Item
-                                        </p>
-                                        <select
-                                            value={quoteAddField}
-                                            onChange={e =>
-                                                setQuoteAddField(
-                                                    e.target.value as
-                                                        | ''
-                                                        | 'registration'
-                                                        | 'insurance'
-                                                        | 'insuranceAddons'
-                                                        | 'hypothecation'
-                                                        | 'transportation'
-                                                )
-                                            }
-                                            disabled={isQuoteLocked}
-                                            className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
-                                        >
-                                            <option value="">Select item to add</option>
-                                            {!quoteVisibleFields.registration && (
-                                                <option value="registration">Registration</option>
-                                            )}
-                                            {!quoteVisibleFields.insurance && (
-                                                <option value="insurance">Insurance</option>
-                                            )}
-                                            {!quoteVisibleFields.insuranceAddons && (
-                                                <option value="insuranceAddons">Insurance Add-ons</option>
-                                            )}
-                                            {!quoteVisibleFields.hypothecation && (
-                                                <option value="hypothecation">Hypothecation</option>
-                                            )}
-                                            {!quoteVisibleFields.transportation && (
-                                                <option value="transportation">Transportation</option>
-                                            )}
-                                        </select>
-                                        <button
-                                            type="button"
-                                            disabled={isQuoteLocked || !quoteAddField}
-                                            onClick={() => {
-                                                if (!quoteAddField) return;
-                                                setQuoteVisibleFields(prev => ({ ...prev, [quoteAddField]: true }));
-                                                setQuoteAddField('');
-                                            }}
-                                            className="h-10 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 disabled:opacity-50 text-[10px] font-black uppercase tracking-wider"
-                                        >
-                                            Add
-                                        </button>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_1fr_180px] gap-3 p-3 border-b border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/5">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                            Label
-                                        </p>
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                            Rate
-                                        </p>
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                            Offer Amount
-                                        </p>
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">
-                                            Surge/Discount
-                                        </p>
-                                    </div>
-                                    {(
-                                        [
-                                            { key: 'exShowroom', label: 'Ex Showroom' },
-                                            { key: 'registration', label: 'Registration' },
-                                            { key: 'insurance', label: 'Insurance' },
-                                            { key: 'insuranceAddons', label: 'Insurance Add-ons' },
-                                            { key: 'hypothecation', label: 'Hypothecation' },
-                                            { key: 'transportation', label: 'Transportation' },
-                                        ] as const
-                                    )
-                                        .filter(row => quoteVisibleFields[row.key])
-                                        .map(row => {
-                                            const included =
-                                                includedQuoteFields[row.key as keyof typeof includedQuoteFields];
-                                            const isMandatory = row.key === 'exShowroom';
-                                            const rateMap = {
-                                                exShowroom: costSummary.exShowroom,
-                                                registration: costSummary.registration,
-                                                insurance: costSummary.insurance,
-                                                insuranceAddons: costSummary.insuranceAddons,
-                                                hypothecation: costSummary.hypothecation,
-                                                transportation: costSummary.transportation,
-                                            } as const;
-                                            const rateValue = Number(rateMap[row.key] || 0);
-                                            const offerValue = included ? Number(editableQuoteValues[row.key] || 0) : 0;
-                                            const variance = offerValue - rateValue;
-                                            return (
-                                                <div
-                                                    key={row.key}
-                                                    className="grid grid-cols-1 md:grid-cols-[220px_1fr_1fr_180px] gap-3 p-4 border-b border-slate-100 dark:border-white/10 items-center"
-                                                >
+                                ) : (
+                                    <>
+                                        <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10">
+                                            <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
+                                                <div className="grid grid-cols-1 md:grid-cols-[170px_1fr_1fr_160px_190px_190px_90px] gap-3 p-3 border-b border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/5">
                                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                                        {row.label}
+                                                        Item
                                                     </p>
-                                                    <p className="text-base font-black text-slate-900 dark:text-white">
-                                                        {formatCurrency(rateValue)}
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                        Rate
                                                     </p>
-                                                    <div>
-                                                        <input
-                                                            type="number"
-                                                            min={0}
-                                                            value={editableQuoteValues[row.key]}
-                                                            onChange={e =>
-                                                                setEditableQuoteValues(prev => ({
-                                                                    ...prev,
-                                                                    [row.key]: Math.max(0, Number(e.target.value || 0)),
-                                                                }))
-                                                            }
-                                                            disabled={isQuoteLocked}
-                                                            className="h-10 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
-                                                        />
-                                                        <div className="mt-2 flex items-center justify-end">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={isMandatory ? false : !included}
-                                                                disabled={isQuoteLocked || isMandatory}
-                                                                onChange={e => {
-                                                                    const excluded = e.target.checked;
-                                                                    setIncludedQuoteFields(prev => ({
-                                                                        ...prev,
-                                                                        [row.key]: !excluded,
-                                                                    }));
-                                                                }}
-                                                                className="h-3.5 w-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <p
-                                                        className={`text-sm font-black text-right ${
-                                                            variance < 0
-                                                                ? 'text-emerald-600 dark:text-emerald-300'
-                                                                : variance > 0
-                                                                  ? 'text-amber-600 dark:text-amber-300'
-                                                                  : 'text-slate-500 dark:text-slate-300'
-                                                        }`}
-                                                    >
-                                                        {variance < 0
-                                                            ? `Discount ${formatCurrency(Math.abs(variance))}`
-                                                            : variance > 0
-                                                              ? `Surge ${formatCurrency(variance)}`
-                                                              : '—'}
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                        Offer Amount
+                                                    </p>
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">
+                                                        Surge/Discount
+                                                    </p>
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                        Added By
+                                                    </p>
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                        Edited By
+                                                    </p>
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">
+                                                        Action
                                                     </p>
                                                 </div>
-                                            );
-                                        })}
-                                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_180px] gap-3 p-4 items-center bg-emerald-50 dark:bg-emerald-500/10">
-                                        <p className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
-                                            Final Offer
-                                        </p>
-                                        {editableQuoteFields.grandTotal && !isQuoteLocked ? (
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                value={editableQuoteValues.grandTotal}
-                                                onChange={e =>
-                                                    setEditableQuoteValues(prev => ({
-                                                        ...prev,
-                                                        grandTotal: Math.max(0, Number(e.target.value || 0)),
-                                                    }))
-                                                }
-                                                disabled={isQuoteLocked}
-                                                className="h-10 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-white dark:bg-slate-900/50 px-3 text-sm font-black text-emerald-700 dark:text-emerald-200 outline-none focus:ring-2 focus:ring-emerald-200 disabled:opacity-60"
-                                            />
-                                        ) : null}
-                                        <div className="flex justify-end" />
-                                    </div>
-                                </div>
-                                {postOfferAdditions.length > 0 && (
-                                    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                        <p className="text-[9px] font-black uppercase tracking-wider text-amber-700">
-                                            Added Later (Not In Original Offer)
-                                        </p>
-                                        <div className="mt-1 flex flex-wrap gap-2">
-                                            {postOfferAdditions.map(item => (
-                                                <span
-                                                    key={item.label}
-                                                    className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[9px] font-black uppercase tracking-wider text-amber-700 border border-amber-200"
-                                                >
-                                                    {item.label}: {formatCurrency(item.amount)}
-                                                </span>
-                                            ))}
+                                                {(
+                                                    [
+                                                        { key: 'exShowroom', label: 'Ex Showroom' },
+                                                        { key: 'registration', label: 'Registration' },
+                                                        { key: 'insurance', label: 'Insurance' },
+                                                        { key: 'insuranceAddons', label: 'Insurance Add-ons' },
+                                                        { key: 'hypothecation', label: 'Hypothecation' },
+                                                        { key: 'transportation', label: 'Transportation' },
+                                                    ] as const
+                                                )
+                                                    .filter(row => quoteVisibleFields[row.key])
+                                                    .map(row => {
+                                                        const isMandatory = row.key === 'exShowroom';
+                                                        const rowEditing = quoteRowEditMode[row.key];
+                                                        const rateMap = {
+                                                            exShowroom: costSummary.exShowroom,
+                                                            registration:
+                                                                Number(selectedRegistrationOption?.total || 0) ||
+                                                                costSummary.registration,
+                                                            insurance: costSummary.insurance,
+                                                            insuranceAddons: costSummary.insuranceAddons,
+                                                            hypothecation: costSummary.hypothecation,
+                                                            transportation: costSummary.transportation,
+                                                        } as const;
+                                                        const rateValue = Number(rateMap[row.key] || 0);
+                                                        const offerValue = Number(editableQuoteValues[row.key] || 0);
+                                                        const variance = offerValue - rateValue;
+                                                        return (
+                                                            <React.Fragment key={row.key}>
+                                                                <div className="grid grid-cols-1 md:grid-cols-[170px_1fr_1fr_160px_190px_190px_90px] gap-3 p-4 border-b border-slate-100 dark:border-white/10 items-center">
+                                                                    <label className="inline-flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={quoteRowSelected[row.key]}
+                                                                            disabled={
+                                                                                isQuoteLocked ||
+                                                                                row.key === 'exShowroom'
+                                                                            }
+                                                                            onChange={e =>
+                                                                                setQuoteRowSelected(prev => ({
+                                                                                    ...prev,
+                                                                                    [row.key]: e.target.checked,
+                                                                                }))
+                                                                            }
+                                                                            className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 disabled:opacity-50"
+                                                                        />
+                                                                        {row.key === 'registration' &&
+                                                                        selectedRegistrationOption
+                                                                            ? selectedRegistrationOption.label
+                                                                            : row.label}
+                                                                    </label>
+                                                                    <p className="text-base font-black text-slate-900 dark:text-white">
+                                                                        {formatCurrency(rateValue)}
+                                                                    </p>
+                                                                    <div>
+                                                                        {(rowEditing && !isQuoteLocked) ||
+                                                                        (row.key === 'exShowroom' &&
+                                                                            isExOnlySelected &&
+                                                                            !isQuoteLocked) ? (
+                                                                            <input
+                                                                                type="number"
+                                                                                min={0}
+                                                                                value={editableQuoteValues[row.key]}
+                                                                                onChange={e =>
+                                                                                    setEditableQuoteValues(prev => ({
+                                                                                        ...prev,
+                                                                                        [row.key]: Math.max(
+                                                                                            0,
+                                                                                            Number(e.target.value || 0)
+                                                                                        ),
+                                                                                        ...(row.key === 'exShowroom' &&
+                                                                                        isExOnlySelected
+                                                                                            ? {
+                                                                                                  grandTotal: Math.max(
+                                                                                                      0,
+                                                                                                      Number(
+                                                                                                          e.target
+                                                                                                              .value ||
+                                                                                                              0
+                                                                                                      )
+                                                                                                  ),
+                                                                                              }
+                                                                                            : {}),
+                                                                                    }))
+                                                                                }
+                                                                                className="h-10 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                                                            />
+                                                                        ) : (
+                                                                            <p className="text-base font-black text-slate-900 dark:text-white">
+                                                                                {formatCurrency(
+                                                                                    editableQuoteValues[row.key]
+                                                                                )}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                    <p
+                                                                        className={`text-sm font-black text-right ${
+                                                                            variance < 0
+                                                                                ? 'text-emerald-600 dark:text-emerald-300'
+                                                                                : variance > 0
+                                                                                  ? 'text-amber-600 dark:text-amber-300'
+                                                                                  : 'text-slate-500 dark:text-slate-300'
+                                                                        }`}
+                                                                    >
+                                                                        {variance < 0
+                                                                            ? `Discount ${formatCurrency(Math.abs(variance))}`
+                                                                            : variance > 0
+                                                                              ? `Surge ${formatCurrency(variance)}`
+                                                                              : '—'}
+                                                                    </p>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase">
+                                                                            {createdByName}
+                                                                        </p>
+                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase">
+                                                                            {format(
+                                                                                new Date(request.created_at),
+                                                                                'dd MMM yyyy, hh:mm a'
+                                                                            )}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase">
+                                                                            {createdByName}
+                                                                        </p>
+                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase">
+                                                                            {format(
+                                                                                new Date(
+                                                                                    request.updated_at ||
+                                                                                        request.created_at
+                                                                                ),
+                                                                                'dd MMM yyyy, hh:mm a'
+                                                                            )}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex justify-end gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={isQuoteLocked}
+                                                                            onClick={() =>
+                                                                                setQuoteRowEditMode(prev => ({
+                                                                                    ...prev,
+                                                                                    [row.key]: !prev[row.key],
+                                                                                }))
+                                                                            }
+                                                                            className="inline-flex items-center justify-center h-7 w-7 rounded-md text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+                                                                            title="Edit row"
+                                                                        >
+                                                                            <FileText size={14} />
+                                                                        </button>
+                                                                        {!isMandatory && (
+                                                                            <button
+                                                                                type="button"
+                                                                                disabled={isQuoteLocked}
+                                                                                onClick={() => {
+                                                                                    setQuoteVisibleFields(prev => ({
+                                                                                        ...prev,
+                                                                                        [row.key]: false,
+                                                                                    }));
+                                                                                    setIncludedQuoteFields(prev => ({
+                                                                                        ...prev,
+                                                                                        [row.key]: true,
+                                                                                    }));
+                                                                                    setEditableQuoteValues(prev => ({
+                                                                                        ...prev,
+                                                                                        [row.key]: 0,
+                                                                                    }));
+                                                                                    setQuoteRowEditMode(prev => ({
+                                                                                        ...prev,
+                                                                                        [row.key]: false,
+                                                                                    }));
+                                                                                }}
+                                                                                className="inline-flex items-center justify-center h-7 w-7 rounded-md text-rose-500 hover:bg-rose-50 disabled:opacity-50"
+                                                                                title="Delete row"
+                                                                            >
+                                                                                <Trash2 size={14} />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+                                                {customInsuranceAddons.map(addon => {
+                                                    const variance = Number(addon.offer || 0);
+                                                    return (
+                                                        <div
+                                                            key={addon.id}
+                                                            className="grid grid-cols-1 md:grid-cols-[170px_1fr_1fr_160px_190px_190px_90px] gap-3 p-4 border-b border-slate-100 dark:border-white/10 items-center"
+                                                        >
+                                                            <label className="inline-flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked
+                                                                    readOnly
+                                                                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600"
+                                                                />
+                                                                {addon.label}
+                                                            </label>
+                                                            <p className="text-base font-black text-slate-900 dark:text-white">
+                                                                {formatCurrency(0)}
+                                                            </p>
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                value={addon.offer}
+                                                                onChange={e =>
+                                                                    setCustomInsuranceAddons(prev =>
+                                                                        prev.map(row =>
+                                                                            row.id === addon.id
+                                                                                ? {
+                                                                                      ...row,
+                                                                                      offer: Math.max(
+                                                                                          0,
+                                                                                          Number(e.target.value || 0)
+                                                                                      ),
+                                                                                  }
+                                                                                : row
+                                                                        )
+                                                                    )
+                                                                }
+                                                                disabled={isQuoteLocked}
+                                                                className="h-10 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
+                                                            />
+                                                            <p className="text-sm font-black text-right text-amber-600 dark:text-amber-300">
+                                                                {variance > 0
+                                                                    ? `Surge ${formatCurrency(variance)}`
+                                                                    : '—'}
+                                                            </p>
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase">
+                                                                    {createdByName}
+                                                                </p>
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">
+                                                                    {format(
+                                                                        new Date(request.created_at),
+                                                                        'dd MMM yyyy, hh:mm a'
+                                                                    )}
+                                                                </p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase">
+                                                                    {createdByName}
+                                                                </p>
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">
+                                                                    {format(
+                                                                        new Date(
+                                                                            request.updated_at || request.created_at
+                                                                        ),
+                                                                        'dd MMM yyyy, hh:mm a'
+                                                                    )}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex justify-end">
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isQuoteLocked}
+                                                                    onClick={() =>
+                                                                        setCustomInsuranceAddons(prev =>
+                                                                            prev.filter(row => row.id !== addon.id)
+                                                                        )
+                                                                    }
+                                                                    className="inline-flex items-center justify-center h-7 w-7 rounded-md text-rose-500 hover:bg-rose-50 disabled:opacity-50"
+                                                                    title="Delete row"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                <div className="grid grid-cols-1 md:grid-cols-[170px_1fr_1fr_160px_190px_190px_90px] gap-3 px-4 py-2 border-b border-slate-100/70 dark:border-white/10 bg-slate-50/60 dark:bg-white/[0.02] items-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowAddItemSelector(prev => !prev)}
+                                                        disabled={isQuoteLocked}
+                                                        className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 uppercase tracking-wider disabled:opacity-50"
+                                                    >
+                                                        <Pencil size={11} />
+                                                        Add New Item
+                                                    </button>
+                                                    {showAddItemSelector ? (
+                                                        <>
+                                                            <input
+                                                                list="quote-add-item-options"
+                                                                value={quoteAddField}
+                                                                onChange={e => setQuoteAddField(e.target.value)}
+                                                                disabled={isQuoteLocked}
+                                                                placeholder="Type to search item..."
+                                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-xs font-bold text-slate-900 dark:text-white"
+                                                            />
+                                                            <datalist id="quote-add-item-options">
+                                                                {addItemOptions.map(option => (
+                                                                    <option key={option.key} value={option.label} />
+                                                                ))}
+                                                            </datalist>
+                                                        </>
+                                                    ) : (
+                                                        <p />
+                                                    )}
+                                                    {showAddItemSelector ? (
+                                                        <button
+                                                            type="button"
+                                                            disabled={isQuoteLocked || !selectedAddItem}
+                                                            onClick={() => {
+                                                                if (!selectedAddItem) return;
+                                                                const key = selectedAddItem.key;
+                                                                if (key.startsWith('registration:')) {
+                                                                    const regKey = key.replace('registration:', '') as
+                                                                        | 'state'
+                                                                        | 'bharat'
+                                                                        | 'company';
+                                                                    const option = registrationCatalogOptions.find(
+                                                                        item => item.key === regKey
+                                                                    );
+                                                                    if (option) {
+                                                                        setSelectedRegistrationOption(option);
+                                                                        setEditableQuoteValues(prev => ({
+                                                                            ...prev,
+                                                                            registration: Number(option.total || 0),
+                                                                        }));
+                                                                    }
+                                                                    setQuoteVisibleFields(prev => ({
+                                                                        ...prev,
+                                                                        registration: true,
+                                                                    }));
+                                                                } else if (key.startsWith('insuranceAddon:')) {
+                                                                    const addonKey = key.replace('insuranceAddon:', '');
+                                                                    const option = insuranceAddonCatalogOptions.find(
+                                                                        item => item.key === addonKey
+                                                                    );
+                                                                    const nextNumber = customInsuranceAddons.length + 1;
+                                                                    setCustomInsuranceAddons(prev => [
+                                                                        ...prev,
+                                                                        {
+                                                                            id: `${Date.now()}-${nextNumber}`,
+                                                                            label:
+                                                                                option?.label ||
+                                                                                `Insurance Add-on ${nextNumber}`,
+                                                                            offer: Number(option?.total || 0),
+                                                                        },
+                                                                    ]);
+                                                                } else {
+                                                                    setQuoteVisibleFields(prev => ({
+                                                                        ...prev,
+                                                                        [key as keyof typeof quoteVisibleFields]: true,
+                                                                    }));
+                                                                }
+                                                                setQuoteAddField('');
+                                                                setShowAddItemSelector(false);
+                                                            }}
+                                                            className="h-9 rounded-lg bg-indigo-600 px-3 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50"
+                                                        >
+                                                            Add
+                                                        </button>
+                                                    ) : (
+                                                        <p />
+                                                    )}
+                                                    <p />
+                                                    <p />
+                                                    <p />
+                                                    <p />
+                                                </div>
+                                                <div className="p-4 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (
+                                                                    !confirm(
+                                                                        'Delete this quote? This action cannot be undone.'
+                                                                    )
+                                                                )
+                                                                    return;
+                                                                handleDeleteQuote();
+                                                            }}
+                                                            disabled={isQuoteLocked}
+                                                            className="h-10 rounded-xl border border-rose-200 bg-rose-50 px-4 text-[10px] font-black uppercase tracking-wider text-rose-600 disabled:opacity-50 inline-flex items-center gap-1"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (!confirm('Save quote changes?')) return;
+                                                                handleSaveQuote();
+                                                            }}
+                                                            disabled={isQuoteLocked || isSavingQuote}
+                                                            className="h-10 rounded-xl bg-indigo-600 px-4 text-[10px] font-black uppercase tracking-wider text-white disabled:bg-slate-300 dark:disabled:bg-slate-700"
+                                                        >
+                                                            {isSavingQuote ? 'Saving...' : 'Save'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleApproveQuote}
+                                                            disabled={
+                                                                isQuoteLocked || currentWorkflowStage === 'issued'
+                                                            }
+                                                            className="h-10 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[10px] font-black uppercase tracking-wider text-emerald-700 disabled:opacity-50"
+                                                        >
+                                                            Approved
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {postOfferAdditions.length > 0 && (
+                                                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                                    <p className="text-[9px] font-black uppercase tracking-wider text-amber-700">
+                                                        Added Later (Not In Original Offer)
+                                                    </p>
+                                                    <div className="mt-1 flex flex-wrap gap-2">
+                                                        {postOfferAdditions.map(item => (
+                                                            <span
+                                                                key={item.label}
+                                                                className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[9px] font-black uppercase tracking-wider text-amber-700 border border-amber-200"
+                                                            >
+                                                                {item.label}: {formatCurrency(item.amount)}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
+                                    </>
                                 )}
                             </div>
-                        </>
-                    )}
-                </div>
-            </div>
+                        )}
+                    </div>
+                )}
+
+            {selectedQuote && (
+                <>
+                    <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                        Purchase Order
+                    </p>
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                        <div className="px-4 py-3 flex items-center justify-between gap-3">
+                            <div>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                    PO Ref:{' '}
+                                    {formatTripletId(primaryPo?.display_id || primaryPo?.id || selectedQuote.id)}
+                                </p>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                    Supplier
+                                </p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                    {parseTenantRef(selectedQuote.id_tenants)?.name ||
+                                        quoteDealerOptions.find(option => option.id === selectedQuote.dealer_tenant_id)
+                                            ?.name ||
+                                        'NA'}
+                                </p>
+                                <p
+                                    className={`inline-flex items-center rounded-md px-2 py-0.5 mt-1 text-[9px] font-black uppercase tracking-wider ${
+                                        poStatusLabel === 'Issued'
+                                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                            : poStatusLabel === 'In Review'
+                                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                    }`}
+                                >
+                                    {poStatusLabel}
+                                </p>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-1">
+                                    {(selectedQuote.inv_quote_line_items || [])
+                                        .map(
+                                            line =>
+                                                requestItems.find(item => item.id === line.request_item_id)
+                                                    ?.cost_type || ''
+                                        )
+                                        .filter(Boolean)
+                                        .slice(0, 5)
+                                        .join(', ') || 'Items mapped'}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">
+                                    Offer Price
+                                </p>
+                                <p className="text-lg font-black text-emerald-700 dark:text-emerald-200">
+                                    {formatCurrency(getQuoteTotal(selectedQuote))}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPurchaseOrders(prev => !prev)}
+                                    className="mt-1 inline-flex items-center justify-center h-7 w-7 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
+                                    title={showPurchaseOrders ? 'Collapse PO' : 'Expand PO'}
+                                >
+                                    {showPurchaseOrders ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                </button>
+                            </div>
+                        </div>
+                        {showPurchaseOrders && (
+                            <div className="px-4 pb-4 border-t border-slate-100 dark:border-white/10">
+                                <div className="grid grid-cols-1 md:grid-cols-[170px_1fr_1fr_160px_190px_190px_90px] gap-3 p-3 border-b border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                        Item
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                        Rate
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                        Offer Amount
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">
+                                        Surge/Discount
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                        Approved By
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                        Issued By
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">
+                                        Action
+                                    </p>
+                                </div>
+                                {(selectedQuote.inv_quote_line_items || []).map(line => {
+                                    const reqItem = requestItems.find(item => item.id === line.request_item_id);
+                                    const rateValue = Number(reqItem?.expected_amount || 0);
+                                    const offerValue = Number(line.offered_amount || 0);
+                                    const variance = offerValue - rateValue;
+                                    return (
+                                        <div
+                                            key={line.request_item_id}
+                                            className="grid grid-cols-1 md:grid-cols-[170px_1fr_1fr_160px_190px_190px_90px] gap-3 p-3 border-b border-slate-100 dark:border-white/10 items-center"
+                                        >
+                                            <p className="text-[10px] font-black text-slate-700 uppercase tracking-wider inline-flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked
+                                                    readOnly
+                                                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600"
+                                                />
+                                                {formatCostTypeLabel(reqItem?.cost_type)}
+                                            </p>
+                                            <p className="text-base font-black text-slate-900 dark:text-white">
+                                                {formatCurrency(rateValue)}
+                                            </p>
+                                            <p className="text-base font-black text-slate-900 dark:text-white">
+                                                {formatCurrency(offerValue)}
+                                            </p>
+                                            <p
+                                                className={`text-sm font-black text-right ${
+                                                    variance < 0
+                                                        ? 'text-emerald-600 dark:text-emerald-300'
+                                                        : variance > 0
+                                                          ? 'text-amber-600 dark:text-amber-300'
+                                                          : 'text-slate-500 dark:text-slate-300'
+                                                }`}
+                                            >
+                                                {variance < 0
+                                                    ? `Discount ${formatCurrency(Math.abs(variance))}`
+                                                    : variance > 0
+                                                      ? `Surge ${formatCurrency(variance)}`
+                                                      : '—'}
+                                            </p>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase">
+                                                    {createdByName}
+                                                </p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase">
+                                                    {format(new Date(request.created_at), 'dd MMM yyyy, hh:mm a')}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase">
+                                                    {createdByName}
+                                                </p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase">
+                                                    {format(
+                                                        new Date(request.updated_at || request.created_at),
+                                                        'dd MMM yyyy, hh:mm a'
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <div className="text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                                —
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                <div className="pt-3 flex items-center justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleReviewPo}
+                                        disabled={!primaryPo || Boolean(poReviewState[primaryPo.id])}
+                                        className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-4 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50"
+                                    >
+                                        Review
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleIssuePo}
+                                        disabled={!primaryPo || !poReviewState[primaryPo.id] || isIssuingPo}
+                                        className="h-10 rounded-xl bg-violet-600 px-4 text-[10px] font-black uppercase tracking-wider text-white disabled:bg-slate-300 dark:disabled:bg-slate-700"
+                                    >
+                                        {isIssuingPo ? 'Issuing...' : 'Issue'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {isPoIssued && primaryPo && (
+                <>
+                    <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                        Dispatch Details
+                    </p>
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 px-4 py-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                        <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Dispatch Ref
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                {dispatchDetails.dispatchId}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Warehouse</p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                {dispatchDetails.warehouse}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Chassis Number
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                {dispatchDetails.chassisNumber}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Engine Number
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                {dispatchDetails.engineNumber}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Delivery Note#
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                {dispatchDetails.deliveryNote}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Warehouse Incharge Name
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                {dispatchDetails.warehouseInchargeName}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Warehouse Incharge Contact
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                {dispatchDetails.warehouseInchargeContact}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Transporter Name
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                {dispatchDetails.transporterName}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Transporter Contact
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                {dispatchDetails.transporterContact}
+                            </p>
+                        </div>
+                    </div>
+                </>
+            )}
 
             {request.status === 'ORDERED' && primaryPo?.po_status !== 'RECEIVED' && (
                 <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide flex items-center gap-2">
@@ -1258,13 +2796,13 @@ export default function RequisitionDetailPage() {
             )}
 
             <div className="flex items-center justify-between gap-3">
-                <button
-                    onClick={() => router.push(requisitionsBasePath)}
-                    className="px-5 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 text-xs font-black uppercase tracking-wider transition-all"
-                >
-                    Back to Requisitions
-                </button>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => router.push(requisitionsBasePath)}
+                        className="px-5 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 text-xs font-black uppercase tracking-wider transition-all"
+                    >
+                        Back to Requisitions
+                    </button>
                     {request.status !== 'RECEIVED' && request.status !== 'CANCELLED' && (
                         <button
                             onClick={handleCancelRequest}
@@ -1274,18 +2812,24 @@ export default function RequisitionDetailPage() {
                             {isCancelling ? 'Cancelling...' : 'Cancel Requisition'}
                         </button>
                     )}
-                    <button
-                        onClick={handleNextStage}
-                        disabled={
-                            selectingQuoteId !== null ||
-                            request.status === 'RECEIVED' ||
-                            request.status === 'CANCELLED' ||
-                            (request.status === 'QUOTING' && !canAdvanceToOrdered)
-                        }
-                        className="px-5 py-3 rounded-2xl bg-indigo-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white text-xs font-black uppercase tracking-wider transition-all disabled:cursor-not-allowed"
-                    >
-                        {selectingQuoteId ? 'Processing...' : nextActionLabel}
-                    </button>
+                </div>
+                <div className="flex items-center gap-3">
+                    {request.status === 'QUOTING' && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowQuoteSection(true);
+                                setShowAddItemSelector(false);
+                                setIsSupplierEditing(true);
+                                setIsCreatingNewQuote(true);
+                                setShowQuoteEditor(true);
+                                setSelectedDealer('');
+                            }}
+                            className="px-5 py-3 rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-black uppercase tracking-wider transition-all"
+                        >
+                            + Add New Quote
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
