@@ -199,8 +199,20 @@ export default function PricingPage() {
     const fetchSKUsAndPrices = async () => {
         setLoading(true);
         try {
+            // 0. Resolve allowed brands for this dealer (mono vs multi-brand)
+            //    AUMS superadmin → no rows in dealer_brands → sees ALL brands
+            //    Mono-brand dealer (e.g. AHER → Honda) → sees only Honda SKUs
+            let allowedBrandIds: string[] = [];
+            if (tenantSlug !== 'aums' && tenantId) {
+                const { data: dealerBrandsData } = await supabase
+                    .from('dealer_brands')
+                    .select('brand_id')
+                    .eq('tenant_id', tenantId);
+                allowedBrandIds = (dealerBrandsData || []).map((r: any) => r.brand_id).filter(Boolean);
+            }
+
             // V2 Catalog Fetch: SKU -> Variant -> Model -> Brand
-            const { data: skuData, error: skuError } = await supabase
+            let skuQuery = supabase
                 .from('cat_skus')
                 .select(
                     `
@@ -217,6 +229,12 @@ export default function PricingPage() {
                 )
                 .order('position', { ascending: true, nullsFirst: false });
 
+            // Apply brand filter if dealer has brand restrictions
+            if (allowedBrandIds.length > 0) {
+                skuQuery = (skuQuery as any).in('brand_id', allowedBrandIds);
+            }
+
+            const { data: skuData, error: skuError } = await skuQuery;
             if (skuError) throw skuError;
 
             const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode ?? 'MH';
