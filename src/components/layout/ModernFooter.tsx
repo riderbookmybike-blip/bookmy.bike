@@ -2,178 +2,815 @@
 
 // Refined Modern Footer - Optimized SSR
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { Facebook, Twitter, Linkedin, Instagram, Heart, Plus, Minus, MapPin } from 'lucide-react';
+import {
+    Facebook,
+    Twitter,
+    Linkedin,
+    Instagram,
+    Heart,
+    Plus,
+    Minus,
+    MapPin,
+    MessageCircle,
+    MousePointer2,
+    Bike,
+    Users,
+    Gift,
+    CheckCircle2,
+    QrCode,
+    LayoutGrid,
+    Tags,
+    Gauge,
+    Wallet,
+    ShieldCheck,
+    FileText,
+    HelpCircle,
+    Info,
+    BookOpen,
+    Compass,
+    Image as ImageIcon,
+    Shield,
+    Lock,
+    Scale,
+    Sparkles,
+} from 'lucide-react';
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { useOClubWallet } from '@/hooks/useOClubWallet';
+import { createClient } from '@/lib/supabase/client';
+import { QRCodeCanvas } from 'qrcode.react';
+import Modal from '@/components/ui/Modal';
 
 export const ModernFooter = () => {
     const { brands } = useSystemBrandsLogic();
     const [openSection, setOpenSection] = useState<string | null>(null);
+    const [openNested, setOpenNested] = useState<string | null>(null);
     const [mounted, setMounted] = React.useState(false);
+    const { user } = useAuth();
+    const { availableCoins } = useOClubWallet();
+    const [quoteCount, setQuoteCount] = useState<number | null>(null);
+    const [bookingStatus, setBookingStatus] = useState<string | null>(null);
+    const [memberId, setMemberId] = useState<string | null>(null);
+    const [isReferModalOpen, setIsReferModalOpen] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
+    const qrRef = useRef<HTMLCanvasElement>(null);
+    const [deviceMetrics, setDeviceMetrics] = useState<{
+        viewport: string;
+        resolution: string;
+        aspectRatio: string;
+        pixelRatio: string;
+        os: string;
+        browser: string;
+        battery?: string;
+    } | null>(null);
 
     React.useEffect(() => {
         setMounted(true);
+
+        if (typeof window !== 'undefined') {
+            const updateMetrics = async () => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                const resWidth = window.screen.width;
+                const resHeight = window.screen.height;
+                const dpr = window.devicePixelRatio;
+
+                // Robust OS Detection
+                let os = 'OS UNKNOWN';
+                const p = window.navigator.platform.toLowerCase();
+                const ua = window.navigator.userAgent.toLowerCase();
+
+                if (ua.includes('win')) os = 'WINDOWS';
+                else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod')) os = 'IOS';
+                else if (p.includes('mac') || ua.includes('macintosh')) os = 'MACOS';
+                else if (ua.includes('android')) os = 'ANDROID';
+                else if (ua.includes('linux')) os = 'LINUX';
+
+                // Robust Browser Detection
+                let browser = 'BROWSER UNKNOWN';
+                if (ua.includes('edg/')) browser = 'EDGE';
+                else if (ua.includes('chrome') && !ua.includes('edg/')) browser = 'CHROME';
+                else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'SAFARI';
+                else if (ua.includes('firefox')) browser = 'FIREFOX';
+                else if (ua.includes('opera') || ua.includes('opr/')) browser = 'OPERA';
+
+                const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+                const common = gcd(resWidth, resHeight);
+                const ratio = `${resWidth / common}:${resHeight / common}`;
+
+                let batteryLevel = undefined;
+                try {
+                    const nav: any = window.navigator;
+                    if (nav.getBattery) {
+                        const battery = await nav.getBattery();
+                        batteryLevel = `${Math.round(battery.level * 100)}%`;
+                    }
+                } catch (e) {}
+
+                setDeviceMetrics({
+                    viewport: `${width}×${height}`,
+                    resolution: `${resWidth}×${resHeight}`,
+                    aspectRatio: ratio,
+                    pixelRatio: dpr.toFixed(1),
+                    os: os,
+                    browser: browser,
+                    battery: batteryLevel,
+                });
+            };
+
+            updateMetrics();
+            window.addEventListener('resize', updateMetrics);
+            return () => window.removeEventListener('resize', updateMetrics);
+        }
     }, []);
+
+    // Fetch user-specific data (Quotes & Bookings)
+    useEffect(() => {
+        if (!user) {
+            setQuoteCount(null);
+            setBookingStatus(null);
+            setMemberId(null);
+            return;
+        }
+
+        const supabase = createClient();
+
+        // 1. Fetch Member Details including counts for quotes/bookings
+        supabase
+            .from('id_members')
+            .select('display_id, quotes_count, bookings_count')
+            .eq('id', user.id)
+            .maybeSingle()
+            .then(({ data }) => {
+                if (data) {
+                    if (data.display_id) setMemberId(data.display_id);
+                    if (data.quotes_count !== undefined) setQuoteCount(data.quotes_count);
+                }
+            });
+
+        // 2. Fetch Latest Active Booking Status
+        supabase
+            .from('crm_bookings')
+            .select('id, status, operational_stage')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+            .then(({ data }) => {
+                if (data) {
+                    const status = data.operational_stage || data.status || 'Active';
+                    setBookingStatus(status.replace('_', ' '));
+                }
+            });
+    }, [user]);
+
+    const referralUrl = memberId ? `https://bookmy.bike/?ref=${memberId}` : 'https://bookmy.bike';
+    const whatsappMessage = `Hey! I'm using BookMyBike to find my next ride. Check it out using my referral link and let's ride together! 🏍️✨\n\nJoin here: ${referralUrl}`;
+    const whatsappLink = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+
+    const heroSteps = useMemo(
+        () => [
+            {
+                id: 1,
+                title: 'Click',
+                subtitle: 'VERIFIED',
+                description: 'Easy signup — get started in seconds.',
+                icon: <MousePointer2 size={24} />,
+                href: '/',
+            },
+            {
+                id: 2,
+                title: 'Invite',
+                subtitle: 'INVITE FRIENDS',
+                description: 'Earn B-Coins for yourself and friends.',
+                icon: <Users size={24} />,
+                onClick: () => setIsReferModalOpen(true),
+            },
+            {
+                id: 3,
+                title: 'Reward',
+                subtitle: 'GET REWARDS',
+                description: 'Use B-Coins against your purchases.',
+                icon: <Gift size={24} />,
+                href: '#',
+            },
+            {
+                id: 4,
+                title: 'Compare',
+                subtitle: 'COMPARE MODELS',
+                description: 'Compare your dream bikes side by side.',
+                icon: <Scale size={24} />,
+                href: '/compare',
+            },
+            {
+                id: 5,
+                title: 'Lock',
+                subtitle: 'LOCK YOUR SPOT',
+                description: 'Lock the one you love most.',
+                icon: <Lock size={24} />,
+                href: '/profile?tab=bookings',
+            },
+            {
+                id: 6,
+                title: 'Experience',
+                subtitle: 'ENJOY THE EVENT',
+                description: "Experience O'Circle privileged services.",
+                icon: <Sparkles size={24} />,
+                href: '#',
+            },
+        ],
+        [setIsReferModalOpen]
+    );
 
     const toggleSection = (title: string) => {
         setOpenSection(openSection === title ? null : title);
     };
 
-    // Filter brands to only show those with vehicles (Logic: name matches confirmed brands)
-    const activeBrandNames = ['HONDA', 'TVS', 'HERO', 'SUZUKI'];
-    const filteredBrands = brands.filter(b => activeBrandNames.includes(b.name.toUpperCase()));
+    const toggleNested = (brand: string) => {
+        setOpenNested(openNested === brand ? null : brand);
+    };
 
-    const footerSections = [
-        {
-            title: 'Inventory',
-            links: [
-                { label: 'All Inventory', href: '/store/catalog' },
-                { label: 'Scooters', href: '/store/catalog?category=SCOOTER' },
-                { label: 'Motorcycles', href: '/store/catalog?category=MOTORCYCLE' },
-                { label: 'Lowest Price', href: '/store/catalog?sort=price_asc' },
-                { label: 'Highest Mileage', href: '/store/catalog?sort=mileage' },
-            ],
-        },
-        {
-            title: 'Honda Hub',
-            links: [
-                { label: 'Activa 6G', href: '/store/honda/activa-6g' },
-                { label: 'Activa 125', href: '/store/honda/activa-125' },
-                { label: 'Dio 125', href: '/store/honda/dio-125' },
-                { label: 'Shine 125', href: '/store/honda/shine-125' },
-                { label: 'SP 125', href: '/store/honda/sp-125' },
-            ],
-        },
-        {
-            title: 'TVS & Hero',
-            links: [
-                { label: 'Jupiter 110', href: '/store/tvs/jupiter' },
-                { label: 'Ntorq 125', href: '/store/tvs/ntorq' },
-                { label: 'Raider 125', href: '/store/tvs/raider' },
-                { label: 'Splendor+', href: '/store/hero/splendor-plus' },
-                { label: 'Xtreme 125R', href: '/store/hero/xtreme-125r' },
-            ],
-        },
-        {
-            title: 'Local SEO',
-            links: [
-                { label: 'Mumbai', href: '/store/catalog?district=MUMBAI' },
-                { label: 'Palghar', href: '/store/catalog?district=PALGHAR' },
-                { label: 'Kalyan', href: '/store/catalog?district=THANE' },
-                { label: 'Panvel', href: '/store/catalog?district=RAIGAD' },
-                { label: 'Pune', href: '/store/catalog?district=PUNE' },
-            ],
-        },
-        {
-            title: 'Support',
-            links: [
-                { label: 'Finance Options', href: '/finance' },
-                { label: 'Insurance Hub', href: '/insurance' },
-                { label: 'RTO Rules', href: '/rto' },
-                { label: 'Help Center', href: '/help' },
-                { label: 'Privacy Policy', href: '/privacy' },
-            ],
-        },
-        {
-            title: 'Company',
-            links: [
-                { label: 'About Us', href: '/about' },
-                { label: 'Our Blog', href: '/blog' },
-                { label: "O' Circle", href: '/store/ocircle' },
-                { label: 'Media Kit', href: '/mediakit' },
-            ],
-        },
-    ];
+    const copyReferralLink = () => {
+        navigator.clipboard.writeText(referralUrl);
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+    };
 
-    if (!mounted) {
-        return <div className="bg-black min-h-[400px]" />;
-    }
+    const shareQRImage = async () => {
+        const canvas = qrRef.current;
+        if (!canvas) return;
+
+        try {
+            const blob = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), 'image/png'));
+            const file = new File([blob], 'referral-qr.png', { type: 'image/png' });
+
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'BookMyBike Referral',
+                    text: whatsappMessage,
+                });
+            } else {
+                // Fallback: Download
+                const link = document.createElement('a');
+                link.download = 'bookmybike-qr.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        } catch (error) {
+            console.error('Error sharing image:', error);
+        }
+    };
+
+    const shareToFacebook = () => {
+        const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralUrl)}`;
+        window.open(url, '_blank');
+    };
+
+    const shareToX = () => {
+        const url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(referralUrl)}&text=${encodeURIComponent(whatsappMessage)}`;
+        window.open(url, '_blank');
+    };
+
+    // Simplified Brand Section Logic
+    const activeBrandNames = ['HONDA', 'TVS', 'HERO', 'SUZUKI', 'BAJAJ', 'ROYAL ENFIELD', 'YAMAHA', 'KTM'];
+
+    const footerSections = useMemo(
+        () => [
+            {
+                title: 'Inventory',
+                links: [
+                    {
+                        label: 'All Inventory',
+                        href: '/store/catalog',
+                        icon: <LayoutGrid size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Scooters',
+                        href: '/store/catalog?category=SCOOTER',
+                        icon: <Bike size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Motorcycles',
+                        href: '/store/catalog?category=MOTORCYCLE',
+                        icon: <Bike size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Lowest Price',
+                        href: '/store/catalog?sort=price_asc',
+                        icon: <Tags size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Highest Mileage',
+                        href: '/store/catalog?sort=mileage',
+                        icon: <Gauge size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                ],
+            },
+            {
+                title: 'Brands',
+                nested: [
+                    {
+                        brand: 'Honda',
+                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                        links: [
+                            { label: 'Activa 6G', href: '/store/honda/activa-6g' },
+                            { label: 'Activa 125', href: '/store/honda/activa-125' },
+                            { label: 'Dio 125', href: '/store/honda/dio-125' },
+                            { label: 'Shine 125', href: '/store/honda/shine-125' },
+                            { label: 'SP 125', href: '/store/honda/sp-125' },
+                        ],
+                    },
+                    {
+                        brand: 'TVS',
+                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                        links: [
+                            { label: 'Jupiter 110', href: '/store/tvs/jupiter' },
+                            { label: 'Ntorq 125', href: '/store/tvs/ntorq' },
+                            { label: 'Raider 125', href: '/store/tvs/raider' },
+                            { label: 'Apache RTR', href: '/store/tvs/apache-rtr-160' },
+                        ],
+                    },
+                    {
+                        brand: 'Hero',
+                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                        links: [
+                            { label: 'Splendor+', href: '/store/hero/splendor-plus' },
+                            { label: 'Xtreme 125R', href: '/store/hero/xtreme-125r' },
+                            { label: 'Destini 125', href: '/store/hero/destini-125' },
+                        ],
+                    },
+                    {
+                        brand: 'Bajaj',
+                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                        links: [
+                            { label: 'Pulsar 150', href: '/store/bajaj/pulsar-150' },
+                            { label: 'Pulsar NS200', href: '/store/bajaj/pulsar-ns200' },
+                            { label: 'Platina 100', href: '/store/bajaj/platina-100' },
+                        ],
+                    },
+                    {
+                        brand: 'Suzuki',
+                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                        links: [
+                            { label: 'Access 125', href: '/store/suzuki/access-125' },
+                            { label: 'Burgman St', href: '/store/suzuki/burgman-street' },
+                            { label: 'Avenis 125', href: '/store/suzuki/avenis' },
+                            { label: 'Gixxer SF', href: '/store/suzuki/gixxer-sf' },
+                        ],
+                    },
+                    {
+                        brand: 'Yamaha',
+                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                        links: [
+                            { label: 'R15 V4', href: '/store/yamaha/r15' },
+                            { label: 'MT-15 V2', href: '/store/yamaha/mt-15' },
+                            { label: 'RayZR 125', href: '/store/yamaha/ray-zr' },
+                            { label: 'Fascino 125', href: '/store/yamaha/fascino' },
+                        ],
+                    },
+                    {
+                        brand: 'RE',
+                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                        links: [
+                            { label: 'Classic 350', href: '/store/royal-enfield/classic-350' },
+                            { label: 'Hunter 350', href: '/store/royal-enfield/hunter-350' },
+                            { label: 'Bullet 350', href: '/store/royal-enfield/bullet-350' },
+                            { label: 'Meteor 350', href: '/store/royal-enfield/meteor-350' },
+                        ],
+                    },
+                    {
+                        brand: 'KTM',
+                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                        links: [
+                            { label: 'Duke 200', href: '/store/ktm/duke-200' },
+                            { label: 'Duke 390', href: '/store/ktm/duke-390' },
+                            { label: 'RC 200', href: '/store/ktm/rc-200' },
+                        ],
+                    },
+                ],
+            },
+            {
+                title: 'Support',
+                links: [
+                    {
+                        label: 'Finance Options',
+                        href: '/finance',
+                        icon: <Wallet size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Insurance Hub',
+                        href: '/insurance',
+                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'RTO Rules',
+                        href: '/rto',
+                        icon: <FileText size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Help Center',
+                        href: '/help',
+                        icon: <HelpCircle size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                ],
+            },
+            {
+                title: 'Company',
+                links: [
+                    {
+                        label: 'About Us',
+                        href: '/about',
+                        icon: <Info size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Our Blog',
+                        href: '/blog',
+                        icon: <BookOpen size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: "O' Circle",
+                        href: '/store/ocircle',
+                        icon: <Compass size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Media Kit',
+                        href: '/mediakit',
+                        icon: <ImageIcon size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Safety',
+                        href: '#',
+                        icon: <Shield size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Privacy Policy',
+                        href: '/privacy',
+                        icon: <Lock size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                    {
+                        label: 'Terms of Service',
+                        href: '#',
+                        icon: <Scale size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    },
+                ],
+            },
+            {
+                title: 'Serving Now',
+                links: [
+                    {
+                        label: 'Mumbai',
+                        href: '/store/catalog?district=MUMBAI',
+                        icon: <MapPin size={12} className="text-emerald-500/60" />,
+                    },
+                    {
+                        label: 'Pune',
+                        href: '/store/catalog?district=PUNE',
+                        icon: <MapPin size={12} className="text-emerald-500/60" />,
+                    },
+                    {
+                        label: 'Thane',
+                        href: '/store/catalog?district=THANE',
+                        icon: <MapPin size={12} className="text-emerald-500/60" />,
+                    },
+                    {
+                        label: 'Kalyan',
+                        href: '/store/catalog?district=THANE',
+                        icon: <MapPin size={12} className="text-emerald-500/60" />,
+                    },
+                    {
+                        label: 'Palghar',
+                        href: '/store/catalog?district=PALGHAR',
+                        icon: <MapPin size={12} className="text-emerald-500/60" />,
+                    },
+                    {
+                        label: 'Navi Mumbai',
+                        href: '/store/catalog?district=RAIGAD',
+                        icon: <MapPin size={12} className="text-emerald-500/60" />,
+                    },
+                    {
+                        label: 'Panvel',
+                        href: '/store/catalog?district=RAIGAD',
+                        icon: <MapPin size={12} className="text-emerald-500/60" />,
+                    },
+                ],
+            },
+            {
+                title: 'Connect',
+                links: [
+                    {
+                        label: 'WhatsApp',
+                        href: 'https://wa.me/917447403491',
+                        icon: <MessageCircle size={14} style={{ color: '#25D366' }} />,
+                        forceWhite: true,
+                    },
+                    {
+                        label: 'Instagram',
+                        href: 'https://www.instagram.com/bookmy.bike/',
+                        icon: <Instagram size={14} style={{ color: '#E4405F' }} />,
+                        forceWhite: true,
+                    },
+                    {
+                        label: 'Twitter / X',
+                        href: 'https://twitter.com/bookmybike',
+                        icon: <Twitter size={14} style={{ color: '#1DA1F2' }} />,
+                        forceWhite: true,
+                    },
+                    {
+                        label: 'Facebook',
+                        href: 'https://www.facebook.com/rider.bookmybike',
+                        icon: <Facebook size={14} style={{ color: '#1877F2' }} />,
+                        forceWhite: true,
+                    },
+                    {
+                        label: 'LinkedIn',
+                        href: 'https://www.linkedin.com/company/bookmybike',
+                        icon: <Linkedin size={14} style={{ color: '#0A66C2' }} />,
+                        forceWhite: true,
+                    },
+                ],
+            },
+        ],
+        []
+    );
 
     return (
-        <footer className="bg-black min-h-screen flex flex-col justify-between border-t border-white/10 selection:bg-brand-primary/20 overflow-hidden relative">
+        <footer
+            className="flex flex-col justify-between border-t border-white/5 selection:bg-brand-primary/20 relative text-white"
+            style={{
+                backgroundColor: '#0a0904',
+                minHeight: !mounted ? '400px' : 'auto',
+                scrollMarginTop: 'var(--header-h, 80px)',
+            }}
+        >
+            {!mounted ? (
+                <div className="absolute inset-0 bg-[#0a0904] z-50 flex items-center justify-center">
+                    <div className="w-10 h-10 border-2 border-brand-primary/20 border-t-brand-primary rounded-full animate-spin" />
+                </div>
+            ) : null}
+            {/* 1. Dynamic Mesh Background */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40">
+                <motion.div
+                    animate={{
+                        scale: [1, 1.1, 1],
+                        rotate: [0, 5, 0],
+                        x: [-20, 20, -20],
+                    }}
+                    transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                    className="absolute -top-[20%] -left-[10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_50%_50%,rgba(255,215,0,0.05)_0%,transparent_60%)]"
+                />
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
+            </div>
+
             {/* Ambient Background Glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-brand-primary/50 to-transparent" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-brand-primary/30 to-transparent" />
 
             {/* 1. Brand Hero Header */}
-            <div className="pt-[calc(var(--header-h)+6rem)] lg:pt-[calc(var(--header-h)+8rem)] relative z-10 border-b border-white/5">
-                <div className="page-container flex flex-col items-center text-center">
-                    <Link href="/" className="inline-block mb-10 group">
-                        <Logo
-                            size={48}
-                            variant="full"
-                            className="brightness-0 invert opacity-80 group-hover:opacity-100 transition-opacity"
-                        />
-                    </Link>
-                    <p className="text-[14px] lg:text-[16px] font-medium text-white/70 leading-relaxed mb-12 tracking-tight max-w-2xl px-6">
-                        India&apos;s most trusted digital marketplace for the next generation of riders.
-                        <br className="hidden lg:block" />
-                        Engineering transparency and speed into every bike booking.
-                    </p>
+            <div className="pt-20 lg:pt-24 relative z-10 border-b border-white/5">
+                <div className="page-container flex flex-col items-stretch text-center">
+                    <div className="w-full mb-14 relative">
+                        {/* Background Cyber Glow */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-32 bg-brand-primary/5 blur-[120px] rounded-full pointer-events-none" />
 
-                    <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 border border-white/10 shadow-2xl mb-16">
-                        <div className="relative">
-                            <div className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-pulse" />
-                            <div className="absolute inset-0 rounded-full bg-brand-primary/40 animate-ping" />
+                        <div className="relative grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 items-center md:items-start justify-center gap-4 lg:gap-6 w-full mx-auto">
+                            {/* 1. Animated Energy Beam (Desktop) */}
+                            <div className="hidden md:block absolute top-[60px] left-[10%] right-[10%] h-[2px] bg-white/[0.02] overflow-hidden">
+                                <motion.div
+                                    initial={{ x: '-100%' }}
+                                    animate={{ x: '100%' }}
+                                    transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                                    className="w-1/3 h-full bg-gradient-to-r from-transparent via-brand-primary/40 to-transparent shadow-[0_0_25px_rgba(255,215,0,0.4)]"
+                                />
+                            </div>
+
+                            {/* 2. Vertical Milestone Axis (Mobile Only) */}
+                            <div className="md:hidden absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-white/5">
+                                <motion.div
+                                    animate={{
+                                        y: ['0%', '100%'],
+                                        opacity: [0, 1, 0],
+                                    }}
+                                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                                    className="absolute top-0 left-[-1px] w-[3px] h-20 bg-gradient-to-b from-transparent via-brand-primary/50 to-transparent blur-[1px]"
+                                />
+                            </div>
+
+                            {heroSteps.map((step, idx) => {
+                                const isEven = (idx + 1) % 2 === 0;
+                                const Content = (
+                                    <motion.div
+                                        whileHover={{ y: -5 }}
+                                        className={`flex flex-col relative z-10 group/step cursor-pointer ${isEven ? 'max-md:col-start-2' : 'max-md:col-start-1'} max-md:row-start-${idx + 1} md:col-start-auto md:row-start-auto items-center text-center`}
+                                        onClick={step.onClick}
+                                    >
+                                        {/* 1. The Circle Portal (Letter Holder) */}
+                                        <div className="w-[100px] h-[100px] md:w-[120px] md:h-[120px] rounded-full bg-white/[0.02] backdrop-blur-3xl border border-white/10 flex flex-col items-center justify-center group-hover/step:border-brand-primary/40 transition-all duration-700 shadow-2xl relative overflow-hidden group">
+                                            {/* Liquid Portal Background */}
+                                            <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/10 via-transparent to-brand-primary/10 opacity-40 group-hover/step:opacity-100 transition-opacity duration-700" />
+
+                                            {/* Typography Watermark - BIG GOLD Letter */}
+                                            <span
+                                                className="relative z-10 text-[60px] md:text-[80px] font-black pointer-events-none select-none drop-shadow-[0_0_15px_rgba(255,215,0,0.3)] transition-transform duration-500 group-hover/step:scale-110"
+                                                style={{
+                                                    color: '#FFD700',
+                                                    lineHeight: 1,
+                                                }}
+                                            >
+                                                {step.title[0]}
+                                            </span>
+
+                                            {/* Rotating Conic Glow */}
+                                            <motion.div
+                                                animate={{ rotate: isEven ? -360 : 360 }}
+                                                transition={{
+                                                    duration: 20 - idx * 2,
+                                                    repeat: Infinity,
+                                                    ease: 'linear',
+                                                }}
+                                                className="absolute inset-0 opacity-30 pointer-events-none"
+                                                style={{
+                                                    background: `conic-gradient(from ${idx * 60}deg, transparent, rgba(255,183,0,0.2), transparent)`,
+                                                }}
+                                            />
+
+                                            {/* Glare Effect */}
+                                            <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover/step:opacity-100 transition-opacity duration-500 translate-x-1/2 -translate-y-1/2 rotate-45 pointer-events-none" />
+                                        </div>
+
+                                        {/* 2. The Content (Outside/Below) */}
+                                        <div className="mt-6 flex flex-col items-center gap-3">
+                                            <motion.div
+                                                whileHover={{ rotate: isEven ? 10 : -10, scale: 1.2 }}
+                                                className="relative z-10"
+                                            >
+                                                {React.cloneElement(step.icon as React.ReactElement, {
+                                                    size: 22,
+                                                    className:
+                                                        'text-white/60 group-hover/step:text-brand-primary transition-all duration-500',
+                                                })}
+                                            </motion.div>
+
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className="text-[13px] md:text-[15px] font-black text-white/90 tracking-tight block group-hover/step:text-white transition-colors uppercase italic">
+                                                    {step.title}
+                                                </span>
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <span className="text-[8px] text-white/40 font-bold tracking-[0.2em] uppercase block group-hover/step:text-brand-primary/80 transition-colors">
+                                                        {step.subtitle}
+                                                    </span>
+                                                    {step.title === 'Click' && user && (
+                                                        <CheckCircle2
+                                                            size={10}
+                                                            className="text-brand-primary animate-pulse"
+                                                        />
+                                                    )}
+                                                </div>
+                                                {step.description && (
+                                                    <p className="text-[9px] md:text-[10px] text-white/25 font-medium leading-snug text-center mt-1 max-w-[110px] group-hover/step:text-white/40 transition-colors italic">
+                                                        {step.description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Horizontal Bridge (Mobile Only) */}
+                                        <div
+                                            className={`md:hidden absolute top-[50px] md:top-[60px] ${isEven ? 'right-full' : 'left-full'} w-4 h-px bg-gradient-to-${isEven ? 'l' : 'r'} from-white/10 to-brand-primary/20`}
+                                        />
+                                    </motion.div>
+                                );
+
+                                return step.href ? (
+                                    <Link key={step.id} href={step.href} className="w-full md:w-auto">
+                                        {Content}
+                                    </Link>
+                                ) : (
+                                    <div key={step.id} className="w-full md:w-auto">
+                                        {Content}
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">
-                            Operational: Maharashtra
-                        </span>
                     </div>
                 </div>
             </div>
 
-            {/* 2. Main Navigation Block (6 Columns) */}
-            <div className="flex-1 flex flex-col justify-center py-20 lg:py-32 relative z-10">
+            {/* 2. Main Navigation Block (6 Column Cards) */}
+            <div className="flex-1 flex flex-col justify-center py-10 relative z-10">
                 <div className="page-container w-full">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12 lg:gap-8 items-start">
-                        {footerSections.map(section => {
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 items-stretch">
+                        {footerSections.map((section, idx) => {
                             const isOpen = openSection === section.title;
-                            const isLocalSection = section.title === 'Local SEO';
 
                             return (
-                                <div
+                                <motion.div
                                     key={section.title}
-                                    className="flex flex-col border-b border-white/5 lg:border-none last:border-none group"
+                                    whileHover={{ y: -8, z: 20 }}
+                                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                    className="flex flex-col rounded-[24px] lg:rounded-[32px] bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] hover:bg-white/[0.04] hover:border-brand-primary/20 transition-all duration-500 overflow-hidden group/card shadow-2xl shadow-black/80 relative"
                                 >
+                                    {/* Card Inner Glow */}
+                                    <div className="absolute inset-0 bg-gradient-to-b from-brand-primary/[0.02] to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+
                                     <button
                                         onClick={() => toggleSection(section.title)}
-                                        className="w-full flex items-center justify-between py-6 lg:py-0 lg:mb-12 lg:cursor-default text-left"
+                                        className="w-full flex items-center justify-between p-5 lg:p-7 lg:pb-4 lg:cursor-default text-left group"
                                     >
-                                        <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white/50 lg:border-l lg:border-white/10 lg:pl-6 transition-all group-hover:text-brand-primary group-hover:border-brand-primary">
-                                            {section.title}
-                                        </span>
+                                        <div className="flex flex-col gap-3">
+                                            <span className="text-[10px] font-black text-white/10 font-mono tracking-tighter group-hover/card:text-brand-primary/30 transition-colors">
+                                                0{idx + 1}
+                                            </span>
+                                            <span className="text-[12px] font-bold tracking-[0.2em] text-white/90 group-hover/card:text-white group-hover:text-brand-primary transition-colors uppercase">
+                                                {section.title}
+                                            </span>
+                                        </div>
                                         <div className="lg:hidden w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/50">
                                             {isOpen ? <Minus size={14} /> : <Plus size={14} />}
                                         </div>
                                     </button>
 
-                                    <div className="hidden lg:block lg:pl-6">
-                                        <ul className="flex flex-col gap-6">
-                                            {section.links.map((link, i) => (
-                                                <li key={i}>
-                                                    <Link
-                                                        href={link.href}
-                                                        className="group/link flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all underline-offset-4"
+                                    {/* Desktop Content */}
+                                    <div className="hidden lg:block px-8 pb-8">
+                                        <ul className="flex flex-col gap-5 group/list">
+                                            {section.links?.map((link: any, i) => {
+                                                const colorClasses: Record<string, string> = {
+                                                    emerald: 'text-emerald-500 hover:text-emerald-400',
+                                                    rose: 'text-rose-500 hover:text-rose-400',
+                                                    sky: 'text-sky-400 hover:text-sky-300',
+                                                    blue: 'text-blue-600 hover:text-blue-500',
+                                                    indigo: 'text-indigo-600 hover:text-indigo-500',
+                                                    default: 'text-white hover:opacity-80 group-hover/list:opacity-30',
+                                                };
+
+                                                const isForceWhite = link.forceWhite;
+                                                const hoverClass = isForceWhite
+                                                    ? 'text-white hover:opacity-80 transition-opacity'
+                                                    : link.color
+                                                      ? colorClasses[link.color]
+                                                      : colorClasses.default;
+
+                                                return (
+                                                    <li key={i}>
+                                                        <Link
+                                                            href={link.href}
+                                                            className={`flex items-center gap-3 text-[11px] font-semibold tracking-wide transition-all duration-300 ${hoverClass}`}
+                                                        >
+                                                            {link.icon && <span className="shrink-0">{link.icon}</span>}
+                                                            <span>{link.label}</span>
+                                                        </Link>
+                                                    </li>
+                                                );
+                                            })}
+                                            {section.nested?.map((brandObj, i) => (
+                                                <li key={i} className="flex flex-col gap-3">
+                                                    <button
+                                                        onClick={() => toggleNested(brandObj.brand)}
+                                                        className="text-left text-[11px] font-bold tracking-wide text-white hover:text-brand-primary flex items-center justify-between group/nested transition-colors w-full"
                                                     >
-                                                        {isLocalSection && (
-                                                            <MapPin
-                                                                size={10}
-                                                                className="text-white/20 group-hover/link:text-brand-primary transition-colors"
-                                                            />
+                                                        <div className="flex items-center gap-3">
+                                                            {brandObj.icon}
+                                                            <span>{brandObj.brand}</span>
+                                                        </div>
+                                                        <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center group-hover/nested:bg-white/10 transition-colors pointer-events-none">
+                                                            {openNested === brandObj.brand ? (
+                                                                <Minus size={10} />
+                                                            ) : (
+                                                                <Plus size={10} />
+                                                            )}
+                                                        </div>
+                                                    </button>
+                                                    <AnimatePresence>
+                                                        {openNested === brandObj.brand && (
+                                                            <motion.ul
+                                                                initial={{ height: 0, opacity: 0 }}
+                                                                animate={{ height: 'auto', opacity: 1 }}
+                                                                exit={{ height: 0, opacity: 0 }}
+                                                                className="pl-3 flex flex-col gap-3 mt-1 border-l border-white/10 overflow-hidden"
+                                                            >
+                                                                {brandObj.links.map(bLink => (
+                                                                    <li key={bLink.label}>
+                                                                        <Link
+                                                                            href={bLink.href}
+                                                                            className="text-[10px] font-semibold tracking-wide text-white hover:text-brand-primary transition-colors"
+                                                                        >
+                                                                            {bLink.label}
+                                                                        </Link>
+                                                                    </li>
+                                                                ))}
+                                                            </motion.ul>
                                                         )}
-                                                        <span className="group-hover/link:translate-x-1 duration-300 transition-transform">
-                                                            {link.label}
-                                                        </span>
-                                                    </Link>
+                                                    </AnimatePresence>
                                                 </li>
                                             ))}
                                         </ul>
                                     </div>
 
+                                    {/* Mobile Content */}
                                     <AnimatePresence>
                                         {isOpen && (
                                             <motion.div
@@ -183,25 +820,64 @@ export const ModernFooter = () => {
                                                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                                                 className="lg:hidden overflow-hidden"
                                             >
-                                                <ul className="flex flex-col gap-5 pb-8 pl-4">
-                                                    {section.links.map((link, i) => (
+                                                <ul className="px-6 pb-8 flex flex-col gap-4">
+                                                    {section.links?.map((link: any, i) => (
                                                         <li key={i}>
                                                             <Link
                                                                 href={link.href}
-                                                                className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-colors"
+                                                                className="flex items-center gap-3 text-xs font-semibold text-white/70 active:text-brand-primary"
                                                             >
-                                                                {isLocalSection && (
-                                                                    <MapPin size={10} className="text-brand-primary" />
+                                                                {link.icon && (
+                                                                    <span className="shrink-0">{link.icon}</span>
                                                                 )}
-                                                                {link.label}
+                                                                <span>{link.label}</span>
                                                             </Link>
+                                                        </li>
+                                                    ))}
+                                                    {section.nested?.map((brandObj, i) => (
+                                                        <li key={i} className="flex flex-col gap-4">
+                                                            <button
+                                                                onClick={() => toggleNested(brandObj.brand)}
+                                                                className="text-left text-[11px] font-bold tracking-wide text-white hover:text-brand-primary flex items-center justify-between group w-full"
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    {brandObj.icon}
+                                                                    <span>{brandObj.brand}</span>
+                                                                </div>
+                                                                {openNested === brandObj.brand ? (
+                                                                    <Minus size={12} />
+                                                                ) : (
+                                                                    <Plus size={12} />
+                                                                )}
+                                                            </button>
+                                                            <AnimatePresence>
+                                                                {openNested === brandObj.brand && (
+                                                                    <motion.ul
+                                                                        initial={{ height: 0, opacity: 0 }}
+                                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                        className="pl-3 flex flex-col gap-4 mt-1 border-l border-white/10 overflow-hidden"
+                                                                    >
+                                                                        {brandObj.links.map(bLink => (
+                                                                            <li key={bLink.label}>
+                                                                                <Link
+                                                                                    href={bLink.href}
+                                                                                    className="text-[10px] font-semibold tracking-wide text-white hover:text-brand-primary"
+                                                                                >
+                                                                                    {bLink.label}
+                                                                                </Link>
+                                                                            </li>
+                                                                        ))}
+                                                                    </motion.ul>
+                                                                )}
+                                                            </AnimatePresence>
                                                         </li>
                                                     ))}
                                                 </ul>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
-                                </div>
+                                </motion.div>
                             );
                         })}
                     </div>
@@ -209,62 +885,185 @@ export const ModernFooter = () => {
             </div>
 
             {/* 2. Unified Legal & Social Rail */}
-            <div className="py-14 bg-black border-t border-white/5 relative z-10">
-                <div className="page-container">
-                    <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
-                        {/* Legal Cluster */}
-                        <div className="flex flex-col md:flex-row items-center gap-6 lg:gap-16">
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white">
-                                © 2011-2026 BOOKMYBIKE
-                            </p>
-                            <div className="flex items-center gap-10">
-                                <Link
-                                    href="#"
-                                    className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white transition-colors"
-                                >
-                                    Safety
+            <div
+                className="py-14 border-t border-white/5 relative z-10"
+                style={{
+                    backgroundColor: '#0a0904',
+                    paddingBottom: 'calc(3.5rem + 60px + env(safe-area-inset-bottom, 0px))',
+                }}
+            >
+                <div className="page-container flex flex-col items-center gap-10">
+                    <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-12 pt-8">
+                        {/* Legal Cluster - Logo + Copyright + Links */}
+                        <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-16">
+                            <div className="flex flex-col items-center lg:items-start gap-3">
+                                <Link href="/" className="inline-block group relative">
+                                    <Logo
+                                        size={30}
+                                        variant="full"
+                                        customColors={{ icon: '#FFD700', bookmy: '#FFFFFF', bike: '#FFD700' }}
+                                        className="opacity-100 group-hover:scale-105 transition-all duration-300"
+                                    />
                                 </Link>
-                                <Link
-                                    href="#"
-                                    className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white transition-colors"
-                                >
-                                    Privacy
-                                </Link>
-                                <Link
-                                    href="#"
-                                    className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white transition-colors"
-                                >
-                                    Terms
-                                </Link>
+                                <p className="text-[10px] font-bold tracking-[0.2em] text-white/80">© 2011-2026</p>
                             </div>
                         </div>
 
-                        {/* Social Cluster */}
-                        <div className="flex items-center gap-4">
-                            <SocialLink icon={<Instagram size={18} />} />
-                            <SocialLink icon={<Twitter size={18} />} />
-                            <SocialLink icon={<Facebook size={18} />} />
-                            <SocialLink icon={<Linkedin size={18} />} />
-                        </div>
+                        {/* Credit Cluster - Positioned at bottom with high visibility and safe margin */}
+                        <div className="flex flex-col items-center lg:items-end gap-3 max-md:mb-12">
+                            <div className="flex items-center gap-3 text-[10px] font-bold tracking-wider text-white/70">
+                                Published with{' '}
+                                <motion.div
+                                    animate={{
+                                        scale: [1, 1.2, 1],
+                                        opacity: [0.7, 1, 0.7],
+                                    }}
+                                    transition={{
+                                        duration: 0.8,
+                                        repeat: Infinity,
+                                        ease: 'easeInOut',
+                                    }}
+                                >
+                                    <Heart
+                                        size={10}
+                                        className="text-red-500 fill-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+                                    />
+                                </motion.div>{' '}
+                                By O&apos;Circle Crew
+                            </div>
 
-                        {/* Credit Cluster */}
-                        <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-[0.3em] text-white/40">
-                            Engineered with{' '}
-                            <Heart size={10} className="text-brand-primary fill-brand-primary mx-0.5 animate-pulse" />{' '}
-                            By A-Team
+                            {/* Device & Viewport Diagnostics Rail */}
+                            {deviceMetrics && (
+                                <div className="flex flex-wrap items-center justify-center lg:justify-end gap-x-6 gap-y-2 text-[8px] font-medium font-mono tracking-widest text-white/20 uppercase">
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="text-white/10 italic">VIEW:</span> {deviceMetrics.viewport}
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="text-white/10 italic">RES:</span> {deviceMetrics.resolution}
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="text-white/10 italic">DPR:</span> {deviceMetrics.pixelRatio}
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="text-white/10 italic">OS:</span> {deviceMetrics.os}
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="text-white/10 italic">BROWSER:</span> {deviceMetrics.browser}
+                                    </span>
+                                    {deviceMetrics.battery && (
+                                        <span className="flex items-center gap-1.5">
+                                            <span className="text-white/10 italic">BATT:</span> {deviceMetrics.battery}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
+            {/* 3. Referral QR Modal */}
+            <Modal
+                isOpen={isReferModalOpen}
+                onClose={() => setIsReferModalOpen(false)}
+                title={
+                    <span className="flex items-center gap-3">
+                        <QrCode className="text-brand-primary" /> Referral Hub
+                    </span>
+                }
+                size="sm"
+            >
+                <div className="flex flex-col items-center text-center gap-8 py-4">
+                    <div className="p-6 bg-white rounded-3xl shadow-[0_0_40px_rgba(255,215,0,0.15)] border border-brand-primary/20">
+                        <QRCodeCanvas ref={qrRef} value={referralUrl} size={180} level="H" includeMargin={false} />
+                    </div>
+
+                    <div className="w-full space-y-6">
+                        <div className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex flex-col gap-2">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-widest">
+                                Share Link
+                            </span>
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm font-bold text-slate-800 dark:text-white truncate flex-1 mr-4">
+                                    {referralUrl}
+                                </p>
+                                <button
+                                    onClick={copyReferralLink}
+                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${copySuccess ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white'}`}
+                                >
+                                    {copySuccess ? 'Copied' : 'Copy'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            {/* WhatsApp Direct - Instant (Text only) */}
+                            <Link
+                                href={whatsappLink}
+                                target="_blank"
+                                className="w-full py-4 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95 group"
+                            >
+                                <MessageCircle size={20} className="group-hover:scale-110 transition-transform" />
+                                INSTANT WHATSAPP REFER
+                            </Link>
+
+                            {/* Social Sharing Grid */}
+                            <div className="grid grid-cols-5 gap-2">
+                                <button
+                                    onClick={shareToFacebook}
+                                    title="Facebook"
+                                    className="py-3 bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-[#1877F2]/20"
+                                >
+                                    <Facebook size={18} className="text-[#1877F2]" />
+                                </button>
+                                <Link
+                                    href="https://www.instagram.com/bookmy.bike/"
+                                    target="_blank"
+                                    title="Instagram"
+                                    className="py-3 bg-[#E4405F]/10 hover:bg-[#E4405F]/20 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-[#E4405F]/20"
+                                >
+                                    <Instagram size={18} className="text-[#E4405F]" />
+                                </Link>
+                                <Link
+                                    href="https://www.linkedin.com/company/bookmybike"
+                                    target="_blank"
+                                    title="LinkedIn"
+                                    className="py-3 bg-[#0A66C2]/10 hover:bg-[#0A66C2]/20 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-[#0A66C2]/20"
+                                >
+                                    <Linkedin size={18} className="text-[#0A66C2]" />
+                                </Link>
+                                <Link
+                                    href={whatsappLink}
+                                    target="_blank"
+                                    title="WhatsApp Share"
+                                    className="py-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-[#25D366]/20"
+                                >
+                                    <MessageCircle size={18} className="text-[#25D366]" />
+                                </Link>
+                                <button
+                                    onClick={shareToX}
+                                    title="X (Twitter)"
+                                    className="py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-white/10"
+                                >
+                                    <Twitter size={18} />
+                                </button>
+                            </div>
+
+                            {/* Share QR Image - Best for Mobile/Status */}
+                            <button
+                                onClick={shareQRImage}
+                                className="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-[11px] flex items-center justify-center gap-2 transition-all border border-white/10 active:scale-95 group"
+                            >
+                                <QrCode size={14} className="text-brand-primary" />
+                                Share QR Image (For Status/Stories)
+                            </button>
+                        </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 dark:text-white/40 leading-relaxed max-w-[240px]">
+                        Scan this code to invite your crew. Earn rewards for every successful ride they book.
+                    </p>
+                </div>
+            </Modal>
         </footer>
     );
 };
-
-const SocialLink = ({ icon }: { icon: React.ReactNode }) => (
-    <Link
-        href="#"
-        className="w-11 h-11 flex items-center justify-center rounded-2xl text-white/60 bg-white/5 border border-white/10 hover:text-white hover:border-brand-primary hover:bg-brand-primary/10 transition-all duration-300 group"
-    >
-        <span className="group-hover:scale-110 transition-transform duration-300">{icon}</span>
-    </Link>
-);
