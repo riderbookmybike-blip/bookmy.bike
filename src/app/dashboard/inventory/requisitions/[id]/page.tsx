@@ -759,7 +759,7 @@ export default function RequisitionDetailPage() {
                     .from('id_locations')
                     .select('id, name, type, contact_phone, manager_id')
                     .eq('tenant_id', supplierId)
-                    .eq('type', 'Warehouse')
+                    .eq('type', 'WAREHOUSE')
                     .eq('is_active', true)
                     .order('name');
 
