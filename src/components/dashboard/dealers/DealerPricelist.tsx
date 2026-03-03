@@ -47,8 +47,18 @@ export const DealerPricelist = ({
     const fetchPricelist = async () => {
         setLoading(true);
         try {
-            // 1. Fetch SKUs from canonical V2 catalog
-            const { data: skuData, error: skuError } = await (supabase as any)
+            // 0. Resolve allowed brand IDs for this dealer from dealer_brands
+            //    Mono-brand dealer  → 1 row  (e.g. AHER → HONDA only)
+            //    Multi-brand dealer → N rows (e.g. large dealer with multiple brands)
+            const { data: dealerBrandsData } = await supabase
+                .from('dealer_brands')
+                .select('brand_id')
+                .eq('tenant_id', tenantId);
+
+            const allowedBrandIds = (dealerBrandsData || []).map((r: any) => r.brand_id).filter(Boolean);
+
+            // 1. Fetch SKUs from canonical V2 catalog — filtered by allowed brands
+            let skuQuery = (supabase as any)
                 .from('cat_skus')
                 .select(
                     `
@@ -61,6 +71,13 @@ export const DealerPricelist = ({
                 `
                 )
                 .eq('status', 'ACTIVE');
+
+            // If dealer has brand restrictions, apply filter; otherwise show all (superadmin/platform view)
+            if (allowedBrandIds.length > 0) {
+                skuQuery = skuQuery.in('brand_id', allowedBrandIds);
+            }
+
+            const { data: skuData, error: skuError } = await skuQuery;
 
             if (skuError) throw skuError;
 
