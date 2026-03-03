@@ -3008,14 +3008,17 @@ export default function RequisitionDetailPage() {
                                         value={
                                             dispatchDetails.chassisNumber === 'NA' ? '' : dispatchDetails.chassisNumber
                                         }
-                                        placeholder="e.g. ME4JF505XRT123456"
-                                        onChange={e =>
+                                        placeholder="e.g. ME4JF505XRT123456 or 12345"
+                                        minLength={5}
+                                        onChange={e => {
+                                            // alphanumeric only, auto-uppercase, min 5 chars accepted
+                                            const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
                                             setDispatchDetails(prev => ({
                                                 ...prev,
-                                                chassisNumber: e.target.value || 'NA',
-                                            }))
-                                        }
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case"
+                                                chassisNumber: val || 'NA',
+                                            }));
+                                        }}
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
                                     />
                                 ) : (
                                     <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
@@ -3035,14 +3038,16 @@ export default function RequisitionDetailPage() {
                                         value={
                                             dispatchDetails.engineNumber === 'NA' ? '' : dispatchDetails.engineNumber
                                         }
-                                        placeholder="e.g. JF505E23456"
-                                        onChange={e =>
+                                        placeholder="e.g. JF505E23456 or 12345"
+                                        minLength={5}
+                                        onChange={e => {
+                                            const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
                                             setDispatchDetails(prev => ({
                                                 ...prev,
-                                                engineNumber: e.target.value || 'NA',
-                                            }))
-                                        }
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case"
+                                                engineNumber: val || 'NA',
+                                            }));
+                                        }}
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
                                     />
                                 ) : (
                                     <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
@@ -3139,20 +3144,24 @@ export default function RequisitionDetailPage() {
                         </div>
 
                         {/* Actions footer */}
-                        {dispatchEditMode && primaryPo.po_status !== 'RECEIVED' && (
+                        {(dispatchEditMode || primaryPo.po_status === 'SENT') && primaryPo.po_status !== 'RECEIVED' && (
                             <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    Save dispatch details before marking as shipped
+                                    {dispatchEditMode
+                                        ? 'Save dispatch details before marking as shipped'
+                                        : 'Transporter details saved — ready to dispatch'}
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleSaveDispatch}
-                                        disabled={isSavingDispatch}
-                                        className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50 hover:bg-slate-50 transition-all"
-                                    >
-                                        {isSavingDispatch ? 'Saving...' : 'Save Details'}
-                                    </button>
+                                    {dispatchEditMode && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveDispatch}
+                                            disabled={isSavingDispatch}
+                                            className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50 hover:bg-slate-50 transition-all"
+                                        >
+                                            {isSavingDispatch ? 'Saving...' : 'Save Details'}
+                                        </button>
+                                    )}
                                     {primaryPo.po_status === 'SENT' && (
                                         <button
                                             type="button"

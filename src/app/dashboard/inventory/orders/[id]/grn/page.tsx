@@ -126,8 +126,13 @@ export default function GRNEntryPage() {
             return;
         }
 
-        if (!chassisNumber.trim() || !engineNumber.trim()) {
-            toast.error('Chassis and engine number are mandatory');
+        if (
+            !chassisNumber.trim() ||
+            chassisNumber.trim().length < 5 ||
+            !engineNumber.trim() ||
+            engineNumber.trim().length < 5
+        ) {
+            toast.error('Chassis and engine number must be at least 5 characters');
             return;
         }
 
@@ -280,7 +285,9 @@ export default function GRNEntryPage() {
                         <input
                             type="text"
                             value={chassisNumber}
-                            onChange={e => setChassisNumber(e.target.value)}
+                            placeholder="Full VIN or min 5 digits e.g. 12345"
+                            minLength={5}
+                            onChange={e => setChassisNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
                             className="mt-2 w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-4 py-3 text-xs font-black text-slate-900 dark:text-white uppercase"
                         />
                     </div>
@@ -292,7 +299,9 @@ export default function GRNEntryPage() {
                         <input
                             type="text"
                             value={engineNumber}
-                            onChange={e => setEngineNumber(e.target.value)}
+                            placeholder="Full engine no. or min 5 digits e.g. 12345"
+                            minLength={5}
+                            onChange={e => setEngineNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
                             className="mt-2 w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/40 px-4 py-3 text-xs font-black text-slate-900 dark:text-white uppercase"
                         />
                     </div>
