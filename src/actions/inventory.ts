@@ -1783,6 +1783,8 @@ export async function cancelRequest(requestId: string): Promise<ActionResult> {
 // ── Amend GRN — update an already-received inv_stock row ────────────────────
 export async function amendStockGrn(input: {
     stock_id: string;
+    chassis_number?: string;
+    engine_number?: string;
     key_number?: string;
     battery_make?: string;
     battery_type?: string;
@@ -1798,6 +1800,8 @@ export async function amendStockGrn(input: {
         const patch: Record<string, unknown> = {
             updated_at: new Date().toISOString(),
         };
+        if (input.chassis_number !== undefined) patch.chassis_number = input.chassis_number || null;
+        if (input.engine_number !== undefined) patch.engine_number = input.engine_number || null;
         if (input.key_number !== undefined) patch.key_number = input.key_number || null;
         if (input.battery_make !== undefined) patch.battery_make = input.battery_make || null;
         if (input.battery_type !== undefined) patch.battery_type = input.battery_type || null;
