@@ -200,6 +200,7 @@ export interface ReceiveStockInput {
     branch_id: string;
     chassis_number: string;
     engine_number: string;
+    key_number?: string;
     battery_make?: string;
     battery_type?: string;
     battery_number?: string;

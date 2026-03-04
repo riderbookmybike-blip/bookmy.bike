@@ -561,6 +561,7 @@ export default function RequisitionDetailPage() {
     const [grnEngineNumber, setGrnEngineNumber] = useState('');
     const [grnBatteryMake, setGrnBatteryMake] = useState('');
     const [grnBatteryType, setGrnBatteryType] = useState('');
+    const [grnKeyNumber, setGrnKeyNumber] = useState('');
     const [grnBatteryNumber, setGrnBatteryNumber] = useState('');
     const [grnMfgDate, setGrnMfgDate] = useState('');
     const [grnQcNotes, setGrnQcNotes] = useState('');
@@ -3462,6 +3463,23 @@ export default function RequisitionDetailPage() {
                                     ))}
                             </div>
 
+                            {/* Key Number */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Key Number{' '}
+                                    <span className="normal-case font-semibold text-slate-300">(optional)</span>
+                                </p>
+                                <input
+                                    type="text"
+                                    value={grnKeyNumber}
+                                    placeholder="e.g. K-1234"
+                                    onChange={e =>
+                                        setGrnKeyNumber(e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase())
+                                    }
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                />
+                            </div>
+
                             {/* Battery Make — branded dropdown */}
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
@@ -3679,6 +3697,7 @@ export default function RequisitionDetailPage() {
                                             branch_id: effectiveBranch,
                                             chassis_number: effectiveChassis.toUpperCase(),
                                             engine_number: effectiveEngine.toUpperCase(),
+                                            key_number: grnKeyNumber.trim() || undefined,
                                             battery_make: grnBatteryMake.trim() || undefined,
                                             battery_type: grnBatteryType.trim() || undefined,
                                             battery_number: grnBatteryNumber.trim() || undefined,

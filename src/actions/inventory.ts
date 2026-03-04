@@ -1270,6 +1270,7 @@ export async function receiveStock(input: ReceiveStockInput): Promise<ActionResu
                 branch_id: input.branch_id,
                 chassis_number: input.chassis_number,
                 engine_number: input.engine_number,
+                key_number: input.key_number || null,
                 battery_make: input.battery_make || null,
                 battery_type: input.battery_type || null,
                 battery_number: input.battery_number || null,
