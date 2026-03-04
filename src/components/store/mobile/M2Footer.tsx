@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { Facebook, Twitter, Linkedin, Instagram, Heart, Newspaper, Plus, Minus } from 'lucide-react';
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ScreenHardwareDebugger } from '@/components/debug/ScreenHardwareDebugger';
 
 /* ────────── Palette ────────── */
 const GOLD = '#FFD700';
@@ -15,7 +13,6 @@ const GOLD_INT = '#F4B000';
 export const M2Footer = () => {
     const { brands } = useSystemBrandsLogic();
     const [openSection, setOpenSection] = useState<string | null>(null);
-    const [showScreenDebug, setShowScreenDebug] = useState(false);
 
     const toggleSection = (title: string) => {
         setOpenSection(openSection === title ? null : title);
@@ -135,37 +132,28 @@ export const M2Footer = () => {
                                         </ul>
                                     </div>
 
-                                    <div className="lg:hidden">
-                                        <AnimatePresence>
-                                            {isOpen && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                                >
-                                                    <ul
-                                                        className={`flex flex-col gap-3 px-4 pb-5 pt-1 ${(section as any).twoCol ? 'grid grid-cols-2 gap-x-4 gap-y-2.5' : ''}`}
-                                                    >
-                                                        {section.links.map((link, i) => (
-                                                            <li key={i}>
-                                                                <Link
-                                                                    href={link.href}
-                                                                    className={`text-xs font-bold transition-colors uppercase tracking-wide ${
-                                                                        (link as any).highlight
-                                                                            ? 'text-slate-950 underline decoration-slate-300'
-                                                                            : 'text-slate-400 hover:text-slate-900'
-                                                                    }`}
-                                                                >
-                                                                    {link.label}
-                                                                </Link>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                    {isOpen && (
+                                        <div className="lg:hidden">
+                                            <ul
+                                                className={`flex flex-col gap-3 px-4 pb-5 pt-1 ${(section as any).twoCol ? 'grid grid-cols-2 gap-x-4 gap-y-2.5' : ''}`}
+                                            >
+                                                {section.links.map((link, i) => (
+                                                    <li key={i}>
+                                                        <Link
+                                                            href={link.href}
+                                                            className={`text-xs font-bold transition-colors uppercase tracking-wide ${
+                                                                (link as any).highlight
+                                                                    ? 'text-slate-950 underline decoration-slate-300'
+                                                                    : 'text-slate-400 hover:text-slate-900'
+                                                            }`}
+                                                        >
+                                                            {link.label}
+                                                        </Link>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -203,22 +191,10 @@ export const M2Footer = () => {
                             © 2011-2026 BOOKMYBIKE
                         </p>
                         <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
-                            Engineered with{' '}
-                            <button
-                                onClick={() => setShowScreenDebug(true)}
-                                className="hover:scale-125 transition-transform active:scale-95"
-                                title="Hardware Diagnostics"
-                            >
-                                <Heart size={10} className="text-red-500 fill-red-500 animate-pulse" />
-                            </button>{' '}
-                            in India.
+                            Engineered with <Heart size={10} className="text-red-500 fill-red-500" /> in India.
                         </div>
                     </div>
                 </div>
-
-                <AnimatePresence>
-                    {showScreenDebug && <ScreenHardwareDebugger onClose={() => setShowScreenDebug(false)} />}
-                </AnimatePresence>
             </div>
         </footer>
     );

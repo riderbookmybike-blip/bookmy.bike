@@ -103,13 +103,7 @@ export const DesktopCatalog = ({
     const [tvViewport, setTvViewport] = useState(false);
     const isTv = tvViewport;
     const [showHeader, setShowHeader] = useState(true);
-    const [debugMetrics, setDebugMetrics] = useState({
-        width: 0,
-        height: 0,
-        dpr: 1,
-        aspectRatio: '',
-        dataTv: '0',
-    });
+
     const [showTvSearch, setShowTvSearch] = useState(false);
 
     useEffect(() => {
@@ -120,27 +114,6 @@ export const DesktopCatalog = ({
         syncTvViewport();
         window.addEventListener('resize', syncTvViewport);
         return () => window.removeEventListener('resize', syncTvViewport);
-    }, []);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const syncDebugMetrics = () => {
-            const w = window.innerWidth;
-            const h = window.innerHeight;
-            const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
-            const common = gcd(w, h);
-
-            setDebugMetrics({
-                width: w,
-                height: h,
-                dpr: window.devicePixelRatio || 1,
-                aspectRatio: `${w / common}:${h / common}`,
-                dataTv: document.documentElement.dataset.tv || '0',
-            });
-        };
-        syncDebugMetrics();
-        window.addEventListener('resize', syncDebugMetrics);
-        return () => window.removeEventListener('resize', syncDebugMetrics);
     }, []);
 
     // Listen for TV search toggle
@@ -1055,13 +1028,6 @@ export const DesktopCatalog = ({
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 transition-colors duration-500 font-sans relative">
-            {isTv && (
-                <div className="fixed left-3 bottom-3 z-[220] rounded-full bg-black/75 text-white px-3 py-1.5 text-[10px] font-bold tracking-wide shadow-xl backdrop-blur-md">
-                    {debugMetrics.width}x{debugMetrics.height} · {debugMetrics.aspectRatio} · DPR {debugMetrics.dpr} ·{' '}
-                    {device} · data-tv:
-                    {debugMetrics.dataTv}
-                </div>
-            )}
             {/* Location Gate — SEO-safe: catalog HTML stays in DOM, overlay blocks interaction */}
             {showLocationGate && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center">
