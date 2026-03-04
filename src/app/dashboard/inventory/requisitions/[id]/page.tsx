@@ -3391,17 +3391,64 @@ export default function RequisitionDetailPage() {
                                 />
                             </div>
 
-                            {/* Manufacturing Date */}
+                            {/* Manufacturing Date — custom Month + Year dropdowns */}
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                     Manufacturing Date
                                 </p>
-                                <input
-                                    type="month"
-                                    value={grnMfgDate}
-                                    onChange={e => setGrnMfgDate(e.target.value)}
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                />
+                                <div className="flex gap-2">
+                                    {/* Month */}
+                                    <select
+                                        value={grnMfgDate ? grnMfgDate.split('-')[1] : ''}
+                                        onChange={e => {
+                                            const yr = grnMfgDate
+                                                ? grnMfgDate.split('-')[0]
+                                                : new Date().getFullYear().toString();
+                                            setGrnMfgDate(e.target.value ? `${yr}-${e.target.value}` : '');
+                                        }}
+                                        className="flex-1 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                    >
+                                        <option value="">Month</option>
+                                        {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(
+                                            (m, i) => (
+                                                <option key={m} value={m}>
+                                                    {
+                                                        [
+                                                            'Jan',
+                                                            'Feb',
+                                                            'Mar',
+                                                            'Apr',
+                                                            'May',
+                                                            'Jun',
+                                                            'Jul',
+                                                            'Aug',
+                                                            'Sep',
+                                                            'Oct',
+                                                            'Nov',
+                                                            'Dec',
+                                                        ][i]
+                                                    }
+                                                </option>
+                                            )
+                                        )}
+                                    </select>
+                                    {/* Year */}
+                                    <select
+                                        value={grnMfgDate ? grnMfgDate.split('-')[0] : ''}
+                                        onChange={e => {
+                                            const mo = grnMfgDate ? grnMfgDate.split('-')[1] : '01';
+                                            setGrnMfgDate(e.target.value ? `${e.target.value}-${mo || '01'}` : '');
+                                        }}
+                                        className="w-24 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                    >
+                                        <option value="">Year</option>
+                                        {Array.from({ length: 12 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                            <option key={y} value={y}>
+                                                {y}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
                             {/* QC Notes — full width */}
