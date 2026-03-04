@@ -375,19 +375,20 @@ export function ProfileDropdown({
         clearDealerContext();
     };
 
-    const sortedMemberships = useMemo(
-        () =>
-            memberships
-                .filter(m => m.tenants)
-                .sort((a, b) => {
-                    const aIsDealer = a.tenants?.type === 'DEALER';
-                    const bIsDealer = b.tenants?.type === 'DEALER';
-                    if (aIsDealer && !bIsDealer) return -1;
-                    if (!aIsDealer && bIsDealer) return 1;
-                    return (a.tenants?.name || '').localeCompare(b.tenants?.name || '');
-                }),
-        [memberships]
-    );
+    const sortedMemberships = useMemo(() => {
+        // Deduplicate by tenant_id first
+        const uniqueMemberships = Array.from(
+            new Map(memberships.filter(m => m.tenants && m.tenant_id).map(m => [m.tenant_id, m])).values()
+        );
+
+        return uniqueMemberships.sort((a, b) => {
+            const aIsDealer = a.tenants?.type === 'DEALER';
+            const bIsDealer = b.tenants?.type === 'DEALER';
+            if (aIsDealer && !bIsDealer) return -1;
+            if (!aIsDealer && bIsDealer) return 1;
+            return (a.tenants?.name || '').localeCompare(b.tenants?.name || '');
+        });
+    }, [memberships]);
 
     const activeMembership = useMemo(
         () => sortedMemberships.find(m => m.tenant_id === activeTenantId) || sortedMemberships[0] || null,
