@@ -244,6 +244,88 @@ const formatTripletId = (raw?: string | null) => {
     return `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6, 9)}`;
 };
 
+// ── VIN Manufacturing Date Decoder ─────────────────────────────────────────
+// Year  → position 10 (index 9)  — ISO 3779 standard, all brands
+// Month → position 9  (index 8)  for Honda (WMI: ME4)
+//         position 11 (index 10) for Hero / TVS / Bajaj / Royal Enfield / Yamaha
+const VIN_YEAR_MAP: Record<string, number> = {
+    A: 1980,
+    B: 1981,
+    C: 1982,
+    D: 1983,
+    E: 1984,
+    F: 1985,
+    G: 1986,
+    H: 1987,
+    J: 1988,
+    K: 1989,
+    L: 1990,
+    M: 1991,
+    N: 1992,
+    P: 1993,
+    R: 1994,
+    S: 1995,
+    T: 1996,
+    V: 1997,
+    W: 1998,
+    X: 1999,
+    Y: 2000,
+    '1': 2001,
+    '2': 2002,
+    '3': 2003,
+    '4': 2004,
+    '5': 2005,
+    '6': 2006,
+    '7': 2007,
+    '8': 2008,
+    '9': 2009,
+    // post-2009 same letters repeat
+    a: 2010,
+    b: 2011,
+    c: 2012,
+    d: 2013,
+    e: 2014,
+    f: 2015,
+    g: 2016,
+    h: 2017,
+    j: 2018,
+    k: 2019,
+    l: 2020,
+    m: 2021,
+    n: 2022,
+    p: 2023,
+    r: 2024,
+    s: 2025,
+    t: 2026,
+    v: 2027,
+};
+const VIN_MONTH_MAP: Record<string, string> = {
+    A: '01',
+    B: '02',
+    C: '03',
+    D: '04',
+    E: '05',
+    F: '06',
+    G: '07',
+    H: '08',
+    J: '09',
+    K: '10',
+    N: '11',
+    P: '12',
+};
+function decodeVinMfgDate(vin: string): string | null {
+    const v = vin.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (v.length !== 17) return null;
+    const wmi = v.slice(0, 3);
+    const yearChar = v[9];
+    const year = VIN_YEAR_MAP[yearChar] ?? VIN_YEAR_MAP[yearChar.toLowerCase()];
+    if (!year) return null;
+    // Month position varies by brand
+    const monthChar = wmi === 'ME4' ? v[8] : v[10]; // Honda pos-9, others pos-11
+    const month = VIN_MONTH_MAP[monthChar] ?? '01';
+    return `${year}-${month}`;
+}
+
 const formatAddonLabelFromKey = (rawKey: string) =>
     rawKey
         .replace(/^addon_/, '')
@@ -3298,9 +3380,14 @@ export default function RequisitionDetailPage() {
                                         (dispatchDetails.chassisNumber !== 'NA' ? dispatchDetails.chassisNumber : '')
                                     }
                                     placeholder="Full VIN or min 5 digits"
-                                    onChange={e =>
-                                        setGrnChassisNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())
-                                    }
+                                    onChange={e => {
+                                        const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                                        setGrnChassisNumber(val);
+                                        if (val.length === 17) {
+                                            const decoded = decodeVinMfgDate(val);
+                                            if (decoded) setGrnMfgDate(decoded);
+                                        }
+                                    }}
                                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
                                 />
                             </div>
