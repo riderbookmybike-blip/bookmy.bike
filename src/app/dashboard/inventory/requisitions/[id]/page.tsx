@@ -295,7 +295,13 @@ export default function RequisitionDetailPage() {
     const [amendMediaItems, setAmendMediaItems] = useState<GrnMediaItem[]>([]);
     const [isAmending, setIsAmending] = useState(false);
     // Section collapse state — all collapsed by default
-    const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+        quotes: true,
+        dispatch: true,
+        grn: true,
+        receive: true,
+        media: true,
+    });
     const toggleSection = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
     const fetchRequestDetail = useCallback(async () => {
@@ -963,7 +969,7 @@ export default function RequisitionDetailPage() {
         quoteRowSelected.insurance;
 
     const requestItemsByBucket = useMemo(() => {
-        const buckets: Record<string, RequestItem[]> = {
+        const buckets: Record<string, any[]> = {
             exShowroom: [],
             registration: [],
             insurance: [],
@@ -1814,97 +1820,104 @@ export default function RequisitionDetailPage() {
             >
                 <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Quotes</p>
                 <span
-                    className={`text-slate-400 transition-transform duration-200 ${openSections['quotes'] ? 'rotate-180' : ''}`}
+                    className={`text-slate-400 text-xs transition-transform duration-200 ${openSections['quotes'] ? 'rotate-180' : ''}`}
                 >
                     ▾
                 </span>
             </button>
-            {openSections['quotes'] && existingQuoteSummaries.length > 0 && (
-                <div className="space-y-2">
-                    {existingQuoteSummaries.map(summary => (
-                        <div
-                            key={summary.id}
-                            className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden"
-                        >
-                            {/* Header row: Quote Ref left, status badge right */}
-                            <div className="px-4 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                        Quote Ref
-                                    </p>
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                        {formatTripletId(summary.displayId || summary.id)}
-                                    </p>
-                                </div>
-                                <span
-                                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                                        summary.status === 'SELECTED'
-                                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                            : summary.status === 'REJECTED'
-                                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                              : 'bg-slate-100 text-slate-700 border border-slate-200'
-                                    }`}
+            {(openSections['quotes'] || existingQuoteSummaries.some(q => q.status === 'SELECTED')) &&
+                existingQuoteSummaries.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                        {existingQuoteSummaries
+                            .filter(summary => openSections['quotes'] || summary.status === 'SELECTED')
+                            .map(summary => (
+                                <div
+                                    key={summary.id}
+                                    className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden"
                                 >
-                                    {summary.status === 'SELECTED'
-                                        ? 'PO Issued'
-                                        : summary.status === 'REJECTED'
-                                          ? 'Superseded'
-                                          : 'Submitted'}
-                                </span>
-                            </div>
-                            {/* Body */}
-                            <div className="px-4 py-3 flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                        Supplier
-                                    </p>
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {summary.dealerName}
-                                    </p>
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-1">
-                                        {summary.items.length ? summary.items.join(', ') : 'Items mapped'}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">
-                                        Offer Price
-                                    </p>
-                                    <p className="text-lg font-black text-emerald-700 dark:text-emerald-200">
-                                        {formatCurrency(summary.total)}
-                                    </p>
-                                    {summary.id === bestOfferQuoteId && (
-                                        <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
-                                            Best Offer
-                                        </p>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSelectedDealer(summary.dealerTenantId);
-                                            setIsCreatingNewQuote(false);
-                                            if (summary.status === 'SELECTED') {
-                                                setShowQuoteEditor(false);
-                                                setShowPurchaseOrders(true);
-                                            } else {
-                                                setShowQuoteSection(true);
-                                                setShowQuoteEditor(true);
-                                            }
-                                        }}
-                                        className="mt-1 inline-flex items-center justify-center h-7 w-7 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
-                                        title="Expand quote"
+                                    {/* Header row: Quote Ref left, status badge right */}
+                                    <div
+                                        className="px-4 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5 cursor-pointer"
+                                        onClick={() => toggleSection('quotes')}
                                     >
-                                        <ChevronRight size={14} />
-                                    </button>
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                Quote Ref
+                                            </p>
+                                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                {formatTripletId(summary.displayId || summary.id)}
+                                            </p>
+                                        </div>
+                                        <span
+                                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                                summary.status === 'SELECTED'
+                                                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                                    : summary.status === 'REJECTED'
+                                                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                            }`}
+                                        >
+                                            {summary.status === 'SELECTED'
+                                                ? 'PO Issued'
+                                                : summary.status === 'REJECTED'
+                                                  ? 'Superseded'
+                                                  : 'Submitted'}
+                                        </span>
+                                    </div>
+                                    {/* Body */}
+                                    <div className="px-4 py-3 flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                Supplier
+                                            </p>
+                                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                {summary.dealerName}
+                                            </p>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-1">
+                                                {summary.items.length ? summary.items.join(', ') : 'Items mapped'}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">
+                                                Offer Price
+                                            </p>
+                                            <p className="text-lg font-black text-emerald-700 dark:text-emerald-200">
+                                                {formatCurrency(summary.total)}
+                                            </p>
+                                            {summary.id === bestOfferQuoteId && (
+                                                <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+                                                    Best Offer
+                                                </p>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedDealer(summary.dealerTenantId);
+                                                    setIsCreatingNewQuote(false);
+                                                    if (summary.status === 'SELECTED') {
+                                                        setShowQuoteEditor(false);
+                                                        setShowPurchaseOrders(true);
+                                                    } else {
+                                                        setShowQuoteSection(true);
+                                                        setShowQuoteEditor(true);
+                                                    }
+                                                }}
+                                                className="mt-1 inline-flex items-center justify-center h-7 w-7 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
+                                                title="Expand quote"
+                                            >
+                                                <ChevronRight size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-            {(request.status === 'QUOTING' || canEditIssuedQuote) &&
+                            ))}
+                    </div>
+                )}
+            {openSections['quotes'] &&
+                (request.status === 'QUOTING' || canEditIssuedQuote) &&
                 (showQuoteEditor || isCreatingNewQuote) &&
                 selectedDealerQuote?.status !== 'SELECTED' && (
-                    <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
+                    <div className="mt-2 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-4">
                             <div className="text-left min-w-[260px]">
                                 <button
@@ -2643,7 +2656,7 @@ export default function RequisitionDetailPage() {
                         <button
                             type="button"
                             onClick={() => toggleSection('dispatch')}
-                            className="flex items-center gap-2 group"
+                            className="flex items-center gap-2 group flex-1"
                         >
                             <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-emerald-600 transition-colors">
                                 Dispatch Details
@@ -2657,18 +2670,27 @@ export default function RequisitionDetailPage() {
                         {primaryPo.po_status !== 'RECEIVED' && (
                             <button
                                 type="button"
-                                onClick={() => setDispatchEditMode(prev => !prev)}
-                                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-lg border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+                                onClick={() => {
+                                    setDispatchEditMode(prev => !prev);
+                                    if (!openSections['dispatch']) toggleSection('dispatch');
+                                }}
+                                className={`h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors shrink-0 ${
+                                    dispatchEditMode
+                                        ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                                        : 'bg-white dark:bg-slate-900 text-slate-600 border border-slate-200 dark:border-white/10 hover:bg-slate-50'
+                                }`}
                             >
-                                <Pencil size={10} />
-                                {dispatchEditMode ? 'Cancel' : 'Edit'}
+                                {dispatchEditMode ? 'Cancel Edit' : 'Edit Dispatch'}
                             </button>
                         )}
                     </div>
                     {openSections['dispatch'] && (
-                        <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                        <div className="mt-2 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
                             {/* Header row — Dispatch Ref + PO status badge */}
-                            <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                            <div
+                                className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5 cursor-pointer"
+                                onClick={() => toggleSection('dispatch')}
+                            >
                                 <div>
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                         Dispatch Ref
@@ -2692,318 +2714,370 @@ export default function RequisitionDetailPage() {
                                 </div>
                             </div>
 
-                            {/* Fields grid */}
-                            <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-4">
-                                {/* Supplier */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Supplier
-                                    </p>
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.supplier}
-                                    </p>
-                                </div>
-
-                                {/* Supplier Warehouse / Dispatch Point */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Supplier Warehouse / Dispatch Point
-                                    </p>
-                                    {dispatchEditMode ? (
-                                        <select
-                                            value={dispatchDetails.supplierWarehouseId}
-                                            onChange={e => {
-                                                const opt = supplierWarehouseOptions.find(w => w.id === e.target.value);
-                                                setDispatchDetails(prev => ({
-                                                    ...prev,
-                                                    supplierWarehouseId: e.target.value,
-                                                    supplierWarehouseName: opt?.name || '',
-                                                    // Auto-fill incharge from selected supplier warehouse
-                                                    warehouseInchargeName:
-                                                        opt?.managerName || prev.warehouseInchargeName,
-                                                    warehouseInchargeContact:
-                                                        opt?.managerPhone ||
-                                                        opt?.contactPhone ||
-                                                        prev.warehouseInchargeContact,
-                                                }));
-                                            }}
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                        >
-                                            <option value="">Select supplier warehouse</option>
-                                            {supplierWarehouseOptions.map(w => (
-                                                <option key={w.id} value={w.id}>
-                                                    {w.name}
-                                                    {w.managerName ? ` — ${w.managerName}` : ''}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                            {dispatchDetails.supplierWarehouseName || 'NA'}
+                            {!openSections['dispatch'] && (
+                                <div
+                                    className="px-5 py-3 flex flex-wrap items-center justify-between gap-3 cursor-pointer"
+                                    onClick={() => toggleSection('dispatch')}
+                                >
+                                    <div className="flex gap-6">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                Transporter
+                                            </p>
+                                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                {dispatchDetails.transporterName}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                Chassis Number
+                                            </p>
+                                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                {dispatchDetails.chassisNumber}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">
+                                            Dispatch Date
                                         </p>
-                                    )}
-                                </div>
-
-                                {/* Warehouse Incharge */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Warehouse Incharge
-                                    </p>
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.warehouseInchargeName}
-                                        {dispatchDetails.warehouseInchargeContact !== 'NA' && (
-                                            <span className="ml-2 text-slate-400">
-                                                • {dispatchDetails.warehouseInchargeContact}
-                                            </span>
-                                        )}
-                                    </p>
-                                </div>
-
-                                {/* Warehouse */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Receiving Warehouse
-                                    </p>
-                                    {dispatchEditMode ? (
-                                        <select
-                                            value={dispatchDetails.warehouseId}
-                                            onChange={e => {
-                                                const opt = warehouseOptions.find(w => w.id === e.target.value);
-                                                setDispatchDetails(prev => ({
-                                                    ...prev,
-                                                    warehouseId: e.target.value,
-                                                    warehouse: opt?.name || 'NA',
-                                                }));
-                                            }}
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                        >
-                                            <option value="">Select warehouse</option>
-                                            {warehouseOptions.map(w => (
-                                                <option key={w.id} value={w.id}>
-                                                    {w.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                            {dispatchDetails.warehouse}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Dispatch Date */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Dispatch Date
-                                    </p>
-                                    {dispatchEditMode ? (
-                                        <input
-                                            type="datetime-local"
-                                            value={dispatchDetails.dispatchDate}
-                                            onChange={e =>
-                                                setDispatchDetails(prev => ({ ...prev, dispatchDate: e.target.value }))
-                                            }
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                        />
-                                    ) : (
-                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        <p className="text-sm font-black text-emerald-700 dark:text-emerald-200">
                                             {dispatchDetails.dispatchDate
-                                                ? format(new Date(dispatchDetails.dispatchDate), 'dd MMM yyyy, hh:mm a')
+                                                ? format(new Date(dispatchDetails.dispatchDate), 'dd MMM yyyy')
                                                 : 'NA'}
                                         </p>
-                                    )}
+                                    </div>
                                 </div>
+                            )}
 
-                                {/* Chassis Number */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Chassis Number
-                                    </p>
-                                    {dispatchEditMode ? (
-                                        <input
-                                            type="text"
-                                            value={
-                                                dispatchDetails.chassisNumber === 'NA'
-                                                    ? ''
-                                                    : dispatchDetails.chassisNumber
-                                            }
-                                            placeholder="e.g. ME4JF505XRT123456 or 12345"
-                                            minLength={5}
-                                            onChange={e => {
-                                                // alphanumeric only, auto-uppercase, min 5 chars accepted
-                                                const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                                                setDispatchDetails(prev => ({
-                                                    ...prev,
-                                                    chassisNumber: val || 'NA',
-                                                }));
-                                            }}
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
-                                        />
-                                    ) : (
-                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                            {dispatchDetails.chassisNumber}
-                                        </p>
-                                    )}
-                                </div>
+                            {openSections['dispatch'] && (
+                                <>
+                                    {/* Fields grid */}
+                                    <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-4">
+                                        {/* Supplier */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Supplier
+                                            </p>
+                                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                {dispatchDetails.supplier}
+                                            </p>
+                                        </div>
 
-                                {/* Engine Number */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Engine Number
-                                    </p>
-                                    {dispatchEditMode ? (
-                                        <input
-                                            type="text"
-                                            value={
-                                                dispatchDetails.engineNumber === 'NA'
-                                                    ? ''
-                                                    : dispatchDetails.engineNumber
-                                            }
-                                            placeholder="e.g. JF505E23456 or 12345"
-                                            minLength={5}
-                                            onChange={e => {
-                                                const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                                                setDispatchDetails(prev => ({
-                                                    ...prev,
-                                                    engineNumber: val || 'NA',
-                                                }));
-                                            }}
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
-                                        />
-                                    ) : (
-                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                            {dispatchDetails.engineNumber}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Delivery Note / LR */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Delivery Note / LR#
-                                    </p>
-                                    {dispatchEditMode ? (
-                                        <input
-                                            type="text"
-                                            value={
-                                                dispatchDetails.deliveryNote === 'NA'
-                                                    ? ''
-                                                    : dispatchDetails.deliveryNote
-                                            }
-                                            placeholder="Lorry receipt / docket number"
-                                            onChange={e =>
-                                                setDispatchDetails(prev => ({
-                                                    ...prev,
-                                                    deliveryNote: e.target.value || 'NA',
-                                                }))
-                                            }
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                        />
-                                    ) : (
-                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                            {dispatchDetails.deliveryNote}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Transporter Name */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Transporter Name
-                                    </p>
-                                    {dispatchEditMode ? (
-                                        <input
-                                            type="text"
-                                            value={
-                                                dispatchDetails.transporterName === 'NA'
-                                                    ? ''
-                                                    : dispatchDetails.transporterName
-                                            }
-                                            placeholder="e.g. VRL Logistics"
-                                            onChange={e =>
-                                                setDispatchDetails(prev => ({
-                                                    ...prev,
-                                                    transporterName: e.target.value || 'NA',
-                                                }))
-                                            }
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                        />
-                                    ) : (
-                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                            {dispatchDetails.transporterName}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Transporter Contact */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        Transporter Contact
-                                    </p>
-                                    {dispatchEditMode ? (
-                                        <input
-                                            type="tel"
-                                            value={
-                                                dispatchDetails.transporterContact === 'NA'
-                                                    ? ''
-                                                    : dispatchDetails.transporterContact
-                                            }
-                                            placeholder="10-digit mobile"
-                                            maxLength={10}
-                                            onChange={e =>
-                                                setDispatchDetails(prev => ({
-                                                    ...prev,
-                                                    transporterContact: e.target.value || 'NA',
-                                                }))
-                                            }
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                        />
-                                    ) : (
-                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                            {dispatchDetails.transporterContact}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Actions footer */}
-                            {(dispatchEditMode ||
-                                primaryPo.po_status === 'SENT' ||
-                                primaryPo.po_status === 'SHIPPED') &&
-                                primaryPo.po_status !== 'RECEIVED' && (
-                                    <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                            {dispatchEditMode
-                                                ? 'Save dispatch details before marking as shipped'
-                                                : primaryPo.po_status === 'SHIPPED'
-                                                  ? 'Stock in transit — ready to receive at warehouse'
-                                                  : 'Transporter details saved — ready to dispatch'}
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            {dispatchEditMode && (
-                                                <button
-                                                    type="button"
-                                                    onClick={handleSaveDispatch}
-                                                    disabled={isSavingDispatch}
-                                                    className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50 hover:bg-slate-50 transition-all"
+                                        {/* Supplier Warehouse / Dispatch Point */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Supplier Warehouse / Dispatch Point
+                                            </p>
+                                            {dispatchEditMode ? (
+                                                <select
+                                                    value={dispatchDetails.supplierWarehouseId}
+                                                    onChange={e => {
+                                                        const opt = supplierWarehouseOptions.find(
+                                                            w => w.id === e.target.value
+                                                        );
+                                                        setDispatchDetails(prev => ({
+                                                            ...prev,
+                                                            supplierWarehouseId: e.target.value,
+                                                            supplierWarehouseName: opt?.name || '',
+                                                            // Auto-fill incharge from selected supplier warehouse
+                                                            warehouseInchargeName:
+                                                                opt?.managerName || prev.warehouseInchargeName,
+                                                            warehouseInchargeContact:
+                                                                opt?.managerPhone ||
+                                                                opt?.contactPhone ||
+                                                                prev.warehouseInchargeContact,
+                                                        }));
+                                                    }}
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
                                                 >
-                                                    {isSavingDispatch ? 'Saving...' : 'Save Details'}
-                                                </button>
+                                                    <option value="">Select supplier warehouse</option>
+                                                    {supplierWarehouseOptions.map(w => (
+                                                        <option key={w.id} value={w.id}>
+                                                            {w.name}
+                                                            {w.managerName ? ` — ${w.managerName}` : ''}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                    {dispatchDetails.supplierWarehouseName || 'NA'}
+                                                </p>
                                             )}
-                                            {primaryPo.po_status === 'SENT' && (
-                                                <button
-                                                    type="button"
-                                                    onClick={handleMoveDispatchNext}
-                                                    disabled={isMovingDispatch || isSavingDispatch}
-                                                    className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
+                                        </div>
+
+                                        {/* Warehouse Incharge */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Warehouse Incharge
+                                            </p>
+                                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                {dispatchDetails.warehouseInchargeName}
+                                                {dispatchDetails.warehouseInchargeContact !== 'NA' && (
+                                                    <span className="ml-2 text-slate-400">
+                                                        • {dispatchDetails.warehouseInchargeContact}
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        {/* Warehouse */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Receiving Warehouse
+                                            </p>
+                                            {dispatchEditMode ? (
+                                                <select
+                                                    value={dispatchDetails.warehouseId}
+                                                    onChange={e => {
+                                                        const opt = warehouseOptions.find(w => w.id === e.target.value);
+                                                        setDispatchDetails(prev => ({
+                                                            ...prev,
+                                                            warehouseId: e.target.value,
+                                                            warehouse: opt?.name || 'NA',
+                                                        }));
+                                                    }}
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
                                                 >
-                                                    <Truck size={12} />
-                                                    {isMovingDispatch ? 'Updating...' : 'Mark as Shipped'}
-                                                </button>
+                                                    <option value="">Select warehouse</option>
+                                                    {warehouseOptions.map(w => (
+                                                        <option key={w.id} value={w.id}>
+                                                            {w.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                    {dispatchDetails.warehouse}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Dispatch Date */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Dispatch Date
+                                            </p>
+                                            {dispatchEditMode ? (
+                                                <input
+                                                    type="datetime-local"
+                                                    value={dispatchDetails.dispatchDate}
+                                                    onChange={e =>
+                                                        setDispatchDetails(prev => ({
+                                                            ...prev,
+                                                            dispatchDate: e.target.value,
+                                                        }))
+                                                    }
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                    {dispatchDetails.dispatchDate
+                                                        ? format(
+                                                              new Date(dispatchDetails.dispatchDate),
+                                                              'dd MMM yyyy, hh:mm a'
+                                                          )
+                                                        : 'NA'}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Chassis Number */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Chassis Number
+                                            </p>
+                                            {dispatchEditMode ? (
+                                                <input
+                                                    type="text"
+                                                    value={
+                                                        dispatchDetails.chassisNumber === 'NA'
+                                                            ? ''
+                                                            : dispatchDetails.chassisNumber
+                                                    }
+                                                    placeholder="e.g. ME4JF505XRT123456 or 12345"
+                                                    minLength={5}
+                                                    onChange={e => {
+                                                        // alphanumeric only, auto-uppercase, min 5 chars accepted
+                                                        const val = e.target.value
+                                                            .replace(/[^a-zA-Z0-9]/g, '')
+                                                            .toUpperCase();
+                                                        setDispatchDetails(prev => ({
+                                                            ...prev,
+                                                            chassisNumber: val || 'NA',
+                                                        }));
+                                                    }}
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                    {dispatchDetails.chassisNumber}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Engine Number */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Engine Number
+                                            </p>
+                                            {dispatchEditMode ? (
+                                                <input
+                                                    type="text"
+                                                    value={
+                                                        dispatchDetails.engineNumber === 'NA'
+                                                            ? ''
+                                                            : dispatchDetails.engineNumber
+                                                    }
+                                                    placeholder="e.g. JF505E23456 or 12345"
+                                                    minLength={5}
+                                                    onChange={e => {
+                                                        const val = e.target.value
+                                                            .replace(/[^a-zA-Z0-9]/g, '')
+                                                            .toUpperCase();
+                                                        setDispatchDetails(prev => ({
+                                                            ...prev,
+                                                            engineNumber: val || 'NA',
+                                                        }));
+                                                    }}
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                    {dispatchDetails.engineNumber}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Delivery Note / LR */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Delivery Note / LR#
+                                            </p>
+                                            {dispatchEditMode ? (
+                                                <input
+                                                    type="text"
+                                                    value={
+                                                        dispatchDetails.deliveryNote === 'NA'
+                                                            ? ''
+                                                            : dispatchDetails.deliveryNote
+                                                    }
+                                                    placeholder="Lorry receipt / docket number"
+                                                    onChange={e =>
+                                                        setDispatchDetails(prev => ({
+                                                            ...prev,
+                                                            deliveryNote: e.target.value || 'NA',
+                                                        }))
+                                                    }
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                    {dispatchDetails.deliveryNote}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Transporter Name */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Transporter Name
+                                            </p>
+                                            {dispatchEditMode ? (
+                                                <input
+                                                    type="text"
+                                                    value={
+                                                        dispatchDetails.transporterName === 'NA'
+                                                            ? ''
+                                                            : dispatchDetails.transporterName
+                                                    }
+                                                    placeholder="e.g. VRL Logistics"
+                                                    onChange={e =>
+                                                        setDispatchDetails(prev => ({
+                                                            ...prev,
+                                                            transporterName: e.target.value || 'NA',
+                                                        }))
+                                                    }
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                    {dispatchDetails.transporterName}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Transporter Contact */}
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                Transporter Contact
+                                            </p>
+                                            {dispatchEditMode ? (
+                                                <input
+                                                    type="tel"
+                                                    value={
+                                                        dispatchDetails.transporterContact === 'NA'
+                                                            ? ''
+                                                            : dispatchDetails.transporterContact
+                                                    }
+                                                    placeholder="10-digit mobile"
+                                                    maxLength={10}
+                                                    onChange={e =>
+                                                        setDispatchDetails(prev => ({
+                                                            ...prev,
+                                                            transporterContact: e.target.value || 'NA',
+                                                        }))
+                                                    }
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                    {dispatchDetails.transporterContact}
+                                                </p>
                                             )}
                                         </div>
                                     </div>
-                                )}
+
+                                    {/* Actions footer */}
+                                    {(dispatchEditMode ||
+                                        primaryPo.po_status === 'SENT' ||
+                                        primaryPo.po_status === 'SHIPPED') &&
+                                        primaryPo.po_status !== 'RECEIVED' && (
+                                            <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                    {dispatchEditMode
+                                                        ? 'Save dispatch details before marking as shipped'
+                                                        : primaryPo.po_status === 'SHIPPED'
+                                                          ? 'Stock in transit — ready to receive at warehouse'
+                                                          : 'Transporter details saved — ready to dispatch'}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    {dispatchEditMode && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleSaveDispatch}
+                                                            disabled={isSavingDispatch}
+                                                            className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50 hover:bg-slate-50 transition-all"
+                                                        >
+                                                            {isSavingDispatch ? 'Saving...' : 'Save Details'}
+                                                        </button>
+                                                    )}
+                                                    {primaryPo.po_status === 'SENT' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleMoveDispatchNext}
+                                                            disabled={isMovingDispatch || isSavingDispatch}
+                                                            className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
+                                                        >
+                                                            <Truck size={12} />
+                                                            {isMovingDispatch ? 'Updating...' : 'Mark as Shipped'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                </>
+                            )}
                         </div>
                     )}
                 </>
@@ -3462,130 +3536,145 @@ export default function RequisitionDetailPage() {
                                     <>
                                         {/* Outside label row — matches GRN RECEIPT style */}
                                         <div className="px-1 flex items-center justify-between gap-3">
-                                            <div className="flex items-baseline gap-2">
-                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                                    Media Assets
-                                                </p>
-                                                <span className="text-[10px] font-bold text-slate-400">
-                                                    {gallery.length} item{gallery.length !== 1 ? 's' : ''}
-                                                </span>
-                                            </div>
                                             <button
                                                 type="button"
-                                                onClick={() => {
-                                                    setGrnEditMode(false);
-                                                }}
-                                                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:border-slate-400 transition-colors"
+                                                onClick={() => toggleSection('media')}
+                                                className="flex items-center gap-2 group flex-1"
                                             >
-                                                ✏ Edit Media
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-emerald-600 transition-colors">
+                                                    Media Assets
+                                                </p>
+                                                <span
+                                                    className={`text-slate-400 text-xs transition-transform duration-200 ${openSections['media'] ? 'rotate-180' : ''}`}
+                                                >
+                                                    ▾
+                                                </span>
                                             </button>
                                         </div>
 
-                                        {/* Card — no header, just content */}
-                                        <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
-                                            <div className="p-4">
-                                                {!gallery.length ? (
-                                                    <p className="text-[9px] font-bold text-slate-400 italic text-center py-4">
-                                                        No media uploaded yet
+                                        <div className="mt-2 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                                            {/* Header */}
+                                            <div
+                                                className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50 dark:bg-white/5 cursor-pointer"
+                                                onClick={() => toggleSection('media')}
+                                            >
+                                                <div className="flex items-baseline gap-2">
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                        Attached Media
                                                     </p>
-                                                ) : (
-                                                    <>
-                                                        {/* Expanded viewer */}
-                                                        {active && (
-                                                            <div
-                                                                className="mb-3 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-950 relative"
-                                                                style={{ aspectRatio: '16/9' }}
-                                                            >
-                                                                {active.isVideo ? (
-                                                                    <video
-                                                                        src={active.url}
-                                                                        controls
-                                                                        className="w-full h-full object-contain"
-                                                                    />
-                                                                ) : (
-                                                                    <img
-                                                                        src={active.url}
-                                                                        alt={active.purpose}
-                                                                        className="w-full h-full object-contain"
-                                                                    />
-                                                                )}
-                                                                <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">
-                                                                    {PLABELS[active.purpose] ?? active.purpose}
-                                                                    <span className="ml-2 font-normal opacity-60">
-                                                                        {active.idx + 1}/{gallery.length}
-                                                                    </span>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => setActiveGrnImg(null)}
-                                                                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/80 text-white text-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                                                        {gallery.length} item{gallery.length !== 1 ? 's' : ''}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {openSections['media'] && (
+                                                <div className="p-4">
+                                                    {!gallery.length ? (
+                                                        <p className="text-[9px] font-bold text-slate-400 italic text-center py-4">
+                                                            No media uploaded yet
+                                                        </p>
+                                                    ) : (
+                                                        <>
+                                                            {/* Expanded viewer */}
+                                                            {active && (
+                                                                <div
+                                                                    className="mb-3 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-950 relative"
+                                                                    style={{ aspectRatio: '16/9' }}
                                                                 >
-                                                                    ✕
-                                                                </button>
-                                                                {gallery.length > 1 && (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => go(-1)}
-                                                                            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
-                                                                        >
-                                                                            ‹
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => go(1)}
-                                                                            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
-                                                                        >
-                                                                            ›
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                        {/* Thumbnail grid — centered for small sets, full-width for ≥4 */}
-                                                        <div
-                                                            style={{
-                                                                display: 'grid',
-                                                                gap: '6px',
-                                                                gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`,
-                                                                maxWidth: maxW,
-                                                                margin: '0 auto',
-                                                            }}
-                                                        >
-                                                            {gallery.map((m, gi) => (
-                                                                <button
-                                                                    key={gi}
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        setActiveGrnImg(
-                                                                            active?.idx === gi
-                                                                                ? null
-                                                                                : { ...m, idx: gi }
-                                                                        )
-                                                                    }
-                                                                    className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-150 ${active?.idx === gi ? 'border-emerald-400 ring-2 ring-emerald-300' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300'}`}
-                                                                    style={{ aspectRatio: '1/1' }}
-                                                                >
-                                                                    {m.isVideo ? (
-                                                                        <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
-                                                                            <span className="text-3xl">🎥</span>
-                                                                            <span className="text-[8px] font-black text-slate-400 uppercase">
-                                                                                Video
-                                                                            </span>
-                                                                        </div>
+                                                                    {active.isVideo ? (
+                                                                        <video
+                                                                            src={active.url}
+                                                                            controls
+                                                                            className="w-full h-full object-contain"
+                                                                        />
                                                                     ) : (
                                                                         <img
-                                                                            src={m.url}
-                                                                            alt={m.purpose}
-                                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                                            src={active.url}
+                                                                            alt={active.purpose}
+                                                                            className="w-full h-full object-contain"
                                                                         />
                                                                     )}
-                                                                    <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[8px] font-black text-center py-1 uppercase tracking-wide truncate px-1">
-                                                                        {PLABELS[m.purpose] ?? m.purpose}
+                                                                    <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">
+                                                                        {PLABELS[active.purpose] ?? active.purpose}
+                                                                        <span className="ml-2 font-normal opacity-60">
+                                                                            {active.idx + 1}/{gallery.length}
+                                                                        </span>
                                                                     </div>
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
+                                                                    <button
+                                                                        onClick={() => setActiveGrnImg(null)}
+                                                                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/80 text-white text-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                                    >
+                                                                        ✕
+                                                                    </button>
+                                                                    {gallery.length > 1 && (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() => go(-1)}
+                                                                                className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                                            >
+                                                                                ‹
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => go(1)}
+                                                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                                            >
+                                                                                ›
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                            {/* Thumbnail grid — centered for small sets, full-width for ≥4 */}
+                                                            <div
+                                                                style={{
+                                                                    display: 'grid',
+                                                                    gap: '6px',
+                                                                    gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`,
+                                                                    maxWidth: maxW,
+                                                                    margin: '0 auto',
+                                                                }}
+                                                            >
+                                                                {gallery.map((m, gi) => (
+                                                                    <button
+                                                                        key={gi}
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            setActiveGrnImg(
+                                                                                active?.idx === gi
+                                                                                    ? null
+                                                                                    : { ...m, idx: gi }
+                                                                            )
+                                                                        }
+                                                                        className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-150 ${active?.idx === gi ? 'border-emerald-400 ring-2 ring-emerald-300' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300'}`}
+                                                                        style={{ aspectRatio: '1/1' }}
+                                                                    >
+                                                                        {m.isVideo ? (
+                                                                            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
+                                                                                <span className="text-3xl">🎥</span>
+                                                                                <span className="text-[8px] font-black text-slate-400 uppercase">
+                                                                                    Video
+                                                                                </span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <img
+                                                                                src={m.url}
+                                                                                alt={m.purpose}
+                                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                                            />
+                                                                        )}
+                                                                        <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[8px] font-black text-center py-1 uppercase tracking-wide truncate px-1">
+                                                                            {PLABELS[m.purpose] ?? m.purpose}
+                                                                        </div>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </>
                                 );
