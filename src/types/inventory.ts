@@ -205,10 +205,10 @@ export interface ReceiveStockInput {
     battery_type?: string;
     battery_number?: string;
     manufacturing_date?: string; // ISO date string YYYY-MM-DD
-    media_chassis_url: string;
-    media_engine_url: string;
+    media_chassis_url?: string; // optional — gallery tagging is flexible
+    media_engine_url?: string;
     media_sticker_url?: string;
     media_vehicle_url?: string;
-    media_qc_video_url: string;
+    media_qc_video_url?: string;
     qc_notes?: string;
 }
