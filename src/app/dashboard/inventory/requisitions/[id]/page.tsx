@@ -3338,6 +3338,7 @@ export default function RequisitionDetailPage() {
                                     {[
                                         'Exide',
                                         'Amaron',
+                                        'Tata Green',
                                         'SF Sonic',
                                         'Okaya',
                                         'Luminous',
@@ -3474,11 +3475,16 @@ export default function RequisitionDetailPage() {
                                             battery_type: grnBatteryType.trim() || undefined,
                                             battery_number: grnBatteryNumber.trim() || undefined,
                                             manufacturing_date: grnMfgDate || undefined,
-                                            media_chassis_url: grnMediaItems.find(i => i.purpose === 'chassis')?.url,
-                                            media_engine_url: grnMediaItems.find(i => i.purpose === 'engine')?.url,
-                                            media_sticker_url: grnMediaItems.find(i => i.purpose === 'sticker')?.url,
-                                            media_vehicle_url: grnMediaItems.find(i => i.purpose === 'vehicle')?.url,
-                                            media_qc_video_url: grnMediaItems.find(i => i.purpose === 'qc_video')?.url,
+                                            media_chassis_url:
+                                                grnMediaItems.find(i => i.purpose === 'chassis')?.url || undefined,
+                                            media_engine_url:
+                                                grnMediaItems.find(i => i.purpose === 'engine')?.url || undefined,
+                                            media_sticker_url:
+                                                grnMediaItems.find(i => i.purpose === 'sticker')?.url || undefined,
+                                            media_vehicle_url:
+                                                grnMediaItems.find(i => i.purpose === 'vehicle')?.url || undefined,
+                                            media_qc_video_url:
+                                                grnMediaItems.find(i => i.purpose === 'qc_video')?.url || undefined,
                                             qc_notes: grnQcNotes.trim() || undefined,
                                         });
                                         if (!result.success) {
