@@ -589,6 +589,9 @@ export default function RequisitionDetailPage() {
     const [amendQcNotes, setAmendQcNotes] = useState('');
     const [amendMediaItems, setAmendMediaItems] = useState<GrnMediaItem[]>([]);
     const [isAmending, setIsAmending] = useState(false);
+    // Section collapse state — all collapsed by default
+    const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+    const toggleSection = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
     const fetchRequestDetail = useCallback(async () => {
         if (!requestId) {
@@ -2098,102 +2101,20 @@ export default function RequisitionDetailPage() {
                 </div>
             </div>
 
-            <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                On-Road Price
-            </p>
-            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-end gap-4">
-                    <div className="text-right">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last Purchase</p>
-                        <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wide">
-                            {formatCurrency(lastPurchaseStats.cost)} • {lastPurchaseStats.supplier}
-                        </p>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                            {lastPurchaseStats.date ? format(new Date(lastPurchaseStats.date), 'dd MMM yyyy') : 'NA'}
-                        </p>
-                    </div>
-                </div>
-                <div>
-                    {requestItems.length === 0 ? (
-                        <div className="p-8 text-center text-[11px] font-bold text-slate-400 uppercase">
-                            No cost lines attached to this requisition.
-                        </div>
-                    ) : (
-                        <>
-                            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10">
-                                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
-                                            Ex Showroom
-                                        </p>
-                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
-                                            {formatCurrency(costSummary.exShowroom)}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
-                                            Registration
-                                        </p>
-                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
-                                            {formatCurrency(costSummary.registration)}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
-                                            Hypothecation
-                                        </p>
-                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
-                                            {formatCurrency(costSummary.hypothecation)}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
-                                            Insurance
-                                        </p>
-                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
-                                            {formatCurrency(costSummary.insurance)}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
-                                            Depreciation Waiver
-                                        </p>
-                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
-                                            {formatCurrency(costSummary.depreciationWaiver)}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
-                                            Insurance Add-ons
-                                        </p>
-                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
-                                            {formatCurrency(costSummary.insuranceAddons)}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 min-h-[108px] flex flex-col">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest min-h-[30px]">
-                                            Transportation
-                                        </p>
-                                        <p className="text-sm font-black text-slate-900 dark:text-white mt-auto">
-                                            {formatCurrency(costSummary.transportation)}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 min-h-[108px] flex flex-col">
-                                        <p className="text-[9px] font-black text-emerald-600 dark:text-emerald-300 uppercase tracking-widest min-h-[30px]">
-                                            Grand Total
-                                        </p>
-                                        <p className="text-sm font-black text-emerald-700 dark:text-emerald-200 mt-auto">
-                                            {formatCurrency(totalExpected)}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-            <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Qoutes</p>
-            {existingQuoteSummaries.length > 0 && (
+            {/* ── Quotes ── */}
+            <button
+                type="button"
+                onClick={() => toggleSection('quotes')}
+                className="w-full px-1 flex items-center justify-between group"
+            >
+                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Quotes</p>
+                <span
+                    className={`text-slate-400 transition-transform duration-200 ${openSections['quotes'] ? 'rotate-180' : ''}`}
+                >
+                    ▾
+                </span>
+            </button>
+            {openSections['quotes'] && existingQuoteSummaries.length > 0 && (
                 <div className="space-y-2">
                     {existingQuoteSummaries.map(summary => (
                         <div
@@ -3014,9 +2935,20 @@ export default function RequisitionDetailPage() {
             {isPoIssued && primaryPo && (
                 <>
                     <div className="px-1 flex items-center justify-between gap-3">
-                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                            Dispatch Details
-                        </p>
+                        <button
+                            type="button"
+                            onClick={() => toggleSection('dispatch')}
+                            className="flex items-center gap-2 group"
+                        >
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-emerald-600 transition-colors">
+                                Dispatch Details
+                            </p>
+                            <span
+                                className={`text-slate-400 text-xs transition-transform duration-200 ${openSections['dispatch'] ? 'rotate-180' : ''}`}
+                            >
+                                ▾
+                            </span>
+                        </button>
                         {primaryPo.po_status !== 'RECEIVED' && (
                             <button
                                 type="button"
@@ -3028,1128 +2960,1211 @@ export default function RequisitionDetailPage() {
                             </button>
                         )}
                     </div>
-                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
-                        {/* Header row — Dispatch Ref + PO status badge */}
-                        <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    Dispatch Ref
-                                </p>
-                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                    {dispatchDetails.dispatchId}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span
-                                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                                        primaryPo.po_status === 'RECEIVED'
-                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                            : primaryPo.po_status === 'SHIPPED'
-                                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                              : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                    }`}
-                                >
-                                    {primaryPo.po_status}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Fields grid */}
-                        <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-4">
-                            {/* Supplier */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Supplier
-                                </p>
-                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                    {dispatchDetails.supplier}
-                                </p>
-                            </div>
-
-                            {/* Supplier Warehouse / Dispatch Point */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Supplier Warehouse / Dispatch Point
-                                </p>
-                                {dispatchEditMode ? (
-                                    <select
-                                        value={dispatchDetails.supplierWarehouseId}
-                                        onChange={e => {
-                                            const opt = supplierWarehouseOptions.find(w => w.id === e.target.value);
-                                            setDispatchDetails(prev => ({
-                                                ...prev,
-                                                supplierWarehouseId: e.target.value,
-                                                supplierWarehouseName: opt?.name || '',
-                                                // Auto-fill incharge from selected supplier warehouse
-                                                warehouseInchargeName: opt?.managerName || prev.warehouseInchargeName,
-                                                warehouseInchargeContact:
-                                                    opt?.managerPhone ||
-                                                    opt?.contactPhone ||
-                                                    prev.warehouseInchargeContact,
-                                            }));
-                                        }}
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                    >
-                                        <option value="">Select supplier warehouse</option>
-                                        {supplierWarehouseOptions.map(w => (
-                                            <option key={w.id} value={w.id}>
-                                                {w.name}
-                                                {w.managerName ? ` — ${w.managerName}` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.supplierWarehouseName || 'NA'}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Warehouse Incharge */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Warehouse Incharge
-                                </p>
-                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                    {dispatchDetails.warehouseInchargeName}
-                                    {dispatchDetails.warehouseInchargeContact !== 'NA' && (
-                                        <span className="ml-2 text-slate-400">
-                                            • {dispatchDetails.warehouseInchargeContact}
-                                        </span>
-                                    )}
-                                </p>
-                            </div>
-
-                            {/* Warehouse */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Receiving Warehouse
-                                </p>
-                                {dispatchEditMode ? (
-                                    <select
-                                        value={dispatchDetails.warehouseId}
-                                        onChange={e => {
-                                            const opt = warehouseOptions.find(w => w.id === e.target.value);
-                                            setDispatchDetails(prev => ({
-                                                ...prev,
-                                                warehouseId: e.target.value,
-                                                warehouse: opt?.name || 'NA',
-                                            }));
-                                        }}
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                    >
-                                        <option value="">Select warehouse</option>
-                                        {warehouseOptions.map(w => (
-                                            <option key={w.id} value={w.id}>
-                                                {w.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.warehouse}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Dispatch Date */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Dispatch Date
-                                </p>
-                                {dispatchEditMode ? (
-                                    <input
-                                        type="datetime-local"
-                                        value={dispatchDetails.dispatchDate}
-                                        onChange={e =>
-                                            setDispatchDetails(prev => ({ ...prev, dispatchDate: e.target.value }))
-                                        }
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                    />
-                                ) : (
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.dispatchDate
-                                            ? format(new Date(dispatchDetails.dispatchDate), 'dd MMM yyyy, hh:mm a')
-                                            : 'NA'}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Chassis Number */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Chassis Number
-                                </p>
-                                {dispatchEditMode ? (
-                                    <input
-                                        type="text"
-                                        value={
-                                            dispatchDetails.chassisNumber === 'NA' ? '' : dispatchDetails.chassisNumber
-                                        }
-                                        placeholder="e.g. ME4JF505XRT123456 or 12345"
-                                        minLength={5}
-                                        onChange={e => {
-                                            // alphanumeric only, auto-uppercase, min 5 chars accepted
-                                            const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                                            setDispatchDetails(prev => ({
-                                                ...prev,
-                                                chassisNumber: val || 'NA',
-                                            }));
-                                        }}
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
-                                    />
-                                ) : (
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.chassisNumber}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Engine Number */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Engine Number
-                                </p>
-                                {dispatchEditMode ? (
-                                    <input
-                                        type="text"
-                                        value={
-                                            dispatchDetails.engineNumber === 'NA' ? '' : dispatchDetails.engineNumber
-                                        }
-                                        placeholder="e.g. JF505E23456 or 12345"
-                                        minLength={5}
-                                        onChange={e => {
-                                            const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                                            setDispatchDetails(prev => ({
-                                                ...prev,
-                                                engineNumber: val || 'NA',
-                                            }));
-                                        }}
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
-                                    />
-                                ) : (
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.engineNumber}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Delivery Note / LR */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Delivery Note / LR#
-                                </p>
-                                {dispatchEditMode ? (
-                                    <input
-                                        type="text"
-                                        value={
-                                            dispatchDetails.deliveryNote === 'NA' ? '' : dispatchDetails.deliveryNote
-                                        }
-                                        placeholder="Lorry receipt / docket number"
-                                        onChange={e =>
-                                            setDispatchDetails(prev => ({
-                                                ...prev,
-                                                deliveryNote: e.target.value || 'NA',
-                                            }))
-                                        }
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                    />
-                                ) : (
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.deliveryNote}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Transporter Name */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Transporter Name
-                                </p>
-                                {dispatchEditMode ? (
-                                    <input
-                                        type="text"
-                                        value={
-                                            dispatchDetails.transporterName === 'NA'
-                                                ? ''
-                                                : dispatchDetails.transporterName
-                                        }
-                                        placeholder="e.g. VRL Logistics"
-                                        onChange={e =>
-                                            setDispatchDetails(prev => ({
-                                                ...prev,
-                                                transporterName: e.target.value || 'NA',
-                                            }))
-                                        }
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                    />
-                                ) : (
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.transporterName}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Transporter Contact */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Transporter Contact
-                                </p>
-                                {dispatchEditMode ? (
-                                    <input
-                                        type="tel"
-                                        value={
-                                            dispatchDetails.transporterContact === 'NA'
-                                                ? ''
-                                                : dispatchDetails.transporterContact
-                                        }
-                                        placeholder="10-digit mobile"
-                                        maxLength={10}
-                                        onChange={e =>
-                                            setDispatchDetails(prev => ({
-                                                ...prev,
-                                                transporterContact: e.target.value || 'NA',
-                                            }))
-                                        }
-                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
-                                    />
-                                ) : (
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                        {dispatchDetails.transporterContact}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Actions footer */}
-                        {(dispatchEditMode || primaryPo.po_status === 'SENT' || primaryPo.po_status === 'SHIPPED') &&
-                            primaryPo.po_status !== 'RECEIVED' && (
-                                <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                    {openSections['dispatch'] && (
+                        <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                            {/* Header row — Dispatch Ref + PO status badge */}
+                            <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                                <div>
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                        {dispatchEditMode
-                                            ? 'Save dispatch details before marking as shipped'
-                                            : primaryPo.po_status === 'SHIPPED'
-                                              ? 'Stock in transit — ready to receive at warehouse'
-                                              : 'Transporter details saved — ready to dispatch'}
+                                        Dispatch Ref
                                     </p>
-                                    <div className="flex items-center gap-2">
-                                        {dispatchEditMode && (
-                                            <button
-                                                type="button"
-                                                onClick={handleSaveDispatch}
-                                                disabled={isSavingDispatch}
-                                                className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50 hover:bg-slate-50 transition-all"
-                                            >
-                                                {isSavingDispatch ? 'Saving...' : 'Save Details'}
-                                            </button>
-                                        )}
-                                        {primaryPo.po_status === 'SENT' && (
-                                            <button
-                                                type="button"
-                                                onClick={handleMoveDispatchNext}
-                                                disabled={isMovingDispatch || isSavingDispatch}
-                                                className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
-                                            >
-                                                <Truck size={12} />
-                                                {isMovingDispatch ? 'Updating...' : 'Mark as Shipped'}
-                                            </button>
-                                        )}
-                                    </div>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                        {dispatchDetails.dispatchId}
+                                    </p>
                                 </div>
-                            )}
-                    </div>
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                            primaryPo.po_status === 'RECEIVED'
+                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                : primaryPo.po_status === 'SHIPPED'
+                                                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                        }`}
+                                    >
+                                        {primaryPo.po_status}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Fields grid */}
+                            <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-4">
+                                {/* Supplier */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Supplier
+                                    </p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.supplier}
+                                    </p>
+                                </div>
+
+                                {/* Supplier Warehouse / Dispatch Point */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Supplier Warehouse / Dispatch Point
+                                    </p>
+                                    {dispatchEditMode ? (
+                                        <select
+                                            value={dispatchDetails.supplierWarehouseId}
+                                            onChange={e => {
+                                                const opt = supplierWarehouseOptions.find(w => w.id === e.target.value);
+                                                setDispatchDetails(prev => ({
+                                                    ...prev,
+                                                    supplierWarehouseId: e.target.value,
+                                                    supplierWarehouseName: opt?.name || '',
+                                                    // Auto-fill incharge from selected supplier warehouse
+                                                    warehouseInchargeName:
+                                                        opt?.managerName || prev.warehouseInchargeName,
+                                                    warehouseInchargeContact:
+                                                        opt?.managerPhone ||
+                                                        opt?.contactPhone ||
+                                                        prev.warehouseInchargeContact,
+                                                }));
+                                            }}
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                        >
+                                            <option value="">Select supplier warehouse</option>
+                                            {supplierWarehouseOptions.map(w => (
+                                                <option key={w.id} value={w.id}>
+                                                    {w.name}
+                                                    {w.managerName ? ` — ${w.managerName}` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                            {dispatchDetails.supplierWarehouseName || 'NA'}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Warehouse Incharge */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Warehouse Incharge
+                                    </p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {dispatchDetails.warehouseInchargeName}
+                                        {dispatchDetails.warehouseInchargeContact !== 'NA' && (
+                                            <span className="ml-2 text-slate-400">
+                                                • {dispatchDetails.warehouseInchargeContact}
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
+
+                                {/* Warehouse */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Receiving Warehouse
+                                    </p>
+                                    {dispatchEditMode ? (
+                                        <select
+                                            value={dispatchDetails.warehouseId}
+                                            onChange={e => {
+                                                const opt = warehouseOptions.find(w => w.id === e.target.value);
+                                                setDispatchDetails(prev => ({
+                                                    ...prev,
+                                                    warehouseId: e.target.value,
+                                                    warehouse: opt?.name || 'NA',
+                                                }));
+                                            }}
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                        >
+                                            <option value="">Select warehouse</option>
+                                            {warehouseOptions.map(w => (
+                                                <option key={w.id} value={w.id}>
+                                                    {w.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                            {dispatchDetails.warehouse}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Dispatch Date */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Dispatch Date
+                                    </p>
+                                    {dispatchEditMode ? (
+                                        <input
+                                            type="datetime-local"
+                                            value={dispatchDetails.dispatchDate}
+                                            onChange={e =>
+                                                setDispatchDetails(prev => ({ ...prev, dispatchDate: e.target.value }))
+                                            }
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                        />
+                                    ) : (
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                            {dispatchDetails.dispatchDate
+                                                ? format(new Date(dispatchDetails.dispatchDate), 'dd MMM yyyy, hh:mm a')
+                                                : 'NA'}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Chassis Number */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Chassis Number
+                                    </p>
+                                    {dispatchEditMode ? (
+                                        <input
+                                            type="text"
+                                            value={
+                                                dispatchDetails.chassisNumber === 'NA'
+                                                    ? ''
+                                                    : dispatchDetails.chassisNumber
+                                            }
+                                            placeholder="e.g. ME4JF505XRT123456 or 12345"
+                                            minLength={5}
+                                            onChange={e => {
+                                                // alphanumeric only, auto-uppercase, min 5 chars accepted
+                                                const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                                                setDispatchDetails(prev => ({
+                                                    ...prev,
+                                                    chassisNumber: val || 'NA',
+                                                }));
+                                            }}
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
+                                        />
+                                    ) : (
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                            {dispatchDetails.chassisNumber}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Engine Number */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Engine Number
+                                    </p>
+                                    {dispatchEditMode ? (
+                                        <input
+                                            type="text"
+                                            value={
+                                                dispatchDetails.engineNumber === 'NA'
+                                                    ? ''
+                                                    : dispatchDetails.engineNumber
+                                            }
+                                            placeholder="e.g. JF505E23456 or 12345"
+                                            minLength={5}
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                                                setDispatchDetails(prev => ({
+                                                    ...prev,
+                                                    engineNumber: val || 'NA',
+                                                }));
+                                            }}
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200 uppercase placeholder:normal-case placeholder:font-normal"
+                                        />
+                                    ) : (
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                            {dispatchDetails.engineNumber}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Delivery Note / LR */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Delivery Note / LR#
+                                    </p>
+                                    {dispatchEditMode ? (
+                                        <input
+                                            type="text"
+                                            value={
+                                                dispatchDetails.deliveryNote === 'NA'
+                                                    ? ''
+                                                    : dispatchDetails.deliveryNote
+                                            }
+                                            placeholder="Lorry receipt / docket number"
+                                            onChange={e =>
+                                                setDispatchDetails(prev => ({
+                                                    ...prev,
+                                                    deliveryNote: e.target.value || 'NA',
+                                                }))
+                                            }
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                        />
+                                    ) : (
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                            {dispatchDetails.deliveryNote}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Transporter Name */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Transporter Name
+                                    </p>
+                                    {dispatchEditMode ? (
+                                        <input
+                                            type="text"
+                                            value={
+                                                dispatchDetails.transporterName === 'NA'
+                                                    ? ''
+                                                    : dispatchDetails.transporterName
+                                            }
+                                            placeholder="e.g. VRL Logistics"
+                                            onChange={e =>
+                                                setDispatchDetails(prev => ({
+                                                    ...prev,
+                                                    transporterName: e.target.value || 'NA',
+                                                }))
+                                            }
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                        />
+                                    ) : (
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                            {dispatchDetails.transporterName}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Transporter Contact */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Transporter Contact
+                                    </p>
+                                    {dispatchEditMode ? (
+                                        <input
+                                            type="tel"
+                                            value={
+                                                dispatchDetails.transporterContact === 'NA'
+                                                    ? ''
+                                                    : dispatchDetails.transporterContact
+                                            }
+                                            placeholder="10-digit mobile"
+                                            maxLength={10}
+                                            onChange={e =>
+                                                setDispatchDetails(prev => ({
+                                                    ...prev,
+                                                    transporterContact: e.target.value || 'NA',
+                                                }))
+                                            }
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-200"
+                                        />
+                                    ) : (
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                            {dispatchDetails.transporterContact}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Actions footer */}
+                            {(dispatchEditMode ||
+                                primaryPo.po_status === 'SENT' ||
+                                primaryPo.po_status === 'SHIPPED') &&
+                                primaryPo.po_status !== 'RECEIVED' && (
+                                    <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                            {dispatchEditMode
+                                                ? 'Save dispatch details before marking as shipped'
+                                                : primaryPo.po_status === 'SHIPPED'
+                                                  ? 'Stock in transit — ready to receive at warehouse'
+                                                  : 'Transporter details saved — ready to dispatch'}
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            {dispatchEditMode && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSaveDispatch}
+                                                    disabled={isSavingDispatch}
+                                                    className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50 hover:bg-slate-50 transition-all"
+                                                >
+                                                    {isSavingDispatch ? 'Saving...' : 'Save Details'}
+                                                </button>
+                                            )}
+                                            {primaryPo.po_status === 'SENT' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleMoveDispatchNext}
+                                                    disabled={isMovingDispatch || isSavingDispatch}
+                                                    className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
+                                                >
+                                                    <Truck size={12} />
+                                                    {isMovingDispatch ? 'Updating...' : 'Mark as Shipped'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                        </div>
+                    )}
                 </>
             )}
 
             {/* ── GRN RECEIPT CARD ── */}
             {primaryPo && primaryPo.po_status === 'RECEIVED' && receivedStock && (
                 <>
-                    <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                        GRN Receipt
-                    </p>
-
-                    {/* ── Card 1: Vehicle Details ── */}
-                    <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-slate-900/60 overflow-hidden">
-                        {/* Header */}
-                        <div className="px-5 py-3 border-b border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-900/10">
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    GRN Ref
-                                </p>
-                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                    {formatTripletId(primaryPo.display_id || primaryPo.id)}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
-                                    ✓ Received
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setGrnEditMode(m => !m);
-                                        setActiveGrnImg(null);
-                                        if (!grnEditMode) {
-                                            setAmendChassisNumber((receivedStock as any).chassis_number || '');
-                                            setAmendEngineNumber((receivedStock as any).engine_number || '');
-                                            setAmendKeyNumber((receivedStock as any).key_number || '');
-                                            setAmendBatteryMake((receivedStock as any).battery_make || '');
-                                            setAmendBatteryType((receivedStock as any).battery_type || '');
-                                            setAmendBatteryNumber((receivedStock as any).battery_number || '');
-                                            setAmendMfgDate((receivedStock as any).manufacturing_date || '');
-                                            setAmendQcNotes((receivedStock as any).qc_notes || '');
-                                            setAmendMediaItems(((receivedStock as any).media_gallery as any[]) || []);
-                                        }
-                                    }}
-                                    className={`px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-colors ${grnEditMode ? 'border-red-200 text-red-500 hover:bg-red-50' : 'border-slate-200 dark:border-white/10 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:border-slate-400'}`}
-                                >
-                                    {grnEditMode ? '✕ Cancel' : '✏ Edit'}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Read-only details */}
-                        {!grnEditMode && (
-                            <div className="px-5 py-4">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-5">
-                                    {[
-                                        { label: 'Chassis Number', value: (receivedStock as any).chassis_number },
-                                        { label: 'Engine Number', value: (receivedStock as any).engine_number },
-                                        { label: 'Key Number', value: (receivedStock as any).key_number },
-                                        { label: 'Battery Make', value: (receivedStock as any).battery_make },
-                                        { label: 'Battery Type', value: (receivedStock as any).battery_type },
-                                        { label: 'Battery Number', value: (receivedStock as any).battery_number },
-                                        {
-                                            label: 'Mfg. Date',
-                                            value: (receivedStock as any).manufacturing_date
-                                                ? (() => {
-                                                      const [y, m, d] = (
-                                                          (receivedStock as any).manufacturing_date as string
-                                                      ).split('-');
-                                                      const mon = [
-                                                          'Jan',
-                                                          'Feb',
-                                                          'Mar',
-                                                          'Apr',
-                                                          'May',
-                                                          'Jun',
-                                                          'Jul',
-                                                          'Aug',
-                                                          'Sep',
-                                                          'Oct',
-                                                          'Nov',
-                                                          'Dec',
-                                                      ][parseInt(m) - 1];
-                                                      return `${parseInt(d) > 1 ? parseInt(d) + ' ' : ''}${mon} ${y}`;
-                                                  })()
-                                                : null,
-                                        },
-                                        { label: 'QC Notes', value: (receivedStock as any).qc_notes },
-                                    ].map(f =>
-                                        f.value ? (
-                                            <div key={f.label}>
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
-                                                    {f.label}
-                                                </p>
-                                                <p className="text-sm font-bold text-slate-900 dark:text-white break-all uppercase tracking-tight">
-                                                    {f.value}
-                                                </p>
-                                            </div>
-                                        ) : null
-                                    )}
-                                </div>
-                                {(receivedStock as any).created_at && (
-                                    <p className="mt-4 text-[9px] font-bold text-slate-400">
-                                        Received:{' '}
-                                        {new Date((receivedStock as any).created_at).toLocaleString('en-IN', {
-                                            dateStyle: 'medium',
-                                            timeStyle: 'short',
-                                        })}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Edit form */}
-                        {grnEditMode && (
-                            <div className="px-5 py-4 space-y-5">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            Chassis Number (VIN)
-                                        </p>
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={amendChassisNumber}
-                                                onChange={e => {
-                                                    const raw = e.target.value
-                                                        .replace(/[IOQioq]/g, '')
-                                                        .replace(/[^a-zA-Z0-9]/g, '')
-                                                        .toUpperCase()
-                                                        .slice(0, 17);
-                                                    setAmendChassisNumber(raw);
-                                                    if (raw.length === 17) {
-                                                        const d = decodeVinMfgDate(raw);
-                                                        if (d) setAmendMfgDate(d);
-                                                    }
-                                                }}
-                                                maxLength={17}
-                                                placeholder="17-character VIN"
-                                                className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 pr-12 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
-                                            />
-                                            <span
-                                                className={`absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black tabular-nums ${amendChassisNumber.length === 17 ? 'text-emerald-500' : 'text-slate-400'}`}
-                                            >
-                                                {amendChassisNumber.length}/17
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            Engine Number
-                                        </p>
-                                        <input
-                                            type="text"
-                                            value={amendEngineNumber}
-                                            onChange={e =>
-                                                setAmendEngineNumber(
-                                                    e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-                                                )
-                                            }
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
-                                        />
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            Key Number
-                                        </p>
-                                        <input
-                                            type="text"
-                                            value={amendKeyNumber}
-                                            onChange={e =>
-                                                setAmendKeyNumber(
-                                                    e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()
-                                                )
-                                            }
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
-                                        />
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            Battery Make
-                                        </p>
-                                        <select
-                                            value={amendBatteryMake}
-                                            onChange={e => setAmendBatteryMake(e.target.value)}
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                        >
-                                            <option value="">Select brand</option>
-                                            {[
-                                                'Exide',
-                                                'Amara Raja (Amaron)',
-                                                'Luminous',
-                                                'Livguard',
-                                                'SF Sonic',
-                                                'Su-Kam',
-                                                'Tata Green',
-                                                'Bass',
-                                                'Okaya',
-                                                'Rocket',
-                                                'Other',
-                                            ].map(b => (
-                                                <option key={b} value={b}>
-                                                    {b}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            Battery Type
-                                        </p>
-                                        <input
-                                            type="text"
-                                            value={amendBatteryType}
-                                            onChange={e => setAmendBatteryType(e.target.value)}
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                        />
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            Battery Number
-                                        </p>
-                                        <input
-                                            type="text"
-                                            value={amendBatteryNumber}
-                                            onChange={e =>
-                                                setAmendBatteryNumber(
-                                                    e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()
-                                                )
-                                            }
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            Mfg. Date
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <select
-                                                value={amendMfgDate.split('-')[2]?.replace(/^0/, '') || ''}
-                                                onChange={e => {
-                                                    const [y, m] = amendMfgDate.split('-');
-                                                    setAmendMfgDate(
-                                                        `${y || '2024'}-${m || '01'}-${e.target.value.padStart(2, '0')}`
-                                                    );
-                                                }}
-                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200"
-                                            >
-                                                <option value="">Day</option>
-                                                {Array.from({ length: 31 }, (_, i) => (
-                                                    <option key={i + 1} value={i + 1}>
-                                                        {i + 1}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <select
-                                                value={amendMfgDate.split('-')[1] || ''}
-                                                onChange={e => {
-                                                    const [y, , d] = amendMfgDate.split('-');
-                                                    setAmendMfgDate(`${y || '2024'}-${e.target.value}-${d || '01'}`);
-                                                }}
-                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200"
-                                            >
-                                                <option value="">Month</option>
-                                                {[
-                                                    '01',
-                                                    '02',
-                                                    '03',
-                                                    '04',
-                                                    '05',
-                                                    '06',
-                                                    '07',
-                                                    '08',
-                                                    '09',
-                                                    '10',
-                                                    '11',
-                                                    '12',
-                                                ].map((m, i) => (
-                                                    <option key={m} value={m}>
-                                                        {
-                                                            [
-                                                                'Jan',
-                                                                'Feb',
-                                                                'Mar',
-                                                                'Apr',
-                                                                'May',
-                                                                'Jun',
-                                                                'Jul',
-                                                                'Aug',
-                                                                'Sep',
-                                                                'Oct',
-                                                                'Nov',
-                                                                'Dec',
-                                                            ][i]
-                                                        }
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <select
-                                                value={amendMfgDate.split('-')[0] || ''}
-                                                onChange={e => {
-                                                    const [, m, d] = amendMfgDate.split('-');
-                                                    setAmendMfgDate(`${e.target.value}-${m || '01'}-${d || '01'}`);
-                                                }}
-                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200"
-                                            >
-                                                <option value="">Year</option>
-                                                {Array.from({ length: 15 }, (_, i) => {
-                                                    const y = new Date().getFullYear() - i;
-                                                    return (
-                                                        <option key={y} value={y}>
-                                                            {y}
-                                                        </option>
-                                                    );
-                                                })}
-                                            </select>
-                                            {amendMfgDate && (
-                                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">
-                                                    {(() => {
-                                                        const [y, m] = amendMfgDate.split('-');
-                                                        return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][parseInt(m) - 1]} ${y}`;
-                                                    })()}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            QC Notes
-                                        </p>
-                                        <input
-                                            type="text"
-                                            value={amendQcNotes}
-                                            onChange={e => setAmendQcNotes(e.target.value)}
-                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                        />
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    disabled={isAmending}
-                                    onClick={async () => {
-                                        setIsAmending(true);
-                                        try {
-                                            const { amendStockGrn } = await import('@/actions/inventory');
-                                            const result = await amendStockGrn({
-                                                stock_id: (receivedStock as any).id,
-                                                chassis_number: amendChassisNumber || undefined,
-                                                engine_number: amendEngineNumber || undefined,
-                                                key_number: amendKeyNumber || undefined,
-                                                battery_make: amendBatteryMake || undefined,
-                                                battery_type: amendBatteryType || undefined,
-                                                battery_number: amendBatteryNumber || undefined,
-                                                manufacturing_date: amendMfgDate || undefined,
-                                                qc_notes: amendQcNotes || undefined,
-                                                media_gallery: (receivedStock as any).media_gallery || [],
-                                            });
-                                            if (result.success) {
-                                                toast.success('GRN details saved');
-                                                setGrnEditMode(false);
-                                                await fetchRequestDetail();
-                                            } else toast.error(result.message || 'Failed');
-                                        } finally {
-                                            setIsAmending(false);
-                                        }
-                                    }}
-                                    className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-[11px] font-black uppercase tracking-widest text-white transition-all inline-flex items-center justify-center"
-                                >
-                                    {isAmending ? 'Saving...' : '✓ Save Details'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* ── Card 2: Media Assets ── */}
-                    {(() => {
-                        const gallery: Array<{ url: string; purpose: string; isVideo: boolean }> = (
-                            receivedStock as any
-                        ).media_gallery?.length
-                            ? (receivedStock as any).media_gallery
-                            : [
-                                  { url: (receivedStock as any).media_chassis_url, purpose: 'chassis', isVideo: false },
-                                  { url: (receivedStock as any).media_engine_url, purpose: 'engine', isVideo: false },
-                                  { url: (receivedStock as any).media_sticker_url, purpose: 'sticker', isVideo: false },
-                                  { url: (receivedStock as any).media_vehicle_url, purpose: 'vehicle', isVideo: false },
-                                  {
-                                      url: (receivedStock as any).media_qc_video_url,
-                                      purpose: 'qc_video',
-                                      isVideo: true,
-                                  },
-                              ].filter(m => m.url);
-
-                        const PLABELS: Record<string, string> = {
-                            chassis: 'Chassis',
-                            engine: 'Engine',
-                            sticker: 'Sticker',
-                            vehicle: 'Vehicle',
-                            qc_video: 'QC Video',
-                            battery_number: 'Battery No.',
-                            odometer: 'Odometer',
-                            other: 'Other',
-                        };
-                        const active = activeGrnImg;
-                        const go = (delta: number) => {
-                            if (!active) return;
-                            const next = (active.idx + delta + gallery.length) % gallery.length;
-                            setActiveGrnImg({ ...gallery[next], idx: next });
-                        };
-                        // cols: min(N,6); for small sets cap width so they center
-                        const cols = Math.min(gallery.length, 6);
-                        const maxW = gallery.length <= 3 ? `${gallery.length * 180}px` : '100%';
-
-                        return (
-                            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
-                                <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50 dark:bg-white/5">
+                    {/* GRN section toggle header */}
+                    <button
+                        type="button"
+                        onClick={() => toggleSection('grn')}
+                        className="w-full px-1 flex items-center gap-2 group"
+                    >
+                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-emerald-600 transition-colors">
+                            GRN Receipt
+                        </p>
+                        <span
+                            className={`text-slate-400 text-xs transition-transform duration-200 ${openSections['grn'] ? 'rotate-180' : ''}`}
+                        >
+                            ▾
+                        </span>
+                    </button>
+                    {openSections['grn'] && (
+                        <>
+                            {/* ── Card 1: Vehicle Details ── */}
+                            <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-slate-900/60 overflow-hidden">
+                                {/* Header */}
+                                <div className="px-5 py-3 border-b border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-900/10">
                                     <div>
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                            Media Assets
+                                            GRN Ref
                                         </p>
-                                        <p className="text-sm font-black text-slate-900 dark:text-white">
-                                            {gallery.length} item{gallery.length !== 1 ? 's' : ''}
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                            {formatTripletId(primaryPo.display_id || primaryPo.id)}
                                         </p>
                                     </div>
-                                    {/* Edit media button */}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setGrnEditMode(false); // close details edit if open
-                                            // open a simple amend for media only
-                                        }}
-                                        className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:border-slate-400 transition-colors"
-                                    >
-                                        ✏ Edit Media
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
+                                            ✓ Received
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setGrnEditMode(m => !m);
+                                                setActiveGrnImg(null);
+                                                if (!grnEditMode) {
+                                                    setAmendChassisNumber((receivedStock as any).chassis_number || '');
+                                                    setAmendEngineNumber((receivedStock as any).engine_number || '');
+                                                    setAmendKeyNumber((receivedStock as any).key_number || '');
+                                                    setAmendBatteryMake((receivedStock as any).battery_make || '');
+                                                    setAmendBatteryType((receivedStock as any).battery_type || '');
+                                                    setAmendBatteryNumber((receivedStock as any).battery_number || '');
+                                                    setAmendMfgDate((receivedStock as any).manufacturing_date || '');
+                                                    setAmendQcNotes((receivedStock as any).qc_notes || '');
+                                                    setAmendMediaItems(
+                                                        ((receivedStock as any).media_gallery as any[]) || []
+                                                    );
+                                                }
+                                            }}
+                                            className={`px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-colors ${grnEditMode ? 'border-red-200 text-red-500 hover:bg-red-50' : 'border-slate-200 dark:border-white/10 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:border-slate-400'}`}
+                                        >
+                                            {grnEditMode ? '✕ Cancel' : '✏ Edit'}
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="p-4">
-                                    {!gallery.length ? (
-                                        <p className="text-[9px] font-bold text-slate-400 italic text-center py-4">
-                                            No media uploaded yet
-                                        </p>
-                                    ) : (
-                                        <>
-                                            {/* Expanded viewer */}
-                                            {active && (
-                                                <div
-                                                    className="mb-3 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-950 relative"
-                                                    style={{ aspectRatio: '16/9' }}
-                                                >
-                                                    {active.isVideo ? (
-                                                        <video
-                                                            src={active.url}
-                                                            controls
-                                                            className="w-full h-full object-contain"
-                                                        />
-                                                    ) : (
-                                                        <img
-                                                            src={active.url}
-                                                            alt={active.purpose}
-                                                            className="w-full h-full object-contain"
-                                                        />
-                                                    )}
-                                                    <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">
-                                                        {PLABELS[active.purpose] ?? active.purpose}
-                                                        <span className="ml-2 font-normal opacity-60">
-                                                            {active.idx + 1}/{gallery.length}
-                                                        </span>
+
+                                {/* Read-only details */}
+                                {!grnEditMode && (
+                                    <div className="px-5 py-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-5">
+                                            {[
+                                                {
+                                                    label: 'Chassis Number',
+                                                    value: (receivedStock as any).chassis_number,
+                                                },
+                                                { label: 'Engine Number', value: (receivedStock as any).engine_number },
+                                                { label: 'Key Number', value: (receivedStock as any).key_number },
+                                                { label: 'Battery Make', value: (receivedStock as any).battery_make },
+                                                { label: 'Battery Type', value: (receivedStock as any).battery_type },
+                                                {
+                                                    label: 'Battery Number',
+                                                    value: (receivedStock as any).battery_number,
+                                                },
+                                                {
+                                                    label: 'Mfg. Date',
+                                                    value: (receivedStock as any).manufacturing_date
+                                                        ? (() => {
+                                                              const [y, m, d] = (
+                                                                  (receivedStock as any).manufacturing_date as string
+                                                              ).split('-');
+                                                              const mon = [
+                                                                  'Jan',
+                                                                  'Feb',
+                                                                  'Mar',
+                                                                  'Apr',
+                                                                  'May',
+                                                                  'Jun',
+                                                                  'Jul',
+                                                                  'Aug',
+                                                                  'Sep',
+                                                                  'Oct',
+                                                                  'Nov',
+                                                                  'Dec',
+                                                              ][parseInt(m) - 1];
+                                                              return `${parseInt(d) > 1 ? parseInt(d) + ' ' : ''}${mon} ${y}`;
+                                                          })()
+                                                        : null,
+                                                },
+                                                { label: 'QC Notes', value: (receivedStock as any).qc_notes },
+                                            ].map(f =>
+                                                f.value ? (
+                                                    <div key={f.label}>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
+                                                            {f.label}
+                                                        </p>
+                                                        <p className="text-sm font-bold text-slate-900 dark:text-white break-all uppercase tracking-tight">
+                                                            {f.value}
+                                                        </p>
                                                     </div>
-                                                    <button
-                                                        onClick={() => setActiveGrnImg(null)}
-                                                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/80 text-white text-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                ) : null
+                                            )}
+                                        </div>
+                                        {(receivedStock as any).created_at && (
+                                            <p className="mt-4 text-[9px] font-bold text-slate-400">
+                                                Received:{' '}
+                                                {new Date((receivedStock as any).created_at).toLocaleString('en-IN', {
+                                                    dateStyle: 'medium',
+                                                    timeStyle: 'short',
+                                                })}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Edit form */}
+                                {grnEditMode && (
+                                    <div className="px-5 py-4 space-y-5">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    Chassis Number (VIN)
+                                                </p>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={amendChassisNumber}
+                                                        onChange={e => {
+                                                            const raw = e.target.value
+                                                                .replace(/[IOQioq]/g, '')
+                                                                .replace(/[^a-zA-Z0-9]/g, '')
+                                                                .toUpperCase()
+                                                                .slice(0, 17);
+                                                            setAmendChassisNumber(raw);
+                                                            if (raw.length === 17) {
+                                                                const d = decodeVinMfgDate(raw);
+                                                                if (d) setAmendMfgDate(d);
+                                                            }
+                                                        }}
+                                                        maxLength={17}
+                                                        placeholder="17-character VIN"
+                                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 pr-12 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
+                                                    />
+                                                    <span
+                                                        className={`absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black tabular-nums ${amendChassisNumber.length === 17 ? 'text-emerald-500' : 'text-slate-400'}`}
                                                     >
-                                                        ✕
-                                                    </button>
-                                                    {gallery.length > 1 && (
-                                                        <>
-                                                            <button
-                                                                onClick={() => go(-1)}
-                                                                className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
-                                                            >
-                                                                ‹
-                                                            </button>
-                                                            <button
-                                                                onClick={() => go(1)}
-                                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
-                                                            >
-                                                                ›
-                                                            </button>
-                                                        </>
+                                                        {amendChassisNumber.length}/17
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    Engine Number
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    value={amendEngineNumber}
+                                                    onChange={e =>
+                                                        setAmendEngineNumber(
+                                                            e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+                                                        )
+                                                    }
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    Key Number
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    value={amendKeyNumber}
+                                                    onChange={e =>
+                                                        setAmendKeyNumber(
+                                                            e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()
+                                                        )
+                                                    }
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    Battery Make
+                                                </p>
+                                                <select
+                                                    value={amendBatteryMake}
+                                                    onChange={e => setAmendBatteryMake(e.target.value)}
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                                >
+                                                    <option value="">Select brand</option>
+                                                    {[
+                                                        'Exide',
+                                                        'Amara Raja (Amaron)',
+                                                        'Luminous',
+                                                        'Livguard',
+                                                        'SF Sonic',
+                                                        'Su-Kam',
+                                                        'Tata Green',
+                                                        'Bass',
+                                                        'Okaya',
+                                                        'Rocket',
+                                                        'Other',
+                                                    ].map(b => (
+                                                        <option key={b} value={b}>
+                                                            {b}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    Battery Type
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    value={amendBatteryType}
+                                                    onChange={e => setAmendBatteryType(e.target.value)}
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    Battery Number
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    value={amendBatteryNumber}
+                                                    onChange={e =>
+                                                        setAmendBatteryNumber(
+                                                            e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()
+                                                        )
+                                                    }
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    Mfg. Date
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <select
+                                                        value={amendMfgDate.split('-')[2]?.replace(/^0/, '') || ''}
+                                                        onChange={e => {
+                                                            const [y, m] = amendMfgDate.split('-');
+                                                            setAmendMfgDate(
+                                                                `${y || '2024'}-${m || '01'}-${e.target.value.padStart(2, '0')}`
+                                                            );
+                                                        }}
+                                                        className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200"
+                                                    >
+                                                        <option value="">Day</option>
+                                                        {Array.from({ length: 31 }, (_, i) => (
+                                                            <option key={i + 1} value={i + 1}>
+                                                                {i + 1}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <select
+                                                        value={amendMfgDate.split('-')[1] || ''}
+                                                        onChange={e => {
+                                                            const [y, , d] = amendMfgDate.split('-');
+                                                            setAmendMfgDate(
+                                                                `${y || '2024'}-${e.target.value}-${d || '01'}`
+                                                            );
+                                                        }}
+                                                        className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200"
+                                                    >
+                                                        <option value="">Month</option>
+                                                        {[
+                                                            '01',
+                                                            '02',
+                                                            '03',
+                                                            '04',
+                                                            '05',
+                                                            '06',
+                                                            '07',
+                                                            '08',
+                                                            '09',
+                                                            '10',
+                                                            '11',
+                                                            '12',
+                                                        ].map((m, i) => (
+                                                            <option key={m} value={m}>
+                                                                {
+                                                                    [
+                                                                        'Jan',
+                                                                        'Feb',
+                                                                        'Mar',
+                                                                        'Apr',
+                                                                        'May',
+                                                                        'Jun',
+                                                                        'Jul',
+                                                                        'Aug',
+                                                                        'Sep',
+                                                                        'Oct',
+                                                                        'Nov',
+                                                                        'Dec',
+                                                                    ][i]
+                                                                }
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <select
+                                                        value={amendMfgDate.split('-')[0] || ''}
+                                                        onChange={e => {
+                                                            const [, m, d] = amendMfgDate.split('-');
+                                                            setAmendMfgDate(
+                                                                `${e.target.value}-${m || '01'}-${d || '01'}`
+                                                            );
+                                                        }}
+                                                        className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200"
+                                                    >
+                                                        <option value="">Year</option>
+                                                        {Array.from({ length: 15 }, (_, i) => {
+                                                            const y = new Date().getFullYear() - i;
+                                                            return (
+                                                                <option key={y} value={y}>
+                                                                    {y}
+                                                                </option>
+                                                            );
+                                                        })}
+                                                    </select>
+                                                    {amendMfgDate && (
+                                                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">
+                                                            {(() => {
+                                                                const [y, m] = amendMfgDate.split('-');
+                                                                return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][parseInt(m) - 1]} ${y}`;
+                                                            })()}
+                                                        </span>
                                                     )}
                                                 </div>
-                                            )}
-                                            {/* Thumbnail grid — centered for small sets, full-width for ≥4 */}
-                                            <div
-                                                style={{
-                                                    display: 'grid',
-                                                    gap: '6px',
-                                                    gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`,
-                                                    maxWidth: maxW,
-                                                    margin: '0 auto',
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    QC Notes
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    value={amendQcNotes}
+                                                    onChange={e => setAmendQcNotes(e.target.value)}
+                                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                                />
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            disabled={isAmending}
+                                            onClick={async () => {
+                                                setIsAmending(true);
+                                                try {
+                                                    const { amendStockGrn } = await import('@/actions/inventory');
+                                                    const result = await amendStockGrn({
+                                                        stock_id: (receivedStock as any).id,
+                                                        chassis_number: amendChassisNumber || undefined,
+                                                        engine_number: amendEngineNumber || undefined,
+                                                        key_number: amendKeyNumber || undefined,
+                                                        battery_make: amendBatteryMake || undefined,
+                                                        battery_type: amendBatteryType || undefined,
+                                                        battery_number: amendBatteryNumber || undefined,
+                                                        manufacturing_date: amendMfgDate || undefined,
+                                                        qc_notes: amendQcNotes || undefined,
+                                                        media_gallery: (receivedStock as any).media_gallery || [],
+                                                    });
+                                                    if (result.success) {
+                                                        toast.success('GRN details saved');
+                                                        setGrnEditMode(false);
+                                                        await fetchRequestDetail();
+                                                    } else toast.error(result.message || 'Failed');
+                                                } finally {
+                                                    setIsAmending(false);
+                                                }
+                                            }}
+                                            className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-[11px] font-black uppercase tracking-widest text-white transition-all inline-flex items-center justify-center"
+                                        >
+                                            {isAmending ? 'Saving...' : '✓ Save Details'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ── Card 2: Media Assets ── */}
+                            {(() => {
+                                const gallery: Array<{ url: string; purpose: string; isVideo: boolean }> = (
+                                    receivedStock as any
+                                ).media_gallery?.length
+                                    ? (receivedStock as any).media_gallery
+                                    : [
+                                          {
+                                              url: (receivedStock as any).media_chassis_url,
+                                              purpose: 'chassis',
+                                              isVideo: false,
+                                          },
+                                          {
+                                              url: (receivedStock as any).media_engine_url,
+                                              purpose: 'engine',
+                                              isVideo: false,
+                                          },
+                                          {
+                                              url: (receivedStock as any).media_sticker_url,
+                                              purpose: 'sticker',
+                                              isVideo: false,
+                                          },
+                                          {
+                                              url: (receivedStock as any).media_vehicle_url,
+                                              purpose: 'vehicle',
+                                              isVideo: false,
+                                          },
+                                          {
+                                              url: (receivedStock as any).media_qc_video_url,
+                                              purpose: 'qc_video',
+                                              isVideo: true,
+                                          },
+                                      ].filter(m => m.url);
+
+                                const PLABELS: Record<string, string> = {
+                                    chassis: 'Chassis',
+                                    engine: 'Engine',
+                                    sticker: 'Sticker',
+                                    vehicle: 'Vehicle',
+                                    qc_video: 'QC Video',
+                                    battery_number: 'Battery No.',
+                                    odometer: 'Odometer',
+                                    other: 'Other',
+                                };
+                                const active = activeGrnImg;
+                                const go = (delta: number) => {
+                                    if (!active) return;
+                                    const next = (active.idx + delta + gallery.length) % gallery.length;
+                                    setActiveGrnImg({ ...gallery[next], idx: next });
+                                };
+                                // cols: min(N,6); for small sets cap width so they center
+                                const cols = Math.min(gallery.length, 6);
+                                const maxW = gallery.length <= 3 ? `${gallery.length * 180}px` : '100%';
+
+                                return (
+                                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                                        <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50 dark:bg-white/5">
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                    Media Assets
+                                                </p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white">
+                                                    {gallery.length} item{gallery.length !== 1 ? 's' : ''}
+                                                </p>
+                                            </div>
+                                            {/* Edit media button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setGrnEditMode(false); // close details edit if open
+                                                    // open a simple amend for media only
                                                 }}
+                                                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:border-slate-400 transition-colors"
                                             >
-                                                {gallery.map((m, gi) => (
-                                                    <button
-                                                        key={gi}
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setActiveGrnImg(
-                                                                active?.idx === gi ? null : { ...m, idx: gi }
-                                                            )
-                                                        }
-                                                        className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-150 ${active?.idx === gi ? 'border-emerald-400 ring-2 ring-emerald-300' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300'}`}
-                                                        style={{ aspectRatio: '1/1' }}
-                                                    >
-                                                        {m.isVideo ? (
-                                                            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
-                                                                <span className="text-3xl">🎥</span>
-                                                                <span className="text-[8px] font-black text-slate-400 uppercase">
-                                                                    Video
+                                                ✏ Edit Media
+                                            </button>
+                                        </div>
+                                        <div className="p-4">
+                                            {!gallery.length ? (
+                                                <p className="text-[9px] font-bold text-slate-400 italic text-center py-4">
+                                                    No media uploaded yet
+                                                </p>
+                                            ) : (
+                                                <>
+                                                    {/* Expanded viewer */}
+                                                    {active && (
+                                                        <div
+                                                            className="mb-3 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-950 relative"
+                                                            style={{ aspectRatio: '16/9' }}
+                                                        >
+                                                            {active.isVideo ? (
+                                                                <video
+                                                                    src={active.url}
+                                                                    controls
+                                                                    className="w-full h-full object-contain"
+                                                                />
+                                                            ) : (
+                                                                <img
+                                                                    src={active.url}
+                                                                    alt={active.purpose}
+                                                                    className="w-full h-full object-contain"
+                                                                />
+                                                            )}
+                                                            <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">
+                                                                {PLABELS[active.purpose] ?? active.purpose}
+                                                                <span className="ml-2 font-normal opacity-60">
+                                                                    {active.idx + 1}/{gallery.length}
                                                                 </span>
                                                             </div>
-                                                        ) : (
-                                                            <img
-                                                                src={m.url}
-                                                                alt={m.purpose}
-                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                                            />
-                                                        )}
-                                                        <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[8px] font-black text-center py-1 uppercase tracking-wide truncate px-1">
-                                                            {PLABELS[m.purpose] ?? m.purpose}
+                                                            <button
+                                                                onClick={() => setActiveGrnImg(null)}
+                                                                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/80 text-white text-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                            {gallery.length > 1 && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => go(-1)}
+                                                                        className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                                    >
+                                                                        ‹
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => go(1)}
+                                                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                                    >
+                                                                        ›
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })()}
+                                                    )}
+                                                    {/* Thumbnail grid — centered for small sets, full-width for ≥4 */}
+                                                    <div
+                                                        style={{
+                                                            display: 'grid',
+                                                            gap: '6px',
+                                                            gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`,
+                                                            maxWidth: maxW,
+                                                            margin: '0 auto',
+                                                        }}
+                                                    >
+                                                        {gallery.map((m, gi) => (
+                                                            <button
+                                                                key={gi}
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    setActiveGrnImg(
+                                                                        active?.idx === gi ? null : { ...m, idx: gi }
+                                                                    )
+                                                                }
+                                                                className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-150 ${active?.idx === gi ? 'border-emerald-400 ring-2 ring-emerald-300' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300'}`}
+                                                                style={{ aspectRatio: '1/1' }}
+                                                            >
+                                                                {m.isVideo ? (
+                                                                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
+                                                                        <span className="text-3xl">🎥</span>
+                                                                        <span className="text-[8px] font-black text-slate-400 uppercase">
+                                                                            Video
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <img
+                                                                        src={m.url}
+                                                                        alt={m.purpose}
+                                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                                    />
+                                                                )}
+                                                                <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[8px] font-black text-center py-1 uppercase tracking-wide truncate px-1">
+                                                                    {PLABELS[m.purpose] ?? m.purpose}
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </>
+                    )}
                 </>
             )}
-
             {/* ── INLINE GRN / RECEIVING SECTION ── */}
             {primaryPo && primaryPo.po_status === 'SHIPPED' && request && (
                 <>
-                    <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                        Receive Stock
-                    </p>
-                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
-                        {/* Header */}
-                        <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    GRN Ref
-                                </p>
-                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                                    {formatTripletId(primaryPo.display_id || primaryPo.id)}
-                                </p>
-                            </div>
-                            <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                Ready to Receive
-                            </span>
-                        </div>
-
-                        {/* Fields grid */}
-                        <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                            <div className="md:col-span-2">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Receiving Branch
-                                </p>
-                                <select
-                                    value={grnBranchId || dispatchDetails.warehouseId}
-                                    onChange={e => setGrnBranchId(e.target.value)}
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                >
-                                    <option value="">Select branch</option>
-                                    {warehouseOptions.map(w => (
-                                        <option key={w.id} value={w.id}>
-                                            {w.name}
-                                        </option>
-                                    ))}
-                                </select>
+                    <button
+                        type="button"
+                        onClick={() => toggleSection('receive')}
+                        className="w-full px-1 flex items-center gap-2 group"
+                    >
+                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-emerald-600 transition-colors">
+                            Receive Stock
+                        </p>
+                        <span
+                            className={`text-slate-400 text-xs transition-transform duration-200 ${openSections['receive'] ? 'rotate-180' : ''}`}
+                        >
+                            ▾
+                        </span>
+                    </button>
+                    {openSections['receive'] && (
+                        <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                            {/* Header */}
+                            <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        GRN Ref
+                                    </p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                        {formatTripletId(primaryPo.display_id || primaryPo.id)}
+                                    </p>
+                                </div>
+                                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Ready to Receive
+                                </span>
                             </div>
 
-                            {/* ── Chassis Number — verify against dispatch ────── */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center justify-between">
-                                    <span>
-                                        Chassis Number{' '}
-                                        <span className="normal-case font-semibold text-slate-300">
-                                            (verify on vehicle)
-                                        </span>
-                                    </span>
-                                    <span
-                                        className={`font-black tabular-nums ${(grnChassisNumber || '').length > 17 ? 'text-red-500' : (grnChassisNumber || '').length === 17 ? 'text-emerald-600' : 'text-slate-300'}`}
-                                    >
-                                        {(grnChassisNumber || '').length}/17
-                                    </span>
-                                </p>
-                                <input
-                                    type="text"
-                                    value={
-                                        grnChassisNumber ||
-                                        (dispatchDetails.chassisNumber !== 'NA' ? dispatchDetails.chassisNumber : '')
-                                    }
-                                    placeholder="17-char VIN"
-                                    maxLength={17}
-                                    onChange={e => {
-                                        const val = e.target.value
-                                            .toUpperCase()
-                                            .replace(/[^A-Z0-9]/g, '')
-                                            .replace(/[IOQ]/g, '')
-                                            .slice(0, 17);
-                                        setGrnChassisNumber(val);
-                                        if (val.length === 17) {
-                                            const decoded = decodeVinMfgDate(val);
-                                            if (decoded) setGrnMfgDate(decoded);
-                                        }
-                                    }}
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
-                                />
-                                {/* Dispatch vs GRN match indicator */}
-                                {dispatchDetails.chassisNumber !== 'NA' &&
-                                    grnChassisNumber &&
-                                    (grnChassisNumber === dispatchDetails.chassisNumber ? (
-                                        <p className="text-[8px] font-black text-emerald-500 mt-0.5">
-                                            ✓ Matches dispatched VIN
-                                        </p>
-                                    ) : (
-                                        <p className="text-[8px] font-black text-amber-500 mt-0.5">
-                                            ⚠ Differs from dispatch: {dispatchDetails.chassisNumber}
-                                        </p>
-                                    ))}
-                            </div>
-
-                            {/* ── Engine Number — verify against dispatch ──────── */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Engine Number{' '}
-                                    <span className="normal-case font-semibold text-slate-300">
-                                        (verify on vehicle)
-                                    </span>
-                                </p>
-                                <input
-                                    type="text"
-                                    value={
-                                        grnEngineNumber ||
-                                        (dispatchDetails.engineNumber !== 'NA' ? dispatchDetails.engineNumber : '')
-                                    }
-                                    placeholder="Engine no."
-                                    onChange={e =>
-                                        setGrnEngineNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())
-                                    }
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
-                                />
-                                {dispatchDetails.engineNumber !== 'NA' &&
-                                    grnEngineNumber &&
-                                    (grnEngineNumber === dispatchDetails.engineNumber ? (
-                                        <p className="text-[8px] font-black text-emerald-500 mt-0.5">
-                                            ✓ Matches dispatched engine no.
-                                        </p>
-                                    ) : (
-                                        <p className="text-[8px] font-black text-amber-500 mt-0.5">
-                                            ⚠ Differs from dispatch: {dispatchDetails.engineNumber}
-                                        </p>
-                                    ))}
-                            </div>
-
-                            {/* Key Number */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Key Number{' '}
-                                    <span className="normal-case font-semibold text-slate-300">(optional)</span>
-                                </p>
-                                <input
-                                    type="text"
-                                    value={grnKeyNumber}
-                                    placeholder="e.g. K-1234"
-                                    onChange={e =>
-                                        setGrnKeyNumber(e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase())
-                                    }
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
-                                />
-                            </div>
-
-                            {/* Battery Make — branded dropdown */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Battery Make{' '}
-                                    <span className="normal-case font-bold text-slate-300">(optional)</span>
-                                </p>
-                                <select
-                                    value={grnBatteryMake}
-                                    onChange={e => setGrnBatteryMake(e.target.value)}
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                >
-                                    <option value="">Select brand</option>
-                                    {[
-                                        'Exide',
-                                        'Amaron',
-                                        'Tata Green',
-                                        'SF Sonic',
-                                        'Okaya',
-                                        'Luminous',
-                                        'Rocket',
-                                        'Yuasa',
-                                        'Panasonic',
-                                        'Bosch',
-                                        'Livguard',
-                                        'Zipp',
-                                        'Eastman',
-                                    ].map(b => (
-                                        <option key={b} value={b}>
-                                            {b}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Battery Type — auto-filled from SKU spec */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Battery Type
-                                    {skuBatteryType && (
-                                        <span className="ml-1 normal-case font-bold text-emerald-500">
-                                            (from SKU spec)
-                                        </span>
-                                    )}
-                                </p>
-                                <input
-                                    type="text"
-                                    value={grnBatteryType}
-                                    onChange={e => setGrnBatteryType(e.target.value)}
-                                    placeholder="e.g. VRLA, Li-ion, AGM"
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                />
-                            </div>
-
-                            {/* Battery Number */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Battery Number{' '}
-                                    <span className="normal-case font-bold text-slate-300">(optional)</span>
-                                </p>
-                                <input
-                                    type="text"
-                                    value={grnBatteryNumber}
-                                    onChange={e => setGrnBatteryNumber(e.target.value.toUpperCase())}
-                                    placeholder="Battery serial / stamp"
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
-                                />
-                            </div>
-
-                            {/* Manufacturing Date — Day + Month + Year */}
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Manufacturing Date
-                                </p>
-                                <div className="flex gap-2">
-                                    {/* Day */}
+                            {/* Fields grid */}
+                            <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                <div className="md:col-span-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Receiving Branch
+                                    </p>
                                     <select
-                                        value={grnMfgDate ? grnMfgDate.split('-')[2] || '' : ''}
-                                        onChange={e => {
-                                            const parts = grnMfgDate ? grnMfgDate.split('-') : ['', '01', ''];
-                                            const yr = parts[0] || new Date().getFullYear().toString();
-                                            const mo = parts[1] || '01';
-                                            setGrnMfgDate(
-                                                e.target.value ? `${yr}-${mo}-${e.target.value}` : `${yr}-${mo}`
-                                            );
-                                        }}
-                                        className="w-16 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                        value={grnBranchId || dispatchDetails.warehouseId}
+                                        onChange={e => setGrnBranchId(e.target.value)}
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                     >
-                                        <option value="">DD</option>
-                                        {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(d => (
-                                            <option key={d} value={d}>
-                                                {d}
+                                        <option value="">Select branch</option>
+                                        {warehouseOptions.map(w => (
+                                            <option key={w.id} value={w.id}>
+                                                {w.name}
                                             </option>
                                         ))}
                                     </select>
-                                    {/* Month */}
-                                    <select
-                                        value={grnMfgDate ? grnMfgDate.split('-')[1] || '' : ''}
+                                </div>
+
+                                {/* ── Chassis Number — verify against dispatch ────── */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center justify-between">
+                                        <span>
+                                            Chassis Number{' '}
+                                            <span className="normal-case font-semibold text-slate-300">
+                                                (verify on vehicle)
+                                            </span>
+                                        </span>
+                                        <span
+                                            className={`font-black tabular-nums ${(grnChassisNumber || '').length > 17 ? 'text-red-500' : (grnChassisNumber || '').length === 17 ? 'text-emerald-600' : 'text-slate-300'}`}
+                                        >
+                                            {(grnChassisNumber || '').length}/17
+                                        </span>
+                                    </p>
+                                    <input
+                                        type="text"
+                                        value={
+                                            grnChassisNumber ||
+                                            (dispatchDetails.chassisNumber !== 'NA'
+                                                ? dispatchDetails.chassisNumber
+                                                : '')
+                                        }
+                                        placeholder="17-char VIN"
+                                        maxLength={17}
                                         onChange={e => {
-                                            const parts = grnMfgDate ? grnMfgDate.split('-') : ['', '', ''];
-                                            const yr = parts[0] || new Date().getFullYear().toString();
-                                            const dd = parts[2] || '01';
-                                            setGrnMfgDate(e.target.value ? `${yr}-${e.target.value}-${dd}` : '');
+                                            const val = e.target.value
+                                                .toUpperCase()
+                                                .replace(/[^A-Z0-9]/g, '')
+                                                .replace(/[IOQ]/g, '')
+                                                .slice(0, 17);
+                                            setGrnChassisNumber(val);
+                                            if (val.length === 17) {
+                                                const decoded = decodeVinMfgDate(val);
+                                                if (decoded) setGrnMfgDate(decoded);
+                                            }
                                         }}
-                                        className="flex-1 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
+                                    />
+                                    {/* Dispatch vs GRN match indicator */}
+                                    {dispatchDetails.chassisNumber !== 'NA' &&
+                                        grnChassisNumber &&
+                                        (grnChassisNumber === dispatchDetails.chassisNumber ? (
+                                            <p className="text-[8px] font-black text-emerald-500 mt-0.5">
+                                                ✓ Matches dispatched VIN
+                                            </p>
+                                        ) : (
+                                            <p className="text-[8px] font-black text-amber-500 mt-0.5">
+                                                ⚠ Differs from dispatch: {dispatchDetails.chassisNumber}
+                                            </p>
+                                        ))}
+                                </div>
+
+                                {/* ── Engine Number — verify against dispatch ──────── */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Engine Number{' '}
+                                        <span className="normal-case font-semibold text-slate-300">
+                                            (verify on vehicle)
+                                        </span>
+                                    </p>
+                                    <input
+                                        type="text"
+                                        value={
+                                            grnEngineNumber ||
+                                            (dispatchDetails.engineNumber !== 'NA' ? dispatchDetails.engineNumber : '')
+                                        }
+                                        placeholder="Engine no."
+                                        onChange={e =>
+                                            setGrnEngineNumber(
+                                                e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+                                            )
+                                        }
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                    />
+                                    {dispatchDetails.engineNumber !== 'NA' &&
+                                        grnEngineNumber &&
+                                        (grnEngineNumber === dispatchDetails.engineNumber ? (
+                                            <p className="text-[8px] font-black text-emerald-500 mt-0.5">
+                                                ✓ Matches dispatched engine no.
+                                            </p>
+                                        ) : (
+                                            <p className="text-[8px] font-black text-amber-500 mt-0.5">
+                                                ⚠ Differs from dispatch: {dispatchDetails.engineNumber}
+                                            </p>
+                                        ))}
+                                </div>
+
+                                {/* Key Number */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Key Number{' '}
+                                        <span className="normal-case font-semibold text-slate-300">(optional)</span>
+                                    </p>
+                                    <input
+                                        type="text"
+                                        value={grnKeyNumber}
+                                        placeholder="e.g. K-1234"
+                                        onChange={e =>
+                                            setGrnKeyNumber(e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase())
+                                        }
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                    />
+                                </div>
+
+                                {/* Battery Make — branded dropdown */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Battery Make{' '}
+                                        <span className="normal-case font-bold text-slate-300">(optional)</span>
+                                    </p>
+                                    <select
+                                        value={grnBatteryMake}
+                                        onChange={e => setGrnBatteryMake(e.target.value)}
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                     >
-                                        <option value="">Mon</option>
-                                        {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(
-                                            (m, i) => (
+                                        <option value="">Select brand</option>
+                                        {[
+                                            'Exide',
+                                            'Amaron',
+                                            'Tata Green',
+                                            'SF Sonic',
+                                            'Okaya',
+                                            'Luminous',
+                                            'Rocket',
+                                            'Yuasa',
+                                            'Panasonic',
+                                            'Bosch',
+                                            'Livguard',
+                                            'Zipp',
+                                            'Eastman',
+                                        ].map(b => (
+                                            <option key={b} value={b}>
+                                                {b}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Battery Type — auto-filled from SKU spec */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Battery Type
+                                        {skuBatteryType && (
+                                            <span className="ml-1 normal-case font-bold text-emerald-500">
+                                                (from SKU spec)
+                                            </span>
+                                        )}
+                                    </p>
+                                    <input
+                                        type="text"
+                                        value={grnBatteryType}
+                                        onChange={e => setGrnBatteryType(e.target.value)}
+                                        placeholder="e.g. VRLA, Li-ion, AGM"
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                    />
+                                </div>
+
+                                {/* Battery Number */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Battery Number{' '}
+                                        <span className="normal-case font-bold text-slate-300">(optional)</span>
+                                    </p>
+                                    <input
+                                        type="text"
+                                        value={grnBatteryNumber}
+                                        onChange={e => setGrnBatteryNumber(e.target.value.toUpperCase())}
+                                        placeholder="Battery serial / stamp"
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                    />
+                                </div>
+
+                                {/* Manufacturing Date — Day + Month + Year */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        Manufacturing Date
+                                    </p>
+                                    <div className="flex gap-2">
+                                        {/* Day */}
+                                        <select
+                                            value={grnMfgDate ? grnMfgDate.split('-')[2] || '' : ''}
+                                            onChange={e => {
+                                                const parts = grnMfgDate ? grnMfgDate.split('-') : ['', '01', ''];
+                                                const yr = parts[0] || new Date().getFullYear().toString();
+                                                const mo = parts[1] || '01';
+                                                setGrnMfgDate(
+                                                    e.target.value ? `${yr}-${mo}-${e.target.value}` : `${yr}-${mo}`
+                                                );
+                                            }}
+                                            className="w-16 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                        >
+                                            <option value="">DD</option>
+                                            {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(
+                                                d => (
+                                                    <option key={d} value={d}>
+                                                        {d}
+                                                    </option>
+                                                )
+                                            )}
+                                        </select>
+                                        {/* Month */}
+                                        <select
+                                            value={grnMfgDate ? grnMfgDate.split('-')[1] || '' : ''}
+                                            onChange={e => {
+                                                const parts = grnMfgDate ? grnMfgDate.split('-') : ['', '', ''];
+                                                const yr = parts[0] || new Date().getFullYear().toString();
+                                                const dd = parts[2] || '01';
+                                                setGrnMfgDate(e.target.value ? `${yr}-${e.target.value}-${dd}` : '');
+                                            }}
+                                            className="flex-1 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                        >
+                                            <option value="">Mon</option>
+                                            {[
+                                                '01',
+                                                '02',
+                                                '03',
+                                                '04',
+                                                '05',
+                                                '06',
+                                                '07',
+                                                '08',
+                                                '09',
+                                                '10',
+                                                '11',
+                                                '12',
+                                            ].map((m, i) => (
                                                 <option key={m} value={m}>
                                                     {
                                                         [
@@ -4168,139 +4183,144 @@ export default function RequisitionDetailPage() {
                                                         ][i]
                                                     }
                                                 </option>
-                                            )
-                                        )}
-                                    </select>
-                                    {/* Year */}
-                                    <select
-                                        value={grnMfgDate ? grnMfgDate.split('-')[0] || '' : ''}
-                                        onChange={e => {
-                                            const parts = grnMfgDate ? grnMfgDate.split('-') : ['', '01', '01'];
-                                            const mo = parts[1] || '01';
-                                            const dd = parts[2] || '01';
-                                            setGrnMfgDate(e.target.value ? `${e.target.value}-${mo}-${dd}` : '');
-                                        }}
-                                        className="w-24 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                    >
-                                        <option value="">Year</option>
-                                        {Array.from({ length: 12 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                                            <option key={y} value={y}>
-                                                {y}
-                                            </option>
-                                        ))}
-                                    </select>
+                                            ))}
+                                        </select>
+                                        {/* Year */}
+                                        <select
+                                            value={grnMfgDate ? grnMfgDate.split('-')[0] || '' : ''}
+                                            onChange={e => {
+                                                const parts = grnMfgDate ? grnMfgDate.split('-') : ['', '01', '01'];
+                                                const mo = parts[1] || '01';
+                                                const dd = parts[2] || '01';
+                                                setGrnMfgDate(e.target.value ? `${e.target.value}-${mo}-${dd}` : '');
+                                            }}
+                                            className="w-24 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                        >
+                                            <option value="">Year</option>
+                                            {Array.from({ length: 12 }, (_, i) => new Date().getFullYear() - i).map(
+                                                y => (
+                                                    <option key={y} value={y}>
+                                                        {y}
+                                                    </option>
+                                                )
+                                            )}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* QC Notes — full width */}
+                                <div className="md:col-span-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                        QC Notes{' '}
+                                        <span className="normal-case font-bold text-slate-300">(optional)</span>
+                                    </p>
+                                    <input
+                                        type="text"
+                                        value={grnQcNotes}
+                                        onChange={e => setGrnQcNotes(e.target.value)}
+                                        className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                    />
+                                </div>
+
+                                {/* Media Assets — multi-upload with per-photo tagging */}
+                                <div className="md:col-span-2 pt-2 border-t border-slate-100 dark:border-white/10">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                        Media Assets
+                                    </p>
+                                    <GrnMediaGallery
+                                        entityId={primaryPo?.id ?? 'grn'}
+                                        items={grnMediaItems}
+                                        onChange={setGrnMediaItems}
+                                    />
                                 </div>
                             </div>
 
-                            {/* QC Notes — full width */}
-                            <div className="md:col-span-2">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    QC Notes <span className="normal-case font-bold text-slate-300">(optional)</span>
+                            {/* Submit footer */}
+                            <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    Vehicle details locked after receiving
                                 </p>
-                                <input
-                                    type="text"
-                                    value={grnQcNotes}
-                                    onChange={e => setGrnQcNotes(e.target.value)}
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                />
-                            </div>
-
-                            {/* Media Assets — multi-upload with per-photo tagging */}
-                            <div className="md:col-span-2 pt-2 border-t border-slate-100 dark:border-white/10">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                    Media Assets
-                                </p>
-                                <GrnMediaGallery
-                                    entityId={primaryPo?.id ?? 'grn'}
-                                    items={grnMediaItems}
-                                    onChange={setGrnMediaItems}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Submit footer */}
-                        <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                Vehicle details locked after receiving
-                            </p>
-                            <button
-                                type="button"
-                                disabled={isSubmittingGrn}
-                                onClick={async () => {
-                                    const effectiveBranch = grnBranchId || dispatchDetails.warehouseId;
-                                    const effectiveChassis = (
-                                        grnChassisNumber ||
-                                        (dispatchDetails.chassisNumber !== 'NA' ? dispatchDetails.chassisNumber : '')
-                                    ).trim();
-                                    const effectiveEngine = (
-                                        grnEngineNumber ||
-                                        (dispatchDetails.engineNumber !== 'NA' ? dispatchDetails.engineNumber : '')
-                                    ).trim();
-                                    if (!effectiveBranch) {
-                                        toast.error('Select receiving branch');
-                                        return;
-                                    }
-                                    if (!effectiveChassis || effectiveChassis.length < 5) {
-                                        toast.error('Chassis number must be at least 5 characters');
-                                        return;
-                                    }
-                                    if (!effectiveEngine || effectiveEngine.length < 5) {
-                                        toast.error('Engine number must be at least 5 characters');
-                                        return;
-                                    }
-
-                                    setIsSubmittingGrn(true);
-                                    try {
-                                        const { receiveStock } = await import('@/actions/inventory');
-                                        const result = await receiveStock({
-                                            po_id: primaryPo.id,
-                                            tenant_id: request.tenant_id ?? '',
-                                            sku_id: request.sku_id ?? '',
-                                            branch_id: effectiveBranch,
-                                            chassis_number: effectiveChassis.toUpperCase(),
-                                            engine_number: effectiveEngine.toUpperCase(),
-                                            key_number: grnKeyNumber.trim() || undefined,
-                                            battery_make: grnBatteryMake.trim() || undefined,
-                                            battery_type: grnBatteryType.trim() || undefined,
-                                            battery_number: grnBatteryNumber.trim() || undefined,
-                                            manufacturing_date: grnMfgDate || undefined,
-                                            media_chassis_url:
-                                                grnMediaItems.find(i => i.purpose === 'chassis')?.url || undefined,
-                                            media_engine_url:
-                                                grnMediaItems.find(i => i.purpose === 'engine')?.url || undefined,
-                                            media_sticker_url:
-                                                grnMediaItems.find(i => i.purpose === 'sticker')?.url || undefined,
-                                            media_vehicle_url:
-                                                grnMediaItems.find(i => i.purpose === 'vehicle')?.url || undefined,
-                                            media_qc_video_url:
-                                                grnMediaItems.find(i => i.purpose === 'qc_video')?.url || undefined,
-                                            // Save ALL items (including 'other') to gallery
-                                            media_gallery: grnMediaItems.map(i => ({
-                                                url: i.url,
-                                                purpose: i.purpose,
-                                                isVideo: i.isVideo,
-                                            })),
-                                            qc_notes: grnQcNotes.trim() || undefined,
-                                        });
-                                        if (!result.success) {
-                                            toast.error(result.message || 'Failed to receive stock');
+                                <button
+                                    type="button"
+                                    disabled={isSubmittingGrn}
+                                    onClick={async () => {
+                                        const effectiveBranch = grnBranchId || dispatchDetails.warehouseId;
+                                        const effectiveChassis = (
+                                            grnChassisNumber ||
+                                            (dispatchDetails.chassisNumber !== 'NA'
+                                                ? dispatchDetails.chassisNumber
+                                                : '')
+                                        ).trim();
+                                        const effectiveEngine = (
+                                            grnEngineNumber ||
+                                            (dispatchDetails.engineNumber !== 'NA' ? dispatchDetails.engineNumber : '')
+                                        ).trim();
+                                        if (!effectiveBranch) {
+                                            toast.error('Select receiving branch');
                                             return;
                                         }
-                                        toast.success('Stock received successfully');
-                                        fetchRequestDetail();
-                                    } catch (err: unknown) {
-                                        toast.error(err instanceof Error ? err.message : 'Failed to receive stock');
-                                    } finally {
-                                        setIsSubmittingGrn(false);
-                                    }
-                                }}
-                                className="h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
-                            >
-                                <PackageCheck size={12} />
-                                {isSubmittingGrn ? 'Receiving...' : 'Mark as Received'}
-                            </button>
+                                        if (!effectiveChassis || effectiveChassis.length < 5) {
+                                            toast.error('Chassis number must be at least 5 characters');
+                                            return;
+                                        }
+                                        if (!effectiveEngine || effectiveEngine.length < 5) {
+                                            toast.error('Engine number must be at least 5 characters');
+                                            return;
+                                        }
+
+                                        setIsSubmittingGrn(true);
+                                        try {
+                                            const { receiveStock } = await import('@/actions/inventory');
+                                            const result = await receiveStock({
+                                                po_id: primaryPo.id,
+                                                tenant_id: request.tenant_id ?? '',
+                                                sku_id: request.sku_id ?? '',
+                                                branch_id: effectiveBranch,
+                                                chassis_number: effectiveChassis.toUpperCase(),
+                                                engine_number: effectiveEngine.toUpperCase(),
+                                                key_number: grnKeyNumber.trim() || undefined,
+                                                battery_make: grnBatteryMake.trim() || undefined,
+                                                battery_type: grnBatteryType.trim() || undefined,
+                                                battery_number: grnBatteryNumber.trim() || undefined,
+                                                manufacturing_date: grnMfgDate || undefined,
+                                                media_chassis_url:
+                                                    grnMediaItems.find(i => i.purpose === 'chassis')?.url || undefined,
+                                                media_engine_url:
+                                                    grnMediaItems.find(i => i.purpose === 'engine')?.url || undefined,
+                                                media_sticker_url:
+                                                    grnMediaItems.find(i => i.purpose === 'sticker')?.url || undefined,
+                                                media_vehicle_url:
+                                                    grnMediaItems.find(i => i.purpose === 'vehicle')?.url || undefined,
+                                                media_qc_video_url:
+                                                    grnMediaItems.find(i => i.purpose === 'qc_video')?.url || undefined,
+                                                // Save ALL items (including 'other') to gallery
+                                                media_gallery: grnMediaItems.map(i => ({
+                                                    url: i.url,
+                                                    purpose: i.purpose,
+                                                    isVideo: i.isVideo,
+                                                })),
+                                                qc_notes: grnQcNotes.trim() || undefined,
+                                            });
+                                            if (!result.success) {
+                                                toast.error(result.message || 'Failed to receive stock');
+                                                return;
+                                            }
+                                            toast.success('Stock received successfully');
+                                            fetchRequestDetail();
+                                        } catch (err: unknown) {
+                                            toast.error(err instanceof Error ? err.message : 'Failed to receive stock');
+                                        } finally {
+                                            setIsSubmittingGrn(false);
+                                        }
+                                    }}
+                                    className="h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
+                                >
+                                    <PackageCheck size={12} />
+                                    {isSubmittingGrn ? 'Receiving...' : 'Mark as Received'}
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </>
             )}
 
