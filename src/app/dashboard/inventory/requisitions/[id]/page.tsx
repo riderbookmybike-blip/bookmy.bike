@@ -35,7 +35,7 @@ import { toast } from 'sonner';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { fetchSkuDisplayMap } from '@/lib/inventory/skuDisplay';
 import QuotePanel from './components/QuotePanel';
-import GrnMediaUploader from '@/components/inventory/GrnMediaUploader';
+import GrnMediaGallery, { type GrnMediaItem } from '@/components/inventory/GrnMediaGallery';
 
 type RequestStatus = 'QUOTING' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
 
@@ -473,11 +473,7 @@ export default function RequisitionDetailPage() {
     const [grnBatteryNumber, setGrnBatteryNumber] = useState('');
     const [grnMfgDate, setGrnMfgDate] = useState('');
     const [grnQcNotes, setGrnQcNotes] = useState('');
-    const [grnChassisMedia, setGrnChassisMedia] = useState('');
-    const [grnEngineMedia, setGrnEngineMedia] = useState('');
-    const [grnStickerMedia, setGrnStickerMedia] = useState('');
-    const [grnVehicleMedia, setGrnVehicleMedia] = useState('');
-    const [grnVideoMedia, setGrnVideoMedia] = useState('');
+    const [grnMediaItems, setGrnMediaItems] = useState<GrnMediaItem[]>([]);
     const [skuBatteryType, setSkuBatteryType] = useState<string | null>(null);
     const [isSubmittingGrn, setIsSubmittingGrn] = useState(false);
 
@@ -3420,55 +3416,15 @@ export default function RequisitionDetailPage() {
                                 />
                             </div>
 
-                            {/* Photos & Video Uploaders */}
+                            {/* Media Assets — multi-upload with per-photo tagging */}
                             <div className="md:col-span-2 pt-2 border-t border-slate-100 dark:border-white/10">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    Photos & Video
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                    Media Assets
                                 </p>
-                            </div>
-
-                            <GrnMediaUploader
-                                label="Chassis Photo"
-                                entityId={primaryPo?.id ?? 'grn'}
-                                purpose="chassis"
-                                value={grnChassisMedia}
-                                onUpload={setGrnChassisMedia}
-                            />
-
-                            <GrnMediaUploader
-                                label="Engine Photo"
-                                entityId={primaryPo?.id ?? 'grn'}
-                                purpose="engine"
-                                value={grnEngineMedia}
-                                onUpload={setGrnEngineMedia}
-                            />
-
-                            <GrnMediaUploader
-                                label="Sticker Photo"
-                                entityId={primaryPo?.id ?? 'grn'}
-                                purpose="sticker"
-                                optional
-                                value={grnStickerMedia}
-                                onUpload={setGrnStickerMedia}
-                            />
-
-                            <GrnMediaUploader
-                                label="Vehicle Photo"
-                                entityId={primaryPo?.id ?? 'grn'}
-                                purpose="vehicle"
-                                optional
-                                value={grnVehicleMedia}
-                                onUpload={setGrnVehicleMedia}
-                            />
-
-                            <div className="md:col-span-2">
-                                <GrnMediaUploader
-                                    label="QC Video"
+                                <GrnMediaGallery
                                     entityId={primaryPo?.id ?? 'grn'}
-                                    purpose="qc_video"
-                                    accept="video/*"
-                                    value={grnVideoMedia}
-                                    onUpload={setGrnVideoMedia}
+                                    items={grnMediaItems}
+                                    onChange={setGrnMediaItems}
                                 />
                             </div>
                         </div>
@@ -3503,8 +3459,11 @@ export default function RequisitionDetailPage() {
                                         toast.error('Engine number must be at least 5 characters');
                                         return;
                                     }
-                                    if (!grnChassisMedia.trim() || !grnEngineMedia.trim() || !grnVideoMedia.trim()) {
-                                        toast.error('Chassis photo, engine photo and QC video URLs are mandatory');
+                                    const hasTag = (t: string) => grnMediaItems.some(i => i.purpose === t);
+                                    if (!hasTag('chassis') || !hasTag('engine') || !hasTag('qc_video')) {
+                                        toast.error(
+                                            'Tag at least Chassis photo, Engine photo and QC Video before submitting'
+                                        );
                                         return;
                                     }
                                     setIsSubmittingGrn(true);
@@ -3521,11 +3480,11 @@ export default function RequisitionDetailPage() {
                                             battery_type: grnBatteryType.trim() || undefined,
                                             battery_number: grnBatteryNumber.trim() || undefined,
                                             manufacturing_date: grnMfgDate || undefined,
-                                            media_chassis_url: grnChassisMedia.trim(),
-                                            media_engine_url: grnEngineMedia.trim(),
-                                            media_sticker_url: grnStickerMedia.trim() || undefined,
-                                            media_vehicle_url: grnVehicleMedia.trim() || undefined,
-                                            media_qc_video_url: grnVideoMedia.trim(),
+                                            media_chassis_url: grnMediaItems.find(i => i.purpose === 'chassis')?.url,
+                                            media_engine_url: grnMediaItems.find(i => i.purpose === 'engine')?.url,
+                                            media_sticker_url: grnMediaItems.find(i => i.purpose === 'sticker')?.url,
+                                            media_vehicle_url: grnMediaItems.find(i => i.purpose === 'vehicle')?.url,
+                                            media_qc_video_url: grnMediaItems.find(i => i.purpose === 'qc_video')?.url,
                                             qc_notes: grnQcNotes.trim() || undefined,
                                         });
                                         if (!result.success) {
