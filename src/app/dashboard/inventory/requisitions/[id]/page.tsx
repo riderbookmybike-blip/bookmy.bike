@@ -246,8 +246,9 @@ const formatTripletId = (raw?: string | null) => {
 
 // ── VIN Manufacturing Date Decoder ─────────────────────────────────────────
 // Year  → position 10 (index 9)  — ISO 3779 standard, all brands
-// Month → position 9  (index 8)  for Honda (WMI: ME4)
-//         position 11 (index 10) for Hero / TVS / Bajaj / Royal Enfield / Yamaha
+// Month → position 9  (index 8)  Honda (ME4) only — encodes month before year
+//         position 11 (index 10) Yamaha (ME1), Hero (MBL), TVS (MD6), Bajaj (MD2), RE (ME3)
+//         Note: Yamaha uses pos-11 as plant code, not month — will fall back to Jan
 const VIN_YEAR_MAP: Record<string, number> = {
     A: 1980,
     B: 1981,
@@ -318,10 +319,18 @@ function decodeVinMfgDate(vin: string): string | null {
     if (v.length !== 17) return null;
     const wmi = v.slice(0, 3);
     const yearChar = v[9];
-    const year = VIN_YEAR_MAP[yearChar] ?? VIN_YEAR_MAP[yearChar.toLowerCase()];
+    let year = VIN_YEAR_MAP[yearChar];
     if (!year) return null;
-    // Month position varies by brand
-    const monthChar = wmi === 'ME4' ? v[8] : v[10]; // Honda pos-9, others pos-11
+    // VIN year letters cycle every 30 years (A=1980/2010, T=1996/2026).
+    // Since this system handles current inventory (2010+), prefer 2nd cycle
+    // for letter-based codes that would otherwise fall before 2004.
+    const isLetter = /[A-Z]/.test(yearChar);
+    if (isLetter && year < 2004) year += 30;
+    // Month position varies by brand:
+    //  Honda (ME4) : position 9 (index 8) — Honda encodes month before year
+    //  Others       : position 11 (index 10) — Yamaha (ME1), Hero (MBL), TVS (MD6), Bajaj (MD2), RE (ME3)
+    //  Note: if pos-11 is not a valid month code (e.g. Yamaha plant code), falls back to Jan
+    const monthChar = wmi === 'ME4' ? v[8] : v[10];
     const month = VIN_MONTH_MAP[monthChar] ?? '01';
     return `${year}-${month}`;
 }
@@ -3370,8 +3379,13 @@ export default function RequisitionDetailPage() {
                             </div>
 
                             <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Chassis Number
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center justify-between">
+                                    <span>Chassis Number</span>
+                                    <span
+                                        className={`font-black tabular-nums ${(grnChassisNumber || '').length > 17 ? 'text-red-500' : (grnChassisNumber || '').length === 17 ? 'text-emerald-600' : 'text-slate-300'}`}
+                                    >
+                                        {(grnChassisNumber || '').length}/17
+                                    </span>
                                 </p>
                                 <input
                                     type="text"
@@ -3379,19 +3393,24 @@ export default function RequisitionDetailPage() {
                                         grnChassisNumber ||
                                         (dispatchDetails.chassisNumber !== 'NA' ? dispatchDetails.chassisNumber : '')
                                     }
-                                    placeholder="Full VIN or min 5 digits"
+                                    placeholder="17-char VIN"
+                                    maxLength={17}
                                     onChange={e => {
-                                        const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                                        // Strip: non-alphanumeric + VIN-illegal chars I, O, Q
+                                        const val = e.target.value
+                                            .toUpperCase()
+                                            .replace(/[^A-Z0-9]/g, '') // keep only alphanumeric
+                                            .replace(/[IOQ]/g, '') // remove VIN-illegal chars
+                                            .slice(0, 17); // hard cap at 17
                                         setGrnChassisNumber(val);
                                         if (val.length === 17) {
                                             const decoded = decodeVinMfgDate(val);
                                             if (decoded) setGrnMfgDate(decoded);
                                         }
                                     }}
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
                                 />
                             </div>
-
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                     Engine Number
