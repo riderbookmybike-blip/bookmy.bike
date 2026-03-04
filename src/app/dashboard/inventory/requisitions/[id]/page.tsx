@@ -568,6 +568,8 @@ export default function RequisitionDetailPage() {
     const [grnMediaItems, setGrnMediaItems] = useState<GrnMediaItem[]>([]);
     const [skuBatteryType, setSkuBatteryType] = useState<string | null>(null);
     const [isSubmittingGrn, setIsSubmittingGrn] = useState(false);
+    // Received stock snapshot (shown after GRN is saved)
+    const [receivedStock, setReceivedStock] = useState<Record<string, unknown> | null>(null);
 
     const fetchRequestDetail = useCallback(async () => {
         if (!requestId) {
@@ -759,12 +761,15 @@ export default function RequisitionDetailPage() {
                 // Secondary: if inv_stock exists (post-GRN), override with confirmed values
                 const { data: stockRow } = await (supabase as any)
                     .from('inv_stock')
-                    .select('id, chassis_number, engine_number, branch_id')
+                    .select(
+                        'id, chassis_number, engine_number, key_number, battery_make, battery_type, battery_number, manufacturing_date, qc_notes, media_chassis_url, media_engine_url, media_sticker_url, media_vehicle_url, media_qc_video_url, branch_id, created_at'
+                    )
                     .eq('po_id', currentPo.id)
                     .limit(1)
                     .maybeSingle();
 
                 if (stockRow) {
+                    setReceivedStock(stockRow); // store full row for display
                     dispatchId = formatTripletId(stockRow.id);
                     chassisNumber = stockRow.chassis_number || chassisNumber;
                     engineNumber = stockRow.engine_number || engineNumber;
@@ -3333,6 +3338,123 @@ export default function RequisitionDetailPage() {
                                     </div>
                                 </div>
                             )}
+                    </div>
+                </>
+            )}
+
+            {/* ── GRN RECEIPT (post-receive read-only display) ── */}
+            {primaryPo && primaryPo.po_status === 'RECEIVED' && receivedStock && (
+                <>
+                    <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                        GRN Receipt
+                    </p>
+                    <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-slate-900/60 overflow-hidden">
+                        {/* Header */}
+                        <div className="px-5 py-3 border-b border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-900/10">
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    GRN Ref
+                                </p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                    {formatTripletId(primaryPo.display_id || primaryPo.id)}
+                                </p>
+                            </div>
+                            <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
+                                ✓ Received
+                            </span>
+                        </div>
+
+                        {/* Details grid */}
+                        <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+                            {[
+                                { label: 'Chassis Number', value: (receivedStock as any).chassis_number },
+                                { label: 'Engine Number', value: (receivedStock as any).engine_number },
+                                { label: 'Key Number', value: (receivedStock as any).key_number },
+                                { label: 'Battery Make', value: (receivedStock as any).battery_make },
+                                { label: 'Battery Type', value: (receivedStock as any).battery_type },
+                                { label: 'Battery Number', value: (receivedStock as any).battery_number },
+                                { label: 'Mfg. Date', value: (receivedStock as any).manufacturing_date },
+                                { label: 'QC Notes', value: (receivedStock as any).qc_notes },
+                            ]
+                                .filter(f => f.value)
+                                .map(f => (
+                                    <div key={f.label}>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
+                                            {f.label}
+                                        </p>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight break-all">
+                                            {f.value}
+                                        </p>
+                                    </div>
+                                ))}
+                        </div>
+
+                        {/* Media thumbnails */}
+                        {[
+                            (receivedStock as any).media_chassis_url,
+                            (receivedStock as any).media_engine_url,
+                            (receivedStock as any).media_sticker_url,
+                            (receivedStock as any).media_vehicle_url,
+                            (receivedStock as any).media_qc_video_url,
+                        ].filter(Boolean).length > 0 && (
+                            <div className="px-5 pb-4">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                    Media Assets
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        { url: (receivedStock as any).media_chassis_url, label: 'Chassis' },
+                                        { url: (receivedStock as any).media_engine_url, label: 'Engine' },
+                                        { url: (receivedStock as any).media_sticker_url, label: 'Sticker' },
+                                        { url: (receivedStock as any).media_vehicle_url, label: 'Vehicle' },
+                                        { url: (receivedStock as any).media_qc_video_url, label: 'QC Video' },
+                                    ]
+                                        .filter(m => m.url)
+                                        .map(m => (
+                                            <a
+                                                key={m.label}
+                                                href={m.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="group relative w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-white/10 block"
+                                            >
+                                                {m.label === 'QC Video' ? (
+                                                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
+                                                        <span className="text-[18px]">🎥</span>
+                                                        <span className="text-[7px] font-black text-slate-400 uppercase">
+                                                            Video
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <img
+                                                        src={m.url}
+                                                        alt={m.label}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                    />
+                                                )}
+                                                <div className="absolute bottom-0 inset-x-0 bg-emerald-600/90 text-white text-[7px] font-black text-center py-0.5 uppercase tracking-wide">
+                                                    {m.label}
+                                                </div>
+                                            </a>
+                                        ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Received at */}
+                        {(receivedStock as any).created_at && (
+                            <div className="px-5 pb-4">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    Received At
+                                </p>
+                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                                    {new Date((receivedStock as any).created_at).toLocaleString('en-IN', {
+                                        dateStyle: 'medium',
+                                        timeStyle: 'short',
+                                    })}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </>
             )}
