@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronDown,
@@ -103,6 +103,11 @@ export const DesktopCatalog = ({
     const [tvViewport, setTvViewport] = useState(false);
     const isTv = tvViewport;
     const [showHeader, setShowHeader] = useState(true);
+    const [tvIdleMode, setTvIdleMode] = useState(false);
+    const [tvRotationOffset, setTvRotationOffset] = useState(0);
+    const [tvRotationTick, setTvRotationTick] = useState(0);
+    const tvIdleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const tvRotateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const [showTvSearch, setShowTvSearch] = useState(false);
 
@@ -122,6 +127,46 @@ export const DesktopCatalog = ({
         const handleToggleSearch = () => setShowTvSearch(prev => !prev);
         window.addEventListener('toggleTvSearch', handleToggleSearch);
         return () => window.removeEventListener('toggleTvSearch', handleToggleSearch);
+    }, [isTv]);
+
+    // TV ambient mode: if no activity for 2 min, gently rotate visible cards
+    useEffect(() => {
+        if (!isTv) {
+            setTvIdleMode(false);
+            setTvRotationOffset(0);
+            if (tvIdleTimeoutRef.current) clearTimeout(tvIdleTimeoutRef.current);
+            if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
+            return;
+        }
+
+        const scheduleIdleMode = () => {
+            if (tvIdleTimeoutRef.current) clearTimeout(tvIdleTimeoutRef.current);
+            tvIdleTimeoutRef.current = setTimeout(() => {
+                setTvIdleMode(true);
+            }, 120000);
+        };
+
+        const handleActivity = () => {
+            setTvIdleMode(false);
+            scheduleIdleMode();
+        };
+
+        scheduleIdleMode();
+        const events: Array<keyof WindowEventMap> = [
+            'mousemove',
+            'mousedown',
+            'click',
+            'keydown',
+            'touchstart',
+            'wheel',
+            'scroll',
+        ];
+        events.forEach(event => window.addEventListener(event, handleActivity, { passive: true }));
+
+        return () => {
+            events.forEach(event => window.removeEventListener(event, handleActivity));
+            if (tvIdleTimeoutRef.current) clearTimeout(tvIdleTimeoutRef.current);
+        };
     }, [isTv]);
 
     // Auto-hide header on TV after 4s of inactivity
@@ -1004,6 +1049,38 @@ export const DesktopCatalog = ({
         });
     }, [displayResults, explodedVariant]);
 
+    useEffect(() => {
+        if (!isTv || !tvIdleMode || groupedDisplayResults.length <= 1) {
+            if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
+            return;
+        }
+
+        if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
+        tvRotateIntervalRef.current = setInterval(() => {
+            setTvRotationOffset(prev => (prev + 1) % groupedDisplayResults.length);
+            setTvRotationTick(prev => prev + 1);
+        }, 7000);
+
+        return () => {
+            if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
+        };
+    }, [isTv, tvIdleMode, groupedDisplayResults.length]);
+
+    useEffect(() => {
+        if (groupedDisplayResults.length === 0) {
+            setTvRotationOffset(0);
+            return;
+        }
+        setTvRotationOffset(prev => prev % groupedDisplayResults.length);
+    }, [groupedDisplayResults.length]);
+
+    const renderedGroups = useMemo(() => {
+        if (!isTv || !tvIdleMode || groupedDisplayResults.length <= 1) return groupedDisplayResults;
+        const offset = tvRotationOffset % groupedDisplayResults.length;
+        if (offset === 0) return groupedDisplayResults;
+        return [...groupedDisplayResults.slice(offset), ...groupedDisplayResults.slice(0, offset)];
+    }, [isTv, tvIdleMode, tvRotationOffset, groupedDisplayResults]);
+
     // Sync stats to discovery context
     useEffect(() => {
         if (!isPhone) {
@@ -1310,7 +1387,11 @@ export const DesktopCatalog = ({
                     <div className="flex-1 space-y-6">
                         {/* Results Header moved to Navbar via DiscoveryContext */}
 
-                        <div
+                        <motion.div
+                            key={isTv && tvIdleMode ? `tv-ambient-${tvRotationTick}` : 'catalog-static'}
+                            initial={isTv && tvIdleMode ? { opacity: 0.96, y: 10 } : false}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.45, ease: 'easeOut' }}
                             className={`grid ${
                                 viewMode === 'list'
                                     ? 'grid-cols-1 w-full gap-6'
@@ -1322,7 +1403,7 @@ export const DesktopCatalog = ({
                             }`}
                         >
                             {/* Results Grid */}
-                            {groupedDisplayResults.map((group, idx) => {
+                            {renderedGroups.map((group, idx) => {
                                 const v = group.representative;
                                 const key = `${v.id}-${(v as any).color || v.imageUrl || idx}`;
 
@@ -1372,7 +1453,7 @@ export const DesktopCatalog = ({
                                     />
                                 );
                             })}
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
 
