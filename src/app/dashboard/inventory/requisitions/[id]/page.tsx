@@ -3378,9 +3378,15 @@ export default function RequisitionDetailPage() {
                                 </select>
                             </div>
 
+                            {/* ── Chassis Number — verify against dispatch ────── */}
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center justify-between">
-                                    <span>Chassis Number</span>
+                                    <span>
+                                        Chassis Number{' '}
+                                        <span className="normal-case font-semibold text-slate-300">
+                                            (verify on vehicle)
+                                        </span>
+                                    </span>
                                     <span
                                         className={`font-black tabular-nums ${(grnChassisNumber || '').length > 17 ? 'text-red-500' : (grnChassisNumber || '').length === 17 ? 'text-emerald-600' : 'text-slate-300'}`}
                                     >
@@ -3396,12 +3402,11 @@ export default function RequisitionDetailPage() {
                                     placeholder="17-char VIN"
                                     maxLength={17}
                                     onChange={e => {
-                                        // Strip: non-alphanumeric + VIN-illegal chars I, O, Q
                                         const val = e.target.value
                                             .toUpperCase()
-                                            .replace(/[^A-Z0-9]/g, '') // keep only alphanumeric
-                                            .replace(/[IOQ]/g, '') // remove VIN-illegal chars
-                                            .slice(0, 17); // hard cap at 17
+                                            .replace(/[^A-Z0-9]/g, '')
+                                            .replace(/[IOQ]/g, '')
+                                            .slice(0, 17);
                                         setGrnChassisNumber(val);
                                         if (val.length === 17) {
                                             const decoded = decodeVinMfgDate(val);
@@ -3410,10 +3415,27 @@ export default function RequisitionDetailPage() {
                                     }}
                                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
                                 />
+                                {/* Dispatch vs GRN match indicator */}
+                                {dispatchDetails.chassisNumber !== 'NA' &&
+                                    grnChassisNumber &&
+                                    (grnChassisNumber === dispatchDetails.chassisNumber ? (
+                                        <p className="text-[8px] font-black text-emerald-500 mt-0.5">
+                                            ✓ Matches dispatched VIN
+                                        </p>
+                                    ) : (
+                                        <p className="text-[8px] font-black text-amber-500 mt-0.5">
+                                            ⚠ Differs from dispatch: {dispatchDetails.chassisNumber}
+                                        </p>
+                                    ))}
                             </div>
+
+                            {/* ── Engine Number — verify against dispatch ──────── */}
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Engine Number
+                                    Engine Number{' '}
+                                    <span className="normal-case font-semibold text-slate-300">
+                                        (verify on vehicle)
+                                    </span>
                                 </p>
                                 <input
                                     type="text"
@@ -3421,12 +3443,23 @@ export default function RequisitionDetailPage() {
                                         grnEngineNumber ||
                                         (dispatchDetails.engineNumber !== 'NA' ? dispatchDetails.engineNumber : '')
                                     }
-                                    placeholder="Full engine no. or min 5 digits"
+                                    placeholder="Engine no."
                                     onChange={e =>
                                         setGrnEngineNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())
                                     }
                                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
                                 />
+                                {dispatchDetails.engineNumber !== 'NA' &&
+                                    grnEngineNumber &&
+                                    (grnEngineNumber === dispatchDetails.engineNumber ? (
+                                        <p className="text-[8px] font-black text-emerald-500 mt-0.5">
+                                            ✓ Matches dispatched engine no.
+                                        </p>
+                                    ) : (
+                                        <p className="text-[8px] font-black text-amber-500 mt-0.5">
+                                            ⚠ Differs from dispatch: {dispatchDetails.engineNumber}
+                                        </p>
+                                    ))}
                             </div>
 
                             {/* Battery Make — branded dropdown */}
