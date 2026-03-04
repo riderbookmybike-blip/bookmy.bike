@@ -38,7 +38,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
     // Universal: same transparent-dark header on every single page
     const navBtnClass =
-        'w-10 h-10 rounded-full transition-all duration-300 flex items-center justify-center text-white hover:bg-white/10';
+        'w-11 h-11 rounded-full transition-all duration-300 flex items-center justify-center text-white/95 hover:text-white bg-transparent border border-white/25';
 
     return (
         <AppHeaderShell
@@ -58,13 +58,13 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     {/* Desktop nav icons */}
                     <div className="hidden lg:flex items-center gap-3">
                         <Link href="/" className={navBtnClass}>
-                            <HomeIcon size={18} />
+                            <HomeIcon size={20} />
                         </Link>
                         <Link href="/store/catalog" className={navBtnClass}>
-                            <MotorcycleIcon size={20} />
+                            <MotorcycleIcon size={22} />
                         </Link>
                         <Link href="/wishlist" className={`${navBtnClass} relative`}>
-                            <Heart size={18} />
+                            <Heart size={20} />
                             {favorites.length > 0 && (
                                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in duration-300">
                                     {favorites.length}
@@ -84,7 +84,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
 
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className="w-10 h-10 rounded-xl transition-all lg:hidden flex items-center justify-center text-white hover:bg-white/10"
+                        className="w-10 h-10 rounded-xl transition-all lg:hidden flex items-center justify-center text-white bg-transparent border border-white/25"
                     >
                         {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>

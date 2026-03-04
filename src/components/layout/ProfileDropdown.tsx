@@ -477,7 +477,7 @@ export function ProfileDropdown({
     const isLight = tone === 'light' || (tone !== 'dark' && (mounted ? theme !== 'dark' : true));
     const isDarkSurface = !isLight;
     const triggerClass = isDarkSurface
-        ? 'border-white/10 text-white hover:bg-white hover:text-black hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+        ? 'bg-transparent border-white/35 text-white hover:text-white hover:border-white/50'
         : 'border-slate-900/10 text-slate-900 hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10 shadow-sm';
 
     const displayName = user
@@ -538,7 +538,7 @@ export function ProfileDropdown({
                 <button
                     onClick={() => setIsOpen(!isOpen)}
                     ref={dropdownRef}
-                    className={`flex h-10 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
+                    className={`flex h-11 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
                 >
                     <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner">
                         <img

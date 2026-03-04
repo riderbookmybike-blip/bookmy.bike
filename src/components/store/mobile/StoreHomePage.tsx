@@ -218,7 +218,7 @@ export function StoreHomePage({
             ══════════════════════════════════════════════ */}
             <section
                 ref={heroRef}
-                className="relative h-[100svh] 2xl:h-auto 2xl:min-h-0 2xl:aspect-[21/9] flex flex-col justify-end md:justify-center md:items-center overflow-hidden"
+                className="relative h-[calc(100dvh-var(--header-h))] min-h-[calc(100svh-var(--header-h))] flex flex-col justify-end md:justify-center md:items-center overflow-hidden"
             >
                 {/* Parallax Background */}
                 <motion.div className="absolute inset-0" style={{ scale: heroScale, opacity: heroOpacity }}>
@@ -226,13 +226,18 @@ export function StoreHomePage({
                         src={heroImage || '/images/hero_d8.jpg'}
                         alt="Sport motorcycle at golden hour"
                         fill
-                        className="object-cover object-[80%_center] md:object-[center_25%] xl:object-center"
+                        className="object-cover object-[80%_center] md:object-[center_25%] xl:object-[center_18%] 2xl:object-[center_12%]"
                         priority
                         sizes="100vw"
                     />
                     {/* Immersive Dark Overlay for Text Readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 </motion.div>
+
+                {/* Localized readability mask behind hero copy */}
+                <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center">
+                    <div className="h-[360px] w-[min(90vw,980px)] rounded-full bg-black/28 blur-3xl md:h-[440px] md:w-[min(76vw,1080px)]" />
+                </div>
 
                 {/* Floating Gold Accent Line */}
                 <motion.div
@@ -264,7 +269,7 @@ export function StoreHomePage({
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 1, delay: 0.4 }}
-                        className="text-[44px] md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]"
+                        className="text-[44px] md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight lg:tracking-[0.01em] lg:scale-x-[1.02] origin-center text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]"
                     >
                         {isReturningUser ? (
                             <>
@@ -364,10 +369,12 @@ export function StoreHomePage({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1, y: [0, 8, 0] }}
                     transition={{ opacity: { delay: 2 }, y: { repeat: Infinity, duration: 2, ease: 'easeInOut' } }}
-                    className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1"
+                    className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5"
                 >
-                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/40">Scroll</span>
-                    <ChevronDown size={16} className="text-white/40" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
+                        Browse Categories
+                    </span>
+                    <ChevronDown size={18} className="text-white/70" />
                 </motion.div>
             </section>
 
