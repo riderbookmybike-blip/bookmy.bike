@@ -2682,6 +2682,13 @@ export default function RequisitionDetailPage() {
                                 <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
                                     {formatTripletId(primaryPo?.display_id || primaryPo?.id || selectedQuote.id)}
                                 </p>
+                                {/* Quote traceability: show the source quote ID */}
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                                    From Quote:{' '}
+                                    <span className="text-slate-500">
+                                        {formatTripletId(selectedQuote.display_id || selectedQuote.id)}
+                                    </span>
+                                </p>
                             </div>
                             <span
                                 className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
@@ -3167,38 +3174,51 @@ export default function RequisitionDetailPage() {
                         </div>
 
                         {/* Actions footer */}
-                        {(dispatchEditMode || primaryPo.po_status === 'SENT') && primaryPo.po_status !== 'RECEIVED' && (
-                            <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    {dispatchEditMode
-                                        ? 'Save dispatch details before marking as shipped'
-                                        : 'Transporter details saved — ready to dispatch'}
-                                </p>
-                                <div className="flex items-center gap-2">
-                                    {dispatchEditMode && (
-                                        <button
-                                            type="button"
-                                            onClick={handleSaveDispatch}
-                                            disabled={isSavingDispatch}
-                                            className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50 hover:bg-slate-50 transition-all"
-                                        >
-                                            {isSavingDispatch ? 'Saving...' : 'Save Details'}
-                                        </button>
-                                    )}
-                                    {primaryPo.po_status === 'SENT' && (
-                                        <button
-                                            type="button"
-                                            onClick={handleMoveDispatchNext}
-                                            disabled={isMovingDispatch || isSavingDispatch}
-                                            className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
-                                        >
-                                            <Truck size={12} />
-                                            {isMovingDispatch ? 'Updating...' : 'Mark as Shipped'}
-                                        </button>
-                                    )}
+                        {(dispatchEditMode || primaryPo.po_status === 'SENT' || primaryPo.po_status === 'SHIPPED') &&
+                            primaryPo.po_status !== 'RECEIVED' && (
+                                <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        {dispatchEditMode
+                                            ? 'Save dispatch details before marking as shipped'
+                                            : primaryPo.po_status === 'SHIPPED'
+                                              ? 'Stock in transit — ready to receive at warehouse'
+                                              : 'Transporter details saved — ready to dispatch'}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        {dispatchEditMode && (
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveDispatch}
+                                                disabled={isSavingDispatch}
+                                                className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 disabled:opacity-50 hover:bg-slate-50 transition-all"
+                                            >
+                                                {isSavingDispatch ? 'Saving...' : 'Save Details'}
+                                            </button>
+                                        )}
+                                        {primaryPo.po_status === 'SENT' && (
+                                            <button
+                                                type="button"
+                                                onClick={handleMoveDispatchNext}
+                                                disabled={isMovingDispatch || isSavingDispatch}
+                                                className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
+                                            >
+                                                <Truck size={12} />
+                                                {isMovingDispatch ? 'Updating...' : 'Mark as Shipped'}
+                                            </button>
+                                        )}
+                                        {primaryPo.po_status === 'SHIPPED' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => router.push(`${ordersBasePath}/${primaryPo.id}/grn`)}
+                                                className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[10px] font-black uppercase tracking-wider text-white transition-all inline-flex items-center gap-1.5"
+                                            >
+                                                <PackageCheck size={12} />
+                                                Receive Stock (GRN)
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
                     </div>
                 </>
             )}
