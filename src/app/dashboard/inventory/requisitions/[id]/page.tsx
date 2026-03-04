@@ -3361,12 +3361,14 @@ export default function RequisitionDetailPage() {
                 </>
             )}
 
-            {/* ── GRN RECEIPT ── */}
+            {/* ── GRN RECEIPT CARD ── */}
             {primaryPo && primaryPo.po_status === 'RECEIVED' && receivedStock && (
                 <>
                     <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
                         GRN Receipt
                     </p>
+
+                    {/* ── Card 1: Vehicle Details ── */}
                     <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-slate-900/60 overflow-hidden">
                         {/* Header */}
                         <div className="px-5 py-3 border-b border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-900/10">
@@ -3386,8 +3388,8 @@ export default function RequisitionDetailPage() {
                                     type="button"
                                     onClick={() => {
                                         setGrnEditMode(m => !m);
+                                        setActiveGrnImg(null);
                                         if (!grnEditMode) {
-                                            // pre-fill amend fields from saved data
                                             setAmendChassisNumber((receivedStock as any).chassis_number || '');
                                             setAmendEngineNumber((receivedStock as any).engine_number || '');
                                             setAmendKeyNumber((receivedStock as any).key_number || '');
@@ -3406,7 +3408,7 @@ export default function RequisitionDetailPage() {
                             </div>
                         </div>
 
-                        {/* ── Read-only view ── */}
+                        {/* Read-only details */}
                         {!grnEditMode && (
                             <div className="px-5 py-4">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-5">
@@ -3456,164 +3458,6 @@ export default function RequisitionDetailPage() {
                                         ) : null
                                     )}
                                 </div>
-
-                                {/* Media thumbs — inline expand on click */}
-                                {(() => {
-                                    const gallery: Array<{ url: string; purpose: string; isVideo: boolean }> = (
-                                        receivedStock as any
-                                    ).media_gallery?.length
-                                        ? (receivedStock as any).media_gallery
-                                        : [
-                                              {
-                                                  url: (receivedStock as any).media_chassis_url,
-                                                  purpose: 'chassis',
-                                                  isVideo: false,
-                                              },
-                                              {
-                                                  url: (receivedStock as any).media_engine_url,
-                                                  purpose: 'engine',
-                                                  isVideo: false,
-                                              },
-                                              {
-                                                  url: (receivedStock as any).media_sticker_url,
-                                                  purpose: 'sticker',
-                                                  isVideo: false,
-                                              },
-                                              {
-                                                  url: (receivedStock as any).media_vehicle_url,
-                                                  purpose: 'vehicle',
-                                                  isVideo: false,
-                                              },
-                                              {
-                                                  url: (receivedStock as any).media_qc_video_url,
-                                                  purpose: 'qc_video',
-                                                  isVideo: true,
-                                              },
-                                          ].filter(m => m.url);
-                                    if (!gallery.length)
-                                        return (
-                                            <p className="mt-4 text-[9px] font-bold text-slate-400 italic">
-                                                No media uploaded — click Edit to add photos
-                                            </p>
-                                        );
-                                    const PLABELS: Record<string, string> = {
-                                        chassis: 'Chassis',
-                                        engine: 'Engine',
-                                        sticker: 'Sticker',
-                                        vehicle: 'Vehicle',
-                                        qc_video: 'QC Video',
-                                        battery_number: 'Battery No.',
-                                        odometer: 'Odometer',
-                                        other: 'Other',
-                                    };
-                                    const active = activeGrnImg;
-                                    const go = (delta: number) => {
-                                        if (!active) return;
-                                        const next = (active.idx + delta + gallery.length) % gallery.length;
-                                        setActiveGrnImg({ ...gallery[next], idx: next });
-                                    };
-                                    return (
-                                        <div className="mt-4">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                                Media Assets{' '}
-                                                <span className="normal-case font-semibold">({gallery.length})</span>
-                                            </p>
-
-                                            {/* Inline expanded view */}
-                                            {active && (
-                                                <div
-                                                    className="mb-3 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-950 relative"
-                                                    style={{ aspectRatio: '16/9' }}
-                                                >
-                                                    {active.isVideo ? (
-                                                        <video
-                                                            src={active.url}
-                                                            controls
-                                                            className="w-full h-full object-contain"
-                                                        />
-                                                    ) : (
-                                                        <img
-                                                            src={active.url}
-                                                            alt={active.purpose}
-                                                            className="w-full h-full object-contain"
-                                                        />
-                                                    )}
-                                                    {/* Label */}
-                                                    <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">
-                                                        {PLABELS[active.purpose] ?? active.purpose}
-                                                        <span className="ml-2 font-normal opacity-60">
-                                                            {active.idx + 1}/{gallery.length}
-                                                        </span>
-                                                    </div>
-                                                    {/* Close */}
-                                                    <button
-                                                        onClick={() => setActiveGrnImg(null)}
-                                                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/80 text-white text-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                    {/* Prev / Next — only if >1 */}
-                                                    {gallery.length > 1 && (
-                                                        <>
-                                                            <button
-                                                                onClick={() => go(-1)}
-                                                                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900/70 text-white flex items-center justify-center hover:bg-slate-700 transition-colors text-sm"
-                                                            >
-                                                                ‹
-                                                            </button>
-                                                            <button
-                                                                onClick={() => go(1)}
-                                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900/70 text-white flex items-center justify-center hover:bg-slate-700 transition-colors text-sm"
-                                                            >
-                                                                ›
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Thumbnail strip — full width grid */}
-                                            <div
-                                                className="grid gap-1.5"
-                                                style={{
-                                                    gridTemplateColumns: `repeat(${Math.min(gallery.length, 8)}, 1fr)`,
-                                                }}
-                                            >
-                                                {gallery.map((m, gi) => (
-                                                    <button
-                                                        key={gi}
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setActiveGrnImg(
-                                                                active?.idx === gi ? null : { ...m, idx: gi }
-                                                            )
-                                                        }
-                                                        className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-150 ${active?.idx === gi ? 'border-emerald-400 ring-2 ring-emerald-300' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300'}`}
-                                                        style={{ aspectRatio: '1 / 1' }}
-                                                    >
-                                                        {m.isVideo ? (
-                                                            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
-                                                                <span className="text-2xl">🎥</span>
-                                                                <span className="text-[7px] font-black text-slate-400 uppercase">
-                                                                    Video
-                                                                </span>
-                                                            </div>
-                                                        ) : (
-                                                            <img
-                                                                src={m.url}
-                                                                alt={m.purpose}
-                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                                            />
-                                                        )}
-                                                        <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[7px] font-black text-center py-0.5 uppercase tracking-wide truncate px-1">
-                                                            {PLABELS[m.purpose] ?? m.purpose}
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
                                 {(receivedStock as any).created_at && (
                                     <p className="mt-4 text-[9px] font-bold text-slate-400">
                                         Received:{' '}
@@ -3626,11 +3470,10 @@ export default function RequisitionDetailPage() {
                             </div>
                         )}
 
-                        {/* ── Edit form ── */}
+                        {/* Edit form */}
                         {grnEditMode && (
                             <div className="px-5 py-4 space-y-5">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                    {/* Chassis Number — with VIN decode */}
                                     <div>
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                             Chassis Number (VIN)
@@ -3638,9 +3481,7 @@ export default function RequisitionDetailPage() {
                                         <div className="relative">
                                             <input
                                                 type="text"
-                                                value={
-                                                    amendChassisNumber || (receivedStock as any).chassis_number || ''
-                                                }
+                                                value={amendChassisNumber}
                                                 onChange={e => {
                                                     const raw = e.target.value
                                                         .replace(/[IOQioq]/g, '')
@@ -3649,8 +3490,8 @@ export default function RequisitionDetailPage() {
                                                         .slice(0, 17);
                                                     setAmendChassisNumber(raw);
                                                     if (raw.length === 17) {
-                                                        const decoded = decodeVinMfgDate(raw);
-                                                        if (decoded) setAmendMfgDate(decoded);
+                                                        const d = decodeVinMfgDate(raw);
+                                                        if (d) setAmendMfgDate(d);
                                                     }
                                                 }}
                                                 maxLength={17}
@@ -3658,68 +3499,48 @@ export default function RequisitionDetailPage() {
                                                 className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 pr-12 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
                                             />
                                             <span
-                                                className={`absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black tabular-nums ${(amendChassisNumber || (receivedStock as any).chassis_number || '').length === 17 ? 'text-emerald-500' : 'text-slate-400'}`}
+                                                className={`absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black tabular-nums ${amendChassisNumber.length === 17 ? 'text-emerald-500' : 'text-slate-400'}`}
                                             >
-                                                {
-                                                    (amendChassisNumber || (receivedStock as any).chassis_number || '')
-                                                        .length
-                                                }
-                                                /17
+                                                {amendChassisNumber.length}/17
                                             </span>
                                         </div>
                                     </div>
-
-                                    {/* Engine Number */}
                                     <div>
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                             Engine Number
                                         </p>
                                         <input
                                             type="text"
-                                            value={amendEngineNumber || (receivedStock as any).engine_number || ''}
+                                            value={amendEngineNumber}
                                             onChange={e =>
                                                 setAmendEngineNumber(
                                                     e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
                                                 )
                                             }
-                                            placeholder="Engine number"
                                             className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase tracking-widest"
                                         />
                                     </div>
-
-                                    {/* Key Number */}
                                     <div>
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                             Key Number
                                         </p>
                                         <input
                                             type="text"
-                                            value={
-                                                amendKeyNumber !== ''
-                                                    ? amendKeyNumber
-                                                    : (receivedStock as any).key_number || ''
-                                            }
+                                            value={amendKeyNumber}
                                             onChange={e =>
                                                 setAmendKeyNumber(
                                                     e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()
                                                 )
                                             }
-                                            placeholder="e.g. K-1234"
                                             className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
                                         />
                                     </div>
-
-                                    {/* Battery Make */}
                                     <div>
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                             Battery Make
                                         </p>
                                         <select
-                                            value={
-                                                amendBatteryMake !== ''
-                                                    ? amendBatteryMake
-                                                    : (receivedStock as any).battery_make || ''
-                                            }
+                                            value={amendBatteryMake}
                                             onChange={e => setAmendBatteryMake(e.target.value)}
                                             className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                         >
@@ -3743,68 +3564,46 @@ export default function RequisitionDetailPage() {
                                             ))}
                                         </select>
                                     </div>
-
-                                    {/* Battery Type */}
                                     <div>
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                             Battery Type
                                         </p>
                                         <input
                                             type="text"
-                                            value={
-                                                amendBatteryType !== ''
-                                                    ? amendBatteryType
-                                                    : (receivedStock as any).battery_type || ''
-                                            }
+                                            value={amendBatteryType}
                                             onChange={e => setAmendBatteryType(e.target.value)}
-                                            placeholder="e.g. VRLA, Li-ion, AGM"
                                             className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                         />
                                     </div>
-
-                                    {/* Battery Number */}
                                     <div>
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                             Battery Number
                                         </p>
                                         <input
                                             type="text"
-                                            value={
-                                                amendBatteryNumber !== ''
-                                                    ? amendBatteryNumber
-                                                    : (receivedStock as any).battery_number || ''
-                                            }
+                                            value={amendBatteryNumber}
                                             onChange={e =>
                                                 setAmendBatteryNumber(
                                                     e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()
                                                 )
                                             }
-                                            placeholder="Battery serial / stamp"
                                             className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
                                         />
                                     </div>
-
-                                    {/* Manufacturing Date — DD/MM/YYYY dropdowns */}
                                     <div className="md:col-span-2">
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            Manufacturing Date
+                                            Mfg. Date
                                         </p>
                                         <div className="flex items-center gap-2">
-                                            {/* Day */}
                                             <select
-                                                value={
-                                                    (amendMfgDate || (receivedStock as any).manufacturing_date || '')
-                                                        .split('-')[2]
-                                                        ?.replace(/^0/, '') || ''
-                                                }
+                                                value={amendMfgDate.split('-')[2]?.replace(/^0/, '') || ''}
                                                 onChange={e => {
-                                                    const base =
-                                                        amendMfgDate || (receivedStock as any).manufacturing_date || '';
-                                                    const [y, m] = base.split('-');
-                                                    const d = e.target.value.padStart(2, '0');
-                                                    setAmendMfgDate(`${y || '2024'}-${m || '01'}-${d}`);
+                                                    const [y, m] = amendMfgDate.split('-');
+                                                    setAmendMfgDate(
+                                                        `${y || '2024'}-${m || '01'}-${e.target.value.padStart(2, '0')}`
+                                                    );
                                                 }}
-                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200"
                                             >
                                                 <option value="">Day</option>
                                                 {Array.from({ length: 31 }, (_, i) => (
@@ -3813,22 +3612,13 @@ export default function RequisitionDetailPage() {
                                                     </option>
                                                 ))}
                                             </select>
-                                            {/* Month */}
                                             <select
-                                                value={
-                                                    (
-                                                        amendMfgDate ||
-                                                        (receivedStock as any).manufacturing_date ||
-                                                        ''
-                                                    ).split('-')[1] || ''
-                                                }
+                                                value={amendMfgDate.split('-')[1] || ''}
                                                 onChange={e => {
-                                                    const base =
-                                                        amendMfgDate || (receivedStock as any).manufacturing_date || '';
-                                                    const [y, , d] = base.split('-');
+                                                    const [y, , d] = amendMfgDate.split('-');
                                                     setAmendMfgDate(`${y || '2024'}-${e.target.value}-${d || '01'}`);
                                                 }}
-                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200"
                                             >
                                                 <option value="">Month</option>
                                                 {[
@@ -3865,22 +3655,13 @@ export default function RequisitionDetailPage() {
                                                     </option>
                                                 ))}
                                             </select>
-                                            {/* Year */}
                                             <select
-                                                value={
-                                                    (
-                                                        amendMfgDate ||
-                                                        (receivedStock as any).manufacturing_date ||
-                                                        ''
-                                                    ).split('-')[0] || ''
-                                                }
+                                                value={amendMfgDate.split('-')[0] || ''}
                                                 onChange={e => {
-                                                    const base =
-                                                        amendMfgDate || (receivedStock as any).manufacturing_date || '';
-                                                    const [, m, d] = base.split('-');
+                                                    const [, m, d] = amendMfgDate.split('-');
                                                     setAmendMfgDate(`${e.target.value}-${m || '01'}-${d || '01'}`);
                                                 }}
-                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                                className="h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200"
                                             >
                                                 <option value="">Year</option>
                                                 {Array.from({ length: 15 }, (_, i) => {
@@ -3892,56 +3673,28 @@ export default function RequisitionDetailPage() {
                                                     );
                                                 })}
                                             </select>
-                                            {(amendMfgDate || (receivedStock as any).manufacturing_date) && (
+                                            {amendMfgDate && (
                                                 <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">
                                                     {(() => {
-                                                        const d =
-                                                            amendMfgDate || (receivedStock as any).manufacturing_date;
-                                                        if (!d) return '';
-                                                        const [y, m] = d.split('-');
+                                                        const [y, m] = amendMfgDate.split('-');
                                                         return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][parseInt(m) - 1]} ${y}`;
                                                     })()}
                                                 </span>
                                             )}
                                         </div>
                                     </div>
-
-                                    {/* QC Notes — full width */}
                                     <div className="md:col-span-2">
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                             QC Notes
                                         </p>
                                         <input
                                             type="text"
-                                            value={
-                                                amendQcNotes !== ''
-                                                    ? amendQcNotes
-                                                    : (receivedStock as any).qc_notes || ''
-                                            }
+                                            value={amendQcNotes}
                                             onChange={e => setAmendQcNotes(e.target.value)}
-                                            placeholder="Any inspection remarks"
                                             className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                         />
                                     </div>
                                 </div>
-
-                                {/* Media gallery */}
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                        Media Assets
-                                    </p>
-                                    <GrnMediaGallery
-                                        entityId={(receivedStock as any).id}
-                                        items={
-                                            amendMediaItems.length
-                                                ? amendMediaItems
-                                                : ((receivedStock as any).media_gallery as GrnMediaItem[]) || []
-                                        }
-                                        onChange={setAmendMediaItems}
-                                    />
-                                </div>
-
-                                {/* Save */}
                                 <button
                                     type="button"
                                     disabled={isAmending}
@@ -3949,68 +3702,200 @@ export default function RequisitionDetailPage() {
                                         setIsAmending(true);
                                         try {
                                             const { amendStockGrn } = await import('@/actions/inventory');
-                                            const ch = amendChassisNumber || (receivedStock as any).chassis_number;
-                                            const en = amendEngineNumber || (receivedStock as any).engine_number;
                                             const result = await amendStockGrn({
                                                 stock_id: (receivedStock as any).id,
-                                                chassis_number: ch || undefined,
-                                                engine_number: en || undefined,
-                                                key_number:
-                                                    (amendKeyNumber !== ''
-                                                        ? amendKeyNumber
-                                                        : (receivedStock as any).key_number) || undefined,
-                                                battery_make:
-                                                    (amendBatteryMake !== ''
-                                                        ? amendBatteryMake
-                                                        : (receivedStock as any).battery_make) || undefined,
-                                                battery_type:
-                                                    (amendBatteryType !== ''
-                                                        ? amendBatteryType
-                                                        : (receivedStock as any).battery_type) || undefined,
-                                                battery_number:
-                                                    (amendBatteryNumber !== ''
-                                                        ? amendBatteryNumber
-                                                        : (receivedStock as any).battery_number) || undefined,
-                                                manufacturing_date:
-                                                    (amendMfgDate !== ''
-                                                        ? amendMfgDate
-                                                        : (receivedStock as any).manufacturing_date) || undefined,
-                                                qc_notes:
-                                                    (amendQcNotes !== ''
-                                                        ? amendQcNotes
-                                                        : (receivedStock as any).qc_notes) || undefined,
-                                                media_gallery: amendMediaItems.length
-                                                    ? amendMediaItems
-                                                    : (receivedStock as any).media_gallery || [],
+                                                chassis_number: amendChassisNumber || undefined,
+                                                engine_number: amendEngineNumber || undefined,
+                                                key_number: amendKeyNumber || undefined,
+                                                battery_make: amendBatteryMake || undefined,
+                                                battery_type: amendBatteryType || undefined,
+                                                battery_number: amendBatteryNumber || undefined,
+                                                manufacturing_date: amendMfgDate || undefined,
+                                                qc_notes: amendQcNotes || undefined,
+                                                media_gallery: (receivedStock as any).media_gallery || [],
                                             });
                                             if (result.success) {
-                                                toast.success('GRN saved');
+                                                toast.success('GRN details saved');
+                                                setGrnEditMode(false);
                                                 await fetchRequestDetail();
-                                            } else {
-                                                toast.error(result.message || 'Failed');
-                                            }
+                                            } else toast.error(result.message || 'Failed');
                                         } finally {
                                             setIsAmending(false);
                                         }
                                     }}
-                                    className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-[11px] font-black uppercase tracking-widest text-white transition-all inline-flex items-center justify-center gap-2"
+                                    className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-[11px] font-black uppercase tracking-widest text-white transition-all inline-flex items-center justify-center"
                                 >
-                                    {isAmending ? 'Saving...' : '✓ Save GRN'}
+                                    {isAmending ? 'Saving...' : '✓ Save Details'}
                                 </button>
-
-                                {/* Received timestamp */}
-                                {(receivedStock as any).created_at && (
-                                    <p className="text-[9px] font-bold text-slate-400 text-center">
-                                        Received:{' '}
-                                        {new Date((receivedStock as any).created_at).toLocaleString('en-IN', {
-                                            dateStyle: 'medium',
-                                            timeStyle: 'short',
-                                        })}
-                                    </p>
-                                )}
                             </div>
                         )}
                     </div>
+
+                    {/* ── Card 2: Media Assets ── */}
+                    {(() => {
+                        const gallery: Array<{ url: string; purpose: string; isVideo: boolean }> = (
+                            receivedStock as any
+                        ).media_gallery?.length
+                            ? (receivedStock as any).media_gallery
+                            : [
+                                  { url: (receivedStock as any).media_chassis_url, purpose: 'chassis', isVideo: false },
+                                  { url: (receivedStock as any).media_engine_url, purpose: 'engine', isVideo: false },
+                                  { url: (receivedStock as any).media_sticker_url, purpose: 'sticker', isVideo: false },
+                                  { url: (receivedStock as any).media_vehicle_url, purpose: 'vehicle', isVideo: false },
+                                  {
+                                      url: (receivedStock as any).media_qc_video_url,
+                                      purpose: 'qc_video',
+                                      isVideo: true,
+                                  },
+                              ].filter(m => m.url);
+
+                        const PLABELS: Record<string, string> = {
+                            chassis: 'Chassis',
+                            engine: 'Engine',
+                            sticker: 'Sticker',
+                            vehicle: 'Vehicle',
+                            qc_video: 'QC Video',
+                            battery_number: 'Battery No.',
+                            odometer: 'Odometer',
+                            other: 'Other',
+                        };
+                        const active = activeGrnImg;
+                        const go = (delta: number) => {
+                            if (!active) return;
+                            const next = (active.idx + delta + gallery.length) % gallery.length;
+                            setActiveGrnImg({ ...gallery[next], idx: next });
+                        };
+                        // cols: min(N,6); for small sets cap width so they center
+                        const cols = Math.min(gallery.length, 6);
+                        const maxW = gallery.length <= 3 ? `${gallery.length * 180}px` : '100%';
+
+                        return (
+                            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                                <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50 dark:bg-white/5">
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                            Media Assets
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white">
+                                            {gallery.length} item{gallery.length !== 1 ? 's' : ''}
+                                        </p>
+                                    </div>
+                                    {/* Edit media button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setGrnEditMode(false); // close details edit if open
+                                            // open a simple amend for media only
+                                        }}
+                                        className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:border-slate-400 transition-colors"
+                                    >
+                                        ✏ Edit Media
+                                    </button>
+                                </div>
+                                <div className="p-4">
+                                    {!gallery.length ? (
+                                        <p className="text-[9px] font-bold text-slate-400 italic text-center py-4">
+                                            No media uploaded yet
+                                        </p>
+                                    ) : (
+                                        <>
+                                            {/* Expanded viewer */}
+                                            {active && (
+                                                <div
+                                                    className="mb-3 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-950 relative"
+                                                    style={{ aspectRatio: '16/9' }}
+                                                >
+                                                    {active.isVideo ? (
+                                                        <video
+                                                            src={active.url}
+                                                            controls
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    ) : (
+                                                        <img
+                                                            src={active.url}
+                                                            alt={active.purpose}
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    )}
+                                                    <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">
+                                                        {PLABELS[active.purpose] ?? active.purpose}
+                                                        <span className="ml-2 font-normal opacity-60">
+                                                            {active.idx + 1}/{gallery.length}
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setActiveGrnImg(null)}
+                                                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/80 text-white text-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                    {gallery.length > 1 && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => go(-1)}
+                                                                className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                            >
+                                                                ‹
+                                                            </button>
+                                                            <button
+                                                                onClick={() => go(1)}
+                                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                            >
+                                                                ›
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {/* Thumbnail grid — centered for small sets, full-width for ≥4 */}
+                                            <div
+                                                style={{
+                                                    display: 'grid',
+                                                    gap: '6px',
+                                                    gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`,
+                                                    maxWidth: maxW,
+                                                    margin: '0 auto',
+                                                }}
+                                            >
+                                                {gallery.map((m, gi) => (
+                                                    <button
+                                                        key={gi}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setActiveGrnImg(
+                                                                active?.idx === gi ? null : { ...m, idx: gi }
+                                                            )
+                                                        }
+                                                        className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-150 ${active?.idx === gi ? 'border-emerald-400 ring-2 ring-emerald-300' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300'}`}
+                                                        style={{ aspectRatio: '1/1' }}
+                                                    >
+                                                        {m.isVideo ? (
+                                                            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
+                                                                <span className="text-3xl">🎥</span>
+                                                                <span className="text-[8px] font-black text-slate-400 uppercase">
+                                                                    Video
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <img
+                                                                src={m.url}
+                                                                alt={m.purpose}
+                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                            />
+                                                        )}
+                                                        <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[8px] font-black text-center py-1 uppercase tracking-wide truncate px-1">
+                                                            {PLABELS[m.purpose] ?? m.purpose}
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </>
             )}
 
