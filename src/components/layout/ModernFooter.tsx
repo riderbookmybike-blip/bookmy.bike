@@ -38,7 +38,6 @@ import {
 } from 'lucide-react';
 import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { slugify } from '@/utils/slugs';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
@@ -555,15 +554,7 @@ export const ModernFooter = () => {
             ) : null}
             {/* 1. Dynamic Mesh Background */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40">
-                <motion.div
-                    animate={{
-                        scale: [1, 1.1, 1],
-                        rotate: [0, 5, 0],
-                        x: [-20, 20, -20],
-                    }}
-                    transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-                    className="absolute -top-[20%] -left-[10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_50%_50%,rgba(255,215,0,0.05)_0%,transparent_60%)]"
-                />
+                <div className="absolute -top-[20%] -left-[10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_50%_50%,rgba(255,215,0,0.05)_0%,transparent_60%)]" />
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
             </div>
 
@@ -578,11 +569,9 @@ export const ModernFooter = () => {
                             const isOpen = openSection === section.title;
 
                             return (
-                                <motion.div
+                                <div
                                     key={section.title}
-                                    whileHover={{ y: -8, z: 20 }}
-                                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                                    className="flex flex-col rounded-[24px] lg:rounded-[32px] bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] hover:bg-white/[0.04] hover:border-brand-primary/20 transition-all duration-500 overflow-hidden group/card shadow-2xl shadow-black/80 relative"
+                                    className="flex flex-col rounded-[24px] lg:rounded-[32px] bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] hover:border-brand-primary/20 transition-colors overflow-hidden group/card shadow-2xl shadow-black/80 relative"
                                 >
                                     {/* Card Inner Glow */}
                                     <div className="absolute inset-0 bg-gradient-to-b from-brand-primary/[0.02] to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
@@ -654,100 +643,77 @@ export const ModernFooter = () => {
                                                             )}
                                                         </div>
                                                     </button>
-                                                    <AnimatePresence>
-                                                        {openNested === brandObj.brand && (
-                                                            <motion.ul
-                                                                initial={{ height: 0, opacity: 0 }}
-                                                                animate={{ height: 'auto', opacity: 1 }}
-                                                                exit={{ height: 0, opacity: 0 }}
-                                                                className="pl-3 flex flex-col gap-3 mt-1 border-l border-white/10 overflow-hidden"
-                                                            >
-                                                                {brandObj.links.map(bLink => (
-                                                                    <li key={bLink.label}>
-                                                                        <Link
-                                                                            href={bLink.href}
-                                                                            className="text-[10px] font-semibold tracking-wide text-white hover:text-brand-primary transition-colors"
-                                                                        >
-                                                                            {bLink.label}
-                                                                        </Link>
-                                                                    </li>
-                                                                ))}
-                                                            </motion.ul>
-                                                        )}
-                                                    </AnimatePresence>
+                                                    {openNested === brandObj.brand && (
+                                                        <ul className="pl-3 flex flex-col gap-3 mt-1 border-l border-white/10">
+                                                            {brandObj.links.map(bLink => (
+                                                                <li key={bLink.label}>
+                                                                    <Link
+                                                                        href={bLink.href}
+                                                                        className="text-[10px] font-semibold tracking-wide text-white hover:text-brand-primary transition-colors"
+                                                                    >
+                                                                        {bLink.label}
+                                                                    </Link>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
                                                 </li>
                                             ))}
                                         </ul>
                                     </div>
 
                                     {/* Mobile Content */}
-                                    <AnimatePresence>
-                                        {isOpen && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                                className="lg:hidden overflow-hidden"
-                                            >
-                                                <ul className="px-6 pb-8 flex flex-col gap-4">
-                                                    {section.links?.map((link: any, i) => (
-                                                        <li key={i}>
-                                                            <Link
-                                                                href={link.href}
-                                                                className="flex items-center gap-3 text-xs font-semibold text-white/70 active:text-brand-primary"
-                                                            >
-                                                                {link.icon && (
-                                                                    <span className="shrink-0">{link.icon}</span>
-                                                                )}
-                                                                <span>{link.label}</span>
-                                                            </Link>
-                                                        </li>
-                                                    ))}
-                                                    {section.nested?.map((brandObj, i) => (
-                                                        <li key={i} className="flex flex-col gap-4">
-                                                            <button
-                                                                onClick={() => toggleNested(brandObj.brand)}
-                                                                className="text-left text-[11px] font-bold tracking-wide text-white hover:text-brand-primary flex items-center justify-between group w-full"
-                                                            >
-                                                                <div className="flex items-center gap-2">
-                                                                    {brandObj.icon}
-                                                                    <span>{brandObj.brand}</span>
-                                                                </div>
-                                                                {openNested === brandObj.brand ? (
-                                                                    <Minus size={12} />
-                                                                ) : (
-                                                                    <Plus size={12} />
-                                                                )}
-                                                            </button>
-                                                            <AnimatePresence>
-                                                                {openNested === brandObj.brand && (
-                                                                    <motion.ul
-                                                                        initial={{ height: 0, opacity: 0 }}
-                                                                        animate={{ height: 'auto', opacity: 1 }}
-                                                                        exit={{ height: 0, opacity: 0 }}
-                                                                        className="pl-3 flex flex-col gap-4 mt-1 border-l border-white/10 overflow-hidden"
-                                                                    >
-                                                                        {brandObj.links.map(bLink => (
-                                                                            <li key={bLink.label}>
-                                                                                <Link
-                                                                                    href={bLink.href}
-                                                                                    className="text-[10px] font-semibold tracking-wide text-white hover:text-brand-primary"
-                                                                                >
-                                                                                    {bLink.label}
-                                                                                </Link>
-                                                                            </li>
-                                                                        ))}
-                                                                    </motion.ul>
-                                                                )}
-                                                            </AnimatePresence>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </motion.div>
+                                    {isOpen && (
+                                        <div className="lg:hidden">
+                                            <ul className="px-6 pb-8 flex flex-col gap-4">
+                                                {section.links?.map((link: any, i) => (
+                                                    <li key={i}>
+                                                        <Link
+                                                            href={link.href}
+                                                            className="flex items-center gap-3 text-xs font-semibold text-white/70 active:text-brand-primary"
+                                                        >
+                                                            {link.icon && <span className="shrink-0">{link.icon}</span>}
+                                                            <span>{link.label}</span>
+                                                        </Link>
+                                                    </li>
+                                                ))}
+                                                {section.nested?.map((brandObj, i) => (
+                                                    <li key={i} className="flex flex-col gap-4">
+                                                        <button
+                                                            onClick={() => toggleNested(brandObj.brand)}
+                                                            className="text-left text-[11px] font-bold tracking-wide text-white hover:text-brand-primary flex items-center justify-between group w-full"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                {brandObj.icon}
+                                                                <span>{brandObj.brand}</span>
+                                                            </div>
+                                                            {openNested === brandObj.brand ? (
+                                                                <Minus size={12} />
+                                                            ) : (
+                                                                <Plus size={12} />
+                                                            )}
+                                                        </button>
+
+                                                        {openNested === brandObj.brand && (
+                                                            <ul className="pl-3 flex flex-col gap-4 mt-1 border-l border-white/10">
+                                                                {brandObj.links.map(bLink => (
+                                                                    <li key={bLink.label}>
+                                                                        <Link
+                                                                            href={bLink.href}
+                                                                            className="text-[10px] font-semibold tracking-wide text-white hover:text-brand-primary"
+                                                                        >
+                                                                            {bLink.label}
+                                                                        </Link>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })}
                     </div>
@@ -783,22 +749,9 @@ export const ModernFooter = () => {
                         <div className="flex flex-col items-center lg:items-end gap-3 max-md:mb-12">
                             <div className="flex items-center gap-3 text-[10px] font-bold tracking-wider text-white/70">
                                 Published with{' '}
-                                <motion.div
-                                    animate={{
-                                        scale: [1, 1.2, 1],
-                                        opacity: [0.7, 1, 0.7],
-                                    }}
-                                    transition={{
-                                        duration: 0.8,
-                                        repeat: Infinity,
-                                        ease: 'easeInOut',
-                                    }}
-                                >
-                                    <Heart
-                                        size={10}
-                                        className="text-red-500 fill-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
-                                    />
-                                </motion.div>{' '}
+                                <span>
+                                    <Heart size={10} className="text-red-500 fill-red-500" />
+                                </span>{' '}
                                 By O&apos;Circle Crew
                             </div>
 
