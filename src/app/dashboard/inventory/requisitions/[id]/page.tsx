@@ -762,7 +762,7 @@ export default function RequisitionDetailPage() {
                 const { data: stockRow } = await (supabase as any)
                     .from('inv_stock')
                     .select(
-                        'id, chassis_number, engine_number, key_number, battery_make, battery_type, battery_number, manufacturing_date, qc_notes, media_chassis_url, media_engine_url, media_sticker_url, media_vehicle_url, media_qc_video_url, branch_id, created_at'
+                        'id, chassis_number, engine_number, key_number, battery_make, battery_type, battery_number, manufacturing_date, qc_notes, media_chassis_url, media_engine_url, media_sticker_url, media_vehicle_url, media_qc_video_url, media_gallery, branch_id, created_at'
                     )
                     .eq('po_id', currentPo.id)
                     .limit(1)
@@ -3389,38 +3389,69 @@ export default function RequisitionDetailPage() {
                                 ))}
                         </div>
 
-                        {/* Media thumbnails */}
-                        {[
-                            (receivedStock as any).media_chassis_url,
-                            (receivedStock as any).media_engine_url,
-                            (receivedStock as any).media_sticker_url,
-                            (receivedStock as any).media_vehicle_url,
-                            (receivedStock as any).media_qc_video_url,
-                        ].filter(Boolean).length > 0 && (
-                            <div className="px-5 pb-4">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                    Media Assets
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    {[
-                                        { url: (receivedStock as any).media_chassis_url, label: 'Chassis' },
-                                        { url: (receivedStock as any).media_engine_url, label: 'Engine' },
-                                        { url: (receivedStock as any).media_sticker_url, label: 'Sticker' },
-                                        { url: (receivedStock as any).media_vehicle_url, label: 'Vehicle' },
-                                        { url: (receivedStock as any).media_qc_video_url, label: 'QC Video' },
-                                    ]
-                                        .filter(m => m.url)
-                                        .map(m => (
+                        {/* Media thumbnails — from media_gallery (includes all purposes) */}
+                        {(() => {
+                            // Prefer media_gallery JSONB (new format), fall back to individual columns for old rows
+                            const gallery: Array<{ url: string; purpose: string; isVideo: boolean }> = (
+                                receivedStock as any
+                            ).media_gallery?.length
+                                ? (receivedStock as any).media_gallery
+                                : [
+                                      {
+                                          url: (receivedStock as any).media_chassis_url,
+                                          purpose: 'chassis',
+                                          isVideo: false,
+                                      },
+                                      {
+                                          url: (receivedStock as any).media_engine_url,
+                                          purpose: 'engine',
+                                          isVideo: false,
+                                      },
+                                      {
+                                          url: (receivedStock as any).media_sticker_url,
+                                          purpose: 'sticker',
+                                          isVideo: false,
+                                      },
+                                      {
+                                          url: (receivedStock as any).media_vehicle_url,
+                                          purpose: 'vehicle',
+                                          isVideo: false,
+                                      },
+                                      {
+                                          url: (receivedStock as any).media_qc_video_url,
+                                          purpose: 'qc_video',
+                                          isVideo: true,
+                                      },
+                                  ].filter(m => m.url);
+                            if (!gallery.length) return null;
+                            const PLABELS: Record<string, string> = {
+                                chassis: 'Chassis',
+                                engine: 'Engine',
+                                sticker: 'Sticker',
+                                vehicle: 'Vehicle',
+                                qc_video: 'QC Video',
+                                other: 'Other',
+                            };
+                            return (
+                                <div className="px-5 pb-4">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                        Media Assets&nbsp;
+                                        <span className="normal-case font-semibold text-slate-300">
+                                            ({gallery.length})
+                                        </span>
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {gallery.map((m, gi) => (
                                             <a
-                                                key={m.label}
+                                                key={gi}
                                                 href={m.url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="group relative w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-white/10 block"
+                                                className="group relative w-24 h-24 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-white/10 block flex-shrink-0"
                                             >
-                                                {m.label === 'QC Video' ? (
+                                                {m.isVideo ? (
                                                     <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
-                                                        <span className="text-[18px]">🎥</span>
+                                                        <span className="text-2xl">🎥</span>
                                                         <span className="text-[7px] font-black text-slate-400 uppercase">
                                                             Video
                                                         </span>
@@ -3428,18 +3459,19 @@ export default function RequisitionDetailPage() {
                                                 ) : (
                                                     <img
                                                         src={m.url}
-                                                        alt={m.label}
+                                                        alt={m.purpose}
                                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                                     />
                                                 )}
-                                                <div className="absolute bottom-0 inset-x-0 bg-emerald-600/90 text-white text-[7px] font-black text-center py-0.5 uppercase tracking-wide">
-                                                    {m.label}
+                                                <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[7px] font-black text-center py-0.5 uppercase tracking-wide">
+                                                    {PLABELS[m.purpose] ?? m.purpose}
                                                 </div>
                                             </a>
                                         ))}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {/* Received at */}
                         {(receivedStock as any).created_at && (
@@ -3834,6 +3866,12 @@ export default function RequisitionDetailPage() {
                                                 grnMediaItems.find(i => i.purpose === 'vehicle')?.url || undefined,
                                             media_qc_video_url:
                                                 grnMediaItems.find(i => i.purpose === 'qc_video')?.url || undefined,
+                                            // Save ALL items (including 'other') to gallery
+                                            media_gallery: grnMediaItems.map(i => ({
+                                                url: i.url,
+                                                purpose: i.purpose,
+                                                isVideo: i.isVideo,
+                                            })),
                                             qc_notes: grnQcNotes.trim() || undefined,
                                         });
                                         if (!result.success) {

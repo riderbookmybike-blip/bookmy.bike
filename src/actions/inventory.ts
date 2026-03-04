@@ -1280,6 +1280,7 @@ export async function receiveStock(input: ReceiveStockInput): Promise<ActionResu
                 media_sticker_url: input.media_sticker_url || null,
                 media_vehicle_url: input.media_vehicle_url || null,
                 media_qc_video_url: input.media_qc_video_url || null,
+                media_gallery: input.media_gallery ?? [],
                 qc_status: 'PASSED',
                 qc_notes: input.qc_notes || null,
                 status: 'AVAILABLE',

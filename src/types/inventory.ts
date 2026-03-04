@@ -211,4 +211,5 @@ export interface ReceiveStockInput {
     media_vehicle_url?: string;
     media_qc_video_url?: string;
     qc_notes?: string;
+    media_gallery?: Array<{ url: string; purpose: string; isVideo: boolean }>;
 }
