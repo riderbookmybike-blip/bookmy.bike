@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
+import { createLeadAction, getLeadIndexAction, uploadMemberDocumentAction } from '@/actions/crm';
 import type { LeadIndexKpis, LeadIndexRow, LeadSlaBucket } from '@/actions/crm';
 
 const STATUS_FILTERS = ['ALL', 'NEW', 'CONTACTED', 'QUALIFIED', 'HOT', 'QUOTE', 'BOOKING', 'JUNK'];
@@ -173,7 +174,12 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
             .map((m: any) => ({ id: m.tenant_id, name: m.tenants?.name || 'Dealer' }));
 
         if (fromMemberships.length > 0) {
-            setDealerOptions(fromMemberships);
+            // Deduplicate by ID
+            const uniqueDealers = Array.from(
+                new Map(fromMemberships.map((item: any) => [item.id, item])).values()
+            ) as Array<{ id: string; name: string }>;
+
+            setDealerOptions(uniqueDealers);
             return;
         }
 
@@ -206,7 +212,6 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         if (!tenantId) return;
         setIsLoading(true);
         try {
-            const { getLeadIndexAction } = await import('@/actions/crm');
             const result = await getLeadIndexAction({
                 tenantId,
                 page,
@@ -327,7 +332,6 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
             return;
         }
 
-        const { createLeadAction, uploadMemberDocumentAction } = await import('@/actions/crm');
         const result = await createLeadAction({
             customer_name: formData.customerName,
             customer_phone: formData.phone,

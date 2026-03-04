@@ -218,7 +218,7 @@ export function StoreHomePage({
             ══════════════════════════════════════════════ */}
             <section
                 ref={heroRef}
-                className="relative min-h-[100svh] flex flex-col justify-end md:justify-center md:items-center overflow-hidden"
+                className="relative min-h-[100svh] xl:min-h-0 xl:aspect-video 2xl:aspect-[16/9] xl:mt-16 flex flex-col justify-end md:justify-center md:items-center overflow-hidden"
             >
                 {/* Parallax Background */}
                 <motion.div className="absolute inset-0" style={{ scale: heroScale, opacity: heroOpacity }}>
@@ -226,7 +226,7 @@ export function StoreHomePage({
                         src={heroImage || '/images/hero_d8.jpg'}
                         alt="Sport motorcycle at golden hour"
                         fill
-                        className="object-cover object-[80%_center] md:object-[center_25%]"
+                        className="object-cover object-[80%_center] md:object-[center_25%] xl:object-center"
                         priority
                         sizes="100vw"
                     />

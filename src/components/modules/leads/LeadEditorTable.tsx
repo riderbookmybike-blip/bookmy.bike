@@ -29,14 +29,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatDisplayId } from '@/utils/displayId';
 import { toast } from 'sonner';
 import DocumentManager from '@/components/modules/leads/DocumentManager';
+import {
+    addLeadNoteAction,
+    addLeadTaskAction,
+    getLeadEventsAction,
+    getLeadModuleStateAction,
+    getMemberDocumentUrl,
+    toggleLeadTaskAction,
+    updateLeadAction,
+    updateLeadIntentScoreAction,
+} from '@/actions/crm';
 import type { LeadEventRecord } from '@/actions/crm';
 import { getOClubLedger, getOClubWallet } from '@/actions/oclub';
 import { getMemberFullProfile } from '@/actions/members';
 import { createClient } from '@/lib/supabase/client';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 import UnifiedInboxPanel from '@/components/modules/shared/UnifiedInboxPanel';
-
-const crmActionsPromise = import('@/actions/crm');
 
 interface LeadProfile {
     lead: any;
@@ -334,7 +342,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             }
 
             setModuleLoading(true);
-            const { getLeadModuleStateAction } = await crmActionsPromise;
             const result = await getLeadModuleStateAction(lead.id);
             if (result.success) {
                 setNotes(result.notes || []);
@@ -357,7 +364,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             }
 
             setLeadEventsLoading(true);
-            const { getLeadEventsAction } = await crmActionsPromise;
             const result = await getLeadEventsAction(lead.id, 150);
             if (result.success) {
                 setLeadEvents(result.events || []);
@@ -385,7 +391,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             const urlEntries = await Promise.all(
                 uniquePaths.map(async path => {
                     try {
-                        const { getMemberDocumentUrl } = await crmActionsPromise;
                         const url = await getMemberDocumentUrl(path);
                         return [path, url] as const;
                     } catch {
@@ -534,7 +539,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             return;
         }
 
-        const { addLeadNoteAction } = await crmActionsPromise;
         const result = await addLeadNoteAction({ leadId: lead.id, body, attachments: uploadedAttachments });
         if (!result.success) {
             if (uploadedAttachments.length > 0) {
@@ -564,7 +568,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             return;
         }
         setSavingTask(true);
-        const { addLeadTaskAction } = await crmActionsPromise;
         const result = await addLeadTaskAction({
             leadId: lead.id,
             title,
@@ -588,7 +591,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
 
     const handleToggleTask = async (taskId: string, completed: boolean) => {
         if (!lead?.id) return;
-        const { toggleLeadTaskAction } = await crmActionsPromise;
         const result = await toggleLeadTaskAction({
             leadId: lead.id,
             taskId,
@@ -625,7 +627,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         setLocalIntentScore(newScore); // optimistic
         setUpdatingScore(true);
         try {
-            const { updateLeadIntentScoreAction } = await crmActionsPromise;
             const result = await updateLeadIntentScoreAction({ leadId: lead.id, intentScore: newScore });
             if (!result.success) {
                 setLocalIntentScore(previousScore); // revert
@@ -1277,7 +1278,6 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                         onClick={async () => {
                                             setEditSaving(true);
                                             try {
-                                                const { updateLeadAction } = await crmActionsPromise;
                                                 const res = await updateLeadAction({ leadId: lead.id, ...editForm });
                                                 if (res.success) {
                                                     setIsEditing(false);
