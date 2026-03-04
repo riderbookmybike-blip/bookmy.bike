@@ -127,9 +127,13 @@ export interface InvStock {
     chassis_number: string;
     engine_number: string;
     battery_make: string | null;
+    battery_type: string | null;
+    battery_number: string | null;
+    manufacturing_date: string | null;
     media_chassis_url: string;
     media_engine_url: string;
     media_sticker_url: string | null;
+    media_vehicle_url: string | null;
     media_damage_urls: string[] | null;
     media_qc_video_url: string;
     qc_status: InvQcStatus;
@@ -197,9 +201,13 @@ export interface ReceiveStockInput {
     chassis_number: string;
     engine_number: string;
     battery_make?: string;
+    battery_type?: string;
+    battery_number?: string;
+    manufacturing_date?: string; // ISO date string YYYY-MM-DD
     media_chassis_url: string;
     media_engine_url: string;
     media_sticker_url?: string;
+    media_vehicle_url?: string;
     media_qc_video_url: string;
     qc_notes?: string;
 }

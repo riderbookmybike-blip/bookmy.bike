@@ -468,11 +468,16 @@ export default function RequisitionDetailPage() {
     const [grnChassisNumber, setGrnChassisNumber] = useState('');
     const [grnEngineNumber, setGrnEngineNumber] = useState('');
     const [grnBatteryMake, setGrnBatteryMake] = useState('');
+    const [grnBatteryType, setGrnBatteryType] = useState('');
+    const [grnBatteryNumber, setGrnBatteryNumber] = useState('');
+    const [grnMfgDate, setGrnMfgDate] = useState('');
     const [grnQcNotes, setGrnQcNotes] = useState('');
     const [grnChassisMedia, setGrnChassisMedia] = useState('');
     const [grnEngineMedia, setGrnEngineMedia] = useState('');
     const [grnStickerMedia, setGrnStickerMedia] = useState('');
+    const [grnVehicleMedia, setGrnVehicleMedia] = useState('');
     const [grnVideoMedia, setGrnVideoMedia] = useState('');
+    const [skuBatteryType, setSkuBatteryType] = useState<string | null>(null);
     const [isSubmittingGrn, setIsSubmittingGrn] = useState(false);
 
     const fetchRequestDetail = useCallback(async () => {
@@ -767,6 +772,24 @@ export default function RequisitionDetailPage() {
         };
         hydrateWarehouses();
     }, [request?.tenant_id]);
+
+    // Fetch SKU battery spec for GRN auto-populate
+    useEffect(() => {
+        if (!request?.sku_id) return;
+        (async () => {
+            try {
+                const { getSkuBatterySpec } = await import('@/actions/inventory');
+                const result = await getSkuBatterySpec(request.sku_id!);
+                const spec = result.data as { battery_type?: string | null } | null;
+                if (result.success && spec?.battery_type) {
+                    setSkuBatteryType(spec.battery_type);
+                    setGrnBatteryType(spec.battery_type);
+                }
+            } catch {
+                /* silent */
+            }
+        })();
+    }, [request?.sku_id]);
 
     // Fetch supplier's warehouses from their id_locations
     useEffect(() => {
@@ -3303,20 +3326,88 @@ export default function RequisitionDetailPage() {
                                 />
                             </div>
 
+                            {/* Battery Make — branded dropdown */}
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                     Battery Make{' '}
                                     <span className="normal-case font-bold text-slate-300">(optional)</span>
                                 </p>
-                                <input
-                                    type="text"
+                                <select
                                     value={grnBatteryMake}
                                     onChange={e => setGrnBatteryMake(e.target.value)}
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                >
+                                    <option value="">Select brand</option>
+                                    {[
+                                        'Exide',
+                                        'Amaron',
+                                        'SF Sonic',
+                                        'Okaya',
+                                        'Luminous',
+                                        'Rocket',
+                                        'Yuasa',
+                                        'Panasonic',
+                                        'Bosch',
+                                        'Livguard',
+                                        'Zipp',
+                                        'Eastman',
+                                    ].map(b => (
+                                        <option key={b} value={b}>
+                                            {b}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Battery Type — auto-filled from SKU spec */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Battery Type
+                                    {skuBatteryType && (
+                                        <span className="ml-1 normal-case font-bold text-emerald-500">
+                                            (from SKU spec)
+                                        </span>
+                                    )}
+                                </p>
+                                <input
+                                    type="text"
+                                    value={grnBatteryType}
+                                    onChange={e => setGrnBatteryType(e.target.value)}
+                                    placeholder="e.g. VRLA, Li-ion, AGM"
                                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                 />
                             </div>
 
+                            {/* Battery Number */}
                             <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Battery Number{' '}
+                                    <span className="normal-case font-bold text-slate-300">(optional)</span>
+                                </p>
+                                <input
+                                    type="text"
+                                    value={grnBatteryNumber}
+                                    onChange={e => setGrnBatteryNumber(e.target.value.toUpperCase())}
+                                    placeholder="Battery serial / stamp"
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                />
+                            </div>
+
+                            {/* Manufacturing Date */}
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Manufacturing Date
+                                </p>
+                                <input
+                                    type="month"
+                                    value={grnMfgDate}
+                                    onChange={e => setGrnMfgDate(e.target.value)}
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                />
+                            </div>
+
+                            {/* QC Notes — full width */}
+                            <div className="md:col-span-2">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                     QC Notes <span className="normal-case font-bold text-slate-300">(optional)</span>
                                 </p>
@@ -3328,44 +3419,68 @@ export default function RequisitionDetailPage() {
                                 />
                             </div>
 
+                            {/* Photo/Video divider */}
+                            <div className="md:col-span-2 pt-2 border-t border-slate-100 dark:border-white/10">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    Photo / Video URLs
+                                </p>
+                            </div>
+
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Chassis Photo URL
+                                    Chassis Image URL
                                 </p>
                                 <input
                                     type="url"
                                     value={grnChassisMedia}
                                     onChange={e => setGrnChassisMedia(e.target.value)}
+                                    placeholder="https://"
                                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                 />
                             </div>
 
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Engine Photo URL
+                                    Engine Image URL
                                 </p>
                                 <input
                                     type="url"
                                     value={grnEngineMedia}
                                     onChange={e => setGrnEngineMedia(e.target.value)}
+                                    placeholder="https://"
                                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                 />
                             </div>
 
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Sticker Photo URL{' '}
+                                    Sticker Image URL{' '}
                                     <span className="normal-case font-bold text-slate-300">(optional)</span>
                                 </p>
                                 <input
                                     type="url"
                                     value={grnStickerMedia}
                                     onChange={e => setGrnStickerMedia(e.target.value)}
+                                    placeholder="https://"
                                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                 />
                             </div>
 
                             <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Vehicle Image URL{' '}
+                                    <span className="normal-case font-bold text-slate-300">(optional)</span>
+                                </p>
+                                <input
+                                    type="url"
+                                    value={grnVehicleMedia}
+                                    onChange={e => setGrnVehicleMedia(e.target.value)}
+                                    placeholder="https://"
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                />
+                            </div>
+
+                            <div className="md:col-span-2">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                     QC Video URL
                                 </p>
@@ -3373,6 +3488,7 @@ export default function RequisitionDetailPage() {
                                     type="url"
                                     value={grnVideoMedia}
                                     onChange={e => setGrnVideoMedia(e.target.value)}
+                                    placeholder="https://"
                                     className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                 />
                             </div>
@@ -3423,9 +3539,13 @@ export default function RequisitionDetailPage() {
                                             chassis_number: effectiveChassis.toUpperCase(),
                                             engine_number: effectiveEngine.toUpperCase(),
                                             battery_make: grnBatteryMake.trim() || undefined,
+                                            battery_type: grnBatteryType.trim() || undefined,
+                                            battery_number: grnBatteryNumber.trim() || undefined,
+                                            manufacturing_date: grnMfgDate || undefined,
                                             media_chassis_url: grnChassisMedia.trim(),
                                             media_engine_url: grnEngineMedia.trim(),
                                             media_sticker_url: grnStickerMedia.trim() || undefined,
+                                            media_vehicle_url: grnVehicleMedia.trim() || undefined,
                                             media_qc_video_url: grnVideoMedia.trim(),
                                             qc_notes: grnQcNotes.trim() || undefined,
                                         });

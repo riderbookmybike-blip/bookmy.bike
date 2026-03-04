@@ -1271,9 +1271,13 @@ export async function receiveStock(input: ReceiveStockInput): Promise<ActionResu
                 chassis_number: input.chassis_number,
                 engine_number: input.engine_number,
                 battery_make: input.battery_make || null,
+                battery_type: input.battery_type || null,
+                battery_number: input.battery_number || null,
+                manufacturing_date: input.manufacturing_date || null,
                 media_chassis_url: input.media_chassis_url,
                 media_engine_url: input.media_engine_url,
                 media_sticker_url: input.media_sticker_url || null,
+                media_vehicle_url: input.media_vehicle_url || null,
                 media_qc_video_url: input.media_qc_video_url,
                 qc_status: 'PASSED',
                 qc_notes: input.qc_notes || null,
@@ -1326,6 +1330,21 @@ export async function receiveStock(input: ReceiveStockInput): Promise<ActionResu
 
         revalidatePath('/dashboard/inventory');
         return { success: true, data: stock, message: `Stock ${stock.chassis_number} received` };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
+    }
+}
+
+// Fetch battery_type from cat_sku_specs for a given SKU (used by inline GRN form)
+export async function getSkuBatterySpec(skuId: string): Promise<ActionResult> {
+    try {
+        const { data, error } = await adminClient
+            .from('cat_sku_specs')
+            .select('battery_type, battery_capacity')
+            .eq('sku_id', skuId)
+            .maybeSingle();
+        if (error) return { success: false, message: error.message };
+        return { success: true, data };
     } catch (err: unknown) {
         return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
