@@ -3203,13 +3203,6 @@ export default function RequisitionDetailPage() {
                 </>
             )}
 
-            {request.status === 'ORDERED' && primaryPo?.po_status !== 'RECEIVED' && (
-                <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide flex items-center gap-2">
-                    <Clock size={14} />
-                    To move requisition to RECEIVED, complete stock receipt (GRN) from the linked purchase order.
-                </div>
-            )}
-
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <button
