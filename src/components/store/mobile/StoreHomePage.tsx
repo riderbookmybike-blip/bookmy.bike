@@ -218,7 +218,7 @@ export function StoreHomePage({
             ══════════════════════════════════════════════ */}
             <section
                 ref={heroRef}
-                className="relative min-h-[100svh] xl:min-h-0 xl:aspect-video 2xl:aspect-[16/9] xl:mt-16 flex flex-col justify-end md:justify-center md:items-center overflow-hidden"
+                className="relative min-h-[100svh] 2xl:min-h-0 2xl:aspect-[16/9] 2xl:mt-16 flex flex-col justify-end md:justify-center md:items-center overflow-hidden"
             >
                 {/* Parallax Background */}
                 <motion.div className="absolute inset-0" style={{ scale: heroScale, opacity: heroOpacity }}>
