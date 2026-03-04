@@ -1779,3 +1779,50 @@ export async function cancelRequest(requestId: string): Promise<ActionResult> {
         return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
     }
 }
+
+// ── Amend GRN — update an already-received inv_stock row ────────────────────
+export async function amendStockGrn(input: {
+    stock_id: string;
+    key_number?: string;
+    battery_make?: string;
+    battery_type?: string;
+    battery_number?: string;
+    manufacturing_date?: string;
+    qc_notes?: string;
+    media_gallery?: Array<{ url: string; purpose: string; isVideo: boolean }>;
+}): Promise<ActionResult> {
+    try {
+        const user = await getAuthUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+
+        const patch: Record<string, unknown> = {
+            updated_at: new Date().toISOString(),
+        };
+        if (input.key_number !== undefined) patch.key_number = input.key_number || null;
+        if (input.battery_make !== undefined) patch.battery_make = input.battery_make || null;
+        if (input.battery_type !== undefined) patch.battery_type = input.battery_type || null;
+        if (input.battery_number !== undefined) patch.battery_number = input.battery_number || null;
+        if (input.manufacturing_date !== undefined) patch.manufacturing_date = input.manufacturing_date || null;
+        if (input.qc_notes !== undefined) patch.qc_notes = input.qc_notes || null;
+        if (input.media_gallery !== undefined) patch.media_gallery = input.media_gallery;
+
+        // Also set specific purpose columns from gallery (for backwards compatibility)
+        if (input.media_gallery) {
+            const find = (p: string) => input.media_gallery!.find(m => m.purpose === p)?.url || null;
+            patch.media_chassis_url = find('chassis');
+            patch.media_engine_url = find('engine');
+            patch.media_sticker_url = find('sticker');
+            patch.media_vehicle_url = find('vehicle');
+            patch.media_qc_video_url = find('qc_video');
+        }
+
+        const { error } = await adminClient.from('inv_stock').update(patch).eq('id', input.stock_id);
+
+        if (error) return { success: false, message: error.message };
+
+        revalidatePath('/dashboard/inventory');
+        return { success: true, message: 'GRN updated successfully' };
+    } catch (err: unknown) {
+        return { success: false, message: err instanceof Error ? getErrorMessage(err) : 'Unknown error' };
+    }
+}

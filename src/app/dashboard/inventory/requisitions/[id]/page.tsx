@@ -570,6 +570,16 @@ export default function RequisitionDetailPage() {
     const [isSubmittingGrn, setIsSubmittingGrn] = useState(false);
     // Received stock snapshot (shown after GRN is saved)
     const [receivedStock, setReceivedStock] = useState<Record<string, unknown> | null>(null);
+    // GRN Amend mode
+    const [amendMode, setAmendMode] = useState(false);
+    const [amendKeyNumber, setAmendKeyNumber] = useState('');
+    const [amendBatteryMake, setAmendBatteryMake] = useState('');
+    const [amendBatteryType, setAmendBatteryType] = useState('');
+    const [amendBatteryNumber, setAmendBatteryNumber] = useState('');
+    const [amendMfgDate, setAmendMfgDate] = useState('');
+    const [amendQcNotes, setAmendQcNotes] = useState('');
+    const [amendMediaItems, setAmendMediaItems] = useState<GrnMediaItem[]>([]);
+    const [isAmending, setIsAmending] = useState(false);
 
     const fetchRequestDetail = useCallback(async () => {
         if (!requestId) {
@@ -3359,9 +3369,30 @@ export default function RequisitionDetailPage() {
                                     {formatTripletId(primaryPo.display_id || primaryPo.id)}
                                 </p>
                             </div>
-                            <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
-                                ✓ Received
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
+                                    ✓ Received
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAmendMode(m => !m);
+                                        // Pre-fill from existing data
+                                        setAmendKeyNumber((receivedStock as any).key_number || '');
+                                        setAmendBatteryMake((receivedStock as any).battery_make || '');
+                                        setAmendBatteryType((receivedStock as any).battery_type || '');
+                                        setAmendBatteryNumber((receivedStock as any).battery_number || '');
+                                        setAmendMfgDate((receivedStock as any).manufacturing_date || '');
+                                        setAmendQcNotes((receivedStock as any).qc_notes || '');
+                                        setAmendMediaItems(
+                                            ((receivedStock as any).media_gallery as GrnMediaItem[]) || []
+                                        );
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 transition-colors"
+                                >
+                                    {amendMode ? 'Cancel' : '✏ Amend'}
+                                </button>
+                            </div>
                         </div>
 
                         {/* Details grid */}
@@ -3388,6 +3419,163 @@ export default function RequisitionDetailPage() {
                                     </div>
                                 ))}
                         </div>
+
+                        {/* ── Amend GRN form panel ── */}
+                        {amendMode && (
+                            <div className="mx-5 mb-4 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-900/10 p-4 space-y-4">
+                                <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">
+                                    ✏ Amend GRN Details
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {/* Key Number */}
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                            Key Number
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={amendKeyNumber}
+                                            onChange={e =>
+                                                setAmendKeyNumber(
+                                                    e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()
+                                                )
+                                            }
+                                            placeholder="e.g. K-1234"
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-200 uppercase"
+                                        />
+                                    </div>
+                                    {/* Battery Make */}
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                            Battery Make
+                                        </p>
+                                        <select
+                                            value={amendBatteryMake}
+                                            onChange={e => setAmendBatteryMake(e.target.value)}
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-200"
+                                        >
+                                            <option value="">Select brand</option>
+                                            {[
+                                                'Exide',
+                                                'Amara Raja (Amaron)',
+                                                'Luminous',
+                                                'Livguard',
+                                                'SF Sonic',
+                                                'Su-Kam',
+                                                'Tata Green',
+                                                'Bass',
+                                                'Okaya',
+                                                'Rocket',
+                                                'Other',
+                                            ].map(b => (
+                                                <option key={b} value={b}>
+                                                    {b}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {/* Battery Type */}
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                            Battery Type
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={amendBatteryType}
+                                            onChange={e => setAmendBatteryType(e.target.value)}
+                                            placeholder="e.g. VRLA, Li-ion, AGM"
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-200"
+                                        />
+                                    </div>
+                                    {/* Battery Number */}
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                            Battery Number
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={amendBatteryNumber}
+                                            onChange={e =>
+                                                setAmendBatteryNumber(
+                                                    e.target.value.replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase()
+                                                )
+                                            }
+                                            placeholder="Battery serial / stamp"
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-200 uppercase"
+                                        />
+                                    </div>
+                                    {/* Mfg Date — compact */}
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                            Mfg. Date
+                                        </p>
+                                        <input
+                                            type="date"
+                                            value={amendMfgDate}
+                                            onChange={e => setAmendMfgDate(e.target.value)}
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-200"
+                                        />
+                                    </div>
+                                    {/* QC Notes */}
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                            QC Notes
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={amendQcNotes}
+                                            onChange={e => setAmendQcNotes(e.target.value)}
+                                            placeholder="Any remarks"
+                                            className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-200"
+                                        />
+                                    </div>
+                                </div>
+                                {/* Media upload */}
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                        Media Assets
+                                    </p>
+                                    <GrnMediaGallery
+                                        entityId={(receivedStock as any).id}
+                                        items={amendMediaItems}
+                                        onChange={setAmendMediaItems}
+                                    />
+                                </div>
+                                {/* Save */}
+                                <button
+                                    type="button"
+                                    disabled={isAmending}
+                                    onClick={async () => {
+                                        setIsAmending(true);
+                                        try {
+                                            const { amendStockGrn } = await import('@/actions/inventory');
+                                            const result = await amendStockGrn({
+                                                stock_id: (receivedStock as any).id,
+                                                key_number: amendKeyNumber || undefined,
+                                                battery_make: amendBatteryMake || undefined,
+                                                battery_type: amendBatteryType || undefined,
+                                                battery_number: amendBatteryNumber || undefined,
+                                                manufacturing_date: amendMfgDate || undefined,
+                                                qc_notes: amendQcNotes || undefined,
+                                                media_gallery: amendMediaItems,
+                                            });
+                                            if (result.success) {
+                                                toast.success('GRN updated');
+                                                setAmendMode(false);
+                                                await fetchRequestDetail();
+                                            } else {
+                                                toast.error(result.message || 'Failed');
+                                            }
+                                        } finally {
+                                            setIsAmending(false);
+                                        }
+                                    }}
+                                    className="w-full h-10 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-[11px] font-black uppercase tracking-widest text-white transition-all inline-flex items-center justify-center gap-2"
+                                >
+                                    {isAmending ? 'Saving...' : '✓ Save Amendments'}
+                                </button>
+                            </div>
+                        )}
 
                         {/* Media thumbnails — from media_gallery (includes all purposes) */}
                         {(() => {
