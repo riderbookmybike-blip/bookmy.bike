@@ -463,6 +463,18 @@ export default function RequisitionDetailPage() {
         }>
     >([]);
 
+    // GRN (Receiving) inline form state
+    const [grnBranchId, setGrnBranchId] = useState('');
+    const [grnChassisNumber, setGrnChassisNumber] = useState('');
+    const [grnEngineNumber, setGrnEngineNumber] = useState('');
+    const [grnBatteryMake, setGrnBatteryMake] = useState('');
+    const [grnQcNotes, setGrnQcNotes] = useState('');
+    const [grnChassisMedia, setGrnChassisMedia] = useState('');
+    const [grnEngineMedia, setGrnEngineMedia] = useState('');
+    const [grnStickerMedia, setGrnStickerMedia] = useState('');
+    const [grnVideoMedia, setGrnVideoMedia] = useState('');
+    const [isSubmittingGrn, setIsSubmittingGrn] = useState(false);
+
     const fetchRequestDetail = useCallback(async () => {
         if (!requestId) {
             setError('Invalid requisition ID');
@@ -3206,19 +3218,235 @@ export default function RequisitionDetailPage() {
                                                 {isMovingDispatch ? 'Updating...' : 'Mark as Shipped'}
                                             </button>
                                         )}
-                                        {primaryPo.po_status === 'SHIPPED' && (
-                                            <button
-                                                type="button"
-                                                onClick={() => router.push(`${ordersBasePath}/${primaryPo.id}/grn`)}
-                                                className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[10px] font-black uppercase tracking-wider text-white transition-all inline-flex items-center gap-1.5"
-                                            >
-                                                <PackageCheck size={12} />
-                                                Receive Stock (GRN)
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
                             )}
+                    </div>
+                </>
+            )}
+
+            {/* ── INLINE GRN / RECEIVING SECTION ── */}
+            {primaryPo && primaryPo.po_status === 'SHIPPED' && request && (
+                <>
+                    <p className="px-1 text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                        Receive Stock
+                    </p>
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                        {/* Header */}
+                        <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    GRN Ref
+                                </p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                    {formatTripletId(primaryPo.display_id || primaryPo.id)}
+                                </p>
+                            </div>
+                            <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Ready to Receive
+                            </span>
+                        </div>
+
+                        {/* Fields grid */}
+                        <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                            <div className="md:col-span-2">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Receiving Branch
+                                </p>
+                                <select
+                                    value={grnBranchId || dispatchDetails.warehouseId}
+                                    onChange={e => setGrnBranchId(e.target.value)}
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                >
+                                    <option value="">Select branch</option>
+                                    {warehouseOptions.map(w => (
+                                        <option key={w.id} value={w.id}>
+                                            {w.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Chassis Number
+                                </p>
+                                <input
+                                    type="text"
+                                    value={
+                                        grnChassisNumber ||
+                                        (dispatchDetails.chassisNumber !== 'NA' ? dispatchDetails.chassisNumber : '')
+                                    }
+                                    placeholder="Full VIN or min 5 digits"
+                                    onChange={e =>
+                                        setGrnChassisNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())
+                                    }
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                />
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Engine Number
+                                </p>
+                                <input
+                                    type="text"
+                                    value={
+                                        grnEngineNumber ||
+                                        (dispatchDetails.engineNumber !== 'NA' ? dispatchDetails.engineNumber : '')
+                                    }
+                                    placeholder="Full engine no. or min 5 digits"
+                                    onChange={e =>
+                                        setGrnEngineNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())
+                                    }
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200 uppercase"
+                                />
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Battery Make{' '}
+                                    <span className="normal-case font-bold text-slate-300">(optional)</span>
+                                </p>
+                                <input
+                                    type="text"
+                                    value={grnBatteryMake}
+                                    onChange={e => setGrnBatteryMake(e.target.value)}
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                />
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    QC Notes <span className="normal-case font-bold text-slate-300">(optional)</span>
+                                </p>
+                                <input
+                                    type="text"
+                                    value={grnQcNotes}
+                                    onChange={e => setGrnQcNotes(e.target.value)}
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                />
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Chassis Photo URL
+                                </p>
+                                <input
+                                    type="url"
+                                    value={grnChassisMedia}
+                                    onChange={e => setGrnChassisMedia(e.target.value)}
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                />
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Engine Photo URL
+                                </p>
+                                <input
+                                    type="url"
+                                    value={grnEngineMedia}
+                                    onChange={e => setGrnEngineMedia(e.target.value)}
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                />
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    Sticker Photo URL{' '}
+                                    <span className="normal-case font-bold text-slate-300">(optional)</span>
+                                </p>
+                                <input
+                                    type="url"
+                                    value={grnStickerMedia}
+                                    onChange={e => setGrnStickerMedia(e.target.value)}
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                />
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    QC Video URL
+                                </p>
+                                <input
+                                    type="url"
+                                    value={grnVideoMedia}
+                                    onChange={e => setGrnVideoMedia(e.target.value)}
+                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Submit footer */}
+                        <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                Vehicle details locked after receiving
+                            </p>
+                            <button
+                                type="button"
+                                disabled={isSubmittingGrn}
+                                onClick={async () => {
+                                    const effectiveBranch = grnBranchId || dispatchDetails.warehouseId;
+                                    const effectiveChassis = (
+                                        grnChassisNumber ||
+                                        (dispatchDetails.chassisNumber !== 'NA' ? dispatchDetails.chassisNumber : '')
+                                    ).trim();
+                                    const effectiveEngine = (
+                                        grnEngineNumber ||
+                                        (dispatchDetails.engineNumber !== 'NA' ? dispatchDetails.engineNumber : '')
+                                    ).trim();
+                                    if (!effectiveBranch) {
+                                        toast.error('Select receiving branch');
+                                        return;
+                                    }
+                                    if (!effectiveChassis || effectiveChassis.length < 5) {
+                                        toast.error('Chassis number must be at least 5 characters');
+                                        return;
+                                    }
+                                    if (!effectiveEngine || effectiveEngine.length < 5) {
+                                        toast.error('Engine number must be at least 5 characters');
+                                        return;
+                                    }
+                                    if (!grnChassisMedia.trim() || !grnEngineMedia.trim() || !grnVideoMedia.trim()) {
+                                        toast.error('Chassis photo, engine photo and QC video URLs are mandatory');
+                                        return;
+                                    }
+                                    setIsSubmittingGrn(true);
+                                    try {
+                                        const { receiveStock } = await import('@/actions/inventory');
+                                        const result = await receiveStock({
+                                            po_id: primaryPo.id,
+                                            tenant_id: request.tenant_id ?? '',
+                                            sku_id: request.sku_id ?? '',
+                                            branch_id: effectiveBranch,
+                                            chassis_number: effectiveChassis.toUpperCase(),
+                                            engine_number: effectiveEngine.toUpperCase(),
+                                            battery_make: grnBatteryMake.trim() || undefined,
+                                            media_chassis_url: grnChassisMedia.trim(),
+                                            media_engine_url: grnEngineMedia.trim(),
+                                            media_sticker_url: grnStickerMedia.trim() || undefined,
+                                            media_qc_video_url: grnVideoMedia.trim(),
+                                            qc_notes: grnQcNotes.trim() || undefined,
+                                        });
+                                        if (!result.success) {
+                                            toast.error(result.message || 'Failed to receive stock');
+                                            return;
+                                        }
+                                        toast.success('Stock received successfully');
+                                        fetchRequestDetail();
+                                    } catch (err: unknown) {
+                                        toast.error(err instanceof Error ? err.message : 'Failed to receive stock');
+                                    } finally {
+                                        setIsSubmittingGrn(false);
+                                    }
+                                }}
+                                className="h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
+                            >
+                                <PackageCheck size={12} />
+                                {isSubmittingGrn ? 'Receiving...' : 'Mark as Received'}
+                            </button>
+                        </div>
                     </div>
                 </>
             )}
