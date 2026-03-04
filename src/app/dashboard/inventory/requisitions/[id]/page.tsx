@@ -572,6 +572,13 @@ export default function RequisitionDetailPage() {
     const [receivedStock, setReceivedStock] = useState<Record<string, unknown> | null>(null);
     // GRN Amend mode — pre-filled from receivedStock, toggled by Edit button
     const [grnEditMode, setGrnEditMode] = useState(false);
+    const [activeGrnImg, setActiveGrnImg] = useState<{
+        url: string;
+        purpose: string;
+        isVideo: boolean;
+        idx: number;
+    } | null>(null);
+
     const [amendChassisNumber, setAmendChassisNumber] = useState('');
     const [amendEngineNumber, setAmendEngineNumber] = useState('');
     const [amendKeyNumber, setAmendKeyNumber] = useState('');
@@ -3450,7 +3457,7 @@ export default function RequisitionDetailPage() {
                                     )}
                                 </div>
 
-                                {/* Media thumbs — read-only */}
+                                {/* Media thumbs — inline expand on click */}
                                 {(() => {
                                     const gallery: Array<{ url: string; purpose: string; isVideo: boolean }> = (
                                         receivedStock as any
@@ -3495,7 +3502,15 @@ export default function RequisitionDetailPage() {
                                         sticker: 'Sticker',
                                         vehicle: 'Vehicle',
                                         qc_video: 'QC Video',
+                                        battery_number: 'Battery No.',
+                                        odometer: 'Odometer',
                                         other: 'Other',
+                                    };
+                                    const active = activeGrnImg;
+                                    const go = (delta: number) => {
+                                        if (!active) return;
+                                        const next = (active.idx + delta + gallery.length) % gallery.length;
+                                        setActiveGrnImg({ ...gallery[next], idx: next });
                                     };
                                     return (
                                         <div className="mt-4">
@@ -3503,14 +3518,78 @@ export default function RequisitionDetailPage() {
                                                 Media Assets{' '}
                                                 <span className="normal-case font-semibold">({gallery.length})</span>
                                             </p>
-                                            <div className="flex flex-wrap gap-2">
+
+                                            {/* Inline expanded view */}
+                                            {active && (
+                                                <div
+                                                    className="mb-3 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-950 relative"
+                                                    style={{ aspectRatio: '16/9' }}
+                                                >
+                                                    {active.isVideo ? (
+                                                        <video
+                                                            src={active.url}
+                                                            controls
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    ) : (
+                                                        <img
+                                                            src={active.url}
+                                                            alt={active.purpose}
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    )}
+                                                    {/* Label */}
+                                                    <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">
+                                                        {PLABELS[active.purpose] ?? active.purpose}
+                                                        <span className="ml-2 font-normal opacity-60">
+                                                            {active.idx + 1}/{gallery.length}
+                                                        </span>
+                                                    </div>
+                                                    {/* Close */}
+                                                    <button
+                                                        onClick={() => setActiveGrnImg(null)}
+                                                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/80 text-white text-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                    {/* Prev / Next — only if >1 */}
+                                                    {gallery.length > 1 && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => go(-1)}
+                                                                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900/70 text-white flex items-center justify-center hover:bg-slate-700 transition-colors text-sm"
+                                                            >
+                                                                ‹
+                                                            </button>
+                                                            <button
+                                                                onClick={() => go(1)}
+                                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900/70 text-white flex items-center justify-center hover:bg-slate-700 transition-colors text-sm"
+                                                            >
+                                                                ›
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Thumbnail strip — full width grid */}
+                                            <div
+                                                className="grid gap-1.5"
+                                                style={{
+                                                    gridTemplateColumns: `repeat(${Math.min(gallery.length, 8)}, 1fr)`,
+                                                }}
+                                            >
                                                 {gallery.map((m, gi) => (
-                                                    <a
+                                                    <button
                                                         key={gi}
-                                                        href={m.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="group relative w-24 h-24 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-white/10 block flex-shrink-0"
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setActiveGrnImg(
+                                                                active?.idx === gi ? null : { ...m, idx: gi }
+                                                            )
+                                                        }
+                                                        className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-150 ${active?.idx === gi ? 'border-emerald-400 ring-2 ring-emerald-300' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300'}`}
+                                                        style={{ aspectRatio: '1 / 1' }}
                                                     >
                                                         {m.isVideo ? (
                                                             <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
@@ -3526,10 +3605,10 @@ export default function RequisitionDetailPage() {
                                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                                             />
                                                         )}
-                                                        <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[7px] font-black text-center py-0.5 uppercase tracking-wide">
+                                                        <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[7px] font-black text-center py-0.5 uppercase tracking-wide truncate px-1">
                                                             {PLABELS[m.purpose] ?? m.purpose}
                                                         </div>
-                                                    </a>
+                                                    </button>
                                                 ))}
                                             </div>
                                         </div>

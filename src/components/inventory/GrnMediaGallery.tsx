@@ -20,7 +20,15 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
-export type MediaPurpose = 'chassis' | 'engine' | 'sticker' | 'vehicle' | 'qc_video' | 'other';
+export type MediaPurpose =
+    | 'chassis'
+    | 'engine'
+    | 'sticker'
+    | 'vehicle'
+    | 'qc_video'
+    | 'battery_number'
+    | 'odometer'
+    | 'other';
 
 export interface GrnMediaItem {
     url: string;
@@ -40,9 +48,20 @@ const PURPOSE_LABELS: Record<MediaPurpose, string> = {
     sticker: 'Sticker',
     vehicle: 'Vehicle',
     qc_video: 'QC Video',
+    battery_number: 'Battery No.',
+    odometer: 'Odometer',
     other: 'Other',
 };
-const PURPOSE_OPTS: MediaPurpose[] = ['chassis', 'engine', 'sticker', 'vehicle', 'qc_video', 'other'];
+const PURPOSE_OPTS: MediaPurpose[] = [
+    'chassis',
+    'engine',
+    'sticker',
+    'vehicle',
+    'qc_video',
+    'battery_number',
+    'odometer',
+    'other',
+];
 
 function centerAspectCrop(w: number, h: number, aspect: number): Crop {
     return centerCrop(makeAspectCrop({ unit: '%', width: 90 }, aspect, w, h), w, h);
