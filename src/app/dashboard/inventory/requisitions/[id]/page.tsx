@@ -2050,23 +2050,20 @@ export default function RequisitionDetailPage() {
                     {existingQuoteSummaries.map(summary => (
                         <div
                             key={summary.id}
-                            className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 px-4 py-3 flex items-center justify-between gap-3"
+                            className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden"
                         >
-                            <div>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                    Quote Ref: {formatTripletId(summary.displayId || summary.id)}
-                                </p>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                    Supplier
-                                </p>
-                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                    {summary.dealerName}
-                                </p>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-1">
-                                    {summary.items.length ? summary.items.join(', ') : 'Items mapped'}
-                                </p>
-                                <p
-                                    className={`inline-flex items-center rounded-md px-2 py-0.5 mt-1 text-[9px] font-black uppercase tracking-wider ${
+                            {/* Header row: Quote Ref left, status badge right */}
+                            <div className="px-4 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        Quote Ref
+                                    </p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                        {formatTripletId(summary.displayId || summary.id)}
+                                    </p>
+                                </div>
+                                <span
+                                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
                                         summary.status === 'SELECTED'
                                             ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                                             : summary.status === 'REJECTED'
@@ -2079,38 +2076,52 @@ export default function RequisitionDetailPage() {
                                         : summary.status === 'REJECTED'
                                           ? 'Superseded'
                                           : 'Submitted'}
-                                </p>
+                                </span>
                             </div>
-                            <div className="text-right">
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">
-                                    Offer Price
-                                </p>
-                                <p className="text-lg font-black text-emerald-700 dark:text-emerald-200">
-                                    {formatCurrency(summary.total)}
-                                </p>
-                                {summary.id === bestOfferQuoteId && (
-                                    <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
-                                        Best Offer
+                            {/* Body */}
+                            <div className="px-4 py-3 flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                        Supplier
                                     </p>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSelectedDealer(summary.dealerTenantId);
-                                        setIsCreatingNewQuote(false);
-                                        if (summary.status === 'SELECTED') {
-                                            setShowQuoteEditor(false);
-                                            setShowPurchaseOrders(true);
-                                        } else {
-                                            setShowQuoteSection(true);
-                                            setShowQuoteEditor(true);
-                                        }
-                                    }}
-                                    className="mt-1 inline-flex items-center justify-center h-7 w-7 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
-                                    title="Expand quote"
-                                >
-                                    <ChevronRight size={14} />
-                                </button>
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {summary.dealerName}
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-1">
+                                        {summary.items.length ? summary.items.join(', ') : 'Items mapped'}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">
+                                        Offer Price
+                                    </p>
+                                    <p className="text-lg font-black text-emerald-700 dark:text-emerald-200">
+                                        {formatCurrency(summary.total)}
+                                    </p>
+                                    {summary.id === bestOfferQuoteId && (
+                                        <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+                                            Best Offer
+                                        </p>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedDealer(summary.dealerTenantId);
+                                            setIsCreatingNewQuote(false);
+                                            if (summary.status === 'SELECTED') {
+                                                setShowQuoteEditor(false);
+                                                setShowPurchaseOrders(true);
+                                            } else {
+                                                setShowQuoteSection(true);
+                                                setShowQuoteEditor(true);
+                                            }
+                                        }}
+                                        className="mt-1 inline-flex items-center justify-center h-7 w-7 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"
+                                        title="Expand quote"
+                                    >
+                                        <ChevronRight size={14} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -2664,12 +2675,35 @@ export default function RequisitionDetailPage() {
                         Purchase Order
                     </p>
                     <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
-                        <div className="px-4 py-3 flex items-center justify-between gap-3">
+                        {/* Header row: PO Ref left, PO status badge right */}
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5">
                             <div>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                    PO Ref:{' '}
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">PO Ref</p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
                                     {formatTripletId(primaryPo?.display_id || primaryPo?.id || selectedQuote.id)}
                                 </p>
+                            </div>
+                            <span
+                                className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                    poStatusLabel === 'Issued'
+                                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                        : poStatusLabel === 'In Review'
+                                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                          : primaryPo?.po_status === 'SENT'
+                                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                            : primaryPo?.po_status === 'SHIPPED'
+                                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                              : primaryPo?.po_status === 'RECEIVED'
+                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                }`}
+                            >
+                                {primaryPo?.po_status || poStatusLabel}
+                            </span>
+                        </div>
+                        {/* Body */}
+                        <div className="px-4 py-3 flex items-center justify-between gap-3">
+                            <div>
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                                     Supplier
                                 </p>
@@ -2678,17 +2712,6 @@ export default function RequisitionDetailPage() {
                                         quoteDealerOptions.find(option => option.id === selectedQuote.dealer_tenant_id)
                                             ?.name ||
                                         'NA'}
-                                </p>
-                                <p
-                                    className={`inline-flex items-center rounded-md px-2 py-0.5 mt-1 text-[9px] font-black uppercase tracking-wider ${
-                                        poStatusLabel === 'Issued'
-                                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                            : poStatusLabel === 'In Review'
-                                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                              : 'bg-slate-100 text-slate-700 border border-slate-200'
-                                    }`}
-                                >
-                                    {poStatusLabel}
                                 </p>
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-1">
                                     {(selectedQuote.inv_quote_line_items || [])
