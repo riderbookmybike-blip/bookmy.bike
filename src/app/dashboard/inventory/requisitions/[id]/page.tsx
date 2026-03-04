@@ -332,7 +332,7 @@ function decodeVinMfgDate(vin: string): string | null {
     //  Note: if pos-11 is not a valid month code (e.g. Yamaha plant code), falls back to Jan
     const monthChar = wmi === 'ME4' ? v[8] : v[10];
     const month = VIN_MONTH_MAP[monthChar] ?? '01';
-    return `${year}-${month}`;
+    return `${year}-${month}-01`; // day defaults to 01; user can refine
 }
 
 const formatAddonLabelFromKey = (rawKey: string) =>
@@ -3497,24 +3497,44 @@ export default function RequisitionDetailPage() {
                                 />
                             </div>
 
-                            {/* Manufacturing Date — custom Month + Year dropdowns */}
+                            {/* Manufacturing Date — Day + Month + Year */}
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                                     Manufacturing Date
                                 </p>
                                 <div className="flex gap-2">
+                                    {/* Day */}
+                                    <select
+                                        value={grnMfgDate ? grnMfgDate.split('-')[2] || '' : ''}
+                                        onChange={e => {
+                                            const parts = grnMfgDate ? grnMfgDate.split('-') : ['', '01', ''];
+                                            const yr = parts[0] || new Date().getFullYear().toString();
+                                            const mo = parts[1] || '01';
+                                            setGrnMfgDate(
+                                                e.target.value ? `${yr}-${mo}-${e.target.value}` : `${yr}-${mo}`
+                                            );
+                                        }}
+                                        className="w-16 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                    >
+                                        <option value="">DD</option>
+                                        {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(d => (
+                                            <option key={d} value={d}>
+                                                {d}
+                                            </option>
+                                        ))}
+                                    </select>
                                     {/* Month */}
                                     <select
-                                        value={grnMfgDate ? grnMfgDate.split('-')[1] : ''}
+                                        value={grnMfgDate ? grnMfgDate.split('-')[1] || '' : ''}
                                         onChange={e => {
-                                            const yr = grnMfgDate
-                                                ? grnMfgDate.split('-')[0]
-                                                : new Date().getFullYear().toString();
-                                            setGrnMfgDate(e.target.value ? `${yr}-${e.target.value}` : '');
+                                            const parts = grnMfgDate ? grnMfgDate.split('-') : ['', '', ''];
+                                            const yr = parts[0] || new Date().getFullYear().toString();
+                                            const dd = parts[2] || '01';
+                                            setGrnMfgDate(e.target.value ? `${yr}-${e.target.value}-${dd}` : '');
                                         }}
                                         className="flex-1 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                     >
-                                        <option value="">Month</option>
+                                        <option value="">Mon</option>
                                         {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(
                                             (m, i) => (
                                                 <option key={m} value={m}>
@@ -3540,10 +3560,12 @@ export default function RequisitionDetailPage() {
                                     </select>
                                     {/* Year */}
                                     <select
-                                        value={grnMfgDate ? grnMfgDate.split('-')[0] : ''}
+                                        value={grnMfgDate ? grnMfgDate.split('-')[0] || '' : ''}
                                         onChange={e => {
-                                            const mo = grnMfgDate ? grnMfgDate.split('-')[1] : '01';
-                                            setGrnMfgDate(e.target.value ? `${e.target.value}-${mo || '01'}` : '');
+                                            const parts = grnMfgDate ? grnMfgDate.split('-') : ['', '01', '01'];
+                                            const mo = parts[1] || '01';
+                                            const dd = parts[2] || '01';
+                                            setGrnMfgDate(e.target.value ? `${e.target.value}-${mo}-${dd}` : '');
                                         }}
                                         className="w-24 h-9 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-2 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
                                     >
