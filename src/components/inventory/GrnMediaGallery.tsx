@@ -12,8 +12,10 @@ import {
     Check,
     Loader2,
     Video,
-    Image as ImageIcon,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    Expand,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -40,14 +42,11 @@ const PURPOSE_LABELS: Record<MediaPurpose, string> = {
     qc_video: 'QC Video',
     other: 'Other',
 };
-
 const PURPOSE_OPTS: MediaPurpose[] = ['chassis', 'engine', 'sticker', 'vehicle', 'qc_video', 'other'];
 
 function centerAspectCrop(w: number, h: number, aspect: number): Crop {
     return centerCrop(makeAspectCrop({ unit: '%', width: 90 }, aspect, w, h), w, h);
 }
-
-// ── uploading placeholder type ──────────────────────────────────────────────
 interface Pending {
     id: string;
     name: string;
@@ -55,9 +54,29 @@ interface Pending {
 
 export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaGalleryProps) {
     const BUCKET = 'inv_assets';
-    const [pending, setPending] = useState<Pending[]>([]); // uploading placeholders
+    const [pending, setPending] = useState<Pending[]>([]);
 
-    // ── Crop/Rotate editor ─────────────────────────────────────────────────
+    // ── Lightbox ──────────────────────────────────────────────────────────
+    const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+
+    const openLightbox = (idx: number) => setLightboxIdx(idx);
+    const closeLightbox = () => setLightboxIdx(null);
+    const lightboxPrev = () => setLightboxIdx(i => (i !== null ? Math.max(0, i - 1) : null));
+    const lightboxNext = () => setLightboxIdx(i => (i !== null ? Math.min(items.length - 1, i + 1) : null));
+
+    // keyboard nav for lightbox
+    useEffect(() => {
+        if (lightboxIdx === null) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft') lightboxPrev();
+            if (e.key === 'ArrowRight') lightboxNext();
+            if (e.key === 'Escape') closeLightbox();
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [lightboxIdx]);
+
+    // ── Crop/Rotate editor ────────────────────────────────────────────────
     const [editorOpen, setEditorOpen] = useState(false);
     const [editIndex, setEditIndex] = useState<number | null>(null);
     const [srcUrl, setSrcUrl] = useState<string | null>(null);
@@ -75,36 +94,29 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
         [srcUrl]
     );
 
-    // ── Upload files ───────────────────────────────────────────────────────
+    // ── Upload ────────────────────────────────────────────────────────────
     const handleFiles = useCallback(
         async (e: React.ChangeEvent<HTMLInputElement>) => {
             const files = Array.from(e.target.files ?? []);
             if (!files.length) return;
             e.target.value = '';
-
             const supabase = createClient();
-
             const newPending: Pending[] = files.map(f => ({ id: crypto.randomUUID(), name: f.name }));
             setPending(prev => [...prev, ...newPending]);
-
             const uploaded: GrnMediaItem[] = [];
-
             await Promise.all(
                 files.map(async (file, i) => {
                     const isVid = file.type.startsWith('video/');
                     const ext = file.name.split('.').pop() || (isVid ? 'mp4' : 'jpg');
                     const path = `${entityId}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
-
                     try {
-                        const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-                            contentType: file.type,
-                            upsert: true,
-                        });
+                        const { error } = await supabase.storage
+                            .from(BUCKET)
+                            .upload(path, file, { contentType: file.type, upsert: true });
                         if (error) throw error;
                         const {
                             data: { publicUrl },
                         } = supabase.storage.from(BUCKET).getPublicUrl(path);
-                        // Guess purpose from filename for convenience
                         const name = file.name.toLowerCase();
                         let purpose: MediaPurpose = 'other';
                         if (name.includes('chassis') || name.includes('ch_')) purpose = 'chassis';
@@ -113,28 +125,23 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
                         else if (name.includes('vehicle') || name.includes('bike')) purpose = 'vehicle';
                         else if (isVid) purpose = 'qc_video';
                         uploaded.push({ url: publicUrl, purpose, isVideo: isVid });
-                    } catch (err) {
+                    } catch {
                         toast.error(`Failed: ${file.name}`);
                     } finally {
                         setPending(prev => prev.filter(p => p.id !== newPending[i].id));
                     }
                 })
             );
-
             if (uploaded.length) onChange([...items, ...uploaded]);
         },
         [entityId, items, onChange]
     );
 
-    // ── Tag a photo ────────────────────────────────────────────────────────
-    const setTag = (idx: number, purpose: MediaPurpose) => {
-        const next = items.map((it, i) => (i === idx ? { ...it, purpose } : it));
-        onChange(next);
-    };
-
+    const setTag = (idx: number, purpose: MediaPurpose) =>
+        onChange(items.map((it, i) => (i === idx ? { ...it, purpose } : it)));
     const remove = (idx: number) => onChange(items.filter((_, i) => i !== idx));
 
-    // ── Open editor for an image ───────────────────────────────────────────
+    // ── Open crop editor ──────────────────────────────────────────────────
     const openEditor = (idx: number) => {
         const item = items[idx];
         if (item.isVideo) return;
@@ -159,19 +166,19 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
         setCompletedCrop(c);
     }, []);
 
-    // ── Save crop/rotate ───────────────────────────────────────────────────
+    // ── Save crop ─────────────────────────────────────────────────────────
     const handleSave = useCallback(async () => {
-        const img = imgRef.current;
-        const canvas = canvasRef.current;
+        const img = imgRef.current,
+            canvas = canvasRef.current;
         if (!img || !canvas || !completedCrop || editIndex === null) return;
         setIsSaving(true);
         try {
-            const sx = img.naturalWidth / img.width;
-            const sy = img.naturalHeight / img.height;
-            const cx = (completedCrop.x ?? 0) * sx;
-            const cy = (completedCrop.y ?? 0) * sy;
-            const cw = (completedCrop.width ?? img.naturalWidth) * sx;
-            const ch = (completedCrop.height ?? img.naturalHeight) * sy;
+            const sx = img.naturalWidth / img.width,
+                sy = img.naturalHeight / img.height;
+            const cx = (completedCrop.x ?? 0) * sx,
+                cy = (completedCrop.y ?? 0) * sy;
+            const cw = (completedCrop.width ?? img.naturalWidth) * sx,
+                ch = (completedCrop.height ?? img.naturalHeight) * sy;
             const rad = (rotation * Math.PI) / 180;
             const sin = Math.abs(Math.sin(rad)),
                 cos = Math.abs(Math.cos(rad));
@@ -203,63 +210,83 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
             const {
                 data: { publicUrl },
             } = supabase.storage.from(BUCKET).getPublicUrl(path);
-            const next = items.map((it, i) => (i === editIndex ? { ...it, url: publicUrl } : it));
-            onChange(next);
+            onChange(items.map((it, i) => (i === editIndex ? { ...it, url: publicUrl } : it)));
             toast.success('Image saved');
             setEditorOpen(false);
             if (srcUrl) {
                 URL.revokeObjectURL(srcUrl);
                 setSrcUrl(null);
             }
-        } catch (err) {
+        } catch {
             toast.error('Failed to save');
         } finally {
             setIsSaving(false);
         }
     }, [completedCrop, rotation, editIndex, items, onChange, srcUrl, entityId]);
 
-    // ── Render ─────────────────────────────────────────────────────────────
+    // ── Render ────────────────────────────────────────────────────────────
     return (
         <>
             {/* Gallery strip */}
-            <div className="flex flex-wrap gap-2 items-start">
-                {/* Uploaded thumbs */}
+            <div className="flex flex-wrap gap-3 items-start">
                 {items.map((item, idx) => (
-                    <div key={`${item.url}-${idx}`} className="flex flex-col items-center gap-1">
-                        {/* Thumbnail card */}
+                    <div key={`${item.url}-${idx}`} className="flex flex-col items-center gap-1.5">
+                        {/* Thumbnail — click opens lightbox */}
                         <div
-                            className="relative group w-16 h-16 rounded-xl border-2 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/50 overflow-hidden cursor-pointer"
-                            onClick={() => openEditor(idx)}
+                            className="relative group w-24 h-24 rounded-xl border-2 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/50 overflow-hidden cursor-pointer"
+                            onClick={() => openLightbox(idx)}
                         >
                             {item.isVideo ? (
-                                <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800">
-                                    <Video size={20} className="text-slate-400" />
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-slate-100 dark:bg-slate-800">
+                                    <Video size={24} className="text-slate-400" />
+                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">
+                                        Video
+                                    </span>
                                 </div>
                             ) : (
-                                <img src={item.url} alt="" className="w-full h-full object-cover" />
+                                <img
+                                    src={item.url}
+                                    alt=""
+                                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                />
                             )}
-                            {/* Remove button */}
+
+                            {/* Expand hint on hover */}
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Expand size={18} className="text-white" />
+                            </div>
+
+                            {/* Tagged badge */}
+                            {item.purpose !== 'other' && (
+                                <div className="absolute bottom-0 inset-x-0 bg-emerald-600/90 text-white text-[7px] font-black text-center py-0.5 uppercase tracking-wide">
+                                    {PURPOSE_LABELS[item.purpose]}
+                                </div>
+                            )}
+
+                            {/* Remove */}
                             <button
                                 type="button"
                                 onClick={e => {
                                     e.stopPropagation();
                                     remove(idx);
                                 }}
-                                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
                             >
                                 <X size={9} />
                             </button>
-                            {/* Edit hint */}
+
+                            {/* Edit/Crop button (images only) */}
                             {!item.isVideo && (
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <CropIcon size={14} className="text-white" />
-                                </div>
-                            )}
-                            {/* Tagged badge */}
-                            {item.purpose !== 'other' && (
-                                <div className="absolute bottom-0 inset-x-0 bg-emerald-600/90 text-white text-[7px] font-black text-center py-0.5 uppercase tracking-wide">
-                                    {PURPOSE_LABELS[item.purpose]}
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        openEditor(idx);
+                                    }}
+                                    className="absolute top-1 left-1 w-5 h-5 rounded-full bg-slate-900/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                                >
+                                    <CropIcon size={9} />
+                                </button>
                             )}
                         </div>
 
@@ -269,7 +296,7 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
                                 value={item.purpose}
                                 onChange={e => setTag(idx, e.target.value as MediaPurpose)}
                                 onClick={e => e.stopPropagation()}
-                                className="w-16 h-5 rounded text-[7px] font-black uppercase appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 pl-1 pr-3 outline-none focus:border-emerald-400 cursor-pointer"
+                                className="w-24 h-6 rounded-lg text-[8px] font-black uppercase appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 pl-2 pr-5 outline-none focus:border-emerald-400 cursor-pointer"
                             >
                                 {PURPOSE_OPTS.map(p => (
                                     <option key={p} value={p}>
@@ -279,27 +306,27 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
                             </select>
                             <ChevronDown
                                 size={8}
-                                className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
                             />
                         </div>
                     </div>
                 ))}
 
-                {/* Uploading placeholders */}
+                {/* Upload placeholders */}
                 {pending.map(p => (
                     <div
                         key={p.id}
-                        className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/30 flex items-center justify-center"
+                        className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/30 flex items-center justify-center"
                     >
-                        <Loader2 size={16} className="animate-spin text-emerald-500" />
+                        <Loader2 size={20} className="animate-spin text-emerald-500" />
                     </div>
                 ))}
 
                 {/* Add button */}
-                <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/30 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group">
-                    <Plus size={16} className="text-slate-300 group-hover:text-emerald-400 transition-colors" />
-                    <span className="text-[7px] font-black uppercase tracking-widest text-slate-400 group-hover:text-emerald-500">
-                        Add
+                <label className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/30 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group">
+                    <Plus size={20} className="text-slate-300 group-hover:text-emerald-400 transition-colors" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 group-hover:text-emerald-500">
+                        Add Photos
                     </span>
                     <input type="file" hidden multiple accept="image/*,video/*" onChange={handleFiles} />
                 </label>
@@ -308,7 +335,96 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
             {/* Hidden canvas */}
             <canvas ref={canvasRef} className="hidden" />
 
-            {/* ── Crop / Rotate modal ────────────────────────────────────── */}
+            {/* ── Lightbox ──────────────────────────────────────────────── */}
+            {lightboxIdx !== null && items[lightboxIdx] && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center" onClick={closeLightbox}>
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/95 backdrop-blur-sm" />
+
+                    {/* Image / Video */}
+                    <div
+                        className="relative z-10 max-w-[92vw] max-h-[88dvh] flex flex-col items-center gap-3"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {items[lightboxIdx].isVideo ? (
+                            <video
+                                src={items[lightboxIdx].url}
+                                controls
+                                autoPlay
+                                className="max-w-full max-h-[78dvh] rounded-2xl shadow-2xl"
+                            />
+                        ) : (
+                            <img
+                                src={items[lightboxIdx].url}
+                                alt=""
+                                className="max-w-full max-h-[78dvh] rounded-2xl shadow-2xl object-contain select-none"
+                            />
+                        )}
+
+                        {/* Tag label */}
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-[10px] font-black uppercase tracking-widest">
+                            <span>{PURPOSE_LABELS[items[lightboxIdx].purpose]}</span>
+                            <span className="text-white/40">•</span>
+                            <span className="text-white/50">
+                                {lightboxIdx + 1} / {items.length}
+                            </span>
+                        </div>
+
+                        {/* Edit button */}
+                        {!items[lightboxIdx].isVideo && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    closeLightbox();
+                                    openEditor(lightboxIdx);
+                                }}
+                                className="absolute top-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[9px] font-black uppercase tracking-widest transition-colors"
+                            >
+                                <CropIcon size={11} /> Edit
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Prev arrow */}
+                    {lightboxIdx > 0 && (
+                        <button
+                            type="button"
+                            onClick={e => {
+                                e.stopPropagation();
+                                lightboxPrev();
+                            }}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors"
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+                    )}
+
+                    {/* Next arrow */}
+                    {lightboxIdx < items.length - 1 && (
+                        <button
+                            type="button"
+                            onClick={e => {
+                                e.stopPropagation();
+                                lightboxNext();
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors"
+                        >
+                            <ChevronRight size={20} />
+                        </button>
+                    )}
+
+                    {/* Close */}
+                    <button
+                        type="button"
+                        onClick={closeLightbox}
+                        className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors"
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+            )}
+
+            {/* ── Crop / Rotate modal ───────────────────────────────────── */}
             {editorOpen && srcUrl && (
                 <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
                     <div
@@ -332,7 +448,6 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
                                 <X size={14} className="text-slate-500" />
                             </button>
                         </div>
-
                         {/* Crop workspace */}
                         <div className="flex-1 overflow-auto p-3 flex items-center justify-center bg-slate-950 min-h-0">
                             <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)}>
@@ -351,10 +466,8 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
                                 />
                             </ReactCrop>
                         </div>
-
                         {/* Controls */}
                         <div className="px-4 py-3 border-t border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/5 space-y-3">
-                            {/* Rotation */}
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
@@ -394,8 +507,6 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
                                     Reset
                                 </button>
                             </div>
-
-                            {/* Aspect presets */}
                             <div className="flex flex-wrap gap-1.5">
                                 {[
                                     { label: 'Free', aspect: undefined },
@@ -423,8 +534,6 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
                                     </button>
                                 ))}
                             </div>
-
-                            {/* Save */}
                             <button
                                 type="button"
                                 disabled={isSaving}
