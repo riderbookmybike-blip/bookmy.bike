@@ -28,19 +28,30 @@ export function useSystemCompareLogic() {
     const modelGroup = useMemo(() => {
         if (!items.length || !makeSlug || !modelSlug) return null;
         const groups = groupProductsByModel(items);
-        return (
-            groups.find(g => {
-                const gMake = slugify(g.make);
+        const sameMakeGroups = groups.filter(g => slugify(g.make) === makeSlug);
+
+        // Prefer exact model/group slug match to avoid collisions like:
+        // "jupiter" accidentally matching "jupiter-125".
+        const exactMatch =
+            sameMakeGroups.find(g => {
                 const gModel = slugify(g.model);
                 const groupSlug = slugify(g.modelSlug || g.model);
-                const modelMatch =
-                    gModel === modelSlug ||
-                    groupSlug === modelSlug ||
+                return gModel === modelSlug || groupSlug === modelSlug;
+            }) || null;
+
+        if (exactMatch) return exactMatch;
+
+        // Legacy fallback: keep relaxed matching only when exact match is unavailable.
+        return (
+            sameMakeGroups.find(g => {
+                const gModel = slugify(g.model);
+                const groupSlug = slugify(g.modelSlug || g.model);
+                return (
                     gModel.startsWith(`${modelSlug}-`) ||
                     groupSlug.startsWith(`${modelSlug}-`) ||
                     modelSlug.startsWith(`${gModel}-`) ||
-                    modelSlug.startsWith(`${groupSlug}-`);
-                return gMake === makeSlug && modelMatch;
+                    modelSlug.startsWith(`${groupSlug}-`)
+                );
             }) || null
         );
     }, [items, makeSlug, modelSlug]);
