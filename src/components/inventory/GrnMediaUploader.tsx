@@ -206,27 +206,30 @@ export default function GrnMediaUploader({
                 </p>
 
                 {value ? (
-                    /* Preview state */
-                    <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/50 aspect-video flex items-center justify-center">
+                    /* Preview — compact inline row */
+                    <div className="relative group h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/50 flex items-center gap-2 px-2">
+                        {/* Thumbnail */}
                         {isVideo ? (
-                            <video
-                                src={value}
-                                className="w-full h-full object-contain"
-                                controls={false}
-                                muted
-                                preload="metadata"
-                            />
+                            <div className="w-7 h-7 shrink-0 rounded bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+                                <Video size={12} className="text-slate-500" />
+                            </div>
                         ) : (
-                            <img src={value} alt={label} className="w-full h-full object-contain p-1" />
+                            <img
+                                src={value}
+                                alt={label}
+                                className="w-7 h-7 shrink-0 rounded object-cover border border-slate-200 dark:border-white/10"
+                            />
                         )}
-
-                        {/* Overlay actions */}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        {/* Uploaded badge */}
+                        <span className="flex-1 text-[9px] font-black text-emerald-600 uppercase tracking-widest truncate flex items-center gap-1">
+                            <Check size={9} /> Uploaded
+                        </span>
+                        {/* Actions — visible on hover */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             {!isVideo && (
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        // re-open editor with current uploaded URL (fetch as blob)
                                         fetch(value)
                                             .then(r => r.blob())
                                             .then(blob => {
@@ -240,17 +243,17 @@ export default function GrnMediaUploader({
                                             })
                                             .catch(() => toast.error('Cannot re-edit this image'));
                                     }}
-                                    className="p-2.5 bg-white text-slate-900 rounded-xl hover:bg-emerald-500 hover:text-white transition-colors shadow-lg"
-                                    title="Edit (crop/rotate)"
+                                    className="p-1 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-slate-400 hover:text-emerald-600 transition-colors"
+                                    title="Edit"
                                 >
-                                    <Pencil size={14} />
+                                    <Pencil size={11} />
                                 </button>
                             )}
                             <label
-                                className="p-2.5 bg-white text-slate-900 rounded-xl hover:bg-indigo-600 hover:text-white transition-colors shadow-lg cursor-pointer"
+                                className="p-1 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
                                 title="Replace"
                             >
-                                <Upload size={14} />
+                                <Upload size={11} />
                                 <input
                                     type="file"
                                     hidden
@@ -262,36 +265,31 @@ export default function GrnMediaUploader({
                             <button
                                 type="button"
                                 onClick={() => onUpload('')}
-                                className="p-2.5 bg-white text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-colors shadow-lg"
+                                className="p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 transition-colors"
                                 title="Remove"
                             >
-                                <X size={14} />
+                                <X size={11} />
                             </button>
-                        </div>
-
-                        {/* Status badge */}
-                        <div className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider flex items-center gap-1">
-                            <Check size={8} /> Uploaded
                         </div>
                     </div>
                 ) : (
-                    /* Empty drop zone */
-                    <label className="relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/30 aspect-video cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group">
+                    /* Empty — compact tap zone */
+                    <label className="flex items-center gap-2 h-10 px-3 rounded-lg border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/30 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group">
                         {isUploading ? (
-                            <Loader2 size={20} className="animate-spin text-emerald-500" />
+                            <Loader2 size={13} className="animate-spin text-emerald-500 shrink-0" />
                         ) : isVideo ? (
                             <Video
-                                size={20}
-                                className="text-slate-300 group-hover:text-emerald-400 transition-colors"
+                                size={13}
+                                className="text-slate-300 group-hover:text-emerald-400 transition-colors shrink-0"
                             />
                         ) : (
                             <ImageIcon
-                                size={20}
-                                className="text-slate-300 group-hover:text-emerald-400 transition-colors"
+                                size={13}
+                                className="text-slate-300 group-hover:text-emerald-400 transition-colors shrink-0"
                             />
                         )}
                         <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-emerald-500 transition-colors">
-                            {isUploading ? 'Uploading...' : isVideo ? 'Tap to upload video' : 'Tap to upload photo'}
+                            {isUploading ? 'Uploading...' : isVideo ? 'Upload video' : 'Upload photo'}
                         </span>
                         <input type="file" hidden accept={accept} onChange={handleFileChange} disabled={isUploading} />
                     </label>
