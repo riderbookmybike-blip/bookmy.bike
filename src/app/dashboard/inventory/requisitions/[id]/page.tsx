@@ -3754,136 +3754,142 @@ export default function RequisitionDetailPage() {
                                 const maxW = gallery.length <= 3 ? `${gallery.length * 180}px` : '100%';
 
                                 return (
-                                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
-                                        <div className="px-5 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50 dark:bg-white/5">
-                                            <div>
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    <>
+                                        {/* Outside label row — matches GRN RECEIPT style */}
+                                        <div className="px-1 flex items-center justify-between gap-3">
+                                            <div className="flex items-baseline gap-2">
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
                                                     Media Assets
                                                 </p>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white">
+                                                <span className="text-[10px] font-bold text-slate-400">
                                                     {gallery.length} item{gallery.length !== 1 ? 's' : ''}
-                                                </p>
+                                                </span>
                                             </div>
-                                            {/* Edit media button */}
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    setGrnEditMode(false); // close details edit if open
-                                                    // open a simple amend for media only
+                                                    setGrnEditMode(false);
                                                 }}
                                                 className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:border-slate-400 transition-colors"
                                             >
                                                 ✏ Edit Media
                                             </button>
                                         </div>
-                                        <div className="p-4">
-                                            {!gallery.length ? (
-                                                <p className="text-[9px] font-bold text-slate-400 italic text-center py-4">
-                                                    No media uploaded yet
-                                                </p>
-                                            ) : (
-                                                <>
-                                                    {/* Expanded viewer */}
-                                                    {active && (
-                                                        <div
-                                                            className="mb-3 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-950 relative"
-                                                            style={{ aspectRatio: '16/9' }}
-                                                        >
-                                                            {active.isVideo ? (
-                                                                <video
-                                                                    src={active.url}
-                                                                    controls
-                                                                    className="w-full h-full object-contain"
-                                                                />
-                                                            ) : (
-                                                                <img
-                                                                    src={active.url}
-                                                                    alt={active.purpose}
-                                                                    className="w-full h-full object-contain"
-                                                                />
-                                                            )}
-                                                            <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">
-                                                                {PLABELS[active.purpose] ?? active.purpose}
-                                                                <span className="ml-2 font-normal opacity-60">
-                                                                    {active.idx + 1}/{gallery.length}
-                                                                </span>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => setActiveGrnImg(null)}
-                                                                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/80 text-white text-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
+
+                                        {/* Card — no header, just content */}
+                                        <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                                            <div className="p-4">
+                                                {!gallery.length ? (
+                                                    <p className="text-[9px] font-bold text-slate-400 italic text-center py-4">
+                                                        No media uploaded yet
+                                                    </p>
+                                                ) : (
+                                                    <>
+                                                        {/* Expanded viewer */}
+                                                        {active && (
+                                                            <div
+                                                                className="mb-3 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-950 relative"
+                                                                style={{ aspectRatio: '16/9' }}
                                                             >
-                                                                ✕
-                                                            </button>
-                                                            {gallery.length > 1 && (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() => go(-1)}
-                                                                        className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
-                                                                    >
-                                                                        ‹
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => go(1)}
-                                                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
-                                                                    >
-                                                                        ›
-                                                                    </button>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                    {/* Thumbnail grid — centered for small sets, full-width for ≥4 */}
-                                                    <div
-                                                        style={{
-                                                            display: 'grid',
-                                                            gap: '6px',
-                                                            gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`,
-                                                            maxWidth: maxW,
-                                                            margin: '0 auto',
-                                                        }}
-                                                    >
-                                                        {gallery.map((m, gi) => (
-                                                            <button
-                                                                key={gi}
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    setActiveGrnImg(
-                                                                        active?.idx === gi ? null : { ...m, idx: gi }
-                                                                    )
-                                                                }
-                                                                className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-150 ${active?.idx === gi ? 'border-emerald-400 ring-2 ring-emerald-300' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300'}`}
-                                                                style={{ aspectRatio: '1/1' }}
-                                                            >
-                                                                {m.isVideo ? (
-                                                                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
-                                                                        <span className="text-3xl">🎥</span>
-                                                                        <span className="text-[8px] font-black text-slate-400 uppercase">
-                                                                            Video
-                                                                        </span>
-                                                                    </div>
+                                                                {active.isVideo ? (
+                                                                    <video
+                                                                        src={active.url}
+                                                                        controls
+                                                                        className="w-full h-full object-contain"
+                                                                    />
                                                                 ) : (
                                                                     <img
-                                                                        src={m.url}
-                                                                        alt={m.purpose}
-                                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                                        src={active.url}
+                                                                        alt={active.purpose}
+                                                                        className="w-full h-full object-contain"
                                                                     />
                                                                 )}
-                                                                <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[8px] font-black text-center py-1 uppercase tracking-wide truncate px-1">
-                                                                    {PLABELS[m.purpose] ?? m.purpose}
+                                                                <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">
+                                                                    {PLABELS[active.purpose] ?? active.purpose}
+                                                                    <span className="ml-2 font-normal opacity-60">
+                                                                        {active.idx + 1}/{gallery.length}
+                                                                    </span>
                                                                 </div>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </>
-                                            )}
+                                                                <button
+                                                                    onClick={() => setActiveGrnImg(null)}
+                                                                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/80 text-white text-sm flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                                {gallery.length > 1 && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => go(-1)}
+                                                                            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                                        >
+                                                                            ‹
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => go(1)}
+                                                                            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/70 text-white text-lg flex items-center justify-center hover:bg-slate-700 transition-colors"
+                                                                        >
+                                                                            ›
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {/* Thumbnail grid — centered for small sets, full-width for ≥4 */}
+                                                        <div
+                                                            style={{
+                                                                display: 'grid',
+                                                                gap: '6px',
+                                                                gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`,
+                                                                maxWidth: maxW,
+                                                                margin: '0 auto',
+                                                            }}
+                                                        >
+                                                            {gallery.map((m, gi) => (
+                                                                <button
+                                                                    key={gi}
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setActiveGrnImg(
+                                                                            active?.idx === gi
+                                                                                ? null
+                                                                                : { ...m, idx: gi }
+                                                                        )
+                                                                    }
+                                                                    className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-150 ${active?.idx === gi ? 'border-emerald-400 ring-2 ring-emerald-300' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300'}`}
+                                                                    style={{ aspectRatio: '1/1' }}
+                                                                >
+                                                                    {m.isVideo ? (
+                                                                        <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1">
+                                                                            <span className="text-3xl">🎥</span>
+                                                                            <span className="text-[8px] font-black text-slate-400 uppercase">
+                                                                                Video
+                                                                            </span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <img
+                                                                            src={m.url}
+                                                                            alt={m.purpose}
+                                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                                        />
+                                                                    )}
+                                                                    <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-white text-[8px] font-black text-center py-1 uppercase tracking-wide truncate px-1">
+                                                                        {PLABELS[m.purpose] ?? m.purpose}
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
+                                    </>
                                 );
                             })()}
                         </>
                     )}
                 </>
             )}
+
             {/* ── INLINE GRN / RECEIVING SECTION ── */}
             {primaryPo && primaryPo.po_status === 'SHIPPED' && request && (
                 <>
