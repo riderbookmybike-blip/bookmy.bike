@@ -3402,7 +3402,7 @@ export default function RequisitionDetailPage() {
                         {/* ── Read-only view ── */}
                         {!grnEditMode && (
                             <div className="px-5 py-4">
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-5">
                                     {[
                                         { label: 'Chassis Number', value: (receivedStock as any).chassis_number },
                                         { label: 'Engine Number', value: (receivedStock as any).engine_number },
@@ -3410,7 +3410,31 @@ export default function RequisitionDetailPage() {
                                         { label: 'Battery Make', value: (receivedStock as any).battery_make },
                                         { label: 'Battery Type', value: (receivedStock as any).battery_type },
                                         { label: 'Battery Number', value: (receivedStock as any).battery_number },
-                                        { label: 'Mfg. Date', value: (receivedStock as any).manufacturing_date },
+                                        {
+                                            label: 'Mfg. Date',
+                                            value: (receivedStock as any).manufacturing_date
+                                                ? (() => {
+                                                      const [y, m, d] = (
+                                                          (receivedStock as any).manufacturing_date as string
+                                                      ).split('-');
+                                                      const mon = [
+                                                          'Jan',
+                                                          'Feb',
+                                                          'Mar',
+                                                          'Apr',
+                                                          'May',
+                                                          'Jun',
+                                                          'Jul',
+                                                          'Aug',
+                                                          'Sep',
+                                                          'Oct',
+                                                          'Nov',
+                                                          'Dec',
+                                                      ][parseInt(m) - 1];
+                                                      return `${parseInt(d) > 1 ? parseInt(d) + ' ' : ''}${mon} ${y}`;
+                                                  })()
+                                                : null,
+                                        },
                                         { label: 'QC Notes', value: (receivedStock as any).qc_notes },
                                     ].map(f =>
                                         f.value ? (
@@ -3418,13 +3442,14 @@ export default function RequisitionDetailPage() {
                                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
                                                     {f.label}
                                                 </p>
-                                                <p className="text-sm font-bold text-slate-900 dark:text-white break-all">
+                                                <p className="text-sm font-bold text-slate-900 dark:text-white break-all uppercase tracking-tight">
                                                     {f.value}
                                                 </p>
                                             </div>
                                         ) : null
                                     )}
                                 </div>
+
                                 {/* Media thumbs — read-only */}
                                 {(() => {
                                     const gallery: Array<{ url: string; purpose: string; isVideo: boolean }> = (
