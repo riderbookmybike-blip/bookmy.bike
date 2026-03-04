@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { fetchSkuDisplayMap } from '@/lib/inventory/skuDisplay';
 import QuotePanel from './components/QuotePanel';
+import GrnMediaUploader from '@/components/inventory/GrnMediaUploader';
 
 type RequestStatus = 'QUOTING' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
 
@@ -3419,77 +3420,55 @@ export default function RequisitionDetailPage() {
                                 />
                             </div>
 
-                            {/* Photo/Video divider */}
+                            {/* Photos & Video Uploaders */}
                             <div className="md:col-span-2 pt-2 border-t border-slate-100 dark:border-white/10">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                    Photo / Video URLs
+                                    Photos & Video
                                 </p>
                             </div>
 
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Chassis Image URL
-                                </p>
-                                <input
-                                    type="url"
-                                    value={grnChassisMedia}
-                                    onChange={e => setGrnChassisMedia(e.target.value)}
-                                    placeholder="https://"
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                />
-                            </div>
+                            <GrnMediaUploader
+                                label="Chassis Photo"
+                                entityId={primaryPo?.id ?? 'grn'}
+                                purpose="chassis"
+                                value={grnChassisMedia}
+                                onUpload={setGrnChassisMedia}
+                            />
 
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Engine Image URL
-                                </p>
-                                <input
-                                    type="url"
-                                    value={grnEngineMedia}
-                                    onChange={e => setGrnEngineMedia(e.target.value)}
-                                    placeholder="https://"
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                />
-                            </div>
+                            <GrnMediaUploader
+                                label="Engine Photo"
+                                entityId={primaryPo?.id ?? 'grn'}
+                                purpose="engine"
+                                value={grnEngineMedia}
+                                onUpload={setGrnEngineMedia}
+                            />
 
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Sticker Image URL{' '}
-                                    <span className="normal-case font-bold text-slate-300">(optional)</span>
-                                </p>
-                                <input
-                                    type="url"
-                                    value={grnStickerMedia}
-                                    onChange={e => setGrnStickerMedia(e.target.value)}
-                                    placeholder="https://"
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                />
-                            </div>
+                            <GrnMediaUploader
+                                label="Sticker Photo"
+                                entityId={primaryPo?.id ?? 'grn'}
+                                purpose="sticker"
+                                optional
+                                value={grnStickerMedia}
+                                onUpload={setGrnStickerMedia}
+                            />
 
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    Vehicle Image URL{' '}
-                                    <span className="normal-case font-bold text-slate-300">(optional)</span>
-                                </p>
-                                <input
-                                    type="url"
-                                    value={grnVehicleMedia}
-                                    onChange={e => setGrnVehicleMedia(e.target.value)}
-                                    placeholder="https://"
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
-                                />
-                            </div>
+                            <GrnMediaUploader
+                                label="Vehicle Photo"
+                                entityId={primaryPo?.id ?? 'grn'}
+                                purpose="vehicle"
+                                optional
+                                value={grnVehicleMedia}
+                                onUpload={setGrnVehicleMedia}
+                            />
 
                             <div className="md:col-span-2">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    QC Video URL
-                                </p>
-                                <input
-                                    type="url"
+                                <GrnMediaUploader
+                                    label="QC Video"
+                                    entityId={primaryPo?.id ?? 'grn'}
+                                    purpose="qc_video"
+                                    accept="video/*"
                                     value={grnVideoMedia}
-                                    onChange={e => setGrnVideoMedia(e.target.value)}
-                                    placeholder="https://"
-                                    className="h-9 w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 px-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-200"
+                                    onUpload={setGrnVideoMedia}
                                 />
                             </div>
                         </div>
