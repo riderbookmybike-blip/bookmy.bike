@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTenant } from '@/lib/tenant/tenantContext';
-import { getLeadById, getQuotesForLead, getBookingsForLead, getReceiptsForEntity } from '@/actions/crm';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 const LeadEditorTable = dynamic(() => import('@/components/modules/leads/LeadEditorTable'), {
@@ -28,6 +27,8 @@ export default function LeadEditorWrapper({ leadId }: { leadId: string }) {
 
         const load = async () => {
             try {
+                const { getLeadById, getQuotesForLead, getBookingsForLead, getReceiptsForEntity } =
+                    await import('@/actions/crm');
                 const lead = await getLeadById(leadId);
                 if (!lead) {
                     setProfile(null);

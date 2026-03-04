@@ -21,7 +21,6 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import { Lead } from './LeadList';
-import { getCustomerHistory } from '@/actions/crm';
 import { formatDisplayId } from '@/utils/displayId';
 import { createClient } from '@/lib/supabase/client';
 
@@ -183,10 +182,16 @@ export function LeadHistory({ customerId }: { customerId?: string }) {
     React.useEffect(() => {
         if (!customerId) return;
         setLoading(true);
-        getCustomerHistory(customerId).then(data => {
-            setHistory(data);
-            setLoading(false);
-        });
+        import('@/actions/crm')
+            .then(({ getCustomerHistory }) => getCustomerHistory(customerId))
+            .then(data => {
+                setHistory(data);
+                setLoading(false);
+            })
+            .catch(() => {
+                setHistory(null);
+                setLoading(false);
+            });
     }, [customerId]);
 
     if (loading)

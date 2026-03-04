@@ -798,11 +798,7 @@ export async function getLeadIndexAction(input: {
 
     if (slaFilter === 'ALL') {
         const baseQuery = applyLeadBaseFilters(
-            supabase
-                .from('crm_leads')
-                .select('*', { count: 'exact' })
-                .order('updated_at', { ascending: false, nullsFirst: false })
-                .order('created_at', { ascending: false }),
+            supabase.from('crm_leads').select('*', { count: 'exact' }).order('created_at', { ascending: false }),
             {
                 tenantId: input.tenantId,
                 status,
@@ -824,11 +820,7 @@ export async function getLeadIndexAction(input: {
         totalRows = count || 0;
     } else {
         const baseQuery = applyLeadBaseFilters(
-            supabase
-                .from('crm_leads')
-                .select('*')
-                .order('updated_at', { ascending: false, nullsFirst: false })
-                .order('created_at', { ascending: false }),
+            supabase.from('crm_leads').select('*').order('created_at', { ascending: false }),
             {
                 tenantId: input.tenantId,
                 status,

@@ -23,14 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
-import {
-    createLeadAction,
-    getLeadIndexAction,
-    uploadMemberDocumentAction,
-    type LeadIndexKpis,
-    type LeadIndexRow,
-    type LeadSlaBucket,
-} from '@/actions/crm';
+import type { LeadIndexKpis, LeadIndexRow, LeadSlaBucket } from '@/actions/crm';
 
 const STATUS_FILTERS = ['ALL', 'NEW', 'CONTACTED', 'QUALIFIED', 'HOT', 'QUOTE', 'BOOKING', 'JUNK'];
 const INTENT_FILTERS = ['ALL', 'HOT', 'WARM', 'COLD'];
@@ -90,6 +83,48 @@ const getSlaBadgeClass = (slaBucket: LeadSlaBucket) => {
         default:
             return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
     }
+};
+
+const extractErrorMessage = (value: unknown, depth = 0): string => {
+    if (!value || depth > 3) return 'Failed to load lead index';
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed || trimmed === '[object Object]') return 'Failed to load lead index';
+        return trimmed;
+    }
+
+    if (value instanceof Error) {
+        return extractErrorMessage(value.message, depth + 1);
+    }
+
+    if (typeof value === 'object') {
+        const maybe = value as {
+            message?: unknown;
+            error?: unknown;
+            details?: unknown;
+            hint?: unknown;
+            error_description?: unknown;
+            code?: unknown;
+        };
+
+        const direct = [maybe.message, maybe.error, maybe.details, maybe.hint, maybe.error_description]
+            .map(part => extractErrorMessage(part, depth + 1))
+            .find(part => part && part !== 'Failed to load lead index');
+
+        if (direct) return direct;
+
+        if (typeof maybe.code === 'string' && maybe.code.trim()) return `Error code: ${maybe.code}`;
+
+        try {
+            const serialized = JSON.stringify(value);
+            return serialized && serialized !== '{}' ? serialized : 'Failed to load lead index';
+        } catch {
+            return 'Failed to load lead index';
+        }
+    }
+
+    return 'Failed to load lead index';
 };
 
 export default function LeadsPage({ initialLeadId }: { initialLeadId?: string }) {
@@ -171,6 +206,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         if (!tenantId) return;
         setIsLoading(true);
         try {
+            const { getLeadIndexAction } = await import('@/actions/crm');
             const result = await getLeadIndexAction({
                 tenantId,
                 page,
@@ -183,8 +219,8 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                 },
             });
 
-            if (!result.success) {
-                throw new Error(result.message || 'Failed to load lead index');
+            if (!result || typeof result !== 'object' || !(result as any).success) {
+                throw new Error(extractErrorMessage(result));
             }
 
             if (result.pagination.totalPages > 0 && page > result.pagination.totalPages) {
@@ -197,8 +233,9 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
             setTotalRows(result.pagination.totalRows || 0);
             setTotalPages(result.pagination.totalPages || 0);
         } catch (error) {
+            const message = extractErrorMessage(error);
             console.error('Failed to fetch lead index:', error);
-            toast.error('Failed to load leads');
+            toast.error(message || 'Failed to load leads');
         } finally {
             setIsLoading(false);
         }
@@ -290,6 +327,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
             return;
         }
 
+        const { createLeadAction, uploadMemberDocumentAction } = await import('@/actions/crm');
         const result = await createLeadAction({
             customer_name: formData.customerName,
             customer_phone: formData.phone,
@@ -379,10 +417,11 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                 key={chip}
                                 onClick={() => setStatusFilter(chip)}
                                 data-crm-allow
-                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${statusFilter === chip
+                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                                    statusFilter === chip
                                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
                                         : 'bg-white dark:bg-white/5 text-slate-500 border border-slate-200 dark:border-white/10'
-                                    }`}
+                                }`}
                             >
                                 {chip}
                             </button>
@@ -553,134 +592,134 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                             ))}
                         </div>
                     ) : /* ── LIST VIEW: Phone-optimized cards vs Desktop table ── */
-                        isPhone ? (
-                            <div className="space-y-2 pb-4">
-                                {leads.map(lead => (
-                                    <button
-                                        key={lead.id}
-                                        onClick={() => handleOpenLead(lead.id)}
-                                        className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden transition-all active:scale-[0.98] min-h-[56px]"
-                                        data-crm-allow
-                                    >
-                                        <div className="flex">
-                                            <div className="w-1 shrink-0 bg-indigo-500" />
-                                            <div className="flex-1 px-3.5 py-3 min-w-0">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                                                        {formatDisplayId(lead.displayId)}
+                    isPhone ? (
+                        <div className="space-y-2 pb-4">
+                            {leads.map(lead => (
+                                <button
+                                    key={lead.id}
+                                    onClick={() => handleOpenLead(lead.id)}
+                                    className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden transition-all active:scale-[0.98] min-h-[56px]"
+                                    data-crm-allow
+                                >
+                                    <div className="flex">
+                                        <div className="w-1 shrink-0 bg-indigo-500" />
+                                        <div className="flex-1 px-3.5 py-3 min-w-0">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                                                    {formatDisplayId(lead.displayId)}
+                                                </span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600">
+                                                        {lead.status || 'NEW'}
                                                     </span>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600">
-                                                            {lead.status || 'NEW'}
-                                                        </span>
-                                                        <span
-                                                            className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${getSlaBadgeClass(lead.slaBucket)}`}
-                                                        >
-                                                            {getSlaLabel(lead.slaBucket)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="text-[13px] font-black tracking-tight uppercase truncate text-slate-900 dark:text-white mb-0.5">
-                                                    {lead.customerName}
-                                                </div>
-                                                <div className="text-[10px] font-bold text-slate-400 truncate mb-1">
-                                                    {getLocationLabel(lead)}
-                                                </div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-bold text-slate-400 truncate">
-                                                        {lead.phone}
+                                                    <span
+                                                        className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${getSlaBadgeClass(lead.slaBucket)}`}
+                                                    >
+                                                        {getSlaLabel(lead.slaBucket)}
                                                     </span>
-                                                    <div className="flex items-center gap-2 shrink-0">
-                                                        <a
-                                                            href={`tel:${lead.phone}`}
-                                                            onClick={e => e.stopPropagation()}
-                                                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 active:scale-90 transition-transform"
-                                                            data-crm-allow
-                                                        >
-                                                            <PhoneIcon size={12} />
-                                                        </a>
-                                                        <span className="text-[9px] font-black text-slate-500">
-                                                            {lead.intentScore || 'COLD'}
-                                                        </span>
-                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-[13px] font-black tracking-tight uppercase truncate text-slate-900 dark:text-white mb-0.5">
+                                                {lead.customerName}
+                                            </div>
+                                            <div className="text-[10px] font-bold text-slate-400 truncate mb-1">
+                                                {getLocationLabel(lead)}
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-slate-400 truncate">
+                                                    {lead.phone}
+                                                </span>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <a
+                                                        href={`tel:${lead.phone}`}
+                                                        onClick={e => e.stopPropagation()}
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 active:scale-90 transition-transform"
+                                                        data-crm-allow
+                                                    >
+                                                        <PhoneIcon size={12} />
+                                                    </a>
+                                                    <span className="text-[9px] font-black text-slate-500">
+                                                        {lead.intentScore || 'COLD'}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
-                                    </button>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-sm">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 dark:border-white/5">
-                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                Lead ID
-                                            </th>
-                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                Customer
-                                            </th>
-                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                Phone
-                                            </th>
-                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                Status
-                                            </th>
-                                            <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                Follow-up
-                                            </th>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-sm">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-100 dark:border-white/5">
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Lead ID
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Customer
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Phone
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Status
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Follow-up
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {leads.map(lead => (
+                                        <tr
+                                            key={lead.id}
+                                            onClick={() => handleOpenLead(lead.id)}
+                                            className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/5 last:border-0"
+                                        >
+                                            <td className="p-6">
+                                                <div className="text-xs font-black text-indigo-500 uppercase tracking-widest">
+                                                    {formatDisplayId(lead.displayId)}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="text-sm font-black italic uppercase tracking-tighter text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                                                    {lead.customerName}
+                                                </div>
+                                                <div className="text-[10px] font-bold text-slate-400 mt-1">
+                                                    {getLocationLabel(lead)}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase">
+                                                    {lead.phone}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block bg-slate-100 dark:bg-white/5 text-slate-400">
+                                                    {lead.status}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div
+                                                    className={`inline-flex items-center px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${getSlaBadgeClass(lead.slaBucket)}`}
+                                                >
+                                                    {getSlaLabel(lead.slaBucket)}
+                                                </div>
+                                                <div className="text-[10px] font-bold text-slate-400 mt-1">
+                                                    {lead.nextFollowUpAt
+                                                        ? formatDateLabel(lead.nextFollowUpAt)
+                                                        : lead.openTaskCount > 0
+                                                          ? 'No due date'
+                                                          : 'No task'}
+                                                </div>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {leads.map(lead => (
-                                            <tr
-                                                key={lead.id}
-                                                onClick={() => handleOpenLead(lead.id)}
-                                                className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/5 last:border-0"
-                                            >
-                                                <td className="p-6">
-                                                    <div className="text-xs font-black text-indigo-500 uppercase tracking-widest">
-                                                        {formatDisplayId(lead.displayId)}
-                                                    </div>
-                                                </td>
-                                                <td className="p-6">
-                                                    <div className="text-sm font-black italic uppercase tracking-tighter text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
-                                                        {lead.customerName}
-                                                    </div>
-                                                    <div className="text-[10px] font-bold text-slate-400 mt-1">
-                                                        {getLocationLabel(lead)}
-                                                    </div>
-                                                </td>
-                                                <td className="p-6">
-                                                    <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase">
-                                                        {lead.phone}
-                                                    </div>
-                                                </td>
-                                                <td className="p-6">
-                                                    <div className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block bg-slate-100 dark:bg-white/5 text-slate-400">
-                                                        {lead.status}
-                                                    </div>
-                                                </td>
-                                                <td className="p-6">
-                                                    <div
-                                                        className={`inline-flex items-center px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${getSlaBadgeClass(lead.slaBucket)}`}
-                                                    >
-                                                        {getSlaLabel(lead.slaBucket)}
-                                                    </div>
-                                                    <div className="text-[10px] font-bold text-slate-400 mt-1">
-                                                        {lead.nextFollowUpAt
-                                                            ? formatDateLabel(lead.nextFollowUpAt)
-                                                            : lead.openTaskCount > 0
-                                                                ? 'No due date'
-                                                                : 'No task'}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                     {paginationControls}
                 </ModuleLanding>
                 <LeadForm
@@ -782,10 +821,11 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                     <button
                                         key={lead.id}
                                         onClick={() => handleOpenLead(lead.id)}
-                                        className={`w-full text-left rounded-xl border transition-all duration-300 group overflow-hidden ${isActive
+                                        className={`w-full text-left rounded-xl border transition-all duration-300 group overflow-hidden ${
+                                            isActive
                                                 ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
                                                 : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/[0.06] hover:border-indigo-500/30 text-slate-900 dark:text-white hover:shadow-md'
-                                            }`}
+                                        }`}
                                     >
                                         <div className="flex">
                                             <div
@@ -794,36 +834,41 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                             <div className="flex-1 px-3.5 py-3 min-w-0">
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <span
-                                                        className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-white/70' : 'text-slate-400'
-                                                            }`}
+                                                        className={`text-[9px] font-black uppercase tracking-wider ${
+                                                            isActive ? 'text-white/70' : 'text-slate-400'
+                                                        }`}
                                                     >
                                                         {formatDisplayId(lead.displayId)}
                                                     </span>
                                                     <span
-                                                        className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${isActive
+                                                        className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                                            isActive
                                                                 ? 'bg-white/20 text-white'
                                                                 : 'bg-indigo-500/10 text-indigo-600'
-                                                            }`}
+                                                        }`}
                                                     >
                                                         {lead.status || 'NEW'}
                                                     </span>
                                                 </div>
                                                 <div
-                                                    className={`text-[12px] font-black tracking-tight uppercase truncate mb-0.5 ${isActive ? 'text-white' : 'text-slate-800 dark:text-white'
-                                                        }`}
+                                                    className={`text-[12px] font-black tracking-tight uppercase truncate mb-0.5 ${
+                                                        isActive ? 'text-white' : 'text-slate-800 dark:text-white'
+                                                    }`}
                                                 >
                                                     {lead.customerName}
                                                 </div>
                                                 <div
-                                                    className={`text-[10px] font-bold truncate mb-0.5 ${isActive ? 'text-white/70' : 'text-slate-400'
-                                                        }`}
+                                                    className={`text-[10px] font-bold truncate mb-0.5 ${
+                                                        isActive ? 'text-white/70' : 'text-slate-400'
+                                                    }`}
                                                 >
                                                     {getLocationLabel(lead)}
                                                 </div>
                                                 <div className="flex items-center justify-between">
                                                     <span
-                                                        className={`text-[10px] font-bold truncate ${isActive ? 'text-white/70' : 'text-slate-400'
-                                                            }`}
+                                                        className={`text-[10px] font-bold truncate ${
+                                                            isActive ? 'text-white/70' : 'text-slate-400'
+                                                        }`}
                                                     >
                                                         {lead.phone}
                                                     </span>
@@ -835,10 +880,11 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                                 </div>
                                                 <div className="mt-1">
                                                     <span
-                                                        className={`inline-flex px-1.5 py-0.5 rounded border text-[7px] font-black uppercase tracking-widest ${isActive
+                                                        className={`inline-flex px-1.5 py-0.5 rounded border text-[7px] font-black uppercase tracking-widest ${
+                                                            isActive
                                                                 ? 'text-white border-white/30 bg-white/10'
                                                                 : getSlaBadgeClass(lead.slaBucket)
-                                                            }`}
+                                                        }`}
                                                     >
                                                         {getSlaLabel(lead.slaBucket)}
                                                     </span>

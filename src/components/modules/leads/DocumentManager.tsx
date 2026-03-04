@@ -3,13 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
-    getMemberDocuments,
-    uploadMemberDocumentAction,
-    deleteMemberDocumentAction,
-    getSignedUrlAction,
-    updateMemberDocumentAction,
-} from '@/actions/crm';
-import {
     FileText,
     Upload,
     Trash2,
@@ -29,6 +22,8 @@ import { toast } from 'sonner';
 import imageCompression from 'browser-image-compression';
 import ImageEditor from './ImageEditor';
 import { Button } from '@/components/ui/button';
+
+const crmActionsPromise = import('@/actions/crm');
 
 interface Document {
     id: string;
@@ -71,11 +66,38 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
     ];
 
     const supabase = createClient();
+    const loadMemberDocuments = async (id: string) => {
+        const { getMemberDocuments } = await crmActionsPromise;
+        return getMemberDocuments(id);
+    };
+    const uploadMemberDocument = async (payload: {
+        memberId: string;
+        tenantId: string;
+        path: string;
+        fileType: string;
+        purpose: string;
+        metadata?: any;
+    }) => {
+        const { uploadMemberDocumentAction } = await crmActionsPromise;
+        return uploadMemberDocumentAction(payload);
+    };
+    const deleteMemberDocument = async (id: string) => {
+        const { deleteMemberDocumentAction } = await crmActionsPromise;
+        return deleteMemberDocumentAction(id);
+    };
+    const getSignedUrl = async (path: string) => {
+        const { getSignedUrlAction } = await crmActionsPromise;
+        return getSignedUrlAction(path);
+    };
+    const updateMemberDocument = async (id: string, patch: { path?: string; file_type?: string; purpose?: string }) => {
+        const { updateMemberDocumentAction } = await crmActionsPromise;
+        return updateMemberDocumentAction(id, patch);
+    };
 
     const fetchDocuments = async () => {
         setIsLoading(true);
         try {
-            const data = await getMemberDocuments(memberId);
+            const data = await loadMemberDocuments(memberId);
             setDocuments(data);
 
             // Fetch signed URLs for all documents
@@ -83,7 +105,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
             await Promise.all(
                 data.map(async (doc: Document) => {
                     try {
-                        const url = await getSignedUrlAction(doc.path);
+                        const url = await getSignedUrl(doc.path);
                         urls[doc.id] = url;
                     } catch (e) {
                         console.error('Error fetching signed URL for', doc.id, e);
@@ -144,7 +166,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
             if (storageError) throw storageError;
 
             // 3. Save to DB
-            const asset = await uploadMemberDocumentAction({
+            const asset = await uploadMemberDocument({
                 memberId,
                 tenantId,
                 path: storageData.path,
@@ -157,7 +179,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
             });
 
             // 4. Get signed URL for the new asset
-            const signedUrl = await getSignedUrlAction(asset.path);
+            const signedUrl = await getSignedUrl(asset.path);
             setSignedUrls(prev => ({ ...prev, [asset.id]: signedUrl }));
 
             setDocuments(prev => [asset, ...prev]);
@@ -247,7 +269,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
 
             if (storageError) throw storageError;
 
-            const asset = await uploadMemberDocumentAction({
+            const asset = await uploadMemberDocument({
                 memberId,
                 tenantId,
                 path: storageData.path,
@@ -259,7 +281,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                 },
             });
 
-            const signedUrl = await getSignedUrlAction(asset.path);
+            const signedUrl = await getSignedUrl(asset.path);
             setSignedUrls(prev => ({ ...prev, [asset.id]: signedUrl }));
             setDocuments(prev => [asset, ...prev]);
 
@@ -287,18 +309,18 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
 
             if (editingDocId) {
                 // PHASE 2: Update existing
-                const asset = await updateMemberDocumentAction(editingDocId, {
+                const asset = await updateMemberDocument(editingDocId, {
                     path: storageData.path,
                     file_type: 'image/webp',
                 });
 
-                const signedUrl = await getSignedUrlAction(asset.path);
+                const signedUrl = await getSignedUrl(asset.path);
                 setSignedUrls(prev => ({ ...prev, [asset.id]: signedUrl }));
                 setDocuments(prev => prev.map(d => (d.id === asset.id ? asset : d)));
                 toast.success('Document updated');
             } else {
                 // PHASE 3: Stitching result (new document)
-                const asset = await uploadMemberDocumentAction({
+                const asset = await uploadMemberDocument({
                     memberId,
                     tenantId,
                     path: storageData.path,
@@ -309,7 +331,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                         size: blob.size,
                     },
                 });
-                const signedUrl = await getSignedUrlAction(asset.path);
+                const signedUrl = await getSignedUrl(asset.path);
                 setSignedUrls(prev => ({ ...prev, [asset.id]: signedUrl }));
                 setDocuments(prev => [asset, ...prev]);
                 toast.success('Stitched document created');
@@ -327,7 +349,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
 
     const handleDelete = async (id: string, path: string) => {
         try {
-            await deleteMemberDocumentAction(id);
+            await deleteMemberDocument(id);
             await supabase.storage.from('documents').remove([path]);
             setDocuments(prev => prev.filter(d => d.id !== id));
             toast.success('Document purged');
@@ -582,7 +604,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                                                 const val = (e.currentTarget as HTMLInputElement).value;
                                                 if (val) {
                                                     for (const id of selectedDocIds) {
-                                                        await updateMemberDocumentAction(id, { purpose: val });
+                                                        await updateMemberDocument(id, { purpose: val });
                                                     }
                                                     toast.success('Batch Categorized');
                                                     fetchDocuments();
@@ -597,7 +619,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                                                 key={cat}
                                                 onClick={async () => {
                                                     for (const id of selectedDocIds) {
-                                                        await updateMemberDocumentAction(id, { purpose: cat });
+                                                        await updateMemberDocument(id, { purpose: cat });
                                                     }
                                                     toast.success('Batch Categorized');
                                                     fetchDocuments();
@@ -686,7 +708,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                                                         if (e.key === 'Enter') {
                                                             const val = (e.currentTarget as HTMLInputElement).value;
                                                             if (val) {
-                                                                await updateMemberDocumentAction(viewingDoc.id, {
+                                                                await updateMemberDocument(viewingDoc.id, {
                                                                     purpose: val,
                                                                 });
                                                                 toast.success('Asset Recataloged');
@@ -702,7 +724,7 @@ export default function DocumentManager({ memberId, tenantId }: DocumentManagerP
                                                         <button
                                                             key={cat}
                                                             onClick={async () => {
-                                                                await updateMemberDocumentAction(viewingDoc.id, {
+                                                                await updateMemberDocument(viewingDoc.id, {
                                                                     purpose: cat,
                                                                 });
                                                                 toast.success('Asset Recataloged');
