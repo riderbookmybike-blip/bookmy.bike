@@ -305,11 +305,6 @@ export default function GrnMediaGallery({ entityId, items, onChange }: GrnMediaG
                 </label>
             </div>
 
-            {/* Untagged warning */}
-            {items.some(i => i.purpose === 'other') && (
-                <p className="text-[9px] font-bold text-amber-500 mt-1">⚠ Tag all photos before submitting</p>
-            )}
-
             {/* Hidden canvas */}
             <canvas ref={canvasRef} className="hidden" />
 

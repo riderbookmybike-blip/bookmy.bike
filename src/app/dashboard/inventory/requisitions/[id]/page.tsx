@@ -3459,13 +3459,7 @@ export default function RequisitionDetailPage() {
                                         toast.error('Engine number must be at least 5 characters');
                                         return;
                                     }
-                                    const hasTag = (t: string) => grnMediaItems.some(i => i.purpose === t);
-                                    if (!hasTag('chassis') || !hasTag('engine') || !hasTag('qc_video')) {
-                                        toast.error(
-                                            'Tag at least Chassis photo, Engine photo and QC Video before submitting'
-                                        );
-                                        return;
-                                    }
+
                                     setIsSubmittingGrn(true);
                                     try {
                                         const { receiveStock } = await import('@/actions/inventory');
