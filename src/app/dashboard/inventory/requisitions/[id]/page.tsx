@@ -296,6 +296,7 @@ export default function RequisitionDetailPage() {
     const [isAmending, setIsAmending] = useState(false);
     // Section collapse state — all collapsed by default
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+        requisition: true,
         quotes: true,
         dispatch: true,
         grn: true,
@@ -820,6 +821,7 @@ export default function RequisitionDetailPage() {
             depreciationWaiver: 0,
             transportation: 0,
             insuranceAddons: 0,
+            other: 0,
         };
         for (const item of requestItems) {
             const key = classifyCostBucket(item.cost_type);
@@ -850,7 +852,9 @@ export default function RequisitionDetailPage() {
             }
             if (key === 'insurance') {
                 summary.insurance += amount;
+                continue;
             }
+            summary.other += amount;
         }
         return summary;
     }, [requestItems]);
@@ -1811,6 +1815,81 @@ export default function RequisitionDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Requisition ── */}
+            {request?.source_type === 'BOOKING' && (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => toggleSection('requisition')}
+                        className="w-full px-1 flex items-center justify-between group mt-4 mb-2"
+                    >
+                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                            Requisition
+                        </p>
+                        <span
+                            className={`text-slate-400 text-xs transition-transform duration-200 ${openSections['requisition'] ? 'rotate-180' : ''}`}
+                        >
+                            ▾
+                        </span>
+                    </button>
+                    {openSections['requisition'] && (
+                        <div className="space-y-2 mb-4">
+                            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 overflow-hidden">
+                                <div
+                                    className="px-4 py-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between gap-3 bg-slate-50 dark:bg-white/5 cursor-pointer"
+                                    onClick={() => toggleSection('requisition')}
+                                >
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                            Requisition Ref
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                            {formatTripletId(request.display_id || request.id)}
+                                        </p>
+                                    </div>
+                                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+                                        Booking
+                                    </span>
+                                </div>
+                                <div className="px-4 py-3 flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                            Source
+                                        </p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                            CUSTOMER BOOKING
+                                        </p>
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-1">
+                                            {[
+                                                costSummary.exShowroom > 0 ? 'Ex_Showroom' : null,
+                                                costSummary.registration > 0 ? 'RTO_Registration' : null,
+                                                costSummary.insurance > 0 ? 'Insurance' : null,
+                                                costSummary.insuranceAddons > 0 || costSummary.depreciationWaiver > 0
+                                                    ? 'Insurance_Addons'
+                                                    : null,
+                                                costSummary.transportation > 0 ? 'Transport' : null,
+                                                costSummary.hypothecation > 0 ? 'Hypothecation' : null,
+                                                costSummary.other > 0 ? 'Other_Charges' : null,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(', ') || 'Items mapped'}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">
+                                            Expected Price
+                                        </p>
+                                        <p className="text-lg font-black text-emerald-700 dark:text-emerald-200">
+                                            {formatCurrency(totalExpected)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
 
             {/* ── Quotes ── */}
             <button

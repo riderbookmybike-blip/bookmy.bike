@@ -438,38 +438,106 @@ export default function PricingLedgerTable({
         return `₹${Math.round(num).toLocaleString()}`;
     };
 
-    const getRtoTypeDetail = (rtoData: any, type: 'STATE' | 'BH' | 'COMPANY') => {
+    const getRtoTypeDetail = (
+        rtoData: any,
+        type: 'STATE' | 'BH' | 'COMPANY'
+    ): { total: number; breakdown: any[] } | null => {
         if (!rtoData) return null;
-        const typeVal = rtoData?.[type];
+        const val = rtoData?.[type];
+
+        const numeric = (input: any) => {
+            const parsed = Number(input);
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+
+        if (val === null || val === undefined) return null;
+
+        // Handle legacy number format
+        if (typeof val === 'number' || typeof val === 'string') return { total: numeric(val), breakdown: [] };
+
+        // Handle new object format
+        if (typeof val === 'object' && 'total' in val) {
+            const dynamicFeeEntries =
+                val.fees && typeof val.fees === 'object'
+                    ? Object.entries(val.fees)
+                          .map(([key, amount]) => ({
+                              label: key
+                                  .replace(/([A-Z])/g, ' $1')
+                                  .replace(/^./, (ch: string) => ch.toUpperCase())
+                                  .trim(),
+                              amount: numeric(amount),
+                          }))
+                          .filter(entry => entry.amount > 0)
+                    : [];
+            const dynamicTaxEntries =
+                val.tax && typeof val.tax === 'object'
+                    ? Object.entries(val.tax)
+                          .map(([key, amount]) => ({
+                              label: key
+                                  .replace(/([A-Z])/g, ' $1')
+                                  .replace(/^./, (ch: string) => ch.toUpperCase())
+                                  .trim(),
+                              amount: numeric(amount),
+                          }))
+                          .filter(entry => entry.amount > 0)
+                    : [];
+
+            const hasDetails =
+                dynamicFeeEntries.length > 0 ||
+                dynamicTaxEntries.length > 0 ||
+                val.roadTax ||
+                val.registrationCharges ||
+                val.smartCardCharges;
+
+            const breakdown = hasDetails
+                ? dynamicFeeEntries.length > 0 || dynamicTaxEntries.length > 0
+                    ? [...dynamicFeeEntries, ...dynamicTaxEntries]
+                    : [
+                          {
+                              label:
+                                  val.roadTaxRate && numeric(val.roadTaxRate) > 0
+                                      ? `Road Tax (${numeric(val.roadTaxRate)}%)`
+                                      : 'Road Tax',
+                              amount: numeric(val.roadTax),
+                          },
+                          {
+                              label: 'Registration Charges',
+                              amount: numeric(val.registrationCharges || val.registrationFee),
+                          },
+                          { label: 'Smart Card', amount: numeric(val.smartCardCharges) },
+                          { label: 'Hypothecation', amount: numeric(val.hypothecationCharges) },
+                          { label: 'Postal Charges', amount: numeric(val.postalCharges) },
+                          {
+                              label:
+                                  val.cessRate && numeric(val.cessRate) > 0
+                                      ? `Cess (${numeric(val.cessRate)}%)`
+                                      : 'Cess',
+                              amount: numeric(val.cessAmount),
+                          },
+                      ].filter(x => x.amount > 0)
+                : [];
+            return { total: numeric(val.total), breakdown };
+        }
+
+        // Fallback for old fees/tax parallel to type (Legacy fallback from previous version)
         const fees = rtoData?.fees;
         const tax = rtoData?.tax?.[type];
-
-        if (typeof typeVal === 'number') {
-            return { total: typeVal };
-        }
-
-        if (typeVal && typeof typeVal === 'object') {
-            return {
-                total: typeVal.total,
-                breakdown: typeVal,
-            };
-        }
-
         if (fees && tax) {
             const feeItems = Object.entries(fees)
-                .map(([key, val]: any) => ({
-                    label: key.replace(/_/g, ' '),
-                    amount: val?.amount ?? val,
+                .map(([key, amount]: any) => ({
+                    label: key.replace(/_/g, ' ').replace(/^./, (ch: string) => ch.toUpperCase()),
+                    amount: numeric(amount?.amount ?? amount),
                 }))
-                .filter((item: any) => Number(item.amount) > 0);
+                .filter(item => item.amount > 0);
 
             const taxItems = [
-                { label: 'Road Tax', amount: tax.road_tax ?? tax.roadTax ?? 0 },
-                { label: 'Cess', amount: tax.cess ?? tax.cessAmount ?? 0 },
-            ].filter(item => Number(item.amount) > 0);
+                { label: 'Road Tax', amount: numeric(tax.road_tax ?? tax.roadTax) },
+                { label: 'Cess', amount: numeric(tax.cess ?? tax.cessAmount) },
+            ].filter(item => item.amount > 0);
 
-            const total = [...feeItems, ...taxItems].reduce((sum, i) => sum + Number(i.amount || 0), 0);
-            return { total, fees: feeItems, tax: taxItems };
+            const breakdown = [...feeItems, ...taxItems];
+            const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
+            return { total, breakdown };
         }
 
         return null;
@@ -1872,96 +1940,33 @@ export default function PricingLedgerTable({
                                                                                                 : 'N/A'}
                                                                                         </span>
                                                                                     </div>
-                                                                                    {breakdown && (
-                                                                                        <div className="pt-2 border-t border-dashed border-slate-200 space-y-1">
-                                                                                            {[
-                                                                                                {
-                                                                                                    l: 'Road Tax',
-                                                                                                    v: breakdown.roadTax,
-                                                                                                },
-                                                                                                {
-                                                                                                    l: 'Reg. Charges',
-                                                                                                    v: breakdown.registrationCharges,
-                                                                                                },
-                                                                                                {
-                                                                                                    l: 'Smart Card',
-                                                                                                    v: breakdown.smartCardCharges,
-                                                                                                },
-                                                                                                {
-                                                                                                    l: 'Hypothecation',
-                                                                                                    v: breakdown.hypothecationCharges,
-                                                                                                },
-                                                                                                {
-                                                                                                    l: 'Postal',
-                                                                                                    v: breakdown.postalCharges,
-                                                                                                },
-                                                                                                {
-                                                                                                    l: 'Cess',
-                                                                                                    v: breakdown.cessAmount,
-                                                                                                },
-                                                                                            ]
-                                                                                                .filter(i => i.v > 0)
-                                                                                                .map((item, idx) => (
-                                                                                                    <div
-                                                                                                        key={idx}
-                                                                                                        className="flex justify-between items-center text-[9px]"
-                                                                                                    >
-                                                                                                        <span className="text-slate-500">
-                                                                                                            {item.l}
-                                                                                                        </span>
-                                                                                                        <span className="text-slate-700 font-mono tabular-nums">
-                                                                                                            {formatMoney(
-                                                                                                                item.v
-                                                                                                            )}
-                                                                                                        </span>
-                                                                                                    </div>
-                                                                                                ))}
-                                                                                        </div>
-                                                                                    )}
-                                                                                    {!breakdown && detail?.fees && (
-                                                                                        <div className="pt-2 border-t border-dashed border-slate-200 space-y-1">
-                                                                                            {detail.fees.map(
-                                                                                                (
-                                                                                                    item: any,
-                                                                                                    idx: number
-                                                                                                ) => (
-                                                                                                    <div
-                                                                                                        key={`fee-${idx}`}
-                                                                                                        className="flex justify-between items-center text-[9px]"
-                                                                                                    >
-                                                                                                        <span className="text-slate-500">
-                                                                                                            {item.label}
-                                                                                                        </span>
-                                                                                                        <span className="text-slate-700 font-mono tabular-nums">
-                                                                                                            {formatMoney(
-                                                                                                                item.amount
-                                                                                                            )}
-                                                                                                        </span>
-                                                                                                    </div>
-                                                                                                )
-                                                                                            )}
-                                                                                            {detail.tax?.map(
-                                                                                                (
-                                                                                                    item: any,
-                                                                                                    idx: number
-                                                                                                ) => (
-                                                                                                    <div
-                                                                                                        key={`tax-${idx}`}
-                                                                                                        className="flex justify-between items-center text-[9px]"
-                                                                                                    >
-                                                                                                        <span className="text-slate-500">
-                                                                                                            {item.label}
-                                                                                                        </span>
-                                                                                                        <span className="text-slate-700 font-mono tabular-nums">
-                                                                                                            {formatMoney(
-                                                                                                                item.amount
-                                                                                                            )}
-                                                                                                        </span>
-                                                                                                    </div>
-                                                                                                )
-                                                                                            )}
-                                                                                        </div>
-                                                                                    )}
+                                                                                    {breakdown &&
+                                                                                        breakdown.length > 0 && (
+                                                                                            <div className="pt-2 border-t border-dashed border-slate-200 space-y-1">
+                                                                                                {breakdown.map(
+                                                                                                    (
+                                                                                                        item: any,
+                                                                                                        idx: number
+                                                                                                    ) => (
+                                                                                                        <div
+                                                                                                            key={idx}
+                                                                                                            className="flex justify-between items-center text-[9px]"
+                                                                                                        >
+                                                                                                            <span className="text-slate-500">
+                                                                                                                {
+                                                                                                                    item.label
+                                                                                                                }
+                                                                                                            </span>
+                                                                                                            <span className="text-slate-700 font-mono tabular-nums">
+                                                                                                                {formatMoney(
+                                                                                                                    item.amount
+                                                                                                                )}
+                                                                                                            </span>
+                                                                                                        </div>
+                                                                                                    )
+                                                                                                )}
+                                                                                            </div>
+                                                                                        )}
                                                                                 </div>
                                                                             );
                                                                         })}

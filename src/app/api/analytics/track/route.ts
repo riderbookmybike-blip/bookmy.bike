@@ -4,7 +4,7 @@ import { adminClient } from '@/lib/supabase/admin';
 // Simple in-memory rate limit for analytics (per Vercel instance)
 const ratelimit = new Map<string, { count: number; lastReset: number }>();
 const RATELIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 5; // Max 5 flushes (batches) per minute per IP
+const MAX_REQUESTS_PER_WINDOW = 30; // Higher ceiling to reduce noisy 429s during active browsing
 
 const IS_BOT_REGEX =
     /bot|spider|crawl|slurp|adsbot|mediapartners-google|apis-google|adsbot-google|google-polaris|bingpreview|bingbot|baiduspider|yandexbot|duckduckbot|rogerbot|exabot|facebot|facebookexternalhit|ia_archiver/i;
@@ -31,21 +31,39 @@ function normalizeEventChangedValue(changedValue?: unknown): string | null {
     }
 }
 
+function isMissingColumnError(error: any, columnName: string): boolean {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes(`column ${columnName}`.toLowerCase()) || message.includes(`'${columnName}'`);
+}
+
 async function resolveActiveLeadId(explicitLeadId: string, userId: string): Promise<string | null> {
     if (explicitLeadId) return explicitLeadId;
     if (!userId) return null;
 
-    const { data, error } = await adminClient
+    const recentLeadBaseQuery = adminClient
         .from('crm_leads')
         .select('id, status')
         .eq('customer_id', userId)
         .eq('is_deleted', false)
+        .limit(1);
+
+    const { data, error } = await recentLeadBaseQuery
         .order('updated_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
-        .limit(1)
         .maybeSingle();
 
     if (error) {
+        if (isMissingColumnError(error, 'crm_leads.updated_at')) {
+            const { data: fallbackData, error: fallbackError } = await recentLeadBaseQuery
+                .order('created_at', { ascending: false })
+                .maybeSingle();
+            if (fallbackError) {
+                console.error('Active lead resolution failed:', fallbackError);
+                return null;
+            }
+            return asString((fallbackData as any)?.id) || null;
+        }
+
         console.error('Active lead resolution failed:', error);
         return null;
     }
@@ -266,7 +284,15 @@ export async function POST(req: NextRequest) {
                     })
                     .in('id', touchedLeadIds);
                 if (leadTouchErr) {
-                    console.error('Lead last activity touch failed:', leadTouchErr);
+                    // Graceful fallback for older schema variants
+                    if (
+                        isMissingColumnError(leadTouchErr, 'crm_leads.last_activity_at') ||
+                        isMissingColumnError(leadTouchErr, 'crm_leads.updated_at')
+                    ) {
+                        // Skip touch on older schemas that do not yet expose lead activity columns.
+                    } else {
+                        console.error('Lead last activity touch failed:', leadTouchErr);
+                    }
                 }
             }
         }

@@ -16,22 +16,10 @@ const DesktopCatalog = dynamic(() => import('@/components/store/DesktopCatalog')
     ),
 });
 
-const MobileCatalog = dynamic(() => import('@/components/store/mobile/MobileCatalog').then(m => m.MobileCatalog), {
-    loading: () => (
-        <div className="p-4 space-y-4 animate-pulse">
-            <div className="h-12 bg-slate-100 rounded-xl" />
-            {[1, 2, 3].map(i => (
-                <div key={i} className="h-48 bg-slate-100 rounded-2xl" />
-            ))}
-        </div>
-    ),
-});
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { ProductVariant } from '@/types/productMaster';
 import { useSearchParams } from 'next/navigation';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
-
-import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface SystemCatalogRouterProps {
     initialItems: ProductVariant[];
@@ -40,7 +28,7 @@ interface SystemCatalogRouterProps {
     initialDevice?: 'phone' | 'desktop' | 'tv';
 }
 
-function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }: SystemCatalogRouterProps) {
+function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
     const {
@@ -53,24 +41,6 @@ function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
-    const { device } = useBreakpoint(initialDevice || 'desktop');
-    const isPhone = device === 'phone';
-
-    if (isPhone) {
-        return (
-            <MobileCatalog
-                filters={filters}
-                leadId={leadId || undefined}
-                basePath={basePath}
-                items={currentItems}
-                isLoading={loading}
-                mode="smart"
-                resolvedDealerId={resolvedDealerId}
-                resolvedStudioId={resolvedStudioId}
-                resolvedDealerName={resolvedDealerName}
-            />
-        );
-    }
 
     return (
         <DesktopCatalog
@@ -87,7 +57,7 @@ function SmartCatalogRouter({ initialItems, basePath = '/store', initialDevice }
     );
 }
 
-function DefaultCatalogRouter({ initialItems, basePath = '/store', initialDevice }: SystemCatalogRouterProps) {
+function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
     const {
@@ -101,25 +71,6 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store', initialDevice
     const currentItems = clientItems.length > 0 ? clientItems : initialItems;
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
-    const { device } = useBreakpoint(initialDevice || 'desktop');
-    const isPhone = device === 'phone';
-
-    if (isPhone) {
-        return (
-            <MobileCatalog
-                filters={filters}
-                leadId={leadId || undefined}
-                basePath={basePath}
-                items={currentItems}
-                isLoading={loading}
-                mode="default"
-                needsLocation={needsLocation}
-                resolvedDealerId={resolvedDealerId}
-                resolvedStudioId={resolvedStudioId}
-                resolvedDealerName={resolvedDealerName}
-            />
-        );
-    }
 
     return (
         <DesktopCatalog

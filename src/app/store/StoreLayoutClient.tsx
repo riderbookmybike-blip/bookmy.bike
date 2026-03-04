@@ -11,8 +11,6 @@ import { ColorProvider } from '@/contexts/ColorContext';
 import { DiscoveryProvider } from '@/contexts/DiscoveryContext';
 import { getSelfMemberLocation } from '@/actions/members';
 import { setLocationCookie } from '@/actions/locationCookie';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { ShopperBottomNav } from '@/components/store/mobile/ShopperBottomNav';
 import { DealershipGate } from '@/components/store/DealershipGate';
 import Script from 'next/script';
 
@@ -21,10 +19,8 @@ interface StoreLayoutClientProps {
     initialDevice: 'phone' | 'desktop';
 }
 
-export default function StoreLayoutClient({ children, initialDevice }: StoreLayoutClientProps) {
+export default function StoreLayoutClient({ children }: StoreLayoutClientProps) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
-    const { device } = useBreakpoint(initialDevice);
-    const isPhone = device === 'phone';
 
     useEffect(() => {
         const handleOpenLogin = () => setIsLoginOpen(true);
@@ -145,22 +141,11 @@ export default function StoreLayoutClient({ children, initialDevice }: StoreLayo
                         {/* Dealership Gate — blocks marketplace for staff without active dealership */}
                         <DealershipGate />
 
-                        <main
-                            className="flex-1"
-                            style={{
-                                paddingTop: isLandingPage ? '0px' : 'var(--header-h)',
-                                ...(isPhone
-                                    ? { paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 16px)' }
-                                    : undefined),
-                            }}
-                        >
+                        <main className="flex-1" style={{ paddingTop: 'var(--header-h)' }}>
                             {children}
                         </main>
 
                         {!hideFooter && <MarketplaceFooter />}
-
-                        {/* Shopper Bottom HUD (phone only) */}
-                        {isPhone && <ShopperBottomNav />}
 
                         {/* Global Login Sidebar */}
                         <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="RETAIL" />

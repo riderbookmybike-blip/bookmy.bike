@@ -308,6 +308,8 @@ export default function PricingPage() {
                     updatedAt?: string;
                     isPopular?: boolean;
                     updatedByName?: string;
+                    hsnCode?: string;
+                    gstRate?: number;
                 }
             >();
             // Resolve published_by UUIDs to display names
@@ -332,9 +334,39 @@ export default function PricingPage() {
                     exFactoryGst: Number(row.ex_showroom_gst_amount) || 0,
                     rto: Number(row.rto_total_state) || 0,
                     rto_data: {
-                        STATE: Number(row.rto_total_state || 0),
-                        BH: Number(row.rto_total_bh || 0),
-                        COMPANY: Number(row.rto_total_company || 0),
+                        STATE: {
+                            total: Number(row.rto_total_state || 0),
+                            registrationCharges: Number(row.rto_registration_fee_state || 0),
+                            smartCardCharges: Number(row.rto_smartcard_charges_state || 0),
+                            postalCharges: Number(row.rto_postal_charges_state || 0),
+                            hypothecationCharges: 0,
+                            roadTax: Number(row.rto_roadtax_amount_state || 0),
+                            roadTaxRate: Number(row.rto_roadtax_rate_state || 0),
+                            cessAmount: Number(row.rto_roadtaxcessamount_state || 0),
+                            cessRate: Number(row.rto_roadtaxcess_rate_state || 0),
+                        },
+                        BH: {
+                            total: Number(row.rto_total_bh || 0),
+                            registrationCharges: Number(row.rto_registration_fee_bh || 0),
+                            smartCardCharges: Number(row.rto_smartcard_charges_bh || 0),
+                            postalCharges: Number(row.rto_postal_charges_bh || 0),
+                            hypothecationCharges: 0,
+                            roadTax: Number(row.rto_roadtax_amount_bh || 0),
+                            roadTaxRate: Number(row.rto_roadtax_rate_bh || 0),
+                            cessAmount: Number(row.rto_roadtaxcessamount_bh || 0),
+                            cessRate: Number(row.rto_roadtaxcess_rate_bh || 0),
+                        },
+                        COMPANY: {
+                            total: Number(row.rto_total_company || 0),
+                            registrationCharges: Number(row.rto_registration_fee_company || 0),
+                            smartCardCharges: Number(row.rto_smartcard_charges_company || 0),
+                            postalCharges: Number(row.rto_postal_charges_company || 0),
+                            hypothecationCharges: 0,
+                            roadTax: Number(row.rto_roadtax_amount_company || 0),
+                            roadTaxRate: Number(row.rto_roadtax_rate_company || 0),
+                            cessAmount: Number(row.rto_roadtaxcessamount_company || 0),
+                            cessRate: Number(row.rto_roadtaxcess_rate_company || 0),
+                        },
                         default: row.rto_default_type || 'STATE',
                     },
                     insurance: Number(row.ins_total) || 0,
@@ -383,6 +415,8 @@ export default function PricingPage() {
                     updatedAt: row.updated_at,
                     isPopular: row.is_popular || false,
                     updatedByName: row.published_by ? publisherNameMap.get(row.published_by) || undefined : undefined,
+                    hsnCode: row.hsn_code,
+                    gstRate: Number(row.gst_rate) || undefined,
                 });
             });
 
@@ -563,9 +597,39 @@ export default function PricingPage() {
                               insurance: Number(d.ins_total || 0),
                               onRoad: Number(d.on_road_price || s.exShowroom || 0),
                               rto_data: {
-                                  STATE: Number(d.rto_total_state || 0),
-                                  BH: Number(d.rto_total_bh || 0),
-                                  COMPANY: Number(d.rto_total_company || 0),
+                                  STATE: {
+                                      total: Number(d.rto_total_state || 0),
+                                      registrationCharges: Number(d.rto_registration_fee_state || 0),
+                                      smartCardCharges: Number(d.rto_smartcard_charges_state || 0),
+                                      postalCharges: Number(d.rto_postal_charges_state || 0),
+                                      hypothecationCharges: 0,
+                                      roadTax: Number(d.rto_roadtax_amount_state || 0),
+                                      roadTaxRate: Number(d.rto_roadtax_rate_state || 0),
+                                      cessAmount: Number(d.rto_roadtaxcessamount_state || 0),
+                                      cessRate: Number(d.rto_roadtaxcess_rate_state || 0),
+                                  },
+                                  BH: {
+                                      total: Number(d.rto_total_bh || 0),
+                                      registrationCharges: Number(d.rto_registration_fee_bh || 0),
+                                      smartCardCharges: Number(d.rto_smartcard_charges_bh || 0),
+                                      postalCharges: Number(d.rto_postal_charges_bh || 0),
+                                      hypothecationCharges: 0,
+                                      roadTax: Number(d.rto_roadtax_amount_bh || 0),
+                                      roadTaxRate: Number(d.rto_roadtax_rate_bh || 0),
+                                      cessAmount: Number(d.rto_roadtaxcessamount_bh || 0),
+                                      cessRate: Number(d.rto_roadtaxcess_rate_bh || 0),
+                                  },
+                                  COMPANY: {
+                                      total: Number(d.rto_total_company || 0),
+                                      registrationCharges: Number(d.rto_registration_fee_company || 0),
+                                      smartCardCharges: Number(d.rto_smartcard_charges_company || 0),
+                                      postalCharges: Number(d.rto_postal_charges_company || 0),
+                                      hypothecationCharges: 0,
+                                      roadTax: Number(d.rto_roadtax_amount_company || 0),
+                                      roadTaxRate: Number(d.rto_roadtax_rate_company || 0),
+                                      cessAmount: Number(d.rto_roadtaxcessamount_company || 0),
+                                      cessRate: Number(d.rto_roadtaxcess_rate_company || 0),
+                                  },
                                   default: d.rto_default_type || 'STATE',
                               },
                               insurance_data: {

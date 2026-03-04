@@ -2,7 +2,6 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const DesktopCompare = dynamic(() => import('@/components/store/desktop/DesktopCompare'), {
     loading: () => (
@@ -17,26 +16,6 @@ const DesktopCompare = dynamic(() => import('@/components/store/desktop/DesktopC
     ),
 });
 
-const MobileCompare = dynamic(() => import('@/components/store/mobile/MobileCompare').then(m => m.MobileCompare), {
-    loading: () => (
-        <div className="p-4 space-y-4 animate-pulse">
-            <div className="h-12 bg-slate-100 rounded-xl" />
-            {[1, 2].map(i => (
-                <div key={i} className="h-48 bg-slate-100 rounded-2xl" />
-            ))}
-        </div>
-    ),
-});
-
-export function SystemCompareRouter({
-    initialDevice = 'desktop',
-}: { initialDevice?: 'phone' | 'desktop' | 'tv' } = {}) {
-    const { device } = useBreakpoint(initialDevice);
-    const isPhone = device === 'phone';
-
-    if (isPhone) {
-        return <MobileCompare />;
-    }
-
+export function SystemCompareRouter() {
     return <DesktopCompare />;
 }
