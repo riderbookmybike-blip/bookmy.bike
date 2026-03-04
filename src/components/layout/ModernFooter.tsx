@@ -2,7 +2,7 @@
 
 // Refined Modern Footer - Optimized SSR
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
     Facebook,
@@ -14,12 +14,7 @@ import {
     Minus,
     MapPin,
     MessageCircle,
-    MousePointer2,
     Bike,
-    Users,
-    Gift,
-    CheckCircle2,
-    QrCode,
     LayoutGrid,
     Tags,
     Gauge,
@@ -34,524 +29,280 @@ import {
     Shield,
     Lock,
     Scale,
-    Sparkles,
 } from 'lucide-react';
-import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
-import { slugify } from '@/utils/slugs';
 import { Logo } from '@/components/brand/Logo';
-import { useAuth } from '@/components/providers/AuthProvider';
-import { useOClubWallet } from '@/hooks/useOClubWallet';
-import { createClient } from '@/lib/supabase/client';
-import { QRCodeCanvas } from 'qrcode.react';
-import Modal from '@/components/ui/Modal';
 
 export const ModernFooter = () => {
-    const { brands } = useSystemBrandsLogic();
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [openNested, setOpenNested] = useState<string | null>(null);
-    const [mounted, setMounted] = React.useState(false);
-    const { user } = useAuth();
-    const { availableCoins } = useOClubWallet();
-    const [quoteCount, setQuoteCount] = useState<number | null>(null);
-    const [bookingStatus, setBookingStatus] = useState<string | null>(null);
-    const [memberId, setMemberId] = useState<string | null>(null);
-    const [isReferModalOpen, setIsReferModalOpen] = useState(false);
-    const [copySuccess, setCopySuccess] = useState(false);
-    const qrRef = useRef<HTMLCanvasElement>(null);
-    const [deviceMetrics, setDeviceMetrics] = useState<{
-        viewport: string;
-        resolution: string;
-        aspectRatio: string;
-        pixelRatio: string;
-        os: string;
-        browser: string;
-        battery?: string;
-    } | null>(null);
 
-    React.useEffect(() => {
-        setMounted(true);
+    const toggleSection = (title: string) => setOpenSection(openSection === title ? null : title);
+    const toggleNested = (brand: string) => setOpenNested(openNested === brand ? null : brand);
 
-        if (typeof window !== 'undefined') {
-            const updateMetrics = async () => {
-                const width = window.innerWidth;
-                const height = window.innerHeight;
-                const resWidth = window.screen.width;
-                const resHeight = window.screen.height;
-                const dpr = window.devicePixelRatio;
-
-                // Robust OS Detection
-                let os = 'OS UNKNOWN';
-                const p = window.navigator.platform.toLowerCase();
-                const ua = window.navigator.userAgent.toLowerCase();
-
-                if (ua.includes('win')) os = 'WINDOWS';
-                else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod')) os = 'IOS';
-                else if (p.includes('mac') || ua.includes('macintosh')) os = 'MACOS';
-                else if (ua.includes('android')) os = 'ANDROID';
-                else if (ua.includes('linux')) os = 'LINUX';
-
-                // Robust Browser Detection
-                let browser = 'BROWSER UNKNOWN';
-                if (ua.includes('edg/')) browser = 'EDGE';
-                else if (ua.includes('chrome') && !ua.includes('edg/')) browser = 'CHROME';
-                else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'SAFARI';
-                else if (ua.includes('firefox')) browser = 'FIREFOX';
-                else if (ua.includes('opera') || ua.includes('opr/')) browser = 'OPERA';
-
-                const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
-                const common = gcd(resWidth, resHeight);
-                const ratio = `${resWidth / common}:${resHeight / common}`;
-
-                let batteryLevel = undefined;
-                try {
-                    const nav: any = window.navigator;
-                    if (nav.getBattery) {
-                        const battery = await nav.getBattery();
-                        batteryLevel = `${Math.round(battery.level * 100)}%`;
-                    }
-                } catch (e) {}
-
-                setDeviceMetrics({
-                    viewport: `${width}×${height}`,
-                    resolution: `${resWidth}×${resHeight}`,
-                    aspectRatio: ratio,
-                    pixelRatio: dpr.toFixed(1),
-                    os: os,
-                    browser: browser,
-                    battery: batteryLevel,
-                });
-            };
-
-            updateMetrics();
-            window.addEventListener('resize', updateMetrics);
-            return () => window.removeEventListener('resize', updateMetrics);
-        }
-    }, []);
-
-    // Fetch user-specific data (Quotes & Bookings)
-    useEffect(() => {
-        if (!user) {
-            setQuoteCount(null);
-            setBookingStatus(null);
-            setMemberId(null);
-            return;
-        }
-
-        const supabase = createClient();
-
-        // 1. Fetch Member Details including counts for quotes/bookings
-        supabase
-            .from('id_members')
-            .select('display_id, quotes_count, bookings_count')
-            .eq('id', user.id)
-            .maybeSingle()
-            .then(({ data }) => {
-                if (data) {
-                    if (data.display_id) setMemberId(data.display_id);
-                    if (data.quotes_count !== undefined) setQuoteCount(data.quotes_count);
-                }
-            });
-
-        // 2. Fetch Latest Active Booking Status
-        supabase
-            .from('crm_bookings')
-            .select('id, status, operational_stage')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-            .then(({ data }) => {
-                if (data) {
-                    const status = data.operational_stage || data.status || 'Active';
-                    setBookingStatus(status.replace('_', ' '));
-                }
-            });
-    }, [user]);
-
-    const referralUrl = memberId ? `https://bookmy.bike/?ref=${memberId}` : 'https://bookmy.bike';
-    const whatsappMessage = `Hey! I'm using BookMyBike to find my next ride. Check it out using my referral link and let's ride together! 🏍️✨\n\nJoin here: ${referralUrl}`;
-    const whatsappLink = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
-
-    const heroSteps = useMemo(
-        () => [
-            {
-                id: 1,
-                title: 'Click',
-                subtitle: 'VERIFIED',
-                description: 'Easy signup — get started in seconds.',
-                icon: <MousePointer2 size={24} />,
-                href: '/',
-            },
-            {
-                id: 2,
-                title: 'Invite',
-                subtitle: 'INVITE FRIENDS',
-                description: 'Earn B-Coins for yourself and friends.',
-                icon: <Users size={24} />,
-                onClick: () => setIsReferModalOpen(true),
-            },
-            {
-                id: 3,
-                title: 'Reward',
-                subtitle: 'GET REWARDS',
-                description: 'Use B-Coins against your purchases.',
-                icon: <Gift size={24} />,
-                href: '#',
-            },
-            {
-                id: 4,
-                title: 'Compare',
-                subtitle: 'COMPARE MODELS',
-                description: 'Compare your dream bikes side by side.',
-                icon: <Scale size={24} />,
-                href: '/compare',
-            },
-            {
-                id: 5,
-                title: 'Lock',
-                subtitle: 'LOCK YOUR SPOT',
-                description: 'Lock the one you love most.',
-                icon: <Lock size={24} />,
-                href: '/profile?tab=bookings',
-            },
-            {
-                id: 6,
-                title: 'Experience',
-                subtitle: 'ENJOY THE EVENT',
-                description: "Experience O'Circle privileged services.",
-                icon: <Sparkles size={24} />,
-                href: '#',
-            },
-        ],
-        [setIsReferModalOpen]
-    );
-
-    const toggleSection = (title: string) => {
-        setOpenSection(openSection === title ? null : title);
-    };
-
-    const toggleNested = (brand: string) => {
-        setOpenNested(openNested === brand ? null : brand);
-    };
-
-    const copyReferralLink = () => {
-        navigator.clipboard.writeText(referralUrl);
-        setCopySuccess(true);
-        setTimeout(() => setCopySuccess(false), 2000);
-    };
-
-    const shareQRImage = async () => {
-        const canvas = qrRef.current;
-        if (!canvas) return;
-
-        try {
-            const blob = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), 'image/png'));
-            const file = new File([blob], 'referral-qr.png', { type: 'image/png' });
-
-            if (navigator.share && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: 'BookMyBike Referral',
-                    text: whatsappMessage,
-                });
-            } else {
-                // Fallback: Download
-                const link = document.createElement('a');
-                link.download = 'bookmybike-qr.png';
-                link.href = canvas.toDataURL();
-                link.click();
-            }
-        } catch (error) {
-            console.error('Error sharing image:', error);
-        }
-    };
-
-    const shareToFacebook = () => {
-        const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralUrl)}`;
-        window.open(url, '_blank');
-    };
-
-    const shareToX = () => {
-        const url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(referralUrl)}&text=${encodeURIComponent(whatsappMessage)}`;
-        window.open(url, '_blank');
-    };
-
-    // Simplified Brand Section Logic
-    const activeBrandNames = ['HONDA', 'TVS', 'HERO', 'SUZUKI', 'BAJAJ', 'ROYAL ENFIELD', 'YAMAHA', 'KTM'];
-
-    const footerSections = useMemo(
-        () => [
-            {
-                title: 'Inventory',
-                links: [
-                    {
-                        label: 'All Inventory',
-                        href: '/store/catalog',
-                        icon: <LayoutGrid size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Scooters',
-                        href: '/store/catalog?category=SCOOTER',
-                        icon: <Bike size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Motorcycles',
-                        href: '/store/catalog?category=MOTORCYCLE',
-                        icon: <Bike size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Lowest Price',
-                        href: '/store/catalog?sort=price_asc',
-                        icon: <Tags size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Highest Mileage',
-                        href: '/store/catalog?sort=mileage',
-                        icon: <Gauge size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                ],
-            },
-            {
-                title: 'Brands',
-                nested: [
-                    {
-                        brand: 'Honda',
-                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                        links: [
-                            { label: 'Activa 6G', href: '/store/honda/activa-6g' },
-                            { label: 'Activa 125', href: '/store/honda/activa-125' },
-                            { label: 'Dio 125', href: '/store/honda/dio-125' },
-                            { label: 'Shine 125', href: '/store/honda/shine-125' },
-                            { label: 'SP 125', href: '/store/honda/sp-125' },
-                        ],
-                    },
-                    {
-                        brand: 'TVS',
-                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                        links: [
-                            { label: 'Jupiter 110', href: '/store/tvs/jupiter' },
-                            { label: 'Ntorq 125', href: '/store/tvs/ntorq' },
-                            { label: 'Raider 125', href: '/store/tvs/raider' },
-                            { label: 'Apache RTR', href: '/store/tvs/apache-rtr-160' },
-                        ],
-                    },
-                    {
-                        brand: 'Hero',
-                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                        links: [
-                            { label: 'Splendor+', href: '/store/hero/splendor-plus' },
-                            { label: 'Xtreme 125R', href: '/store/hero/xtreme-125r' },
-                            { label: 'Destini 125', href: '/store/hero/destini-125' },
-                        ],
-                    },
-                    {
-                        brand: 'Bajaj',
-                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                        links: [
-                            { label: 'Pulsar 150', href: '/store/bajaj/pulsar-150' },
-                            { label: 'Pulsar NS200', href: '/store/bajaj/pulsar-ns200' },
-                            { label: 'Platina 100', href: '/store/bajaj/platina-100' },
-                        ],
-                    },
-                    {
-                        brand: 'Suzuki',
-                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                        links: [
-                            { label: 'Access 125', href: '/store/suzuki/access-125' },
-                            { label: 'Burgman St', href: '/store/suzuki/burgman-street' },
-                            { label: 'Avenis 125', href: '/store/suzuki/avenis' },
-                            { label: 'Gixxer SF', href: '/store/suzuki/gixxer-sf' },
-                        ],
-                    },
-                    {
-                        brand: 'Yamaha',
-                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                        links: [
-                            { label: 'R15 V4', href: '/store/yamaha/r15' },
-                            { label: 'MT-15 V2', href: '/store/yamaha/mt-15' },
-                            { label: 'RayZR 125', href: '/store/yamaha/ray-zr' },
-                            { label: 'Fascino 125', href: '/store/yamaha/fascino' },
-                        ],
-                    },
-                    {
-                        brand: 'RE',
-                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                        links: [
-                            { label: 'Classic 350', href: '/store/royal-enfield/classic-350' },
-                            { label: 'Hunter 350', href: '/store/royal-enfield/hunter-350' },
-                            { label: 'Bullet 350', href: '/store/royal-enfield/bullet-350' },
-                            { label: 'Meteor 350', href: '/store/royal-enfield/meteor-350' },
-                        ],
-                    },
-                    {
-                        brand: 'KTM',
-                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                        links: [
-                            { label: 'Duke 200', href: '/store/ktm/duke-200' },
-                            { label: 'Duke 390', href: '/store/ktm/duke-390' },
-                            { label: 'RC 200', href: '/store/ktm/rc-200' },
-                        ],
-                    },
-                ],
-            },
-            {
-                title: 'Support',
-                links: [
-                    {
-                        label: 'Finance Options',
-                        href: '/finance',
-                        icon: <Wallet size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Insurance Hub',
-                        href: '/insurance',
-                        icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'RTO Rules',
-                        href: '/rto',
-                        icon: <FileText size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Help Center',
-                        href: '/help',
-                        icon: <HelpCircle size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                ],
-            },
-            {
-                title: 'Company',
-                links: [
-                    {
-                        label: 'About Us',
-                        href: '/about',
-                        icon: <Info size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Our Blog',
-                        href: '/blog',
-                        icon: <BookOpen size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: "O' Circle",
-                        href: '/store/ocircle',
-                        icon: <Compass size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Media Kit',
-                        href: '/mediakit',
-                        icon: <ImageIcon size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Safety',
-                        href: '#',
-                        icon: <Shield size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Privacy Policy',
-                        href: '/privacy',
-                        icon: <Lock size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                    {
-                        label: 'Terms of Service',
-                        href: '#',
-                        icon: <Scale size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    },
-                ],
-            },
-            {
-                title: 'Serving Now',
-                links: [
-                    {
-                        label: 'Mumbai',
-                        href: '/store/catalog?district=MUMBAI',
-                        icon: <MapPin size={12} className="text-emerald-500/60" />,
-                    },
-                    {
-                        label: 'Pune',
-                        href: '/store/catalog?district=PUNE',
-                        icon: <MapPin size={12} className="text-emerald-500/60" />,
-                    },
-                    {
-                        label: 'Thane',
-                        href: '/store/catalog?district=THANE',
-                        icon: <MapPin size={12} className="text-emerald-500/60" />,
-                    },
-                    {
-                        label: 'Kalyan',
-                        href: '/store/catalog?district=THANE',
-                        icon: <MapPin size={12} className="text-emerald-500/60" />,
-                    },
-                    {
-                        label: 'Palghar',
-                        href: '/store/catalog?district=PALGHAR',
-                        icon: <MapPin size={12} className="text-emerald-500/60" />,
-                    },
-                    {
-                        label: 'Navi Mumbai',
-                        href: '/store/catalog?district=RAIGAD',
-                        icon: <MapPin size={12} className="text-emerald-500/60" />,
-                    },
-                    {
-                        label: 'Panvel',
-                        href: '/store/catalog?district=RAIGAD',
-                        icon: <MapPin size={12} className="text-emerald-500/60" />,
-                    },
-                ],
-            },
-            {
-                title: 'Connect',
-                links: [
-                    {
-                        label: 'WhatsApp',
-                        href: 'https://wa.me/917447403491',
-                        icon: <MessageCircle size={14} style={{ color: '#25D366' }} />,
-                        forceWhite: true,
-                    },
-                    {
-                        label: 'Instagram',
-                        href: 'https://www.instagram.com/bookmy.bike/',
-                        icon: <Instagram size={14} style={{ color: '#E4405F' }} />,
-                        forceWhite: true,
-                    },
-                    {
-                        label: 'Twitter / X',
-                        href: 'https://twitter.com/bookmybike',
-                        icon: <Twitter size={14} style={{ color: '#1DA1F2' }} />,
-                        forceWhite: true,
-                    },
-                    {
-                        label: 'Facebook',
-                        href: 'https://www.facebook.com/rider.bookmybike',
-                        icon: <Facebook size={14} style={{ color: '#1877F2' }} />,
-                        forceWhite: true,
-                    },
-                    {
-                        label: 'LinkedIn',
-                        href: 'https://www.linkedin.com/company/bookmybike',
-                        icon: <Linkedin size={14} style={{ color: '#0A66C2' }} />,
-                        forceWhite: true,
-                    },
-                ],
-            },
-        ],
-        []
-    );
+    const footerSections = [
+        {
+            title: 'Inventory',
+            links: [
+                {
+                    label: 'All Inventory',
+                    href: '/store/catalog',
+                    icon: <LayoutGrid size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Scooters',
+                    href: '/store/catalog?category=SCOOTER',
+                    icon: <Bike size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Motorcycles',
+                    href: '/store/catalog?category=MOTORCYCLE',
+                    icon: <Bike size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Lowest Price',
+                    href: '/store/catalog?sort=price_asc',
+                    icon: <Tags size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Highest Mileage',
+                    href: '/store/catalog?sort=mileage',
+                    icon: <Gauge size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+            ],
+        },
+        {
+            title: 'Brands',
+            nested: [
+                {
+                    brand: 'Honda',
+                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        { label: 'Activa 6G', href: '/store/honda/activa-6g' },
+                        { label: 'Activa 125', href: '/store/honda/activa-125' },
+                        { label: 'Dio 125', href: '/store/honda/dio-125' },
+                        { label: 'Shine 125', href: '/store/honda/shine-125' },
+                        { label: 'SP 125', href: '/store/honda/sp-125' },
+                    ],
+                },
+                {
+                    brand: 'TVS',
+                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        { label: 'Jupiter 110', href: '/store/tvs/jupiter' },
+                        { label: 'Ntorq 125', href: '/store/tvs/ntorq' },
+                        { label: 'Raider 125', href: '/store/tvs/raider' },
+                        { label: 'Apache RTR', href: '/store/tvs/apache-rtr-160' },
+                    ],
+                },
+                {
+                    brand: 'Hero',
+                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        { label: 'Splendor+', href: '/store/hero/splendor-plus' },
+                        { label: 'Xtreme 125R', href: '/store/hero/xtreme-125r' },
+                        { label: 'Destini 125', href: '/store/hero/destini-125' },
+                    ],
+                },
+                {
+                    brand: 'Bajaj',
+                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        { label: 'Pulsar 150', href: '/store/bajaj/pulsar-150' },
+                        { label: 'Pulsar NS200', href: '/store/bajaj/pulsar-ns200' },
+                        { label: 'Platina 100', href: '/store/bajaj/platina-100' },
+                    ],
+                },
+                {
+                    brand: 'Suzuki',
+                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        { label: 'Access 125', href: '/store/suzuki/access-125' },
+                        { label: 'Burgman St', href: '/store/suzuki/burgman-street' },
+                        { label: 'Avenis 125', href: '/store/suzuki/avenis' },
+                        { label: 'Gixxer SF', href: '/store/suzuki/gixxer-sf' },
+                    ],
+                },
+                {
+                    brand: 'Yamaha',
+                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        { label: 'R15 V4', href: '/store/yamaha/r15' },
+                        { label: 'MT-15 V2', href: '/store/yamaha/mt-15' },
+                        { label: 'RayZR 125', href: '/store/yamaha/ray-zr' },
+                        { label: 'Fascino 125', href: '/store/yamaha/fascino' },
+                    ],
+                },
+                {
+                    brand: 'RE',
+                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        { label: 'Classic 350', href: '/store/royal-enfield/classic-350' },
+                        { label: 'Hunter 350', href: '/store/royal-enfield/hunter-350' },
+                        { label: 'Bullet 350', href: '/store/royal-enfield/bullet-350' },
+                        { label: 'Meteor 350', href: '/store/royal-enfield/meteor-350' },
+                    ],
+                },
+                {
+                    brand: 'KTM',
+                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        { label: 'Duke 200', href: '/store/ktm/duke-200' },
+                        { label: 'Duke 390', href: '/store/ktm/duke-390' },
+                        { label: 'RC 200', href: '/store/ktm/rc-200' },
+                    ],
+                },
+            ],
+        },
+        {
+            title: 'Support',
+            links: [
+                {
+                    label: 'Finance Options',
+                    href: '/finance',
+                    icon: <Wallet size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Insurance Hub',
+                    href: '/insurance',
+                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'RTO Rules',
+                    href: '/rto',
+                    icon: <FileText size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Help Center',
+                    href: '/help',
+                    icon: <HelpCircle size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+            ],
+        },
+        {
+            title: 'Company',
+            links: [
+                {
+                    label: 'About Us',
+                    href: '/about',
+                    icon: <Info size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Our Blog',
+                    href: '/blog',
+                    icon: <BookOpen size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: "O' Circle",
+                    href: '/store/ocircle',
+                    icon: <Compass size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Media Kit',
+                    href: '/mediakit',
+                    icon: <ImageIcon size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Safety',
+                    href: '#',
+                    icon: <Shield size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Privacy Policy',
+                    href: '/privacy',
+                    icon: <Lock size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Terms of Service',
+                    href: '#',
+                    icon: <Scale size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+            ],
+        },
+        {
+            title: 'Serving Now',
+            links: [
+                {
+                    label: 'Mumbai',
+                    href: '/store/catalog?district=MUMBAI',
+                    icon: <MapPin size={12} className="text-emerald-500/60" />,
+                },
+                {
+                    label: 'Pune',
+                    href: '/store/catalog?district=PUNE',
+                    icon: <MapPin size={12} className="text-emerald-500/60" />,
+                },
+                {
+                    label: 'Thane',
+                    href: '/store/catalog?district=THANE',
+                    icon: <MapPin size={12} className="text-emerald-500/60" />,
+                },
+                {
+                    label: 'Kalyan',
+                    href: '/store/catalog?district=THANE',
+                    icon: <MapPin size={12} className="text-emerald-500/60" />,
+                },
+                {
+                    label: 'Palghar',
+                    href: '/store/catalog?district=PALGHAR',
+                    icon: <MapPin size={12} className="text-emerald-500/60" />,
+                },
+                {
+                    label: 'Navi Mumbai',
+                    href: '/store/catalog?district=RAIGAD',
+                    icon: <MapPin size={12} className="text-emerald-500/60" />,
+                },
+                {
+                    label: 'Panvel',
+                    href: '/store/catalog?district=RAIGAD',
+                    icon: <MapPin size={12} className="text-emerald-500/60" />,
+                },
+            ],
+        },
+        {
+            title: 'Connect',
+            links: [
+                {
+                    label: 'WhatsApp',
+                    href: 'https://wa.me/917447403491',
+                    icon: <MessageCircle size={14} style={{ color: '#25D366' }} />,
+                    forceWhite: true,
+                },
+                {
+                    label: 'Instagram',
+                    href: 'https://www.instagram.com/bookmy.bike/',
+                    icon: <Instagram size={14} style={{ color: '#E4405F' }} />,
+                    forceWhite: true,
+                },
+                {
+                    label: 'Twitter / X',
+                    href: 'https://twitter.com/bookmybike',
+                    icon: <Twitter size={14} style={{ color: '#1DA1F2' }} />,
+                    forceWhite: true,
+                },
+                {
+                    label: 'Facebook',
+                    href: 'https://www.facebook.com/rider.bookmybike',
+                    icon: <Facebook size={14} style={{ color: '#1877F2' }} />,
+                    forceWhite: true,
+                },
+                {
+                    label: 'LinkedIn',
+                    href: 'https://www.linkedin.com/company/bookmybike',
+                    icon: <Linkedin size={14} style={{ color: '#0A66C2' }} />,
+                    forceWhite: true,
+                },
+            ],
+        },
+    ];
 
     return (
         <footer
             className="flex flex-col justify-between border-t border-white/5 selection:bg-brand-primary/20 relative text-white"
             style={{
                 backgroundColor: '#0a0904',
-                minHeight: !mounted ? '400px' : 'auto',
                 scrollMarginTop: 'var(--header-h, 80px)',
             }}
         >
-            {!mounted ? (
-                <div className="absolute inset-0 bg-[#0a0904] z-50 flex items-center justify-center">
-                    <div className="w-10 h-10 border-2 border-brand-primary/20 border-t-brand-primary rounded-full animate-spin" />
-                </div>
-            ) : null}
             {/* 1. Dynamic Mesh Background */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40">
                 <div className="absolute -top-[20%] -left-[10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_50%_50%,rgba(255,215,0,0.05)_0%,transparent_60%)]" />
@@ -754,139 +505,10 @@ export const ModernFooter = () => {
                                 </span>{' '}
                                 By O&apos;Circle Crew
                             </div>
-
-                            {/* Device & Viewport Diagnostics Rail */}
-                            {deviceMetrics && (
-                                <div className="flex flex-wrap items-center justify-center lg:justify-end gap-x-6 gap-y-2 text-[8px] font-medium font-mono tracking-widest text-white/20 uppercase">
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="text-white/10 italic">VIEW:</span> {deviceMetrics.viewport}
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="text-white/10 italic">RES:</span> {deviceMetrics.resolution}
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="text-white/10 italic">DPR:</span> {deviceMetrics.pixelRatio}
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="text-white/10 italic">OS:</span> {deviceMetrics.os}
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="text-white/10 italic">BROWSER:</span> {deviceMetrics.browser}
-                                    </span>
-                                    {deviceMetrics.battery && (
-                                        <span className="flex items-center gap-1.5">
-                                            <span className="text-white/10 italic">BATT:</span> {deviceMetrics.battery}
-                                        </span>
-                                    )}
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
             </div>
-            {/* 3. Referral QR Modal */}
-            <Modal
-                isOpen={isReferModalOpen}
-                onClose={() => setIsReferModalOpen(false)}
-                title={
-                    <span className="flex items-center gap-3">
-                        <QrCode className="text-brand-primary" /> Referral Hub
-                    </span>
-                }
-                size="sm"
-            >
-                <div className="flex flex-col items-center text-center gap-8 py-4">
-                    <div className="p-6 bg-white rounded-3xl shadow-[0_0_40px_rgba(255,215,0,0.15)] border border-brand-primary/20">
-                        <QRCodeCanvas ref={qrRef} value={referralUrl} size={180} level="H" includeMargin={false} />
-                    </div>
-
-                    <div className="w-full space-y-6">
-                        <div className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex flex-col gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-widest">
-                                Share Link
-                            </span>
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm font-bold text-slate-800 dark:text-white truncate flex-1 mr-4">
-                                    {referralUrl}
-                                </p>
-                                <button
-                                    onClick={copyReferralLink}
-                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${copySuccess ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white'}`}
-                                >
-                                    {copySuccess ? 'Copied' : 'Copy'}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            {/* WhatsApp Direct - Instant (Text only) */}
-                            <Link
-                                href={whatsappLink}
-                                target="_blank"
-                                className="w-full py-4 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95 group"
-                            >
-                                <MessageCircle size={20} className="group-hover:scale-110 transition-transform" />
-                                INSTANT WHATSAPP REFER
-                            </Link>
-
-                            {/* Social Sharing Grid */}
-                            <div className="grid grid-cols-5 gap-2">
-                                <button
-                                    onClick={shareToFacebook}
-                                    title="Facebook"
-                                    className="py-3 bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-[#1877F2]/20"
-                                >
-                                    <Facebook size={18} className="text-[#1877F2]" />
-                                </button>
-                                <Link
-                                    href="https://www.instagram.com/bookmy.bike/"
-                                    target="_blank"
-                                    title="Instagram"
-                                    className="py-3 bg-[#E4405F]/10 hover:bg-[#E4405F]/20 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-[#E4405F]/20"
-                                >
-                                    <Instagram size={18} className="text-[#E4405F]" />
-                                </Link>
-                                <Link
-                                    href="https://www.linkedin.com/company/bookmybike"
-                                    target="_blank"
-                                    title="LinkedIn"
-                                    className="py-3 bg-[#0A66C2]/10 hover:bg-[#0A66C2]/20 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-[#0A66C2]/20"
-                                >
-                                    <Linkedin size={18} className="text-[#0A66C2]" />
-                                </Link>
-                                <Link
-                                    href={whatsappLink}
-                                    target="_blank"
-                                    title="WhatsApp Share"
-                                    className="py-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-[#25D366]/20"
-                                >
-                                    <MessageCircle size={18} className="text-[#25D366]" />
-                                </Link>
-                                <button
-                                    onClick={shareToX}
-                                    title="X (Twitter)"
-                                    className="py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl flex items-center justify-center transition-all active:scale-90 border border-white/10"
-                                >
-                                    <Twitter size={18} />
-                                </button>
-                            </div>
-
-                            {/* Share QR Image - Best for Mobile/Status */}
-                            <button
-                                onClick={shareQRImage}
-                                className="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-[11px] flex items-center justify-center gap-2 transition-all border border-white/10 active:scale-95 group"
-                            >
-                                <QrCode size={14} className="text-brand-primary" />
-                                Share QR Image (For Status/Stories)
-                            </button>
-                        </div>
-                    </div>
-
-                    <p className="text-[11px] text-slate-500 dark:text-white/40 leading-relaxed max-w-[240px]">
-                        Scan this code to invite your crew. Earn rewards for every successful ride they book.
-                    </p>
-                </div>
-            </Modal>
         </footer>
     );
 };
