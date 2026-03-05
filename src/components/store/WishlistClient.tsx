@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Heart, ArrowRight, Plus, Search, X, ChevronDown, ChevronRight, Menu } from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
@@ -10,6 +11,7 @@ import { ProductCard } from '@/components/store/desktop/ProductCard';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { DiscoveryBar } from '@/components/store/DiscoveryBar';
 import { CatalogGridSkeleton } from '@/components/store/CatalogSkeleton';
+import { buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
 
 // Filter Group Component (Extracted)
 const FilterGroup = ({
@@ -82,10 +84,12 @@ const FilterGroup = ({
 export const WishlistClient = () => {
     const { favorites, clearFavorites } = useFavorites();
     const { items: catalogItems, isLoading } = useSystemCatalogLogic();
+    const router = useRouter();
 
     // UI Local State for Cards
-    const [downpayment] = useState(25000);
+    const [downpayment] = useState(5000);
     const [tenure] = useState(36);
+    const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
 
     // Local State for Filters
     const [activeCategory, setActiveCategory] = useState<'ALL' | 'MOTORCYCLE' | 'SCOOTER' | 'MOPED'>('ALL');
@@ -367,6 +371,15 @@ export const WishlistClient = () => {
                                     onTogglePricingMode={() =>
                                         setPricingMode(prev => (prev === 'cash' ? 'finance' : 'cash'))
                                     }
+                                    variantCount={2}
+                                    onExplore={() => {
+                                        const url = buildVariantExplorerUrl(v.make || '', v.model || '');
+                                        router.push(url);
+                                    }}
+                                    onExplodeColors={() => {
+                                        const key = `${v.make}::${v.model}::${v.variant}`;
+                                        setExplodedVariant(prev => (prev === key ? null : key));
+                                    }}
                                 />
                             </motion.div>
                         ))

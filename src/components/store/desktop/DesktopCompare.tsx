@@ -790,7 +790,7 @@ export default function DesktopCompare() {
                         </div>
                     </div>
                     {/* Spacer to maintain flow height for the absolute faces */}
-                    <div className="h-14 mb-6 hidden md:block" />
+                    <div className="mb-6 hidden md:block" />
 
                     {/* ────── Full Cards (normal flow — scrolls away) ────── */}
                     <div ref={fullCardsRef}>
