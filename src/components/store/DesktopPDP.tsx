@@ -579,7 +579,7 @@ export function DesktopPDP({
                     className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-brand-primary/[0.02] rounded-full blur-[120px]"
                 />
             </div>
-            <div className="page-container tv-pdp-shell pt-4 pb-32 md:pb-36 space-y-6 relative z-10">
+            <div className="store-page-shell tv-pdp-shell pb-32 md:pb-36 space-y-6 relative z-10">
                 {/* 1. Hero Row: Image / Pricing / Finance — Horizontal Accordion (Desktop) */}
                 <div
                     className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-4 h-[calc(100vh-220px)] min-h-[620px] max-h-[720px] py-2 overflow-visible`}

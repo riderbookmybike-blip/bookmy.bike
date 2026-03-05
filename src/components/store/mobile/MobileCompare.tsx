@@ -144,7 +144,7 @@ export function MobileCompare() {
     return (
         <div className="bg-slate-50 text-slate-900 min-h-screen pb-20 font-sans selection:bg-[#F4B000]/30">
             {/* ── Sticky Header ── */}
-            <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200 pt-safe p-4 flex items-center gap-3">
+            <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200 pt-safe px-5 py-4 flex items-center gap-3">
                 <button
                     onClick={() => window.history.back()}
                     className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-700 active:bg-slate-100"
@@ -160,7 +160,7 @@ export function MobileCompare() {
             </div>
 
             {/* ── SECTION 1: Full ProductCards (as-is, same as desktop) ── */}
-            <div className="px-4 pt-4 space-y-4">
+            <div className="px-5 pt-4 space-y-4">
                 {activeVariants.map(v => (
                     <ProductCard
                         key={v.id}
@@ -176,14 +176,14 @@ export function MobileCompare() {
             </div>
 
             {/* ── Divider ── */}
-            <div className="mx-4 my-6 flex items-center gap-3">
+            <div className="mx-5 my-6 flex items-center gap-3">
                 <div className="flex-1 h-px bg-slate-200" />
                 <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Side by Side</span>
                 <div className="flex-1 h-px bg-slate-200" />
             </div>
 
             {/* ── SECTION 2: Mini Cards side by side ── */}
-            <div className={`grid gap-3 px-4 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <div className={`grid gap-3 px-5 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 {activeVariants.map(v => {
                     const price = v.price?.onRoad || v.price?.exShowroom || 0;
                     const emi = Math.round((price - downpayment) * getEmiFactor(tenure));
@@ -233,7 +233,7 @@ export function MobileCompare() {
             </div>
 
             {/* ── SECTION 3: Spec Comparison ── */}
-            <div className="px-4 mt-6 space-y-4">
+            <div className="px-5 mt-6 space-y-4">
                 {/* What's Different */}
                 {smartSpecs.diffSpecs.length > 0 && (
                     <div>

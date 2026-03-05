@@ -490,7 +490,7 @@ export default function DesktopCompare() {
         <>
             <div className="min-h-screen bg-slate-50 transition-colors duration-500">
                 {/* Main content with header + cards — same structure as Catalog */}
-                <div className="flex-1 page-container pt-0 pb-10 md:pb-16">
+                <div className="flex-1 store-page-shell">
                     {/* ────── 3D Flip Sticky Header ────── */}
                     <div
                         className="sticky z-[90] w-full transition-all duration-500 ease-in-out"

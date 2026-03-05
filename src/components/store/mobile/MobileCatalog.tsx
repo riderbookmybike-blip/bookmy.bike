@@ -291,7 +291,7 @@ export const MobileCatalog = ({
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
             {/* 1. Search Bar (Sticky) */}
-            <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200 pt-3 pb-3 px-4">
+            <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200 pt-3 pb-3 px-5">
                 <div className="relative">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
@@ -312,7 +312,7 @@ export const MobileCatalog = ({
                 </div>
             </div>
             {/* 2. Main Content Area */}
-            <div className="px-4 py-6">
+            <div className="px-5 py-6">
                 {/* Grid */}
                 {isLoading ? (
                     <div className="flex flex-col gap-6">

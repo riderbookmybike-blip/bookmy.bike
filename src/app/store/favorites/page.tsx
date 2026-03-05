@@ -4,8 +4,7 @@ import React from 'react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { useCompare } from '@/hooks/useCompare';
-import { PageFrame } from '@/components/layout/PageFrame';
-import { Heart, Search, ArrowRight, X } from 'lucide-react';
+import { Heart, ArrowRight, X } from 'lucide-react';
 import Link from 'next/link';
 import { slugify } from '@/utils/slugs';
 
@@ -30,7 +29,7 @@ export default function FavoritesPage() {
     const favoriteVehicles = vehicles.filter(v => favorites.some(f => f.id === v.id));
 
     return (
-        <PageFrame variant="wide" noTopPadding className="space-y-10">
+        <div className="store-page-shell space-y-10">
             {/* Header */}
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 pb-8 border-b border-slate-200">
                 <div className="space-y-4">
@@ -41,9 +40,8 @@ export default function FavoritesPage() {
                         </span>
                     </h1>
                     <p className="text-sm font-medium text-slate-500 max-w-lg">
-                        You've shortlisted{' '}
-                        <span className="font-bold text-slate-900">{favorites.length}</span> machines.
-                        Compare them side-by-side or proceed to booking.
+                        You've shortlisted <span className="font-bold text-slate-900">{favorites.length}</span>{' '}
+                        machines. Compare them side-by-side or proceed to booking.
                     </p>
                 </div>
 
@@ -156,6 +154,6 @@ export default function FavoritesPage() {
                     );
                 })}
             </div>
-        </PageFrame>
+        </div>
     );
 }

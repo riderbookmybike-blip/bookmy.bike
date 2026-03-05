@@ -169,7 +169,7 @@ export const MobilePDP = ({
             <ParitySnapshot data={data} product={product} />
 
             {/* 1. Mobile Header (Transparent, floats over image) */}
-            <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-white/95 to-transparent pointer-events-none">
+            <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-5 py-4 bg-gradient-to-b from-white/95 to-transparent pointer-events-none">
                 <button
                     onClick={() => window.history.back()}
                     className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md border border-slate-200 flex items-center justify-center text-slate-700 pointer-events-auto"
@@ -229,7 +229,7 @@ export const MobilePDP = ({
 
                 {/* Location Overlay Pill */}
                 {initialLocation && (
-                    <div className="absolute bottom-4 left-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-200 mt-auto">
+                    <div className="absolute bottom-4 left-5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-200 mt-auto">
                         <MapPin size={10} className="text-[#F4B000]" />
                         <span className="text-[9px] font-black tracking-widest uppercase text-slate-900">
                             {initialLocation.district || initialLocation.pincode}
