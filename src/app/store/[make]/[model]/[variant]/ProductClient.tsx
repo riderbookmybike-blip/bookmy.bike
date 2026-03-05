@@ -94,6 +94,16 @@ interface ProductClientProps {
     initialServices?: any[];
     initialFinance?: any;
     initialDealerId?: string | null;
+    leadMeta?: {
+        id: string;
+        displayId?: string | null;
+        customerName?: string | null;
+        ownerTenantName?: string | null;
+        leadDealerId?: string | null;
+        leadDealerName?: string | null;
+        leadFinancerId?: string | null;
+        leadFinancerName?: string | null;
+    };
     initialDevice?: 'phone' | 'desktop' | 'tv';
 }
 
@@ -110,6 +120,7 @@ export default function ProductClient({
     initialServices = [],
     initialFinance,
     initialDealerId = null,
+    leadMeta,
     initialDevice = 'desktop',
 }: ProductClientProps) {
     const [clientAccessories, setClientAccessories] = useState(initialAccessories);
@@ -122,11 +133,11 @@ export default function ProductClient({
     const [ssppServerPricing, setSsppServerPricing] = useState<any>(initialServerPricing);
     const searchParams = useSearchParams();
     const router = useRouter();
-    const leadIdFromUrl = searchParams.get('leadId');
+    const leadIdFromUrl = searchParams.get('lead') || searchParams.get('leadId');
     const [leadContext, setLeadContext] = useState<{ id: string; name: string } | null>(null);
     const [isTeamMember, setIsTeamMember] = useState(false);
     const { availableCoins, isLoggedIn } = useOClubWallet();
-    const { dealerId: sessionDealerId } = useDealerSession();
+    const { dealerId: sessionDealerId, financeId: sessionFinanceId } = useDealerSession();
     const { device } = useBreakpoint(initialDevice);
     const { memberships } = useTenant();
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
@@ -216,8 +227,8 @@ export default function ProductClient({
                 const { data: lead } = (await supabase
                     .from('crm_leads')
                     .select('id, customer_name')
-                    .eq('id', leadIdFromUrl)
-                    .single()) as { data: { id: string; customer_name: string } | null; error: any };
+                    .or(`id.eq.${leadIdFromUrl},display_id.eq.${leadIdFromUrl}`)
+                    .maybeSingle()) as { data: { id: string; customer_name: string } | null; error: any };
 
                 if (lead) {
                     setLeadContext({ id: lead.id, name: lead.customer_name });
@@ -272,14 +283,14 @@ export default function ProductClient({
     const buildSkuEventMetadata = React.useCallback(
         (skuId: string, extra: Record<string, unknown> = {}) => ({
             sku_id: skuId,
-            lead_id: leadIdFromUrl || undefined,
+            lead_id: leadContext?.id || leadIdFromUrl || undefined,
             make_slug: makeParam || undefined,
             model_slug: modelParam || undefined,
             variant_slug: variantParam || undefined,
             source: 'STORE_PDP',
             ...extra,
         }),
-        [leadIdFromUrl, makeParam, modelParam, variantParam]
+        [leadContext?.id, leadIdFromUrl, makeParam, modelParam, variantParam]
     );
 
     const buildPdpIntentMetadata = React.useCallback(
@@ -500,7 +511,7 @@ export default function ProductClient({
                 url.searchParams.set('state', stateValue);
             }
         }
-        if (leadIdFromUrl) url.searchParams.set('leadId', leadIdFromUrl);
+        if (leadIdFromUrl) url.searchParams.set('lead', leadIdFromUrl);
         const shareMetadata = buildPdpIntentMetadata({ color_name: selectedColor || undefined });
 
         if (navigator.share) {
@@ -996,6 +1007,13 @@ export default function ProductClient({
     const pdpDistrictForParity = String(
         ssppServerPricing?.location?.district || resolvedLocation?.district || initialLocation?.district || ''
     );
+    const leadDealerMismatch = Boolean(
+        leadMeta?.leadDealerId && sessionDealerId && leadMeta.leadDealerId !== sessionDealerId
+    );
+    const leadFinancerMismatch = Boolean(
+        leadMeta?.leadFinancerId && sessionFinanceId && leadMeta.leadFinancerId !== sessionFinanceId
+    );
+    const showLeadContextAlert = Boolean(leadIdFromUrl && (leadDealerMismatch || leadFinancerMismatch));
 
     if (!hasValidColorSku) {
         return (
@@ -1021,6 +1039,23 @@ export default function ProductClient({
 
     return (
         <>
+            {showLeadContextAlert && (
+                <div className="mx-auto w-full max-w-7xl px-4 pt-3">
+                    <div className="rounded-2xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-amber-900">
+                        <p className="text-[11px] font-black uppercase tracking-[0.16em]">Lead Context Mismatch</p>
+                        <p className="mt-1 text-sm">
+                            Active Dealership/Financer is different from this lead context.
+                            {` Lead: ${leadMeta?.displayId || leadMeta?.id || leadIdFromUrl}`}
+                            {leadMeta?.customerName ? ` (${leadMeta.customerName})` : ''}.
+                        </p>
+                        <p className="mt-1 text-xs">
+                            Lead Owner: {leadMeta?.ownerTenantName || 'Unknown'} | Lead Dealership:{' '}
+                            {leadMeta?.leadDealerName || 'Unknown'} | Lead Financer:{' '}
+                            {leadMeta?.leadFinancerName || 'Unknown'}
+                        </p>
+                    </div>
+                </div>
+            )}
             <div
                 data-testid="pdp-offer-meta"
                 data-dealer-id={pdpDealerIdForParity}

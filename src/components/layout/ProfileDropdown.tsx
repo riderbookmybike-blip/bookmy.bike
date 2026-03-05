@@ -44,6 +44,7 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import { getDefaultAvatar, AVATAR_PRESETS } from '@/lib/avatars';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { formatMembershipCardCode } from '@/lib/oclub/membershipCardIdentity';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 const ADMIN_ROLES = new Set(['OWNER', 'ADMIN', 'SUPER_ADMIN', 'DEALERSHIP_ADMIN', 'MARKETPLACE_ADMIN']);
 
@@ -80,6 +81,9 @@ export function ProfileDropdown({
     hideTrigger = false,
 }: ProfileDropdownProps) {
     const { isUnifiedContext } = useTenant();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { user: authUser } = useAuth();
     const [user, setUser] = useState<User | null>(null);
     const [memberships, setProfileMemberships] = useState<ProfileMembership[]>([]);
@@ -103,6 +107,14 @@ export function ProfileDropdown({
     } | null>(null);
     const [uploading, setUploading] = useState(false);
     const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+    const [mappedDealerTenants, setMappedDealerTenants] = useState<
+        Array<{ id: string; name: string; slug: string | null; type: string; district_name?: string | null }>
+    >([]);
+    const [dealerLinkedFinancers, setDealerLinkedFinancers] = useState<
+        Array<{ id: string; name: string; slug: string | null; type: string }>
+    >([]);
+    const mappedDealersFetchKeyRef = useRef('');
+    const linkedFinancersFetchKeyRef = useRef('');
 
     // O'Circle vs Business mode toggle (persisted)
     const [businessMode, setBusinessMode] = useState(() => {
@@ -118,7 +130,7 @@ export function ProfileDropdown({
     };
 
     // Dealer Session Hook
-    const { activeTenantId, setDealerContext, clearDealerContext } = useDealerSession();
+    const { activeTenantId, setDealerContext, clearDealerContext, financeId, setFinanceContext } = useDealerSession();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLButtonElement>(null); // Fixed: Ref is attached to a button
@@ -371,6 +383,19 @@ export function ProfileDropdown({
     const handleWorkspaceLogin = (tenantId: string | null | undefined) => {
         if (!tenantId) return;
         setDealerContext(tenantId);
+        setTimeout(() => router.refresh(), 60);
+    };
+
+    const handleFinanceLogin = (tenantId: string | null | undefined) => {
+        if (!tenantId) return;
+        setFinanceContext(tenantId);
+        const selected = dealerLinkedFinancers.find(f => f.id === tenantId);
+        if (selected?.slug) {
+            const next = new URLSearchParams(searchParams?.toString() || '');
+            next.set('financeSlug', selected.slug);
+            router.replace(`${pathname}?${next.toString()}`);
+        }
+        setTimeout(() => router.refresh(), 60);
     };
 
     const handleWorkspaceLogout = () => {
@@ -392,6 +417,129 @@ export function ProfileDropdown({
         });
     }, [memberships]);
 
+    const dealerMemberships = useMemo(
+        () =>
+            sortedMemberships.filter(m => {
+                const type = String(m.tenants?.type || '').toUpperCase();
+                return type === 'DEALER' || type === 'DEALERSHIP';
+            }),
+        [sortedMemberships]
+    );
+
+    const financeMemberships = useMemo(
+        () => sortedMemberships.filter(m => String(m.tenants?.type || '').toUpperCase() === 'BANK'),
+        [sortedMemberships]
+    );
+
+    const primaryFinanceMembership = financeMemberships[0] || null;
+    const effectiveActiveFinanceId = financeId || primaryFinanceMembership?.tenant_id || null;
+    const isFinanceTeamOnly = financeMemberships.length > 0 && dealerMemberships.length === 0;
+
+    useEffect(() => {
+        if (isFinanceTeamOnly && primaryFinanceMembership?.tenant_id && !financeId) {
+            setFinanceContext(primaryFinanceMembership.tenant_id);
+        }
+    }, [isFinanceTeamOnly, primaryFinanceMembership?.tenant_id, financeId, setFinanceContext]);
+
+    useEffect(() => {
+        const loadMappedDealersForFinanceTeam = async () => {
+            if (!isOpen || !businessMode) return;
+            if (!authUser?.id || financeMemberships.length === 0) {
+                mappedDealersFetchKeyRef.current = '';
+                setMappedDealerTenants([]);
+                return;
+            }
+
+            const supabase = createClient();
+            const financeTenantIds = financeMemberships.map(m => m.tenant_id).filter(Boolean) as string[];
+            const fetchKey = `${authUser.id}:${financeTenantIds.join(',')}`;
+            if (mappedDealersFetchKeyRef.current === fetchKey) return;
+            mappedDealersFetchKeyRef.current = fetchKey;
+            const { data: userScopedLinks, error } = await supabase
+                .from('dealer_finance_user_access')
+                .select('dealer_tenant_id, finance_tenant_id')
+                .eq('user_id', authUser.id)
+                .in('finance_tenant_id', financeTenantIds);
+            if (error) return;
+
+            const dealerIds = Array.from(
+                new Set((userScopedLinks || []).map((r: any) => String(r.dealer_tenant_id || '')).filter(Boolean))
+            );
+            if (dealerIds.length === 0) {
+                setMappedDealerTenants([]);
+                return;
+            }
+
+            const { data: dealers } = await supabase
+                .from('id_tenants')
+                .select('id, name, slug, type, district_name')
+                .in('id', dealerIds);
+
+            const nextMapped = (dealers || []).map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                slug: d.slug || null,
+                type: d.type || 'DEALER',
+                district_name: d.district_name || null,
+            }));
+            setMappedDealerTenants(prev => {
+                const prevIds = prev.map(d => d.id).join(',');
+                const nextIds = nextMapped.map((d: any) => d.id).join(',');
+                return prevIds === nextIds ? prev : nextMapped;
+            });
+        };
+
+        void loadMappedDealersForFinanceTeam();
+    }, [authUser?.id, financeMemberships, isOpen, businessMode]);
+
+    useEffect(() => {
+        const loadDealerLinkedFinancers = async () => {
+            if (!isOpen || !businessMode) return;
+            if (!activeTenantId) {
+                linkedFinancersFetchKeyRef.current = '';
+                setDealerLinkedFinancers([]);
+                return;
+            }
+
+            const supabase = createClient();
+            if (linkedFinancersFetchKeyRef.current === activeTenantId) return;
+            linkedFinancersFetchKeyRef.current = activeTenantId;
+            const { data: links, error } = await supabase
+                .from('dealer_finance_access')
+                .select('finance_tenant_id')
+                .eq('dealer_tenant_id', activeTenantId);
+            if (error) return;
+
+            const financeTenantIds = Array.from(
+                new Set((links || []).map((r: any) => String(r.finance_tenant_id || '')).filter(Boolean))
+            );
+            if (financeTenantIds.length === 0) {
+                setDealerLinkedFinancers([]);
+                return;
+            }
+
+            const { data: financiers } = await supabase
+                .from('id_tenants')
+                .select('id, name, slug, type')
+                .in('id', financeTenantIds)
+                .eq('type', 'BANK');
+
+            const nextFinancers = (financiers || []).map((f: any) => ({
+                id: f.id,
+                name: f.name,
+                slug: f.slug || null,
+                type: f.type || 'BANK',
+            }));
+            setDealerLinkedFinancers(prev => {
+                const prevIds = prev.map(f => f.id).join(',');
+                const nextIds = nextFinancers.map((f: any) => f.id).join(',');
+                return prevIds === nextIds ? prev : nextFinancers;
+            });
+        };
+
+        void loadDealerLinkedFinancers();
+    }, [activeTenantId, isOpen, businessMode]);
+
     const activeMembership = useMemo(
         () => sortedMemberships.find(m => m.tenant_id === activeTenantId) || sortedMemberships[0] || null,
         [sortedMemberships, activeTenantId]
@@ -404,12 +552,36 @@ export function ProfileDropdown({
         : '/dashboard';
     const isAdminWorkspaceRole = ADMIN_ROLES.has(activeWorkspaceRole);
 
+    useEffect(() => {
+        // If user has no business workspaces, force O'Circle mode to avoid empty middle panel.
+        if (!hasWorkspaceAccess && businessMode) {
+            setBusinessMode(false);
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('bkmb_sidebar_mode', 'ocircle');
+            }
+        }
+    }, [hasWorkspaceAccess, businessMode]);
+
     const accountMenuItems = useMemo(() => {
         if (!user) return [];
 
         if (!hasWorkspaceAccess || !businessMode) {
             // O'Circle / consumer mode
             return [
+                {
+                    label: "O'Circle",
+                    icon: Zap,
+                    href: '/store/ocircle',
+                    color: 'text-amber-500',
+                    bg: 'bg-amber-500/10',
+                },
+                {
+                    label: 'Membership',
+                    icon: Box,
+                    href: '/store/ocircle',
+                    color: 'text-cyan-500',
+                    bg: 'bg-cyan-500/10',
+                },
                 {
                     label: 'Profile',
                     icon: LucideUser,
@@ -742,7 +914,7 @@ export function ProfileDropdown({
                                             {user && (
                                                 <div className="space-y-6 pt-2">
                                                     {/* O'Circle / Business Mode Toggle */}
-                                                    {sortedMemberships.length > 0 && (
+                                                    {hasWorkspaceAccess && (
                                                         <div className="flex items-center gap-0 p-1 rounded-2xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10">
                                                             <button
                                                                 onClick={() => {
@@ -768,13 +940,13 @@ export function ProfileDropdown({
                                                                 }`}
                                                             >
                                                                 <Building2 size={12} />
-                                                                Business
+                                                                The Crew
                                                             </button>
                                                         </div>
                                                     )}
 
                                                     {/* Account & Profile Section — O'Circle mode only */}
-                                                    {!businessMode && (
+                                                    {(!businessMode || !hasWorkspaceAccess) && (
                                                         <>
                                                             {/* Main Menu — inside O'Circle mode */}
                                                             <div className="lg:hidden space-y-3 pb-2 pt-1">
@@ -838,12 +1010,7 @@ export function ProfileDropdown({
                                                                 </div>
                                                             </div>
 
-                                                            {/* My Account */}
                                                             <div className="space-y-3">
-                                                                <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                                                                    <LucideUser size={10} strokeWidth={3} />
-                                                                    My Account
-                                                                </p>
                                                                 <div className="space-y-1.5">
                                                                     {accountMenuItems.map(item => (
                                                                         <a
@@ -870,97 +1037,112 @@ export function ProfileDropdown({
                                                     {/* Workspaces Section — only in Business mode */}
                                                     {businessMode && sortedMemberships.length > 0 && (
                                                         <div className="space-y-3">
-                                                            <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center justify-between">
-                                                                <span className="flex items-center gap-2">
-                                                                    <Building2 size={10} strokeWidth={3} />
-                                                                    My Workspaces
-                                                                </span>
-                                                            </p>
                                                             <div className="space-y-1.5">
-                                                                {sortedMemberships.map(m => {
-                                                                    const t = m.tenants;
-                                                                    if (!t) return null;
-                                                                    const isActive = activeTenantId === t.id;
-                                                                    const dashboardHref = getWorkspaceDashboardHref(
-                                                                        t.slug
-                                                                    );
+                                                                <div className="space-y-1.5">
+                                                                    <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-500/20">
+                                                                        <div>
+                                                                            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-300">
+                                                                                Active Dealership
+                                                                            </p>
+                                                                            <p className="text-xs font-black text-slate-900 dark:text-white">
+                                                                                {
+                                                                                    (sortedMemberships.find(
+                                                                                        m =>
+                                                                                            m.tenant_id ===
+                                                                                            activeTenantId
+                                                                                    )?.tenants?.name ||
+                                                                                        mappedDealerTenants.find(
+                                                                                            d => d.id === activeTenantId
+                                                                                        )?.name ||
+                                                                                        'Not selected') as string
+                                                                                }
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200/70 dark:border-indigo-500/20">
+                                                                        <div>
+                                                                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
+                                                                                Active Financer
+                                                                            </p>
+                                                                            <p className="text-xs font-black text-slate-900 dark:text-white">
+                                                                                {
+                                                                                    (sortedMemberships.find(
+                                                                                        m =>
+                                                                                            m.tenant_id ===
+                                                                                            effectiveActiveFinanceId
+                                                                                    )?.tenants?.name ||
+                                                                                        dealerLinkedFinancers.find(
+                                                                                            f =>
+                                                                                                f.id ===
+                                                                                                effectiveActiveFinanceId
+                                                                                        )?.name ||
+                                                                                        'Not selected') as string
+                                                                                }
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
 
-                                                                    return (
-                                                                        <div
-                                                                            key={t.id || t.slug || ''}
-                                                                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all group hover:shadow-md relative overflow-hidden ${
-                                                                                isActive
-                                                                                    ? 'bg-brand-primary/5 border-brand-primary/20 dark:bg-brand-primary/10'
-                                                                                    : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/5'
-                                                                            }`}
-                                                                        >
-                                                                            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center shrink-0 text-slate-400">
-                                                                                {getTenantIcon(t.type || '')}
-                                                                            </div>
-                                                                            <div className="flex-1 min-w-0">
-                                                                                {isActive ? (
-                                                                                    <a
-                                                                                        href={dashboardHref}
-                                                                                        target="_blank"
-                                                                                        rel="noopener noreferrer"
-                                                                                        onClick={() => setIsOpen(false)}
-                                                                                        className="block font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate hover:text-brand-primary transition-colors"
-                                                                                    >
-                                                                                        {t.name}
-                                                                                    </a>
-                                                                                ) : (
-                                                                                    <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                                                                                        {t.name}
-                                                                                    </h5>
-                                                                                )}
-                                                                                <div className="flex items-center gap-2 mt-0.5">
-                                                                                    <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest">
-                                                                                        {getRoleLabel(m.role || '')}
-                                                                                    </span>
-                                                                                    <span
-                                                                                        className={`text-[8px] font-black uppercase tracking-widest ${
-                                                                                            isActive
-                                                                                                ? 'text-emerald-500'
-                                                                                                : 'text-slate-400 dark:text-slate-500'
-                                                                                        }`}
-                                                                                    >
-                                                                                        {isActive
-                                                                                            ? 'Active'
-                                                                                            : 'Inactive'}
-                                                                                    </span>
-                                                                                </div>
-                                                                                {isActive && (
-                                                                                    <a
-                                                                                        href={dashboardHref}
-                                                                                        target="_blank"
-                                                                                        rel="noopener noreferrer"
-                                                                                        onClick={() => setIsOpen(false)}
-                                                                                        className="inline-flex mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-primary transition-colors"
-                                                                                    >
-                                                                                        Open Dashboard
-                                                                                    </a>
-                                                                                )}
-                                                                            </div>
-                                                                            {isActive ? (
-                                                                                <button
-                                                                                    onClick={handleWorkspaceLogout}
-                                                                                    className="px-3 py-1.5 rounded-full bg-white text-slate-700 border border-slate-200 text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-sm"
+                                                                {(isFinanceTeamOnly
+                                                                    ? mappedDealerTenants
+                                                                    : dealerMemberships
+                                                                          .map(m => m.tenants)
+                                                                          .filter(Boolean)
+                                                                ).length > 0 && (
+                                                                    <div className="mt-2 space-y-1.5">
+                                                                        {(isFinanceTeamOnly
+                                                                            ? mappedDealerTenants
+                                                                            : dealerMemberships
+                                                                                  .map(m => m.tenants)
+                                                                                  .filter(Boolean)
+                                                                                  .map((t: any) => ({
+                                                                                      id: t.id,
+                                                                                      name: t.name,
+                                                                                  }))
+                                                                        )
+                                                                            .filter((d: any) => d.id !== activeTenantId)
+                                                                            .map((d: any) => (
+                                                                                <div
+                                                                                    key={d.id}
+                                                                                    className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5"
                                                                                 >
-                                                                                    Logout
-                                                                                </button>
-                                                                            ) : (
+                                                                                    <p className="text-xs font-black text-slate-900 dark:text-white truncate">
+                                                                                        {d.name}
+                                                                                    </p>
+                                                                                    <button
+                                                                                        onClick={() =>
+                                                                                            setDealerContext(d.id)
+                                                                                        }
+                                                                                        className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
+                                                                                    >
+                                                                                        Activate
+                                                                                    </button>
+                                                                                </div>
+                                                                            ))}
+                                                                    </div>
+                                                                )}
+
+                                                                {!isFinanceTeamOnly &&
+                                                                    dealerLinkedFinancers
+                                                                        .filter(f => f.id !== effectiveActiveFinanceId)
+                                                                        .map(f => (
+                                                                            <div
+                                                                                key={f.id}
+                                                                                className="mt-1 flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5"
+                                                                            >
+                                                                                <p className="text-xs font-black text-slate-900 dark:text-white truncate">
+                                                                                    {f.name}
+                                                                                </p>
                                                                                 <button
                                                                                     onClick={() =>
-                                                                                        handleWorkspaceLogin(t.id)
+                                                                                        handleFinanceLogin(f.id)
                                                                                     }
-                                                                                    className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-brand-primary/20"
+                                                                                    className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
                                                                                 >
-                                                                                    Login
+                                                                                    Activate
                                                                                 </button>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })}
+                                                                            </div>
+                                                                        ))}
                                                             </div>
                                                         </div>
                                                     )}

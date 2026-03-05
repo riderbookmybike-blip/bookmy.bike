@@ -18,9 +18,12 @@ export async function POST(req: NextRequest) {
         // Normalize phone: remove non-digits, take last 10, prefix 91
         const cleanedPhone = phone.replace(/\D/g, '');
         const tenDigitPhone = cleanedPhone.slice(-10);
+        if (tenDigitPhone.length !== 10) {
+            return NextResponse.json({ success: false, message: 'Invalid phone number' }, { status: 400 });
+        }
         const mobile = `91${tenDigitPhone}`;
         const e164Phone = `+${mobile}`; // +91XXXXXXXXXX
-        const email = `${phone}@bookmy.bike`;
+        const email = `${tenDigitPhone}@bookmy.bike`;
         let isVerified = false;
         let errorMessage = 'Invalid OTP';
 
@@ -36,7 +39,9 @@ export async function POST(req: NextRequest) {
         const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase();
         const isBypassHost = bypassHosts.includes(hostName) || bypassHosts.includes(host.toLowerCase());
         const isBypassEnv =
-            isLocalhost || bypassFlag || isBypassHost || vercelEnv === 'preview' || vercelEnv === 'development';
+            !isProduction &&
+            (isLocalhost || bypassFlag || isBypassHost || vercelEnv === 'preview' || vercelEnv === 'development');
+        const isLocalDevBypass = !isProduction && isLocalhost;
 
         // console.log('[Login Debug] Request:', { phone, host, isLocalhost, isProduction });
 
@@ -140,22 +145,14 @@ export async function POST(req: NextRequest) {
             }
         };
 
-        if (await canBypassSuperadmin()) {
+        if (isLocalDevBypass || (await canBypassSuperadmin())) {
             // console.log('Using Superadmin Dev Bypass for OTP');
-            isVerified = true;
-        } else if ((!isProduction || isLocalhost) && (otp === '1234' || otp === '0000')) {
-            // console.log('Using Developer Bypass for OTP');
             isVerified = true;
         }
         // 2. Missing Config Check
         else if (!authKey || !templateId) {
-            if (isProduction) {
-                console.error('MSG91 Configuration Missing.');
-                return NextResponse.json({ success: false, message: 'OTP service unavailable' }, { status: 500 });
-            }
-
-            console.warn('MSG91 Configuration Missing. Using developer bypass.');
-            isVerified = otp === '1234' || otp === '0000' || process.env.NODE_ENV === 'development';
+            console.error('MSG91 Configuration Missing.');
+            return NextResponse.json({ success: false, message: 'OTP service unavailable' }, { status: 500 });
         }
         // 3. Real Verification
         else {
@@ -201,7 +198,7 @@ export async function POST(req: NextRequest) {
 
             // Ensure every auth user has a usable email for password sign-in.
             if (!foundUser.email) {
-                const synthesizedEmail = `${phone}@bookmy.bike`;
+                const synthesizedEmail = `${tenDigitPhone}@bookmy.bike`;
                 const { error: emailError } = await adminClient.auth.admin.updateUserById(userId, {
                     email: synthesizedEmail,
                     email_confirm: true,
@@ -211,7 +208,7 @@ export async function POST(req: NextRequest) {
                     loginEmail = synthesizedEmail;
                 } else {
                     console.warn('[Login Debug] Primary synthesized email failed:', emailError.message);
-                    const fallbackEmail = `${phone}.${userId.substring(0, 4)}@bookmy.bike`;
+                    const fallbackEmail = `${tenDigitPhone}.${userId.substring(0, 4)}@bookmy.bike`;
                     const { error: fallbackError } = await adminClient.auth.admin.updateUserById(userId, {
                         email: fallbackEmail,
                         email_confirm: true,

@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Heart, Globe, CreditCard, Banknote, X, Pencil } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
+import { useTenant } from '@/lib/tenant/tenantContext';
+import { QuickLeadMiniModal } from '@/components/leads/QuickLeadMiniModal';
 
 // ─── Pricing constants ────────────────────────────────────────────────────────
 const DP_MIN = 5000;
@@ -43,12 +45,36 @@ function writePricing(payload: unknown) {
 export function ShopperBottomNav() {
     const pathname = usePathname();
     const { favorites } = useFavorites();
+    const { userRole, memberships } = useTenant();
+    const hasActiveTeamMembership = (memberships || []).some(m => {
+        if (String(m?.status || '').toUpperCase() !== 'ACTIVE') return false;
+        const type = String(m?.tenants?.type || '').toUpperCase();
+        return type === 'DEALER' || type === 'DEALERSHIP' || type === 'BANK' || type === 'SUPER_ADMIN';
+    });
+    const isTeamRole = Boolean(userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
+    const isTeamUser = hasActiveTeamMembership || isTeamRole;
+    const tabs = useMemo(
+        () =>
+            STATIC_TABS.map(tab =>
+                tab.key === 'ocircle'
+                    ? {
+                          ...tab,
+                          key: 'lead' as const,
+                          label: 'Lead',
+                          icon: Banknote,
+                          href: null,
+                      }
+                    : tab
+            ),
+        []
+    );
 
     // ── Pricing state ─────────────────────────────────────────────────────────
     const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>('finance');
     const [downpayment, setDownpayment] = useState(10000);
     const [tenure, setTenure] = useState(36);
     const [sheetOpen, setSheetOpen] = useState(false);
+    const [isQuickLeadOpen, setIsQuickLeadOpen] = useState(false);
     const sheetRef = useRef<HTMLDivElement>(null);
     const [editingDp, setEditingDp] = useState(false);
     const [dpRaw, setDpRaw] = useState('');
@@ -260,7 +286,7 @@ export function ShopperBottomNav() {
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             >
                 <div className="flex items-stretch justify-around h-[60px]">
-                    {STATIC_TABS.map(tab => {
+                    {(isTeamUser ? tabs : STATIC_TABS).map(tab => {
                         const isPricing = tab.key === 'pricing';
                         const isLove = tab.key === 'love';
                         const active = isPricing ? sheetOpen : tab.href ? isTabActive(tab.href) : false;
@@ -292,6 +318,24 @@ export function ShopperBottomNav() {
                             );
                         }
 
+                        if (tab.key === 'lead') {
+                            return (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    onClick={() => setIsQuickLeadOpen(true)}
+                                    className={cls}
+                                >
+                                    <div className="relative">
+                                        <Icon size={20} strokeWidth={1.5} />
+                                    </div>
+                                    <span className="text-[9px] font-semibold uppercase tracking-[0.15em]">
+                                        {tab.label}
+                                    </span>
+                                </button>
+                            );
+                        }
+
                         return (
                             <Link key={tab.key} href={tab.href!} className={cls}>
                                 <div className="relative">
@@ -315,6 +359,7 @@ export function ShopperBottomNav() {
                     })}
                 </div>
             </nav>
+            <QuickLeadMiniModal isOpen={isQuickLeadOpen} onClose={() => setIsQuickLeadOpen(false)} />
         </>
     );
 }

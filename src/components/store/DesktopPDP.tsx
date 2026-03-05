@@ -491,6 +491,7 @@ export function DesktopPDP({
             icon: Camera,
         },
         { id: 'PRICING', label: 'Pricing', subtext: `₹${displayOnRoad.toLocaleString()}`, icon: Wallet },
+        { id: 'FINANCE', label: 'Finance', subtext: `₹${footerEmi.toLocaleString('en-IN')}/mo`, icon: Banknote },
         { id: 'FINANCE_SUMMARY', label: 'Summary', subtext: `${emiTenure}mo Plan`, icon: SlidersHorizontal },
     ];
 
@@ -745,6 +746,26 @@ export function DesktopPDP({
                                                                     }
                                                                     leadName={leadContext?.name}
                                                                     isGated={isGated}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        {card.id === 'FINANCE' && (
+                                                            <div className="pb-4">
+                                                                <FinanceCard
+                                                                    emi={emi}
+                                                                    emiTenure={emiTenure}
+                                                                    setEmiTenure={setEmiTenure}
+                                                                    downPayment={userDownPayment || downPayment}
+                                                                    setUserDownPayment={setUserDownPayment}
+                                                                    minDownPayment={minDownPayment || 0}
+                                                                    maxDownPayment={maxDownPayment || 0}
+                                                                    totalOnRoad={displayOnRoad}
+                                                                    loanAmount={loanAmount}
+                                                                    annualInterest={financeMetrics.annualInterest}
+                                                                    interestType={financeMetrics.interestType}
+                                                                    financeCharges={financeCharges}
+                                                                    bank={initialFinance?.bank}
+                                                                    scheme={initialFinance?.scheme}
                                                                 />
                                                             </div>
                                                         )}

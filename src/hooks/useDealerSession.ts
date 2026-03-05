@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getResolvedPricingContextAction } from '@/actions/pricingActions';
 import { useTenant } from '@/lib/tenant/tenantContext';
+import { shouldSkipDealerContextUpdate, shouldSkipFinanceContextUpdate } from '@/lib/marketplace/dealerSessionGuards';
 
 export interface DealerSession {
     dealerId: string | null;
+    financeId: string | null;
     studioId: string | null;
     tenantName: string | null;
     district: string | null;
@@ -13,9 +15,31 @@ export interface DealerSession {
 }
 
 const STORAGE_KEY = 'bkmb_active_dealer_context_v2';
+const COOKIE_NAME = 'bmb_dealer_session';
+
+function writeDealerSessionCookie(payload: {
+    activeDealerTenantId?: string | null;
+    activeFinanceTenantId?: string | null;
+}) {
+    if (typeof document === 'undefined') return;
+    const value = encodeURIComponent(
+        JSON.stringify({
+            mode: 'TEAM',
+            activeDealerTenantId: payload.activeDealerTenantId || null,
+            activeFinanceTenantId: payload.activeFinanceTenantId || null,
+        })
+    );
+    document.cookie = `${COOKIE_NAME}=${value}; Max-Age=${60 * 60 * 24 * 30}; Path=/; SameSite=Lax`;
+}
+
+function clearDealerSessionCookieClient() {
+    if (typeof document === 'undefined') return;
+    document.cookie = `${COOKIE_NAME}=; Max-Age=0; Path=/; SameSite=Lax`;
+}
 
 const defaultSession: DealerSession = {
     dealerId: null,
+    financeId: null,
     studioId: null,
     tenantName: null,
     district: null,
@@ -68,6 +92,7 @@ export function useDealerSession() {
 
             const newSession: DealerSession = {
                 dealerId: context.dealerId,
+                financeId: storedContext?.financeId || null,
                 studioId: null, // Resolution happens by dealerId now
                 tenantName: context.tenantName,
                 district: context.district,
@@ -85,6 +110,10 @@ export function useDealerSession() {
             // 5. Persistence
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
             setSession(newSession);
+            writeDealerSessionCookie({
+                activeDealerTenantId: newSession.dealerId,
+                activeFinanceTenantId: newSession.financeId,
+            });
         } catch (error) {
             console.error('[useDealerSession] Resolution failed:', error);
             // Fallback to stored context if available
@@ -104,19 +133,51 @@ export function useDealerSession() {
 
     // Manual setter if a dealer is explicitly selected from a list/prompt
     const setDealerContext = useCallback((dealerId: string, district?: string) => {
-        const newSession: DealerSession = {
-            ...defaultSession,
-            dealerId,
-            district: district || null,
-            source: 'DEFAULT',
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
-        setSession(newSession);
+        setSession(prev => {
+            if (shouldSkipDealerContextUpdate(prev, dealerId, district)) {
+                return prev;
+            }
+            const nextDistrict = district || null;
+            const nextFinanceId = prev.financeId || null;
+
+            const newSession: DealerSession = {
+                ...defaultSession,
+                dealerId,
+                financeId: nextFinanceId,
+                district: nextDistrict,
+                source: 'DEFAULT',
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+            writeDealerSessionCookie({
+                activeDealerTenantId: newSession.dealerId,
+                activeFinanceTenantId: newSession.financeId,
+            });
+            return newSession;
+        });
+    }, []);
+
+    const setFinanceContext = useCallback((financeId: string | null) => {
+        setSession(prev => {
+            if (shouldSkipFinanceContextUpdate(prev, financeId)) return prev;
+            const nextFinanceId = financeId || null;
+
+            const newSession: DealerSession = {
+                ...prev,
+                financeId: nextFinanceId,
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+            writeDealerSessionCookie({
+                activeDealerTenantId: newSession.dealerId,
+                activeFinanceTenantId: newSession.financeId,
+            });
+            return newSession;
+        });
     }, []);
 
     const clearDealerContext = useCallback(() => {
         localStorage.removeItem(STORAGE_KEY);
         setSession(defaultSession);
+        clearDealerSessionCookieClient();
     }, []);
 
     return {
@@ -125,8 +186,10 @@ export function useDealerSession() {
         locked: session.locked,
         source: session.source,
         district: session.district,
+        financeId: session.financeId,
         isLoaded,
         setDealerContext,
+        setFinanceContext,
         clearDealerContext,
         // Legacy shims to prevent immediate breaks
         activeTenantId: session.dealerId,

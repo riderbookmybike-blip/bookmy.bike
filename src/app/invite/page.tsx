@@ -14,9 +14,6 @@ function InviteContent() {
 
     const [status, setStatus] = useState<'LOADING' | 'VALID' | 'INVALID' | 'JOINING' | 'SUCCESS'>('LOADING');
     const [inviteData, setInviteData] = useState<any>(null);
-    const [phone, setPhone] = useState('');
-    const [otp, setOtp] = useState('');
-    const [step, setStep] = useState<'VERIFY_TOKEN' | 'PHONE' | 'OTP'>('VERIFY_TOKEN');
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -33,59 +30,9 @@ function InviteContent() {
         if (data) {
             setInviteData(data);
             setStatus('VALID');
-            setStep('PHONE');
         } else {
             setStatus('INVALID');
             setError('This invitation has expired or is invalid.');
-        }
-    };
-
-    const handleJoin = async () => {
-        setStatus('JOINING');
-        // 1. Verify OTP & Authenticate User
-        const supabase = createClient();
-
-        // Mock OTP Check logic (reusing implementation from Login Page for now)
-        if (otp !== '6424' && otp !== '1234') {
-            setStatus('VALID'); // Reset
-            setError('Invalid PIN.');
-            return;
-        }
-
-        // 2. Call Server Action to Accept Invite
-        try {
-            const { acceptInvite } = await import('@/app/actions/invitations');
-
-            // WE NEED A USER ID.
-            // Ideally we should have logged them in via Supabase first using OTP.
-            // For this MVP, let's assume the OTP check *is* the login.
-
-            // Step A: Login/Signup User via Supabase Auth
-            // We can use signInWithOtp (if enabled) or a custom flow.
-            // Since we mocked login before, we hit a wall here: we need a REAL user.id to insert membership.
-
-            // WORKAROUND FOR MVP: 
-            // We will check if user matches `invite.email` (assuming email==phone logic for now? No, DB invite has email).
-            // Let's assume the user enters the EMAIL they were invited with, or we just trust the token?
-
-            // CRITICAL: The Invite System requires a REAL User ID.
-            // If we don't have real Auth, we can't create a real Membership linked to a User.
-
-            // Temporary Solution: 
-            // Show Alert: "Invite Accepted! Please Log In normally now."
-            // And we manually call acceptInvite with a stub user ID? No that breaks constraints.
-
-            // Actual Plan:
-            // 1. Just Ask User to Login/Signup.
-            // 2. Once Logged In, we attach the invite.
-
-            // Let's change flow:
-            // "Please Login to Accept" -> Redirect to /login?next=/invite?token=...
-
-            // SIMPLIFICATION:
-            // Path-based: /invite stays on the main domain.
-        } catch (err) {
-            console.error(err);
         }
     };
 
@@ -104,7 +51,9 @@ function InviteContent() {
     useEffect(() => {
         const getUser = async () => {
             const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
             setCurrentUser(user);
         };
         getUser();
@@ -138,7 +87,11 @@ function InviteContent() {
     };
 
     if (status === 'LOADING') {
-        return <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950"><div className="animate-spin w-6 h-6 border-2 border-indigo-600 rounded-full border-t-transparent"></div></div>;
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+                <div className="animate-spin w-6 h-6 border-2 border-indigo-600 rounded-full border-t-transparent"></div>
+            </div>
+        );
     }
 
     if (status === 'INVALID') {
@@ -148,7 +101,9 @@ function InviteContent() {
                     <XCircle className="mx-auto text-red-500" size={48} />
                     <h2 className="text-xl font-bold text-slate-900 dark:text-white">Invalid Invitation</h2>
                     <p className="text-slate-500 dark:text-slate-400">{error}</p>
-                    <button onClick={() => router.push('/')} className="text-indigo-600 font-bold hover:underline">Go Home</button>
+                    <button onClick={() => router.push('/')} className="text-indigo-600 font-bold hover:underline">
+                        Go Home
+                    </button>
                 </div>
             </div>
         );
@@ -156,7 +111,9 @@ function InviteContent() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-slate-950 p-4 font-sans">
-            <div className="mb-8"><Logo mode="auto" /></div>
+            <div className="mb-8">
+                <Logo mode="auto" />
+            </div>
 
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-8 md:p-12 rounded-3xl shadow-2xl shadow-indigo-500/10 max-w-lg w-full text-center space-y-8 animate-in fade-in zoom-in duration-500">
                 <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
@@ -166,7 +123,10 @@ function InviteContent() {
                 <div>
                     <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">You've been invited!</h1>
                     <p className="text-slate-500 dark:text-slate-400 text-lg">
-                        Join <strong className="text-slate-900 dark:text-white">{inviteData?.tenants?.name}</strong> as <span className="inline-block bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded text-sm font-bold align-middle">{inviteData?.role}</span>
+                        Join <strong className="text-slate-900 dark:text-white">{inviteData?.tenants?.name}</strong> as{' '}
+                        <span className="inline-block bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded text-sm font-bold align-middle">
+                            {inviteData?.role}
+                        </span>
                     </p>
                 </div>
 

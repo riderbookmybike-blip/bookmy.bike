@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, Flame, Gauge, Plus, Search, ShieldCheck, Sparkles, Trophy, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { ProductVariant } from '@/types/productMaster';
 import { formatRating } from '@/utils/formatVehicleSpec';

@@ -24,6 +24,7 @@ import {
     flattenVariantSpecs,
     buildGalleryAssets,
 } from '@/lib/server/storeSot';
+import { buildCanonicalLeadQuery } from '@/lib/marketplace/leadUrl';
 
 type Props = {
     params: Promise<{
@@ -38,9 +39,45 @@ type Props = {
         dealer?: string;
         studio?: string;
         leadId?: string;
+        lead?: string;
+        dealerSlug?: string;
+        financeSlug?: string;
         quoteId?: string;
     }>;
 };
+
+type LeadContextMeta = {
+    id: string;
+    displayId: string | null;
+    customerName: string | null;
+    selectedDealerTenantId: string | null;
+    preferredFinancierId: string | null;
+    ownerTenantId: string | null;
+};
+
+async function resolveLeadReference(leadRef?: string | null): Promise<LeadContextMeta | null> {
+    const candidate = String(leadRef || '').trim();
+    if (!candidate) return null;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate);
+    const query = adminClient
+        .from('crm_leads')
+        .select('id, display_id, customer_name, selected_dealer_tenant_id, owner_tenant_id, preferred_financier_id')
+        .limit(1);
+    const { data } = isUuid
+        ? await query.eq('id', candidate).maybeSingle()
+        : await query.eq('display_id', candidate).maybeSingle();
+
+    if (!data) return null;
+    return {
+        id: data.id,
+        displayId: data.display_id || null,
+        customerName: data.customer_name || null,
+        selectedDealerTenantId: data.selected_dealer_tenant_id || null,
+        preferredFinancierId: (data as any).preferred_financier_id || null,
+        ownerTenantId: data.owner_tenant_id || null,
+    };
+}
 
 // Types for New Schema
 interface CatalogItem {
@@ -269,9 +306,13 @@ export default async function Page({ params, searchParams }: Props) {
         redirect(`?${newParams.toString()}`);
     }
 
+    const leadRef = resolvedSearchParams.lead || resolvedSearchParams.leadId || null;
+    const leadMeta = await resolveLeadReference(leadRef);
+    const resolvedLeadId = leadMeta?.id || null;
+
     // 1. Resolve Pricing Context (Primary Dealer Only)
     const pricingContext = await resolveStoreContext({
-        leadId: resolvedSearchParams.leadId,
+        leadId: resolvedLeadId,
         dealerId: resolvedSearchParams.dealer,
         district: resolvedSearchParams.district,
         state: resolvedSearchParams.state,
@@ -828,7 +869,7 @@ export default async function Page({ params, searchParams }: Props) {
     let marketOffers: Record<string, number> = {};
     let winningDealerId: string | null = pricingContext.dealerId || null;
     let bundleIdsForDealer: Set<string> = new Set();
-    const leadId = resolvedSearchParams.leadId;
+    const leadId = resolvedLeadId;
     let accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();
 
     // Resolve dealer delta from shared SOT layer (vehicle offers + bundles + accessories)
@@ -1158,22 +1199,42 @@ export default async function Page({ params, searchParams }: Props) {
 
     // 7. Resolve Finance Scheme (Persona-Based)
     let viewerContext: ViewerContext | undefined;
+    if (!leadId && resolvedSearchParams.financeSlug) {
+        const { data: bankBySlug } = await supabase
+            .from('id_tenants')
+            .select('id')
+            .eq('type', 'BANK')
+            .ilike('slug', String(resolvedSearchParams.financeSlug))
+            .maybeSingle();
+        if (bankBySlug?.id) {
+            viewerContext = { persona: 'BANKER', tenantId: String(bankBySlug.id) };
+        }
+    }
     const dealerSessionCookie = cookieStore.get('bmb_dealer_session')?.value;
-    if (dealerSessionCookie) {
+    if (!viewerContext && dealerSessionCookie) {
         try {
             const sessionData = JSON.parse(decodeURIComponent(dealerSessionCookie));
-            if (sessionData?.mode === 'TEAM' && sessionData?.activeTenantId) {
-                // Check if the session tenant is a BANK or DEALER
-                const { data: sessionTenant } = await supabase
-                    .from('id_tenants')
-                    .select('type')
-                    .eq('id', sessionData.activeTenantId)
-                    .single();
+            if (sessionData?.mode === 'TEAM') {
+                if (sessionData?.activeFinanceTenantId) {
+                    viewerContext = { persona: 'BANKER', tenantId: sessionData.activeFinanceTenantId };
+                } else if (sessionData?.activeDealerTenantId) {
+                    viewerContext = {
+                        persona: 'DEALER',
+                        activeFinancerId: sessionData?.activeFinanceTenantId || null,
+                    };
+                } else if (sessionData?.activeTenantId) {
+                    // Backward compatibility for old session payloads.
+                    const { data: sessionTenant } = await supabase
+                        .from('id_tenants')
+                        .select('type')
+                        .eq('id', sessionData.activeTenantId)
+                        .single();
 
-                if (sessionTenant?.type === 'BANK') {
-                    viewerContext = { persona: 'BANKER', tenantId: sessionData.activeTenantId };
-                } else if (sessionTenant?.type === 'DEALER') {
-                    viewerContext = { persona: 'DEALER' };
+                    if (sessionTenant?.type === 'BANK') {
+                        viewerContext = { persona: 'BANKER', tenantId: sessionData.activeTenantId };
+                    } else if (sessionTenant?.type === 'DEALER') {
+                        viewerContext = { persona: 'DEALER' };
+                    }
                 }
             }
         } catch {
@@ -1181,6 +1242,51 @@ export default async function Page({ params, searchParams }: Props) {
         }
     }
     const resolvedFinance = await resolveFinanceScheme(product.make, product.model, leadId, viewerContext);
+
+    const tenantIdsForMeta = Array.from(
+        new Set(
+            [
+                winningDealerId || null,
+                resolvedFinance?.bank?.id || null,
+                leadMeta?.ownerTenantId || null,
+                leadMeta?.selectedDealerTenantId || null,
+                leadMeta?.preferredFinancierId || null,
+            ].filter(Boolean)
+        )
+    ) as string[];
+    const tenantMetaMap = new Map<string, { name: string; slug: string | null; type: string | null }>();
+    if (tenantIdsForMeta.length > 0) {
+        const { data: tenantRows } = await supabase
+            .from('id_tenants')
+            .select('id, name, slug, type')
+            .in('id', tenantIdsForMeta);
+        (tenantRows || []).forEach((row: any) => {
+            tenantMetaMap.set(String(row.id), {
+                name: String(row.name || ''),
+                slug: row.slug ? String(row.slug) : null,
+                type: row.type ? String(row.type) : null,
+            });
+        });
+    }
+
+    if (leadMeta) {
+        const canonicalLead = leadMeta.displayId || leadMeta.id;
+        const canonicalDealerSlug = winningDealerId ? tenantMetaMap.get(winningDealerId)?.slug || null : null;
+        const canonicalFinanceSlug = resolvedFinance?.bank?.id
+            ? tenantMetaMap.get(resolvedFinance.bank.id)?.slug || null
+            : null;
+        const currentLead = resolvedSearchParams.lead || null;
+        const currentDealerSlug = resolvedSearchParams.dealerSlug || null;
+        const currentFinanceSlug = resolvedSearchParams.financeSlug || null;
+
+        const normalized = buildCanonicalLeadQuery({
+            current: resolvedSearchParams as Record<string, string | undefined>,
+            canonicalLead,
+            canonicalDealerSlug,
+            canonicalFinanceSlug,
+        });
+        if (normalized.changed) redirect(`?${normalized.params.toString()}`);
+    }
 
     const jsonLd: Record<string, any> = {
         '@context': 'https://schema.org',
@@ -1234,6 +1340,26 @@ export default async function Page({ params, searchParams }: Props) {
                         : undefined
                 }
                 initialDealerId={winningDealerId}
+                leadMeta={
+                    leadMeta
+                        ? {
+                              id: leadMeta.id,
+                              displayId: leadMeta.displayId,
+                              customerName: leadMeta.customerName,
+                              ownerTenantName: leadMeta.ownerTenantId
+                                  ? tenantMetaMap.get(leadMeta.ownerTenantId)?.name || null
+                                  : null,
+                              leadDealerId: leadMeta.selectedDealerTenantId,
+                              leadDealerName: leadMeta.selectedDealerTenantId
+                                  ? tenantMetaMap.get(leadMeta.selectedDealerTenantId)?.name || null
+                                  : null,
+                              leadFinancerId: leadMeta.preferredFinancierId,
+                              leadFinancerName: leadMeta.preferredFinancierId
+                                  ? tenantMetaMap.get(leadMeta.preferredFinancierId)?.name || null
+                                  : null,
+                          }
+                        : undefined
+                }
                 initialDevice={isMobile ? 'phone' : 'desktop'}
             />
         </>

@@ -246,7 +246,7 @@ export default function DesktopCompare() {
 
     const [isPricingExpanded, setIsPricingExpanded] = useState(true);
     const [isDiffExpanded, setIsDiffExpanded] = useState(true);
-    const [isAllSpecsExpanded, setIsAllSpecsExpanded] = useState(false);
+    const [isAllSpecsExpanded, setIsAllSpecsExpanded] = useState(true);
     const fullCardsRef = useRef<HTMLDivElement>(null);
     const scrollAnchorRef = useRef<HTMLDivElement>(null);
 
@@ -536,251 +536,232 @@ export default function DesktopCompare() {
                                 >
                                     {allSpecs.length > 0 && (
                                         <div className="flex flex-col gap-2 h-full">
-                                            <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-[2.5rem] shadow-[0_12px_44px_rgba(0,0,0,0.15)] px-5 py-2.5 flex-none flex items-center h-[96px]">
-                                                <div className="flex items-stretch w-full">
-                                                    {/* Left label column */}
-                                                    <div className="w-[180px] shrink-0 flex flex-col items-center justify-center px-4 border-r border-black/[0.04]">
-                                                        <div className="bg-[#F4B000]/10 p-2.5 rounded-2xl mb-2">
-                                                            <GitCompareArrows size={22} className="text-[#F4B000]" />
-                                                        </div>
-                                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-center leading-tight">
-                                                            {isMixedMode
-                                                                ? `Comparing ${activeVariants.length} Models`
-                                                                : `${activeVariants.length} Variants`}
-                                                        </span>
+                                            {/* Column-split sticky header */}
+                                            <div
+                                                className="grid gap-x-6 w-full"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                {/* 1. Label Card */}
+                                                <div className="bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.1)] px-5 py-4 flex flex-col items-center justify-center h-[96px]">
+                                                    <div className="bg-[#F4B000]/10 p-2 rounded-xl mb-1.5">
+                                                        <GitCompareArrows size={18} className="text-[#F4B000]" />
                                                     </div>
+                                                    <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 text-center leading-tight">
+                                                        {isMixedMode
+                                                            ? `Comparing ${activeVariants.length} Models`
+                                                            : `${activeVariants.length} Variants`}
+                                                    </span>
+                                                </div>
 
-                                                    {/* Variant cards grid */}
-                                                    <div
-                                                        className="grid gap-4 flex-1 px-4"
-                                                        style={{
-                                                            gridTemplateColumns: `repeat(${activeVariants.length}, 1fr)`,
-                                                        }}
-                                                    >
-                                                        {activeVariants.map((v, i) => {
-                                                            const isCheapest = i === 0;
-                                                            const swatches = (v.availableColors || [])
-                                                                .filter(
-                                                                    c =>
-                                                                        typeof c?.hexCode === 'string' &&
-                                                                        c.hexCode.trim().length > 0
-                                                                )
-                                                                .sort(
-                                                                    (a, b) => (a.position ?? 999) - (b.position ?? 999)
-                                                                );
-                                                            const currentImage =
-                                                                compactColorImages[v.id] ||
-                                                                v.imageUrl ||
-                                                                '/images/categories/motorcycle_nobg.png';
+                                                {/* 2. Individual Variant Minicards */}
+                                                {activeVariants.map((v, i) => {
+                                                    const isCheapest = i === 0;
+                                                    const swatches = (v.availableColors || [])
+                                                        .filter(
+                                                            c =>
+                                                                typeof c?.hexCode === 'string' &&
+                                                                c.hexCode.trim().length > 0
+                                                        )
+                                                        .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+                                                    const currentImage =
+                                                        compactColorImages[v.id] ||
+                                                        v.imageUrl ||
+                                                        '/images/categories/motorcycle_nobg.png';
 
-                                                            const currentHexRaw =
-                                                                compactColorHexes[v.id] || swatches[0]?.hexCode || null;
-                                                            let currentHex = currentHexRaw
-                                                                ? currentHexRaw.replace('#', '').trim()
-                                                                : null;
-                                                            if (currentHex && currentHex.length === 3) {
-                                                                currentHex = currentHex
-                                                                    .split('')
-                                                                    .map((c: string) => c + c)
-                                                                    .join('');
-                                                            }
-                                                            currentHex =
-                                                                currentHex && currentHex.length === 6
-                                                                    ? `#${currentHex}`
-                                                                    : null;
+                                                    const currentHexRaw =
+                                                        compactColorHexes[v.id] || swatches[0]?.hexCode || null;
+                                                    let currentHex = currentHexRaw
+                                                        ? currentHexRaw.replace('#', '').trim()
+                                                        : null;
+                                                    if (currentHex && currentHex.length === 3) {
+                                                        currentHex = currentHex
+                                                            .split('')
+                                                            .map((c: string) => c + c)
+                                                            .join('');
+                                                    }
+                                                    currentHex =
+                                                        currentHex && currentHex.length === 6 ? `#${currentHex}` : null;
 
-                                                            return (
-                                                                <motion.div
-                                                                    key={v.id}
-                                                                    initial={false}
-                                                                    className={`relative flex items-center gap-5 px-5 py-3 rounded-2xl transition-all duration-300 h-[92px] group/minicard`}
-                                                                >
-                                                                    {/* ── Background & Watermark Layer (Clipped) ── */}
-                                                                    <motion.div
-                                                                        className="absolute inset-0 rounded-2xl overflow-hidden backdrop-blur-md border-t border-l border-white/50 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.15),inset_0_-4px_12px_rgba(0,0,0,0.05)] pointer-events-none z-0 group-hover/minicard:shadow-[0_12px_48px_-8px_rgba(0,0,0,0.2)] transition-shadow duration-500"
+                                                    return (
+                                                        <motion.div
+                                                            key={v.id}
+                                                            initial={false}
+                                                            className="relative flex items-center gap-4 px-4 py-3 bg-white/95 backdrop-blur-xl border border-black/[0.06] rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.1)] h-[96px] group/minicard overflow-hidden transition-all duration-300"
+                                                        >
+                                                            {/* ── Background & Watermark Layer (Clipped) ── */}
+                                                            <motion.div
+                                                                className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none z-0 group-hover/minicard:shadow-[0_12px_48px_-8px_rgba(0,0,0,0.2)] transition-shadow duration-500"
+                                                                animate={{
+                                                                    background: currentHex
+                                                                        ? `linear-gradient(135deg, ${currentHex}26, ${currentHex}0D), rgba(248, 250, 252, 0.85)`
+                                                                        : isCheapest
+                                                                          ? 'rgba(244,176,0,0.08)'
+                                                                          : undefined,
+                                                                }}
+                                                            >
+                                                                {/* Ripple Effect Container */}
+                                                                <AnimatePresence>
+                                                                    {ripples[v.id] && (
+                                                                        <motion.div
+                                                                            key={ripples[v.id].key}
+                                                                            initial={{ scale: 0, opacity: 0.6 }}
+                                                                            animate={{ scale: 3, opacity: 0 }}
+                                                                            transition={{
+                                                                                duration: 0.8,
+                                                                                ease: 'easeOut',
+                                                                            }}
+                                                                            className="absolute rounded-full pointer-events-none"
+                                                                            style={{
+                                                                                background: `radial-gradient(circle, ${ripples[v.id].color}66, transparent 70%)`,
+                                                                                width: '120px',
+                                                                                height: '120px',
+                                                                                left: '85%',
+                                                                                top: '60%',
+                                                                                transform: 'translate(-50%, -50%)',
+                                                                                zIndex: 0,
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                </AnimatePresence>
+
+                                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                                    <motion.span
+                                                                        className="text-[80px] font-black uppercase tracking-tighter italic text-black whitespace-nowrap leading-none"
+                                                                        initial={false}
                                                                         animate={{
-                                                                            background: currentHex
-                                                                                ? `linear-gradient(135deg, ${currentHex}26, ${currentHex}0D), rgba(248, 250, 252, 0.85)`
-                                                                                : isCheapest
-                                                                                  ? 'rgba(244,176,0,0.08)'
-                                                                                  : 'rgba(248, 250, 252, 0.85)',
+                                                                            scale: 1,
+                                                                            opacity: 0.08,
+                                                                        }}
+                                                                        whileHover={{
+                                                                            scale: 1.15,
+                                                                            opacity: 0.12,
+                                                                        }}
+                                                                        transition={{
+                                                                            duration: 0.6,
+                                                                            ease: 'easeOut',
                                                                         }}
                                                                     >
-                                                                        {/* Ripple Effect Container */}
-                                                                        <AnimatePresence>
-                                                                            {ripples[v.id] && (
-                                                                                <motion.div
-                                                                                    key={ripples[v.id].key}
-                                                                                    initial={{ scale: 0, opacity: 0.6 }}
-                                                                                    animate={{ scale: 3, opacity: 0 }}
-                                                                                    transition={{
-                                                                                        duration: 0.8,
-                                                                                        ease: 'easeOut',
-                                                                                    }}
-                                                                                    className="absolute rounded-full pointer-events-none"
-                                                                                    style={{
-                                                                                        background: `radial-gradient(circle, ${ripples[v.id].color}66, transparent 70%)`,
-                                                                                        width: '120px',
-                                                                                        height: '120px',
-                                                                                        left: '85%',
-                                                                                        top: '60%',
-                                                                                        transform:
-                                                                                            'translate(-50%, -50%)',
-                                                                                        zIndex: 0,
-                                                                                    }}
-                                                                                />
-                                                                            )}
-                                                                        </AnimatePresence>
+                                                                        {v.make}
+                                                                    </motion.span>
+                                                                </div>
+                                                            </motion.div>
 
-                                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                                            <motion.span
-                                                                                className="text-[80px] font-black uppercase tracking-tighter italic text-black whitespace-nowrap leading-none"
-                                                                                initial={false}
-                                                                                animate={{
-                                                                                    scale: 1,
-                                                                                    opacity: 0.08,
+                                                            {/* ── Remove Button ── */}
+                                                            {activeVariants.length > 2 && (
+                                                                <button
+                                                                    onClick={e => {
+                                                                        e.stopPropagation();
+                                                                        removeVariant(v.id);
+                                                                    }}
+                                                                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-all duration-300 opacity-0 group-hover/minicard:opacity-100 z-30 shadow-sm border border-black/5"
+                                                                >
+                                                                    <X size={12} strokeWidth={3} />
+                                                                </button>
+                                                            )}
+
+                                                            {/* ── Image with Pop-out (Outside clipping) ── */}
+                                                            <div className="relative w-24 shrink-0 flex items-center justify-center -ml-4 pointer-events-none z-20">
+                                                                {/* Outer glow shadow (ambient) */}
+                                                                <div className="absolute inset-0 bg-white/40 blur-3xl rounded-full scale-125 opacity-0 group-hover/minicard:opacity-100 transition-opacity duration-700" />
+
+                                                                {/* Grounding shadow (focused) */}
+                                                                <motion.div
+                                                                    className="absolute bottom-2 inset-x-0 h-4 bg-black/20 blur-xl rounded-full scale-x-50 translate-y-3 opacity-0 group-hover/minicard:opacity-100"
+                                                                    animate={{
+                                                                        scale: [0.5, 0.6, 0.5],
+                                                                        opacity: [0, 0.4, 0],
+                                                                    }}
+                                                                    transition={{
+                                                                        duration: 2,
+                                                                        repeat: Infinity,
+                                                                    }}
+                                                                />
+
+                                                                <motion.img
+                                                                    layoutId={`compact-img-${v.id}`}
+                                                                    src={currentImage}
+                                                                    alt={v.variant}
+                                                                    className="relative h-[90px] w-auto object-contain transition-all duration-500 group-hover/minicard:scale-115 group-hover/minicard:-translate-y-4 group-hover/minicard:drop-shadow-[0_15px_30px_rgba(0,0,0,0.25)] filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
+                                                                />
+                                                            </div>
+
+                                                            {/* ── Text Content Alignment ── */}
+                                                            <div className="flex-1 min-w-0 z-10 text-right">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 truncate leading-none mb-1">
+                                                                        {v.model}
+                                                                    </span>
+                                                                    <h4 className="text-[14px] font-black uppercase tracking-tight text-slate-900 leading-none truncate">
+                                                                        {v.variant}
+                                                                    </h4>
+                                                                </div>
+
+                                                                <div className="flex items-center justify-end gap-1.5 mt-3">
+                                                                    {swatches.map((c, ci) => {
+                                                                        let sHex = c.hexCode?.replace('#', '') || '000';
+                                                                        if (sHex.length === 3)
+                                                                            sHex = sHex
+                                                                                .split('')
+                                                                                .map(x => x + x)
+                                                                                .join('');
+                                                                        const sHexFull = `#${sHex}`;
+                                                                        const finish = (c.finish || '').toUpperCase();
+                                                                        const isGlossy = finish.includes('GLOSS');
+                                                                        const isMatte = finish.includes('MATTE');
+                                                                        const isMetallic = finish.includes('METALLIC');
+
+                                                                        return (
+                                                                            <button
+                                                                                key={ci}
+                                                                                onClick={e => {
+                                                                                    e.stopPropagation();
+                                                                                    if (c.imageUrl)
+                                                                                        setCompactColorImages(p => ({
+                                                                                            ...p,
+                                                                                            [v.id]: c.imageUrl!,
+                                                                                        }));
+                                                                                    if (c.hexCode) {
+                                                                                        setCompactColorHexes(p => ({
+                                                                                            ...p,
+                                                                                            [v.id]: c.hexCode,
+                                                                                        }));
+                                                                                        // Trigger ripple
+                                                                                        setRipples(p => ({
+                                                                                            ...p,
+                                                                                            [v.id]: {
+                                                                                                color: c.hexCode!,
+                                                                                                key: Date.now(),
+                                                                                            },
+                                                                                        }));
+                                                                                    }
                                                                                 }}
-                                                                                whileHover={{
-                                                                                    scale: 1.15,
-                                                                                    opacity: 0.12,
+                                                                                className={`w-4 h-4 rounded-full relative overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.2),inset_0_-1px_2px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:scale-150 transition-all duration-300 ${currentHex === sHexFull ? 'ring-2 ring-[#F4B000] ring-offset-1' : 'hover:ring-1 hover:ring-[#F4B000]'}`}
+                                                                                style={{
+                                                                                    backgroundColor: sHexFull,
                                                                                 }}
-                                                                                transition={{
-                                                                                    duration: 0.6,
-                                                                                    ease: 'easeOut',
-                                                                                }}
+                                                                                title={`${c.name} (${c.finish || 'Standard'})`}
                                                                             >
-                                                                                {v.make}
-                                                                            </motion.span>
-                                                                        </div>
-                                                                    </motion.div>
-
-                                                                    {/* ── Remove Button ── */}
-                                                                    {activeVariants.length > 2 && (
-                                                                        <button
-                                                                            onClick={e => {
-                                                                                e.stopPropagation();
-                                                                                removeVariant(v.id);
-                                                                            }}
-                                                                            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-all duration-300 opacity-0 group-hover/minicard:opacity-100 z-30 shadow-sm border border-black/5"
-                                                                        >
-                                                                            <X size={12} strokeWidth={3} />
-                                                                        </button>
-                                                                    )}
-
-                                                                    {/* ── Image with Pop-out (Outside clipping) ── */}
-                                                                    <div className="relative w-24 shrink-0 flex items-center justify-center -ml-4 pointer-events-none z-20">
-                                                                        {/* Outer glow shadow (ambient) */}
-                                                                        <div className="absolute inset-0 bg-white/40 blur-3xl rounded-full scale-125 opacity-0 group-hover/minicard:opacity-100 transition-opacity duration-700" />
-
-                                                                        {/* Grounding shadow (focused) */}
-                                                                        <motion.div
-                                                                            className="absolute bottom-2 inset-x-0 h-4 bg-black/20 blur-xl rounded-full scale-x-50 translate-y-3 opacity-0 group-hover/minicard:opacity-100"
-                                                                            animate={{
-                                                                                scale: [0.5, 0.6, 0.5],
-                                                                                opacity: [0, 0.4, 0],
-                                                                            }}
-                                                                            transition={{
-                                                                                duration: 2,
-                                                                                repeat: Infinity,
-                                                                            }}
-                                                                        />
-
-                                                                        <motion.img
-                                                                            layoutId={`compact-img-${v.id}`}
-                                                                            src={currentImage}
-                                                                            alt={v.variant}
-                                                                            className="relative h-[90px] w-auto object-contain transition-all duration-500 group-hover/minicard:scale-115 group-hover/minicard:-translate-y-4 group-hover/minicard:drop-shadow-[0_15px_30px_rgba(0,0,0,0.25)] filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
-                                                                        />
-                                                                    </div>
-
-                                                                    {/* ── Text Content Alignment ── */}
-                                                                    <div className="flex-1 min-w-0 z-10 text-right">
-                                                                        <div className="flex flex-col">
-                                                                            <span className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 truncate leading-none mb-1">
-                                                                                {v.model}
-                                                                            </span>
-                                                                            <h4 className="text-[14px] font-black uppercase tracking-tight text-slate-900 leading-none truncate">
-                                                                                {v.variant}
-                                                                            </h4>
-                                                                        </div>
-
-                                                                        <div className="flex items-center justify-end gap-1.5 mt-3">
-                                                                            {swatches.map((c, ci) => {
-                                                                                let sHex =
-                                                                                    c.hexCode?.replace('#', '') ||
-                                                                                    '000';
-                                                                                if (sHex.length === 3)
-                                                                                    sHex = sHex
-                                                                                        .split('')
-                                                                                        .map(x => x + x)
-                                                                                        .join('');
-                                                                                const sHexFull = `#${sHex}`;
-                                                                                const finish = (
-                                                                                    c.finish || ''
-                                                                                ).toUpperCase();
-                                                                                const isGlossy =
-                                                                                    finish.includes('GLOSS');
-                                                                                const isMatte =
-                                                                                    finish.includes('MATTE');
-                                                                                const isMetallic =
-                                                                                    finish.includes('METALLIC');
-
-                                                                                return (
-                                                                                    <button
-                                                                                        key={ci}
-                                                                                        onClick={e => {
-                                                                                            e.stopPropagation();
-                                                                                            if (c.imageUrl)
-                                                                                                setCompactColorImages(
-                                                                                                    p => ({
-                                                                                                        ...p,
-                                                                                                        [v.id]: c.imageUrl!,
-                                                                                                    })
-                                                                                                );
-                                                                                            if (c.hexCode) {
-                                                                                                setCompactColorHexes(
-                                                                                                    p => ({
-                                                                                                        ...p,
-                                                                                                        [v.id]: c.hexCode,
-                                                                                                    })
-                                                                                                );
-                                                                                                // Trigger ripple
-                                                                                                setRipples(p => ({
-                                                                                                    ...p,
-                                                                                                    [v.id]: {
-                                                                                                        color: c.hexCode!,
-                                                                                                        key: Date.now(),
-                                                                                                    },
-                                                                                                }));
-                                                                                            }
-                                                                                        }}
-                                                                                        className={`w-4 h-4 rounded-full relative overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.2),inset_0_-1px_2px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:scale-150 transition-all duration-300 ${currentHex === sHexFull ? 'ring-2 ring-[#F4B000] ring-offset-1' : 'hover:ring-1 hover:ring-[#F4B000]'}`}
-                                                                                        style={{
-                                                                                            backgroundColor: sHexFull,
-                                                                                        }}
-                                                                                        title={`${c.name} (${c.finish || 'Standard'})`}
-                                                                                    >
-                                                                                        {/* Surface Effects */}
-                                                                                        {isGlossy && (
-                                                                                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
-                                                                                        )}
-                                                                                        {isMatte && (
-                                                                                            <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
-                                                                                        )}
-                                                                                        {isMetallic && (
-                                                                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_rgba(255,255,255,0.4)_0%,_transparent_60%)] pointer-events-none" />
-                                                                                        )}
-                                                                                        <div className="absolute inset-0 shadow-[inset_0_1px_4px_rgba(0,0,0,0.1)] pointer-events-none" />
-                                                                                    </button>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    </div>
-                                                                </motion.div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
+                                                                                {/* Surface Effects */}
+                                                                                {isGlossy && (
+                                                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                                                )}
+                                                                                {isMatte && (
+                                                                                    <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                                                                                )}
+                                                                                {isMetallic && (
+                                                                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_rgba(255,255,255,0.4)_0%,_transparent_60%)] pointer-events-none" />
+                                                                                )}
+                                                                                <div className="absolute inset-0 shadow-[inset_0_1px_4px_rgba(0,0,0,0.1)] pointer-events-none" />
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        </motion.div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}
@@ -793,10 +774,7 @@ export default function DesktopCompare() {
 
                     {/* ────── Full Cards (normal flow — scrolls away) ────── */}
                     <div ref={fullCardsRef}>
-                        <div
-                            ref={scrollAnchorRef}
-                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pb-4"
-                        >
+                        <div ref={scrollAnchorRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pb-4">
                             {activeVariants.map(v => (
                                 <ProductCard
                                     key={v.id}
@@ -810,7 +788,7 @@ export default function DesktopCompare() {
                                     variantCount={activeVariants.length}
                                     isInCompare={!removedVariantIds.has(v.id)}
                                     onCompare={() => removeVariant(v.id)}
-                                    onExplodeColors={() => {
+                                    onExplore={() => {
                                         const make = (v.make || '').toLowerCase();
                                         const model = (v.modelSlug || v.model || '').toLowerCase();
                                         router.push(`/store/compare/${make}/${model}`);
@@ -820,469 +798,442 @@ export default function DesktopCompare() {
                         </div>
                     </div>
 
-                    {/* ────── Sticky Compact Bar + Specs (same parent so sticky persists) ────── */}
+                    {/* ────── Comparison Specifications Section ────── */}
                     {allSpecs.length > 0 && (
-                        <div className="py-6">
-                            <div className="bg-white border border-black/[0.06] rounded-[2rem] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+                        <div className="py-6 space-y-10">
+                            <div className="overflow-visible">
                                 {/* ── Financial Comparison Section ── */}
-                                <div className="border-b border-black/[0.04]">
-                                    <button
-                                        onClick={() => setIsPricingExpanded(!isPricingExpanded)}
-                                        className="w-full px-5 py-3 bg-gradient-to-r from-[#F4B000]/5 to-transparent flex items-center justify-between group cursor-pointer hover:bg-[#F4B000]/[0.02] transition-colors"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-5 h-5 rounded-md bg-[#F4B000]/10 flex items-center justify-center">
-                                                <IndianRupee size={12} className="text-[#F4B000]" />
-                                            </div>
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
-                                                Pricing & Finance
-                                            </span>
-                                        </div>
-                                        <div
-                                            className={`p-1.5 rounded-full bg-[#F4B000]/5 text-[#F4B000]/60 transition-all duration-300 ${isPricingExpanded ? 'rotate-180' : ''}`}
+                                <AnimatePresence initial={false}>
+                                    {isPricingExpanded && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                                            className="overflow-hidden"
                                         >
-                                            <ChevronDown size={14} />
-                                        </div>
-                                    </button>
+                                            {/* 0. Variant Name */}
+                                            <div
+                                                className="grid gap-x-6 mt-4"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <Bike size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Variant Name
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => (
+                                                    <div
+                                                        key={vIdx}
+                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                    >
+                                                        <span className="text-[11px] font-black uppercase tracking-tight text-slate-900 truncate px-2">
+                                                            {v.variant}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
 
+                                            {/* 1. On-Road Price */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        On-Road Price
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => (
+                                                    <div
+                                                        key={vIdx}
+                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                    >
+                                                        <span className="text-[12px] font-black text-slate-900">
+                                                            ₹
+                                                            {(
+                                                                v.price?.onRoad ||
+                                                                v.price?.exShowroom ||
+                                                                0
+                                                            ).toLocaleString('en-IN')}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {/* 2. Discount / Surge */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <GitCompareArrows
+                                                        size={12}
+                                                        className="text-[#F4B000]/70 shrink-0"
+                                                    />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Price Difference
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => {
+                                                    const currentPrice = getDisplayPrice(v);
+                                                    if (vIdx === 0) {
+                                                        return (
+                                                            <div
+                                                                key={vIdx}
+                                                                className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                            >
+                                                                <span className="text-[11px] font-black text-slate-400">
+                                                                    BASE
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    const prevPrice = getDisplayPrice(activeVariants[vIdx - 1]);
+                                                    const gap = currentPrice - prevPrice;
+                                                    const isGapDrop = gap < 0;
+                                                    const isGapSurge = gap > 0;
+
+                                                    return (
+                                                        <div
+                                                            key={vIdx}
+                                                            className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                        >
+                                                            <span
+                                                                className={`text-[11px] font-black ${isGapDrop ? 'text-emerald-600' : isGapSurge ? 'text-red-500' : 'text-slate-400'}`}
+                                                            >
+                                                                {isGapSurge ? '+' : isGapDrop ? '−' : ''}₹
+                                                                {Math.abs(gap).toLocaleString('en-IN')}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {/* 3. Offer Price (INR) + B Coin side by side */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Offer Price
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => {
+                                                    const offerPrice = getDisplayPrice(v);
+                                                    const bCoin = coinsNeededForPrice(offerPrice);
+                                                    return (
+                                                        <div
+                                                            key={vIdx}
+                                                            className="px-6 py-4 flex items-center justify-center gap-3 text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                        >
+                                                            <span className="text-[12px] font-black text-slate-900">
+                                                                ₹{offerPrice.toLocaleString('en-IN')}
+                                                            </span>
+                                                            <span className="text-[8px] text-slate-300">|</span>
+                                                            <span className="flex items-center gap-0.5">
+                                                                <Logo variant="icon" size={10} />
+                                                                <span className="text-[10px] font-black text-[#F4B000] italic">
+                                                                    {bCoin.toLocaleString('en-IN')}
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {/* 4. Downpayment (editable, shared) */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Downpayment Info
+                                                    </span>
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            setEditingDownpayment(true);
+                                                            setDpInputValue(String(downpayment));
+                                                        }}
+                                                        className="ml-auto p-1.5 rounded-lg bg-slate-50 text-slate-300 hover:text-[#F4B000] transition-colors"
+                                                        title="Edit downpayment for all variants"
+                                                    >
+                                                        <Pencil size={10} />
+                                                    </button>
+                                                </div>
+                                                {activeVariants.map((_, vIdx) => (
+                                                    <div
+                                                        key={vIdx}
+                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                    >
+                                                        {editingDownpayment ? (
+                                                            <input
+                                                                type="number"
+                                                                value={dpInputValue}
+                                                                onChange={e => setDpInputValue(e.target.value)}
+                                                                onBlur={() => {
+                                                                    const val = parseInt(dpInputValue);
+                                                                    if (!isNaN(val) && val >= 0) setDownpayment(val);
+                                                                    setEditingDownpayment(false);
+                                                                }}
+                                                                onKeyDown={e => {
+                                                                    if (e.key === 'Enter') {
+                                                                        const val = parseInt(dpInputValue);
+                                                                        if (!isNaN(val) && val >= 0)
+                                                                            setDownpayment(val);
+                                                                        setEditingDownpayment(false);
+                                                                    }
+                                                                }}
+                                                                autoFocus={vIdx === 0}
+                                                                className="w-20 text-center text-[11px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-[11px] font-bold text-slate-600">
+                                                                ₹{downpayment.toLocaleString('en-IN')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {/* 5. Tenure (editable, shared) */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <Calendar size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Finance Tenure
+                                                    </span>
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            setEditingTenure(!editingTenure);
+                                                        }}
+                                                        className="ml-auto p-1.5 rounded-lg bg-slate-50 text-slate-300 hover:text-[#F4B000] transition-colors"
+                                                        title="Change tenure for all variants"
+                                                    >
+                                                        <Pencil size={10} />
+                                                    </button>
+                                                </div>
+                                                {activeVariants.map((_, vIdx) => (
+                                                    <div
+                                                        key={vIdx}
+                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                    >
+                                                        {editingTenure ? (
+                                                            <div className="flex gap-1 flex-wrap justify-center">
+                                                                {TENURE_OPTIONS.map(t => (
+                                                                    <button
+                                                                        key={t}
+                                                                        onClick={() => {
+                                                                            setTenure(t);
+                                                                            setEditingTenure(false);
+                                                                        }}
+                                                                        className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${
+                                                                            tenure === t
+                                                                                ? 'bg-[#F4B000] text-black'
+                                                                                : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
+                                                                        }`}
+                                                                    >
+                                                                        {t}mo
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-[11px] font-bold text-slate-600">
+                                                                {tenure} months
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {/* 6. EMI */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Monthly EMI
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => (
+                                                    <div
+                                                        key={vIdx}
+                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                    >
+                                                        <span className="text-[12px] font-black text-[#F4B000]">
+                                                            ₹{getEmi(v, downpayment, tenure).toLocaleString('en-IN')}
+                                                            /mo
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                {/* ── Smart Spec Rows ── */}
+                                {/* Section 1: What's Different */}
+                                {smartSpecs.diffSpecs.length > 0 && (
                                     <AnimatePresence initial={false}>
-                                        {isPricingExpanded && (
+                                        {isDiffExpanded && (
                                             <motion.div
                                                 initial={{ height: 0, opacity: 0 }}
                                                 animate={{ height: 'auto', opacity: 1 }}
                                                 exit={{ height: 0, opacity: 0 }}
                                                 transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                                                className="overflow-hidden bg-white"
+                                                className="overflow-hidden"
                                             >
-                                                {/* 1. On-Road Price */}
-                                                <div
-                                                    className="grid border-t border-black/[0.04]"
-                                                    style={{
-                                                        gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                    }}
-                                                >
-                                                    <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                        <IndianRupee size={12} className="text-slate-300 shrink-0" />
-                                                        <span className="text-[10px] font-bold text-slate-500">
-                                                            On-Road Price
-                                                        </span>
-                                                    </div>
-                                                    {activeVariants.map((v, vIdx) => (
+                                                {smartSpecs.diffSpecs.map((row, rIdx) => {
+                                                    const bestIdx = findBestValueIndex(row);
+                                                    return (
                                                         <div
-                                                            key={vIdx}
-                                                            className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                        >
-                                                            <span className="text-[11px] font-bold text-slate-600">
-                                                                ₹
-                                                                {(
-                                                                    v.price?.onRoad ||
-                                                                    v.price?.exShowroom ||
-                                                                    0
-                                                                ).toLocaleString('en-IN')}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                {/* 2. Discount / Surge */}
-                                                <div
-                                                    className="grid border-t border-black/[0.04]"
-                                                    style={{
-                                                        gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                    }}
-                                                >
-                                                    <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                        <TrendingDown size={12} className="text-slate-300 shrink-0" />
-                                                        <span className="text-[10px] font-bold text-slate-500">
-                                                            Platform Discount / Surge Charges
-                                                        </span>
-                                                    </div>
-                                                    {activeVariants.map((v, vIdx) => {
-                                                        const disc = v.price?.discount || 0;
-                                                        const isDiscount = disc > 0;
-                                                        const isSurge = disc < 0;
-                                                        return (
-                                                            <div
-                                                                key={vIdx}
-                                                                className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                            >
-                                                                <span
-                                                                    className={`text-[11px] font-black ${isDiscount ? 'text-emerald-600' : isSurge ? 'text-red-500' : 'text-slate-400'}`}
-                                                                >
-                                                                    {isDiscount
-                                                                        ? `−₹${disc.toLocaleString('en-IN')}`
-                                                                        : isSurge
-                                                                          ? `+₹${Math.abs(disc).toLocaleString('en-IN')}`
-                                                                          : '—'}
-                                                                </span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                                {/* 3. Offer Price (INR) + B Coin side by side */}
-                                                <div
-                                                    className="grid border-t border-black/[0.04] bg-[#F4B000]/[0.04]"
-                                                    style={{
-                                                        gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                    }}
-                                                >
-                                                    <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                        <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                        <span className="text-[10px] font-bold text-slate-700">
-                                                            Offer Price
-                                                        </span>
-                                                    </div>
-                                                    {activeVariants.map((v, vIdx) => {
-                                                        const offerPrice = getDisplayPrice(v);
-                                                        const bCoin = coinsNeededForPrice(offerPrice);
-                                                        return (
-                                                            <div
-                                                                key={vIdx}
-                                                                className={`px-4 py-3 flex items-center justify-center gap-2 text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                            >
-                                                                <span className="text-[12px] font-black text-slate-900">
-                                                                    ₹{offerPrice.toLocaleString('en-IN')}
-                                                                </span>
-                                                                <span className="text-[8px] text-slate-300">|</span>
-                                                                <span className="flex items-center gap-0.5">
-                                                                    <Logo variant="icon" size={10} />
-                                                                    <span className="text-[10px] font-black text-[#F4B000] italic">
-                                                                        {bCoin.toLocaleString('en-IN')}
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                                {/* 4. Downpayment (editable, shared) */}
-                                                <div
-                                                    className="grid border-t border-black/[0.04]"
-                                                    style={{
-                                                        gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                    }}
-                                                >
-                                                    <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                        <CreditCard size={12} className="text-slate-300 shrink-0" />
-                                                        <span className="text-[10px] font-bold text-slate-500">
-                                                            Downpayment
-                                                        </span>
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                setEditingDownpayment(true);
-                                                                setDpInputValue(String(downpayment));
-                                                            }}
-                                                            className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
-                                                            title="Edit downpayment for all variants"
-                                                        >
-                                                            <Pencil size={10} />
-                                                        </button>
-                                                    </div>
-                                                    {activeVariants.map((_, vIdx) => (
-                                                        <div
-                                                            key={vIdx}
-                                                            className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                        >
-                                                            {editingDownpayment ? (
-                                                                <input
-                                                                    type="number"
-                                                                    value={dpInputValue}
-                                                                    onChange={e => setDpInputValue(e.target.value)}
-                                                                    onBlur={() => {
-                                                                        const val = parseInt(dpInputValue);
-                                                                        if (!isNaN(val) && val >= 0)
-                                                                            setDownpayment(val);
-                                                                        setEditingDownpayment(false);
-                                                                    }}
-                                                                    onKeyDown={e => {
-                                                                        if (e.key === 'Enter') {
-                                                                            const val = parseInt(dpInputValue);
-                                                                            if (!isNaN(val) && val >= 0)
-                                                                                setDownpayment(val);
-                                                                            setEditingDownpayment(false);
-                                                                        }
-                                                                    }}
-                                                                    autoFocus={vIdx === 0}
-                                                                    className="w-20 text-center text-[11px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
-                                                                />
-                                                            ) : (
-                                                                <span className="text-[11px] font-bold text-slate-600">
-                                                                    ₹{downpayment.toLocaleString('en-IN')}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                {/* 5. Tenure (editable, shared) */}
-                                                <div
-                                                    className="grid border-t border-black/[0.04]"
-                                                    style={{
-                                                        gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                    }}
-                                                >
-                                                    <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                        <Calendar size={12} className="text-slate-300 shrink-0" />
-                                                        <span className="text-[10px] font-bold text-slate-500">
-                                                            Tenure
-                                                        </span>
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                setEditingTenure(!editingTenure);
-                                                            }}
-                                                            className="ml-auto text-slate-300 hover:text-[#F4B000] transition-colors"
-                                                            title="Change tenure for all variants"
-                                                        >
-                                                            <Pencil size={10} />
-                                                        </button>
-                                                    </div>
-                                                    {activeVariants.map((_, vIdx) => (
-                                                        <div
-                                                            key={vIdx}
-                                                            className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                        >
-                                                            {editingTenure ? (
-                                                                <div className="flex gap-1 flex-wrap justify-center">
-                                                                    {TENURE_OPTIONS.map(t => (
-                                                                        <button
-                                                                            key={t}
-                                                                            onClick={() => {
-                                                                                setTenure(t);
-                                                                                setEditingTenure(false);
-                                                                            }}
-                                                                            className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${
-                                                                                tenure === t
-                                                                                    ? 'bg-[#F4B000] text-black'
-                                                                                    : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
-                                                                            }`}
-                                                                        >
-                                                                            {t}mo
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-[11px] font-bold text-slate-600">
-                                                                    {tenure} months
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                {/* 6. EMI */}
-                                                <div
-                                                    className="grid border-t border-black/[0.04] bg-[#F4B000]/[0.06]"
-                                                    style={{
-                                                        gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                    }}
-                                                >
-                                                    <div className="px-4 py-3 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                        <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                        <span className="text-[10px] font-bold text-[#F4B000]">
-                                                            EMI
-                                                        </span>
-                                                    </div>
-                                                    {activeVariants.map((v, vIdx) => (
-                                                        <div
-                                                            key={vIdx}
-                                                            className={`px-4 py-3 flex items-center justify-center text-center ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
-                                                        >
-                                                            <span className="text-[12px] font-black text-[#F4B000]">
-                                                                ₹
-                                                                {getEmi(v, downpayment, tenure).toLocaleString('en-IN')}
-                                                                /mo
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-
-                                {/* ── Smart Spec Rows ── */}
-                                {/* Section 1: What's Different */}
-                                {smartSpecs.diffSpecs.length > 0 && (
-                                    <div className="border-b border-black/[0.04]">
-                                        <button
-                                            onClick={() => setIsDiffExpanded(!isDiffExpanded)}
-                                            className="w-full px-5 py-3 bg-gradient-to-r from-[#F4B000]/5 to-transparent flex items-center justify-between group cursor-pointer hover:bg-[#F4B000]/[0.02] transition-colors"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-5 h-5 rounded-md bg-[#F4B000]/10 flex items-center justify-center">
-                                                    <GitCompareArrows size={12} className="text-[#F4B000]" />
-                                                </div>
-                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
-                                                    What&apos;s Different
-                                                </span>
-                                                <span className="px-1.5 py-0.5 bg-[#F4B000]/10 text-[#F4B000] text-[9px] font-black rounded-md">
-                                                    {smartSpecs.diffSpecs.length}
-                                                </span>
-                                            </div>
-                                            <div
-                                                className={`p-1.5 rounded-full bg-[#F4B000]/5 text-[#F4B000]/60 transition-all duration-300 ${isDiffExpanded ? 'rotate-180' : ''}`}
-                                            >
-                                                <ChevronDown size={14} />
-                                            </div>
-                                        </button>
-
-                                        <AnimatePresence initial={false}>
-                                            {isDiffExpanded && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    {smartSpecs.diffSpecs.map((row, rIdx) => {
-                                                        const bestIdx = findBestValueIndex(row);
-                                                        return (
-                                                            <div
-                                                                key={`diff-${rIdx}`}
-                                                                className="grid border-t border-black/[0.04] bg-[#F4B000]/[0.04] hover:bg-[#F4B000]/[0.08] transition-colors"
-                                                                style={{
-                                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                                }}
-                                                            >
-                                                                <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
-                                                                    {(() => {
-                                                                        const SpecIcon = getSpecIcon(row.label);
-                                                                        return (
-                                                                            <SpecIcon
-                                                                                size={12}
-                                                                                className="shrink-0 text-[#F4B000]/70"
-                                                                            />
-                                                                        );
-                                                                    })()}
-                                                                    <span className="text-[10px] font-bold text-slate-700">
-                                                                        {row.label}
-                                                                    </span>
-                                                                </div>
-                                                                {row.values.map((val, vIdx) => {
-                                                                    const isBest = bestIdx === vIdx;
-                                                                    const isUnique =
-                                                                        val &&
-                                                                        row.values.filter(v => v === val).length === 1;
-                                                                    const barPct = NUMERIC_BAR_SPECS.has(
-                                                                        row.label.toLowerCase()
-                                                                    )
-                                                                        ? getBarPercent(val, row.values)
-                                                                        : null;
-                                                                    return (
-                                                                        <div
-                                                                            key={vIdx}
-                                                                            className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''} ${isBest ? 'bg-emerald-50/60' : ''}`}
-                                                                        >
-                                                                            <span
-                                                                                className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : isBest ? 'text-emerald-600 font-black' : isUnique ? 'text-[#F4B000] font-bold' : 'text-slate-700'}`}
-                                                                            >
-                                                                                {isBest && (
-                                                                                    <Trophy
-                                                                                        size={10}
-                                                                                        className="inline mr-1 -mt-0.5"
-                                                                                    />
-                                                                                )}
-                                                                                {formatSpecValue(val, row.label)}
-                                                                            </span>
-                                                                            {barPct !== null && (
-                                                                                <div className="w-full max-w-[80px] h-1 rounded-full bg-slate-100 overflow-hidden">
-                                                                                    <div
-                                                                                        className={`h-full rounded-full transition-all ${isBest ? 'bg-emerald-400' : 'bg-[#F4B000]/40'}`}
-                                                                                        style={{ width: `${barPct}%` }}
-                                                                                    />
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                )}
-
-                                {/* Section 2: All Specifications */}
-                                {smartSpecs.restSpecs.length > 0 && (
-                                    <div>
-                                        <button
-                                            onClick={() => setIsAllSpecsExpanded(!isAllSpecsExpanded)}
-                                            className="w-full px-5 py-3 bg-gradient-to-r from-slate-100/60 to-transparent flex items-center justify-between group cursor-pointer hover:bg-slate-100/40 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-5 h-5 rounded-md bg-slate-200/50 flex items-center justify-center">
-                                                    <CircleDot size={12} className="text-slate-500" />
-                                                </div>
-                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                                                    All Specifications
-                                                </span>
-                                            </div>
-                                            <div
-                                                className={`p-1.5 rounded-full bg-slate-200/50 text-slate-400 transition-all duration-300 ${isAllSpecsExpanded ? 'rotate-180' : ''}`}
-                                            >
-                                                <ChevronDown size={14} />
-                                            </div>
-                                        </button>
-
-                                        <AnimatePresence initial={false}>
-                                            {isAllSpecsExpanded && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    {smartSpecs.restSpecs.map((row, rIdx) => (
-                                                        <div
-                                                            key={`rest-${rIdx}`}
-                                                            className={`grid border-t border-black/[0.04] hover:bg-slate-50/50 transition-colors ${rIdx % 2 === 1 ? 'bg-slate-50/30' : ''}`}
+                                                            key={`diff-${rIdx}`}
+                                                            className="grid gap-x-6 mt-2"
                                                             style={{
                                                                 gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
                                                             }}
                                                         >
-                                                            <div className="px-4 py-3 bg-slate-50/40 border-r border-black/[0.04] flex items-center gap-1.5">
+                                                            <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                                                                 {(() => {
                                                                     const SpecIcon = getSpecIcon(row.label);
                                                                     return (
                                                                         <SpecIcon
                                                                             size={12}
-                                                                            className="shrink-0 text-slate-300"
+                                                                            className="shrink-0 text-[#F4B000]/70"
                                                                         />
                                                                     );
                                                                 })()}
-                                                                <span className="text-[10px] font-bold text-slate-500">
+                                                                <span className="text-[11px] font-bold tracking-wide text-slate-500 truncate">
                                                                     {row.label}
                                                                 </span>
                                                             </div>
                                                             {row.values.map((val, vIdx) => {
-                                                                const isNumeric =
+                                                                const isBest = bestIdx === vIdx;
+                                                                const isUnique =
                                                                     val &&
-                                                                    NUMERIC_BAR_SPECS.has(row.label.toLowerCase()) &&
-                                                                    extractNumeric(val) !== null;
+                                                                    row.values.filter(v => v === val).length === 1;
+                                                                const barPct = NUMERIC_BAR_SPECS.has(
+                                                                    row.label.toLowerCase()
+                                                                )
+                                                                    ? getBarPercent(val, row.values)
+                                                                    : null;
                                                                 return (
                                                                     <div
                                                                         key={vIdx}
-                                                                        className={`px-4 py-3 flex flex-col items-center justify-center text-center gap-1 ${vIdx < activeVariants.length - 1 ? 'border-r border-black/[0.04]' : ''}`}
+                                                                        className={`px-6 py-4 flex flex-col items-center justify-center text-center gap-1 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] ${isBest ? 'ring-2 ring-emerald-500/20 bg-emerald-50/20' : ''}`}
                                                                     >
                                                                         <span
-                                                                            className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : 'text-slate-700'}`}
+                                                                            className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : isBest ? 'text-emerald-600 font-black' : isUnique ? 'text-[#F4B000] font-bold' : 'text-slate-700'}`}
                                                                         >
+                                                                            {isBest && (
+                                                                                <Trophy
+                                                                                    size={10}
+                                                                                    className="inline mr-1 -mt-0.5"
+                                                                                />
+                                                                            )}
                                                                             {formatSpecValue(val, row.label)}
                                                                         </span>
-                                                                        {isNumeric && (
-                                                                            <div className="w-full max-w-[60px] h-[2px] rounded-full bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200" />
+                                                                        {barPct !== null && (
+                                                                            <div className="w-full max-w-[80px] h-1 rounded-full bg-slate-100 overflow-hidden">
+                                                                                <div
+                                                                                    className={`h-full rounded-full transition-all ${isBest ? 'bg-emerald-400' : 'bg-[#F4B000]/40'}`}
+                                                                                    style={{ width: `${barPct}%` }}
+                                                                                />
+                                                                            </div>
                                                                         )}
                                                                     </div>
                                                                 );
                                                             })}
                                                         </div>
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                                    );
+                                                })}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                )}
+
+                                {/* Section 2: All Specifications */}
+                                {smartSpecs.restSpecs.length > 0 && (
+                                    <AnimatePresence initial={false}>
+                                        {isAllSpecsExpanded && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                                                className="overflow-hidden"
+                                            >
+                                                {smartSpecs.restSpecs.map((row, rIdx) => (
+                                                    <div
+                                                        key={`rest-${rIdx}`}
+                                                        className="grid gap-x-6 mt-2"
+                                                        style={{
+                                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                        }}
+                                                    >
+                                                        <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                            {(() => {
+                                                                const SpecIcon = getSpecIcon(row.label);
+                                                                return (
+                                                                    <SpecIcon
+                                                                        size={12}
+                                                                        className="shrink-0 text-[#F4B000]/70"
+                                                                    />
+                                                                );
+                                                            })()}
+                                                            <span className="text-[11px] font-bold tracking-wide text-slate-500 truncate">
+                                                                {row.label}
+                                                            </span>
+                                                        </div>
+                                                        {row.values.map((val, vIdx) => {
+                                                            const isNumeric =
+                                                                val &&
+                                                                NUMERIC_BAR_SPECS.has(row.label.toLowerCase()) &&
+                                                                extractNumeric(val) !== null;
+                                                            return (
+                                                                <div
+                                                                    key={vIdx}
+                                                                    className="px-6 py-4 flex flex-col items-center justify-center text-center gap-1 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                                >
+                                                                    <span
+                                                                        className={`text-[11px] font-semibold ${!val ? 'text-slate-300 italic' : 'text-slate-700'}`}
+                                                                    >
+                                                                        {formatSpecValue(val, row.label)}
+                                                                    </span>
+                                                                    {isNumeric && (
+                                                                        <div className="w-full max-w-[60px] h-[2px] rounded-full bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200" />
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 )}
                             </div>
                         </div>

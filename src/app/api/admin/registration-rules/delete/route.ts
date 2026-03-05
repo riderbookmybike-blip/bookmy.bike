@@ -13,7 +13,9 @@ export async function POST(req: NextRequest) {
         }
 
         const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
             return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
         }
@@ -41,36 +43,32 @@ export async function POST(req: NextRequest) {
         }
 
         if ((rule.status || '').toUpperCase() !== 'ARCHIVED') {
-            return NextResponse.json({ success: false, message: 'Only archived rules can be deleted' }, { status: 400 });
+            return NextResponse.json(
+                { success: false, message: 'Only archived rules can be deleted' },
+                { status: 400 }
+            );
         }
 
         const authKey = process.env.MSG91_AUTH_KEY;
-        const isProduction = process.env.NODE_ENV === 'production';
-        let isVerified = false;
-
         if (!authKey) {
-            if (isProduction) {
-                return NextResponse.json({ success: false, message: 'OTP service unavailable' }, { status: 500 });
-            }
-            isVerified = otp === '1234' || otp === '0000';
-        } else {
-            const cleanedPhone = phone.replace(/\D/g, '');
-            const tenDigitPhone = cleanedPhone.slice(-10);
-            const mobile = `91${tenDigitPhone}`;
-            const url = `https://control.msg91.com/api/v5/otp/verify?mobile=${mobile}&otp=${otp}&authkey=${authKey}`;
-            const res = await fetch(url, { method: 'POST' });
-            const data = await res.json();
-            isVerified = data.type === 'success';
+            return NextResponse.json({ success: false, message: 'OTP service unavailable' }, { status: 500 });
         }
+        const cleanedPhone = phone.replace(/\D/g, '');
+        const tenDigitPhone = cleanedPhone.slice(-10);
+        if (tenDigitPhone.length !== 10) {
+            return NextResponse.json({ success: false, message: 'Invalid phone number' }, { status: 400 });
+        }
+        const mobile = `91${tenDigitPhone}`;
+        const url = `https://control.msg91.com/api/v5/otp/verify?mobile=${mobile}&otp=${otp}&authkey=${authKey}`;
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+        const isVerified = data.type === 'success';
 
         if (!isVerified) {
             return NextResponse.json({ success: false, message: 'Invalid OTP' }, { status: 403 });
         }
 
-        const { error: deleteError } = await adminClient
-            .from('cat_reg_rules')
-            .delete()
-            .eq('id', id);
+        const { error: deleteError } = await adminClient.from('cat_reg_rules').delete().eq('id', id);
 
         if (deleteError) {
             return NextResponse.json({ success: false, message: 'Delete failed' }, { status: 500 });

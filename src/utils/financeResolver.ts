@@ -6,6 +6,7 @@ export type ViewerPersona = 'CUSTOMER' | 'DEALER' | 'BANKER';
 export interface ViewerContext {
     persona: ViewerPersona;
     tenantId?: string; // Bank tenant ID for BANKER persona
+    activeFinancerId?: string | null; // Explicit finance context chosen by dealer team
 }
 
 export type FinanceLogic =
@@ -57,7 +58,7 @@ export async function resolveFinanceScheme(
             return resolveForBanker(allBanks, make, model, viewerContext?.tenantId);
 
         case 'DEALER':
-            return resolveForDealer(allBanks, make, model);
+            return resolveForDealer(allBanks, make, model, viewerContext?.activeFinancerId || null);
 
         case 'CUSTOMER':
         default:
@@ -98,7 +99,22 @@ function resolveForCustomer(allBanks: any[], make: string, model: string) {
  * a normalized score (percentage * 1000) to compare against fixed amounts.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function resolveForDealer(allBanks: any[], make: string, model: string) {
+function resolveForDealer(allBanks: any[], make: string, model: string, forcedBankId?: string | null) {
+    if (forcedBankId) {
+        const forcedBank = allBanks.find((b: any) => b.id === forcedBankId);
+        if (forcedBank) {
+            const eligible = getEligibleSchemes(forcedBank, make, model);
+            if (eligible.length > 0) {
+                const primary = eligible.find(s => s.isPrimary);
+                return {
+                    bank: forcedBank,
+                    scheme: primary || eligible[0],
+                    logic: 'DEALER_BEST_PAYOUT' as FinanceLogic,
+                };
+            }
+        }
+    }
+
     let bestResult: { bank: any; scheme: BankScheme; payoutScore: number } | null = null;
 
     for (const bank of allBanks) {

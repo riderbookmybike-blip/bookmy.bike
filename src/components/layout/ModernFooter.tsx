@@ -29,6 +29,14 @@ import {
     Shield,
     Lock,
     Scale,
+    Link2,
+    Calculator,
+    GitCompareArrows,
+    Navigation,
+    Fuel,
+    Bike as BikeIcon,
+    Star,
+    Download,
 } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 
@@ -103,15 +111,7 @@ export const ModernFooter = () => {
                         { label: 'Destini 125', href: '/store/hero/destini-125' },
                     ],
                 },
-                {
-                    brand: 'Bajaj',
-                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    links: [
-                        { label: 'Pulsar 150', href: '/store/bajaj/pulsar-150' },
-                        { label: 'Pulsar NS200', href: '/store/bajaj/pulsar-ns200' },
-                        { label: 'Platina 100', href: '/store/bajaj/platina-100' },
-                    ],
-                },
+
                 {
                     brand: 'Suzuki',
                     icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
@@ -130,25 +130,6 @@ export const ModernFooter = () => {
                         { label: 'MT-15 V2', href: '/store/yamaha/mt-15' },
                         { label: 'RayZR 125', href: '/store/yamaha/ray-zr' },
                         { label: 'Fascino 125', href: '/store/yamaha/fascino' },
-                    ],
-                },
-                {
-                    brand: 'RE',
-                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    links: [
-                        { label: 'Classic 350', href: '/store/royal-enfield/classic-350' },
-                        { label: 'Hunter 350', href: '/store/royal-enfield/hunter-350' },
-                        { label: 'Bullet 350', href: '/store/royal-enfield/bullet-350' },
-                        { label: 'Meteor 350', href: '/store/royal-enfield/meteor-350' },
-                    ],
-                },
-                {
-                    brand: 'KTM',
-                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    links: [
-                        { label: 'Duke 200', href: '/store/ktm/duke-200' },
-                        { label: 'Duke 390', href: '/store/ktm/duke-390' },
-                        { label: 'RC 200', href: '/store/ktm/rc-200' },
                     ],
                 },
             ],
@@ -177,7 +158,47 @@ export const ModernFooter = () => {
                     icon: <HelpCircle size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
             ],
+            nested: [
+                {
+                    brand: 'Useful Links',
+                    icon: <Link2 size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        { label: 'Compare Bikes', href: '/store/compare' },
+                        { label: 'EMI Calculator', href: '/store/catalog#emi' },
+                        { label: 'Book Test Ride', href: '/store/catalog' },
+                        { label: 'Nearest Dealer', href: '/store/catalog#dealers' },
+                        { label: 'Bike Valuation', href: '/store/valuation' },
+                    ],
+                },
+                {
+                    brand: 'Download Apps',
+                    icon: <Download size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    links: [
+                        {
+                            label: 'Parivahan (RC / DL)',
+                            href: 'https://play.google.com/store/apps/details?id=com.parivahan.digital',
+                        },
+                        {
+                            label: 'L&T Finance',
+                            href: 'https://play.google.com/store/apps/details?id=com.ltfs.ltfsapp',
+                        },
+                        {
+                            label: 'Shriram One',
+                            href: 'https://play.google.com/store/apps/details?id=com.shriramgroup.shriramone',
+                        },
+                        {
+                            label: 'VAHAN (Vehicle Info)',
+                            href: 'https://play.google.com/store/apps/details?id=com.nic.vahan.eService.mvl',
+                        },
+                        {
+                            label: 'DigiLocker (Docs)',
+                            href: 'https://play.google.com/store/apps/details?id=com.digilocker.android',
+                        },
+                    ],
+                },
+            ],
         },
+
         {
             title: 'Company',
             links: [
@@ -297,9 +318,8 @@ export const ModernFooter = () => {
 
     return (
         <footer
-            className="flex flex-col justify-between border-t border-white/5 selection:bg-brand-primary/20 relative text-white"
+            className="flex flex-col justify-between selection:bg-brand-primary/20 relative text-white lg:flex-grow bg-[#0a0904] lg:min-h-[calc(100vh-var(--header-h,80px))] pb-[60px] lg:pb-0"
             style={{
-                backgroundColor: '#0a0904',
                 scrollMarginTop: 'var(--header-h, 80px)',
             }}
         >
@@ -309,33 +329,52 @@ export const ModernFooter = () => {
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
             </div>
 
-            {/* Ambient Background Glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-brand-primary/30 to-transparent" />
+            {/* Ambient Background Glow removed */}
 
             {/* 2. Main Navigation Block (6 Column Cards) */}
-            <div className="flex-1 flex flex-col justify-center py-10 relative z-10">
+            <div className="flex-1 flex flex-col justify-center py-5 lg:py-10 relative z-10">
                 <div className="page-container w-full">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6 items-stretch">
+                    {/* Redesigned Minimalist Intro Section */}
+                    <div className="mb-4 lg:mb-8 flex flex-col items-center text-center gap-4 lg:gap-6">
+                        <div className="px-5 py-2 rounded-full bg-white/[0.03] border border-white/10 backdrop-blur-xl shadow-[0_0_20px_rgba(255,215,0,0.05)]">
+                            <span className="text-[10px] font-bold tracking-[0.4em] text-brand-primary">
+                                Powered by The O&apos; Circle
+                            </span>
+                        </div>
+                        <h2 className="text-4xl lg:text-7xl font-light tracking-tighter text-white leading-[0.9]">
+                            India&apos;s{' '}
+                            <span className="text-brand-primary font-black drop-shadow-[0_0_20px_rgba(255,215,0,0.15)]">
+                                Smartest
+                            </span>{' '}
+                            <br />
+                            <span className="text-brand-primary font-black tracking-tighter italic drop-shadow-[0_0_30px_rgba(255,215,0,0.2)]">
+                                Motorcycle
+                            </span>{' '}
+                            Marketplace.
+                        </h2>
+                        <div className="text-[12px] font-bold tracking-[0.2em] text-white/70 text-center lg:whitespace-nowrap">
+                            Everything You Need To Discover, Compare & Book Your Next Ride.
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 lg:gap-6 items-stretch">
                         {footerSections.map((section, idx) => {
                             const isOpen = openSection === section.title;
 
                             return (
                                 <div
                                     key={section.title}
-                                    className="flex flex-col rounded-[24px] lg:rounded-[32px] bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] hover:border-brand-primary/20 transition-colors overflow-hidden group/card shadow-2xl shadow-black/80 relative"
+                                    className="flex flex-col rounded-[24px] lg:rounded-[32px] bg-white/[0.02] border border-[#FFD700]/50 hover:bg-white/[0.04] hover:border-[#FFD700]/80 transition-all duration-300 overflow-hidden group/card shadow-2xl shadow-black/80 relative"
                                 >
                                     {/* Card Inner Glow */}
                                     <div className="absolute inset-0 bg-gradient-to-b from-brand-primary/[0.02] to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
                                     <button
                                         onClick={() => toggleSection(section.title)}
-                                        className="w-full flex items-center justify-between p-5 lg:p-7 lg:pb-4 lg:cursor-default text-left group"
+                                        className="w-full flex items-center justify-between p-3 lg:p-7 lg:pb-4 lg:cursor-default text-left group"
                                     >
-                                        <div className="flex flex-col gap-3">
-                                            <span className="text-[10px] font-black text-white/10 font-mono tracking-tighter group-hover/card:text-brand-primary/30 transition-colors">
-                                                0{idx + 1}
-                                            </span>
-                                            <span className="text-[12px] font-bold tracking-[0.2em] text-white/90 group-hover/card:text-white group-hover:text-brand-primary transition-colors uppercase">
+                                        <div className="flex flex-col gap-1 lg:gap-3">
+                                            <span className="text-[13px] font-bold tracking-[0.2em] text-white/90 group-hover/card:text-white group-hover:text-brand-primary transition-colors uppercase">
                                                 {section.title}
                                             </span>
                                         </div>
@@ -368,7 +407,7 @@ export const ModernFooter = () => {
                                                     <li key={i}>
                                                         <Link
                                                             href={link.href}
-                                                            className={`flex items-center gap-3 text-[11px] font-semibold tracking-wide transition-all duration-300 ${hoverClass}`}
+                                                            className={`flex items-center gap-3 text-[12px] font-semibold tracking-wide transition-all duration-300 ${hoverClass}`}
                                                         >
                                                             {link.icon && <span className="shrink-0">{link.icon}</span>}
                                                             <span>{link.label}</span>
@@ -380,7 +419,7 @@ export const ModernFooter = () => {
                                                 <li key={i} className="flex flex-col gap-3">
                                                     <button
                                                         onClick={() => toggleNested(brandObj.brand)}
-                                                        className="text-left text-[11px] font-bold tracking-wide text-white hover:text-brand-primary flex items-center justify-between group/nested transition-colors w-full"
+                                                        className="text-left text-[12px] font-bold tracking-wide text-white hover:text-brand-primary flex items-center justify-between group/nested transition-colors w-full"
                                                     >
                                                         <div className="flex items-center gap-3">
                                                             {brandObj.icon}
@@ -416,7 +455,7 @@ export const ModernFooter = () => {
                                     {/* Mobile Content */}
                                     {isOpen && (
                                         <div className="lg:hidden">
-                                            <ul className="px-6 pb-8 flex flex-col gap-4">
+                                            <ul className="px-4 pb-4 flex flex-col gap-3">
                                                 {section.links?.map((link: any, i) => (
                                                     <li key={i}>
                                                         <Link
@@ -472,15 +511,9 @@ export const ModernFooter = () => {
             </div>
 
             {/* 2. Unified Legal & Social Rail */}
-            <div
-                className="py-14 border-t border-white/5 relative z-10"
-                style={{
-                    backgroundColor: '#0a0904',
-                    paddingBottom: 'calc(3.5rem + 60px + env(safe-area-inset-bottom, 0px))',
-                }}
-            >
-                <div className="page-container flex flex-col items-center gap-10">
-                    <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-12 pt-8">
+            <div className="py-6 lg:py-14 relative z-10 bg-[#0a0904]">
+                <div className="page-container flex flex-col items-center gap-4 lg:gap-10">
+                    <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-12">
                         {/* Legal Cluster - Logo + Copyright + Links */}
                         <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-16">
                             <div className="flex flex-col items-center lg:items-start gap-3">
@@ -497,13 +530,13 @@ export const ModernFooter = () => {
                         </div>
 
                         {/* Credit Cluster - Positioned at bottom with high visibility and safe margin */}
-                        <div className="flex flex-col items-center lg:items-end gap-3 max-md:mb-12">
+                        <div className="flex flex-col items-center lg:items-end gap-3">
                             <div className="flex items-center gap-3 text-[10px] font-bold tracking-wider text-white/70">
                                 Published with{' '}
                                 <span>
                                     <Heart size={10} className="text-red-500 fill-red-500" />
                                 </span>{' '}
-                                By O&apos;Circle Crew
+                                By The O&apos; Circle
                             </div>
                         </div>
                     </div>

@@ -2,6 +2,7 @@
 
 import { ProductVariant } from '@/types/productMaster';
 import { fetchCatalogV2 } from '@/lib/server/catalogFetcherV2';
+import { resolvePricingContext } from '@/lib/server/pricingContext';
 
 /**
  * Fetch a single product variant by its URL slugs (make/model/variant).
@@ -22,7 +23,8 @@ export async function getProductBySlug(
         `${decodedModel}-${decodedVariant}`,
     ]);
 
-    const items = await fetchCatalogV2('MH');
+    const context = await resolvePricingContext({});
+    const items = await fetchCatalogV2(context.stateCode);
     if (!items || items.length === 0) return null;
 
     const direct = items.find(item => {

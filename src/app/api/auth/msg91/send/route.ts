@@ -11,19 +11,15 @@ export async function POST(req: NextRequest) {
         const authKey = process.env.MSG91_AUTH_KEY;
         const templateId = process.env.MSG91_TEMPLATE_ID;
         const isProduction = process.env.NODE_ENV === 'production';
-
+        const host = req.headers.get('host') || '';
+        const hostName = host.split(':')[0]?.toLowerCase() || '';
+        const isLocalhost = hostName === 'localhost' || hostName === '127.0.0.1' || hostName === '0.0.0.0';
         if (!authKey || !templateId) {
-            if (isProduction) {
-                console.error('MSG91 Configuration Missing.');
-                return NextResponse.json({ success: false, message: 'OTP service unavailable' }, { status: 500 });
+            if (!isProduction && isLocalhost) {
+                return NextResponse.json({ success: true, message: 'Local dev mode: OTP not required' });
             }
-
-            console.warn('MSG91 Configuration Missing. Using developer fallback.');
-            // Fail-safe for local development - allow the user to proceed with a mock OTP
-            return NextResponse.json({
-                success: true,
-                message: 'Developer Mode: Use 1234 or your favorite test OTP'
-            });
+            console.error('MSG91 Configuration Missing.');
+            return NextResponse.json({ success: false, message: 'OTP service unavailable' }, { status: 500 });
         }
 
         // 91 prefix is standard for India
@@ -31,6 +27,9 @@ export async function POST(req: NextRequest) {
         const cleanedPhone = phone.replace(/\D/g, '');
         // Take the last 10 digits to handle cases like 098..., +9198..., 9198...
         const tenDigitPhone = cleanedPhone.slice(-10);
+        if (tenDigitPhone.length !== 10) {
+            return NextResponse.json({ success: false, message: 'Invalid phone number' }, { status: 400 });
+        }
         const mobile = `91${tenDigitPhone}`;
         const url = `https://control.msg91.com/api/v5/otp?template_id=${templateId}&mobile=${mobile}&authkey=${authKey}`;
 

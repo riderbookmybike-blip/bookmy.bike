@@ -132,7 +132,7 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
             <ColorProvider>
                 <DiscoveryProvider>
                     <div
-                        className={`marketplace min-h-screen ${
+                        className={`marketplace min-h-screen flex flex-col ${
                             isLandingPage ? 'bg-white text-black' : 'bg-slate-50 text-slate-900'
                         } font-sans selection:bg-red-500/30 transition-colors duration-300`}
                     >
