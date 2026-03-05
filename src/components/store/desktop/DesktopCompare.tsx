@@ -219,6 +219,19 @@ export default function DesktopCompare() {
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
     const [shareTooltip, setShareTooltip] = useState(false);
     const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
+
+    // Colour Buster: expand a variant's colors from the full catalog pool
+    const displayVariants = useMemo(() => {
+        if (!explodedVariant) return activeVariants;
+        return activeVariants.flatMap(v => {
+            const key = `${v.make}::${v.model}::${v.variant}`;
+            if (key !== explodedVariant) return [v];
+            const colorVariants = items.filter(
+                item => item.make === v.make && item.model === v.model && item.variant === v.variant
+            );
+            return colorVariants.length > 1 ? colorVariants : [v];
+        });
+    }, [activeVariants, explodedVariant, items]);
     // Per-variant selected color image and hex for compact cards
     const [compactColorImages, setCompactColorImages] = useState<Record<string, string>>({});
     const [compactColorHexes, setCompactColorHexes] = useState<Record<string, string>>({});
@@ -798,7 +811,7 @@ export default function DesktopCompare() {
                             ref={scrollAnchorRef}
                             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pb-4"
                         >
-                            {activeVariants.map(v => (
+                            {displayVariants.map(v => (
                                 <ProductCard
                                     key={v.id}
                                     v={v}
