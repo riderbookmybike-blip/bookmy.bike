@@ -494,7 +494,7 @@ export default function DesktopCompare() {
                     {/* ────── 3D Flip Sticky Header ────── */}
                     <div
                         className="sticky z-[90] w-full transition-all duration-500 ease-in-out"
-                        style={{ top: 'var(--header-h)' }}
+                        style={{ top: 'var(--header-h)', marginTop: '20px' }}
                     >
                         <div style={{ perspective: '1200px' }}>
                             <motion.div
@@ -789,7 +789,7 @@ export default function DesktopCompare() {
                         </div>
                     </div>
                     {/* Spacer to maintain flow height for the absolute faces */}
-                    <div className="h-14 mb-2 hidden md:block" />
+                    <div className="h-14 mb-6 hidden md:block" />
 
                     {/* ────── Full Cards (normal flow — scrolls away) ────── */}
                     <div ref={fullCardsRef}>

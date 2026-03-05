@@ -24,7 +24,7 @@ const FilterGroup = ({
     const [isOpen, setIsOpen] = useState(true);
 
     return (
-        <div className="space-y-4">
+        <div className="page-container pt-0 pb-10 md:pb-16">
             <div className="flex items-center justify-between">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
@@ -248,7 +248,7 @@ export const WishlistClient = () => {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="page-container pt-0 pb-10 md:pb-16">
             <DiscoveryBar
                 onFilterClick={() => setIsFilterOpen(true)}
                 searchQuery={searchQuery}
