@@ -723,12 +723,43 @@ export async function getPdpSnapshot({
             : null;
 
     const skuIds = activeSkus.map(s => s.id).filter(Boolean);
-    const { priceRow, snapshot } = await fetchPublishedPricing(skuIds, stateCode, preferredSkuId);
+    let pricedSkus = activeSkus;
+
+    if (skuIds.length > 0) {
+        const { data: stateRows } = await (adminClient as any)
+            .from('cat_price_state_mh')
+            .select('sku_id')
+            .in('sku_id', skuIds)
+            .eq('state_code', stateCode)
+            .eq('publish_stage', 'PUBLISHED');
+
+        const stateSkuSet = new Set((stateRows || []).map((r: any) => String(r?.sku_id || '')).filter(Boolean));
+
+        let pricedSkuSet = stateSkuSet;
+        if (pricedSkuSet.size === 0 && stateCode !== 'MH') {
+            const { data: fallbackRows } = await (adminClient as any)
+                .from('cat_price_state_mh')
+                .select('sku_id')
+                .in('sku_id', skuIds)
+                .eq('state_code', 'MH')
+                .eq('publish_stage', 'PUBLISHED');
+            pricedSkuSet = new Set((fallbackRows || []).map((r: any) => String(r?.sku_id || '')).filter(Boolean));
+        }
+
+        if (pricedSkuSet.size > 0) {
+            pricedSkus = activeSkus.filter((s: any) => pricedSkuSet.has(String(s.id || '')));
+        } else {
+            pricedSkus = [];
+        }
+    }
+
+    const pricedSkuIds = pricedSkus.map(s => s.id).filter(Boolean);
+    const { priceRow, snapshot } = await fetchPublishedPricing(pricedSkuIds, stateCode, preferredSkuId);
 
     return {
         model: modelRow,
         variant: matchedVariant,
-        skus: activeSkus,
+        skus: pricedSkus,
         pricing: snapshot,
         pricingRow: priceRow,
         resolvedVariant,
@@ -966,7 +997,9 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
 
         const pricingMap = new Map<string, any>((pricing || []).map((p: any) => [p.sku_id, p]));
 
-        return vehicleSkus.map((sku: any) => {
+        const pricedVehicleSkus = vehicleSkus.filter((sku: any) => pricingMap.has(sku.id));
+
+        return pricedVehicleSkus.map((sku: any) => {
             const model = sku.model;
             const brand = model?.brand;
             const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
