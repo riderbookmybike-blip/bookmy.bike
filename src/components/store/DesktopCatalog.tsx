@@ -10,6 +10,7 @@ import {
     Star,
     StarHalf,
     X,
+    Pencil,
     CircleHelp,
     MapPin,
     Bluetooth,
@@ -1069,6 +1070,13 @@ export const DesktopCatalog = ({
         });
     }, [displayResults, explodedVariant]);
 
+    // Dynamic max downpayment = most expensive vehicle on catalog - ₹25,000 min loan
+    const maxDp = useMemo(() => {
+        const prices = displayResults.map(v => v.price?.offerPrice ?? v.price?.exShowroom ?? 0).filter(p => p > 0);
+        if (!prices.length) return 200000;
+        return Math.max(Math.max(...prices) - 25000, 0);
+    }, [displayResults]);
+
     useEffect(() => {
         if (!isTv || !tvIdleMode || groupedDisplayResults.length <= 1) {
             if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
@@ -1731,36 +1739,59 @@ export const DesktopCatalog = ({
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                         Downpayment
                                     </span>
-                                    <span className="text-lg font-black text-emerald-600">
-                                        ₹{dpDraft.toLocaleString('en-IN')}
-                                    </span>
+                                    {/* Editable value with pencil */}
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] text-slate-400">₹</span>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={maxDp}
+                                            step={Math.max(1000, Math.round(maxDp / 100) * 1000)}
+                                            value={Math.min(dpDraft, maxDp)}
+                                            onChange={e => {
+                                                const v = Math.min(maxDp, Math.max(0, Number(e.target.value)));
+                                                setDpDraft(v);
+                                            }}
+                                            className="w-24 text-right text-lg font-black text-emerald-600 bg-transparent border-b-2 border-emerald-200 focus:border-emerald-500 focus:outline-none transition-colors"
+                                        />
+                                        <Pencil size={12} className="text-slate-300" />
+                                    </div>
                                 </div>
                                 <input
                                     type="range"
                                     min={0}
-                                    max={100000}
-                                    step={1000}
-                                    value={dpDraft}
+                                    max={maxDp}
+                                    step={5000}
+                                    value={Math.min(dpDraft, maxDp)}
                                     onChange={e => setDpDraft(Number(e.target.value))}
                                     className="w-full accent-[#F4B000] h-2 rounded-full"
                                 />
                                 <div className="flex justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest">
                                     <span>₹0</span>
-                                    <span>₹25K</span>
-                                    <span>₹50K</span>
-                                    <span>₹75K</span>
-                                    <span>₹1L</span>
+                                    <span>₹{Math.round((maxDp * 0.25) / 5000) * 5}K</span>
+                                    <span>₹{Math.round((maxDp * 0.5) / 5000) * 5}K</span>
+                                    <span>₹{Math.round((maxDp * 0.75) / 5000) * 5}K</span>
+                                    <span>₹{Math.round(maxDp / 5000) * 5}K</span>
                                 </div>
                                 <div className="flex items-center justify-center gap-2 flex-wrap">
-                                    {[5000, 10000, 15000, 20000, 30000, 50000].map(val => (
-                                        <button
-                                            key={val}
-                                            onClick={() => setDpDraft(val)}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
-                                        >
-                                            ₹{val / 1000}K
-                                        </button>
-                                    ))}
+                                    {[
+                                        0, 5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000, 75000, 100000, 125000,
+                                        150000, 175000, 200000, 250000, 300000,
+                                    ]
+                                        .filter(v => v <= maxDp)
+                                        .map(val => (
+                                            <button
+                                                key={val}
+                                                onClick={() => setDpDraft(val)}
+                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                            >
+                                                {val === 0
+                                                    ? '₹0'
+                                                    : val >= 100000
+                                                      ? `₹${(val / 100000).toFixed(1)}L`
+                                                      : `₹${val / 1000}K`}
+                                            </button>
+                                        ))}
                                 </div>
                             </div>
 
@@ -1772,12 +1803,12 @@ export const DesktopCatalog = ({
                                     </span>
                                     <span className="text-lg font-black text-emerald-600">{tenure} months</span>
                                 </div>
-                                <div className="flex items-center justify-center gap-2">
-                                    {[12, 24, 36, 48, 60].map(val => (
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[3, 6, 9, 12, 18, 24, 36, 48, 60].map(val => (
                                         <button
                                             key={val}
                                             onClick={() => setTenure(val)}
-                                            className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                            className={`py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
                                         >
                                             {val}mo
                                         </button>

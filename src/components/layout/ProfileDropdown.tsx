@@ -67,6 +67,7 @@ interface ProfileDropdownProps {
     tone?: 'light' | 'dark';
     externalOpen?: boolean;
     onOpenChange?: (open: boolean) => void;
+    hideTrigger?: boolean;
 }
 
 export function ProfileDropdown({
@@ -76,6 +77,7 @@ export function ProfileDropdown({
     tone,
     externalOpen,
     onOpenChange,
+    hideTrigger = false,
 }: ProfileDropdownProps) {
     const { isUnifiedContext } = useTenant();
     const { user: authUser } = useAuth();
@@ -538,7 +540,7 @@ export function ProfileDropdown({
                 <button
                     onClick={() => setIsOpen(!isOpen)}
                     ref={dropdownRef}
-                    className={`flex h-11 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass}`}
+                    className={`flex h-11 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass} ${hideTrigger ? 'hidden' : ''}`}
                 >
                     <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner">
                         <img

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Heart, Pencil, CircleHelp, ArrowRight, Zap, Layers } from 'lucide-react';
+import { Heart, Pencil, CircleHelp, ArrowRight, Zap, Palette } from 'lucide-react';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 import type { ProductVariant } from '@/types/productMaster';
@@ -185,7 +185,7 @@ export function CompactProductCard({
                             : 'bg-white border-slate-100 text-slate-400 hover:text-[#F4B000]'
                     }`}
                 >
-                    <Layers size={13} />
+                    <Palette size={13} />
                 </button>
             )}
 

@@ -16,6 +16,32 @@ const DesktopCompare = dynamic(() => import('@/components/store/desktop/DesktopC
     ),
 });
 
+const MobileCompare = dynamic(
+    () => import('@/components/store/mobile/MobileCompare').then(m => ({ default: m.MobileCompare })),
+    {
+        loading: () => (
+            <div className="p-4 space-y-4 animate-pulse">
+                <div className="grid grid-cols-2 gap-3">
+                    {[1, 2].map(i => (
+                        <div key={i} className="h-40 bg-slate-100 rounded-2xl" />
+                    ))}
+                </div>
+            </div>
+        ),
+    }
+);
+
 export function SystemCompareRouter() {
-    return <DesktopCompare />;
+    return (
+        <>
+            {/* Mobile */}
+            <div className="lg:hidden">
+                <MobileCompare />
+            </div>
+            {/* Desktop */}
+            <div className="hidden lg:block">
+                <DesktopCompare />
+            </div>
+        </>
+    );
 }

@@ -12,7 +12,7 @@ import {
     Sparkles,
     Zap,
     CircleHelp,
-    Layers,
+    Palette,
     GitCompareArrows,
     Pencil,
     Clock,
@@ -837,7 +837,7 @@ export const ProductCard = ({
                                 className="w-8 h-8 rounded-full bg-white/80 border border-slate-200 text-slate-500 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105"
                                 title="Explode colors"
                             >
-                                <Layers size={14} />
+                                <Palette size={14} />
                             </button>
                         )}
                         <button
@@ -861,7 +861,7 @@ export const ProductCard = ({
                                     source: 'STORE_CATALOG',
                                 });
                             }}
-                            className={`w-8 h-8 backdrop-blur-xl border border-slate-200 rounded-full flex items-center justify-center transition-all shadow-sm bg-white/60 ${isSaved ? 'text-rose-500 opacity-100' : 'text-slate-400 hover:text-rose-500 opacity-60 hover:opacity-100 hover:scale-110'}`}
+                            className={`w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center transition-all shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 ${isSaved ? 'bg-rose-50 text-rose-500' : 'bg-white/80 text-slate-400 hover:text-rose-500'}`}
                             title={isSaved ? 'Saved to Wishlist' : 'Save to Wishlist'}
                         >
                             <motion.div

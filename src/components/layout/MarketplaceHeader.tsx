@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Heart, Home as HomeIcon } from 'lucide-react';
+import { Heart, Home as HomeIcon, Menu } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
 import { AppHeaderShell } from './AppHeaderShell';
@@ -36,7 +36,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
         };
     }, []);
 
-    // Universal: same transparent-dark header on every single page
     const navBtnClass =
         'w-11 h-11 rounded-full transition-all duration-300 flex items-center justify-center text-white/95 hover:text-white bg-transparent border border-white/25';
 
@@ -55,7 +54,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
             center={null}
             right={
                 <div className="flex items-center gap-3 lg:gap-6">
-                    {/* Desktop nav icons */}
+                    {/* ── Desktop: nav icons + profile pill ── */}
                     <div className="hidden lg:flex items-center gap-3">
                         <Link href="/" className={navBtnClass}>
                             <HomeIcon size={20} />
@@ -71,16 +70,37 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 </span>
                             )}
                         </Link>
+                        <ProfileDropdown
+                            onLoginClick={onLoginClick}
+                            scrolled={false}
+                            theme="dark"
+                            tone="dark"
+                            externalOpen={isSidebarOpen}
+                            onOpenChange={setIsSidebarOpen}
+                        />
                     </div>
 
-                    <ProfileDropdown
-                        onLoginClick={onLoginClick}
-                        scrolled={false}
-                        theme="dark"
-                        tone="dark"
-                        externalOpen={isSidebarOpen}
-                        onOpenChange={setIsSidebarOpen}
-                    />
+                    {/* ── Mobile: hamburger button ── */}
+                    <button
+                        className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-white/90 hover:text-white border border-white/25 hover:border-white/50 transition-all"
+                        onClick={() => setIsSidebarOpen(prev => !prev)}
+                        aria-label="Open menu"
+                    >
+                        <Menu size={20} />
+                    </button>
+
+                    {/* Mobile sidebar — trigger hidden, controlled by hamburger above */}
+                    <div className="lg:hidden">
+                        <ProfileDropdown
+                            onLoginClick={onLoginClick}
+                            scrolled={false}
+                            theme="dark"
+                            tone="dark"
+                            externalOpen={isSidebarOpen}
+                            onOpenChange={setIsSidebarOpen}
+                            hideTrigger
+                        />
+                    </div>
                 </div>
             }
         />

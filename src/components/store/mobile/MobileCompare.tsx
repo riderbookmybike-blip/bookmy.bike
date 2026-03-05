@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
     ChevronDown,
     ChevronUp,
-    Menu,
-    Search,
     X,
     Check,
     Zap,
@@ -35,7 +33,6 @@ import {
     Lightbulb,
     Bike,
     Fuel,
-    Pencil,
     Flame,
     Gauge,
     type LucideIcon,
@@ -43,17 +40,8 @@ import {
 } from 'lucide-react';
 import type { ProductVariant } from '@/types/productMaster';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
-import { Logo } from '@/components/brand/Logo';
 import { useSystemCompareLogic } from '@/hooks/useSystemCompareLogic';
-import {
-    flattenObject,
-    labelFromKey,
-    formatSpecValue,
-    computeSpecCategories,
-    getDisplayPrice,
-    getEmi,
-    EMI_FACTORS,
-} from '@/hooks/compareUtils';
+import { flattenObject, formatSpecValue, computeSpecCategories, getDisplayPrice, getEmi } from '@/hooks/compareUtils';
 
 // --- Spec Icon Mapping ---
 const SPEC_ICON_MAP: Record<string, LucideIcon> = {
@@ -101,11 +89,6 @@ const SPEC_ICON_MAP: Record<string, LucideIcon> = {
     'body type': Bike,
     segment: Footprints,
 };
-function getSpecIcon(label: string): LucideIcon {
-    return SPEC_ICON_MAP[label.toLowerCase()] || CircleDot;
-}
-
-// Spec utilities and hook are now imported from shared modules
 
 // --- Main Mobile Component ---
 export function MobileCompare() {
@@ -116,14 +99,9 @@ export function MobileCompare() {
 
     const onRemoveVariant = removeVariantBySlug;
 
-    const onEditDownpayment = () => {
-        const newVal = prompt('Enter new downpayment amount:', downpayment.toString());
-        if (newVal && !isNaN(Number(newVal))) setDownpayment(Number(newVal));
-    };
-
     const allSpecs = useMemo(() => computeSpecCategories(activeVariants), [activeVariants]);
 
-    // Smart Specs
+    // Smart Specs — split into "different" vs "same"
     const smartSpecs = useMemo(() => {
         const diffSpecs: typeof allSpecs = [];
         const restSpecs: typeof allSpecs = [];
@@ -160,9 +138,13 @@ export function MobileCompare() {
 
     const toggleCat = (key: string) => setOpenCats(prev => ({ ...prev, [key]: !prev[key] }));
 
+    // Number of vehicle columns
+    const n = activeVariants.length;
+    const colWidth = n <= 2 ? '1fr' : n === 3 ? '1fr' : '1fr';
+
     return (
         <div className="bg-slate-50 text-slate-900 min-h-screen pb-20 font-sans selection:bg-[#F4B000]/30">
-            {/* Header */}
+            {/* ── Sticky Header ── */}
             <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200 pt-safe p-4 flex items-center gap-3">
                 <button
                     onClick={() => window.history.back()}
@@ -173,231 +155,202 @@ export function MobileCompare() {
                 <div className="flex-1">
                     <h1 className="text-lg font-black uppercase tracking-widest text-[#F4B000]">Compare</h1>
                     <p className="text-[10px] font-semibold text-slate-400 tracking-widest leading-none">
-                        {isMixedMode
-                            ? `COMPARING ${activeVariants.length} MODELS`
-                            : `${activeVariants.length} VEHICLES SELECTED`}
+                        {isMixedMode ? `COMPARING ${n} MODELS` : `${n} VEHICLES SELECTED`}
                     </p>
                 </div>
             </div>
 
-            {/* Sticky Compare Matrix Header (Swipable) */}
-            <div className="sticky top-[73px] z-40 bg-white border-b border-slate-200 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-                <div className="flex w-full">
-                    {/* Frozen Left Column (Labels) */}
-                    <div className="w-[120px] shrink-0 bg-slate-100 border-r border-slate-200 flex flex-col justify-end p-3 relative z-10 shadow-[5px_0_15px_-5px_rgba(15,23,42,0.1)]">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-[#F4B000] mb-1">
-                            Finances
-                        </div>
-                        <button
-                            onClick={onEditDownpayment}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-1.5 rounded-lg active:bg-slate-50"
+            {/* ── Mini Cards — side by side ── */}
+            <div className={`grid gap-3 p-4 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                {activeVariants.map(v => {
+                    const price = v.price?.onRoad || v.price?.exShowroom || 0;
+                    const emi = Math.round((price - downpayment) * getEmiFactor(tenure));
+                    return (
+                        <div
+                            key={v.id}
+                            className="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col items-center text-center"
                         >
-                            <Pencil size={10} />
-                            Edit Terms
-                        </button>
-                    </div>
-
-                    {/* Scrollable Right Columns (Vehicles) */}
-                    <div className="flex-1 overflow-x-auto hide-scrollbar flex snap-x snap-mandatory">
-                        {activeVariants.map(v => (
-                            <div
-                                key={v.id}
-                                className="w-[180px] shrink-0 snap-center border-r border-slate-200 p-3 relative flex flex-col items-center text-center"
-                            >
-                                {/* Remove Button */}
-                                {activeVariants.length > 2 && (
-                                    <button
-                                        onClick={() => onRemoveVariant(v.slug)}
-                                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center border border-red-500/30 backdrop-blur-md z-10"
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                )}
-
-                                <img
-                                    src={v.imageUrl || ''}
-                                    alt={v.model}
-                                    className="h-20 object-contain mb-2 drop-shadow-xl"
-                                />
-                                <h3 className="text-[12px] font-black uppercase text-slate-900 leading-tight line-clamp-1">
-                                    {v.model}
-                                </h3>
-                                <p className="text-[10px] text-slate-400 truncate w-full">{v.variant}</p>
-
-                                <div className="mt-3 w-full bg-white rounded-xl border border-slate-200 p-2">
-                                    <p className="text-[14px] font-black text-slate-900 leading-none">
-                                        ₹{(v.price?.onRoad || v.price?.exShowroom || 0).toLocaleString()}
-                                    </p>
-                                    <p className="text-[10px] font-bold text-[#F4B000] mt-1 uppercase">
-                                        ₹
-                                        {Math.round(
-                                            ((v.price?.onRoad || 0) - downpayment) * getEmiFactor(tenure)
-                                        ).toLocaleString()}
-                                        /mo
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                        {/* Empty Ghost Slot to encourage adding more if < 4 */}
-                        {activeVariants.length < 4 && (
-                            <div className="w-[180px] shrink-0 snap-center border-r border-slate-200 p-3 flex flex-col items-center justify-center">
+                            {/* Remove */}
+                            {n > 2 && (
                                 <button
-                                    onClick={() => router.push('/store/catalog')}
-                                    className="w-16 h-16 rounded-full border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-500 hover:text-slate-900 hover:border-[#F4B000] transition-colors"
+                                    onClick={() => onRemoveVariant(v.slug)}
+                                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center border border-red-500/30 z-10"
                                 >
-                                    <Search size={20} className="mb-1" />
+                                    <X size={12} />
                                 </button>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-3">
-                                    Add Vehicle
+                            )}
+                            <img
+                                src={v.imageUrl || ''}
+                                alt={v.model}
+                                className="h-16 object-contain mb-2 drop-shadow-lg"
+                            />
+                            <p className="text-[11px] font-black uppercase text-slate-900 leading-tight line-clamp-1">
+                                {v.model}
+                            </p>
+                            <p className="text-[9px] text-slate-400 truncate w-full mb-2">{v.variant}</p>
+                            <div className="w-full bg-slate-50 rounded-xl border border-slate-100 p-2">
+                                <p className="text-[13px] font-black text-slate-900 leading-none">
+                                    ₹{Math.round(price / 1000)}K
+                                </p>
+                                <p className="text-[9px] font-bold text-[#F4B000] mt-0.5 uppercase">
+                                    ₹{emi.toLocaleString()}/mo
                                 </p>
                             </div>
-                        )}
-                    </div>
-                </div>
+                        </div>
+                    );
+                })}
+                {/* Add slot */}
+                {n < 4 && (
+                    <button
+                        onClick={() => router.push('/store/catalog')}
+                        className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-3 flex flex-col items-center justify-center text-slate-400 hover:border-[#F4B000] hover:text-[#F4B000] transition-colors min-h-[140px]"
+                    >
+                        <span className="text-3xl font-light mb-1">+</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest">Add</span>
+                    </button>
+                )}
             </div>
 
-            {/* Spec Matrix Content Area */}
-            <div className="w-full">
-                {/* 1. What's Different Section */}
+            {/* ── Spec Sections ── */}
+            <div className="px-4 space-y-4">
+                {/* What's Different */}
                 {smartSpecs.diffSpecs.length > 0 && (
-                    <div className="mt-6">
-                        <div className="px-4 py-3 flex items-center justify-between">
-                            <h2 className="text-[13px] font-black uppercase tracking-[0.2em] text-[#F4B000] flex items-center gap-2">
-                                <Zap size={14} className="animate-pulse" />
+                    <div>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Zap size={14} className="text-[#F4B000] animate-pulse" />
+                            <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
                                 Key Differences
-                                <span className="bg-[#F4B000]/20 text-[#F4B000] px-2 py-0.5 rounded-full text-[9px]">
-                                    {smartSpecs.diffCount}
-                                </span>
                             </h2>
+                            <span className="bg-[#F4B000]/20 text-[#F4B000] px-2 py-0.5 rounded-full text-[9px] font-bold">
+                                {smartSpecs.diffCount}
+                            </span>
                         </div>
 
-                        <div className="border-t border-b border-slate-200 bg-white">
-                            {smartSpecs.diffSpecs.map((cat, idx) => {
-                                const isOpen = openCats[`diff-${cat.name}`];
-                                return (
-                                    <div key={cat.name} className={`${idx > 0 ? 'border-t border-slate-200' : ''}`}>
-                                        <button
-                                            onClick={() => toggleCat(`diff-${cat.name}`)}
-                                            className="w-full flex items-center justify-between p-4 bg-slate-50"
-                                        >
-                                            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900">
-                                                {cat.name}
-                                            </span>
-                                            {isOpen ? (
-                                                <ChevronUp size={14} className="text-slate-500" />
-                                            ) : (
-                                                <ChevronDown size={14} className="text-slate-500" />
-                                            )}
-                                        </button>
-
-                                        {isOpen && (
-                                            <div className="divide-y divide-slate-200 border-t border-slate-200">
-                                                {cat.specs.map(sp => (
-                                                    <div key={sp.key} className="flex">
-                                                        <div className="w-[120px] shrink-0 bg-slate-50 border-r border-slate-200 p-3 flex flex-col justify-center">
-                                                            <span className="text-[10px] font-bold text-slate-400 capitalize">
-                                                                {sp.label}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex-1 overflow-x-auto hide-scrollbar flex">
-                                                            {activeVariants.map(v => {
-                                                                const sMap = flattenObject(v.specifications || {});
-                                                                const val = formatSpecValue(sMap[sp.key] || 'N/A');
-                                                                const isMissing = val === 'N/A';
-                                                                return (
-                                                                    <div
-                                                                        key={`${v.id}-${sp.key}`}
-                                                                        className="w-[180px] shrink-0 border-r border-slate-200 p-3 flex items-center justify-center text-center"
-                                                                    >
-                                                                        {val === 'Yes' ? (
-                                                                            <Check
-                                                                                size={16}
-                                                                                className="text-[#F4B000]"
-                                                                            />
-                                                                        ) : val === 'No' ? (
-                                                                            <X size={16} className="text-slate-600" />
-                                                                        ) : (
-                                                                            <span
-                                                                                className={`text-[11px] font-semibold ${isMissing ? 'text-slate-400' : 'text-slate-700'}`}
-                                                                            >
-                                                                                {val}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                            {activeVariants.length < 4 && (
-                                                                <div className="w-[180px] shrink-0 border-r border-slate-200" />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                        {smartSpecs.diffSpecs.map(cat => {
+                            const isOpen = openCats[`diff-${cat.name}`];
+                            return (
+                                <div
+                                    key={cat.name}
+                                    className="bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden"
+                                >
+                                    <button
+                                        onClick={() => toggleCat(`diff-${cat.name}`)}
+                                        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50"
+                                    >
+                                        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900">
+                                            {cat.name}
+                                        </span>
+                                        {isOpen ? (
+                                            <ChevronUp size={14} className="text-slate-400" />
+                                        ) : (
+                                            <ChevronDown size={14} className="text-slate-400" />
                                         )}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    </button>
+
+                                    {isOpen && (
+                                        <div className="divide-y divide-slate-100">
+                                            {cat.specs.map(sp => (
+                                                <div key={sp.key} className="px-4 py-3">
+                                                    {/* Label row */}
+                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                                                        {sp.label}
+                                                    </p>
+                                                    {/* Values side-by-side */}
+                                                    <div
+                                                        className={`grid gap-2 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}
+                                                    >
+                                                        {activeVariants.map(v => {
+                                                            const sMap = flattenObject(v.specifications || {});
+                                                            const val = formatSpecValue(sMap[sp.key] || 'N/A');
+                                                            const isMissing = val === 'N/A';
+                                                            return (
+                                                                <div
+                                                                    key={`${v.id}-${sp.key}`}
+                                                                    className="bg-slate-50 rounded-xl px-3 py-2 flex flex-col items-center text-center"
+                                                                >
+                                                                    <p className="text-[8px] font-bold text-slate-400 truncate w-full mb-1">
+                                                                        {v.variant}
+                                                                    </p>
+                                                                    {val === 'Yes' ? (
+                                                                        <Check size={14} className="text-[#F4B000]" />
+                                                                    ) : val === 'No' ? (
+                                                                        <X size={14} className="text-slate-400" />
+                                                                    ) : (
+                                                                        <span
+                                                                            className={`text-[12px] font-black ${isMissing ? 'text-slate-300' : 'text-slate-900'}`}
+                                                                        >
+                                                                            {val}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
-                {/* 2. All Specifications Section */}
+                {/* All Specifications */}
                 {smartSpecs.restSpecs.length > 0 && (
-                    <div className="mt-8">
-                        <div className="px-4 py-3 flex items-center justify-between border-t border-slate-200">
-                            <h2 className="text-[13px] font-black uppercase tracking-[0.2em] text-slate-600">
+                    <div>
+                        <div className="flex items-center gap-2 mb-3">
+                            <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-500">
                                 All Specifications
                             </h2>
                         </div>
 
-                        <div className="border-t border-b border-slate-200 bg-white">
-                            {smartSpecs.restSpecs.map((cat, idx) => {
-                                const isOpen = openCats[`all-${cat.name}`];
-                                return (
-                                    <div key={cat.name} className={`${idx > 0 ? 'border-t border-slate-200' : ''}`}>
-                                        <button
-                                            onClick={() => toggleCat(`all-${cat.name}`)}
-                                            className="w-full flex items-center justify-between p-4 bg-slate-50"
-                                        >
-                                            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-700">
-                                                {cat.name}
-                                            </span>
-                                            {isOpen ? (
-                                                <ChevronUp size={14} className="text-slate-500" />
-                                            ) : (
-                                                <ChevronDown size={14} className="text-slate-500" />
-                                            )}
-                                        </button>
-
-                                        {isOpen && (
-                                            <div className="divide-y divide-slate-200 border-t border-slate-200">
-                                                {cat.specs.map(sp => (
-                                                    <div key={sp.key} className="flex">
-                                                        <div className="w-[120px] shrink-0 bg-slate-50 border-r border-slate-200 p-3 flex flex-col justify-center">
-                                                            <span className="text-[10px] font-bold text-slate-500 capitalize">
-                                                                {sp.label}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex-1 flex">
-                                                            {/* All variants have the same value here by definition */}
-                                                            <div className="flex-1 p-3">
-                                                                <span className="text-[11px] font-semibold text-slate-400">
-                                                                    {formatSpecValue(
-                                                                        flattenObject(
-                                                                            activeVariants[0].specifications || {}
-                                                                        )[sp.key] || 'N/A'
-                                                                    )}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                        {smartSpecs.restSpecs.map(cat => {
+                            const isOpen = openCats[`all-${cat.name}`];
+                            return (
+                                <div
+                                    key={cat.name}
+                                    className="bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden"
+                                >
+                                    <button
+                                        onClick={() => toggleCat(`all-${cat.name}`)}
+                                        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50"
+                                    >
+                                        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-700">
+                                            {cat.name}
+                                        </span>
+                                        {isOpen ? (
+                                            <ChevronUp size={14} className="text-slate-400" />
+                                        ) : (
+                                            <ChevronDown size={14} className="text-slate-400" />
                                         )}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    </button>
+
+                                    {isOpen && (
+                                        <div className="divide-y divide-slate-100">
+                                            {cat.specs.map(sp => {
+                                                // All variants same value here
+                                                const val = formatSpecValue(
+                                                    flattenObject(activeVariants[0].specifications || {})[sp.key] ||
+                                                        'N/A'
+                                                );
+                                                return (
+                                                    <div
+                                                        key={sp.key}
+                                                        className="px-4 py-3 flex items-center justify-between"
+                                                    >
+                                                        <p className="text-[10px] font-bold text-slate-500 capitalize">
+                                                            {sp.label}
+                                                        </p>
+                                                        <p className="text-[11px] font-black text-slate-700">{val}</p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
