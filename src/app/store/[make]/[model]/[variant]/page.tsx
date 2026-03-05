@@ -139,6 +139,34 @@ const stripColorFromName = (name: string, color: string) => {
     return name;
 };
 
+const resolvePreferredSkuIdFromQuery = (queryColor: string | undefined, skus: any[]): string | null => {
+    const q = String(queryColor || '')
+        .trim()
+        .toLowerCase();
+    if (!q) return null;
+
+    const exactId = skus.find(s => String(s?.id || '').toLowerCase() === q);
+    if (exactId?.id) return String(exactId.id);
+
+    const exactByFields = skus.find(s => {
+        const candidates = [s?.slug, s?.name, s?.color_name, s?.colour?.name, s?.specs?.Color, s?.specs?.color]
+            .filter(Boolean)
+            .map((v: any) => String(v).trim().toLowerCase());
+        return candidates.includes(q);
+    });
+    if (exactByFields?.id) return String(exactByFields.id);
+
+    const qSlug = slugify(q);
+    const bySlug = skus.find(s => {
+        const candidates = [s?.slug, s?.name, s?.color_name, s?.colour?.name, s?.specs?.Color, s?.specs?.color]
+            .filter(Boolean)
+            .map((v: any) => slugify(String(v)));
+        return candidates.includes(qSlug);
+    });
+
+    return bySlug?.id ? String(bySlug.id) : null;
+};
+
 export async function generateStaticParams() {
     try {
         const { families } = await getSitemapData();
@@ -328,6 +356,7 @@ export default async function Page({ params, searchParams }: Props) {
     if (!resolvedVariant) fetchError = fetchError || { message: 'No matching variant in catalog' };
 
     let sotPricingSnapshot: any = null;
+    const preferredSkuId = resolvePreferredSkuIdFromQuery(resolvedSearchParams.color, activeVariantSkus);
 
     try {
         const sotSnap = await getPdpSnapshot({
@@ -335,6 +364,7 @@ export default async function Page({ params, searchParams }: Props) {
             model: resolvedParams.model,
             variant: resolvedParams.variant,
             stateCode,
+            preferredSkuId,
         });
 
         if (sotSnap?.resolvedVariant) {

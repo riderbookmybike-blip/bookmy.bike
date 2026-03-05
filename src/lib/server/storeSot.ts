@@ -492,7 +492,8 @@ export async function resolveActiveSkus(
  */
 export async function fetchPublishedPricing(
     skuIds: string[],
-    stateCode: string
+    stateCode: string,
+    preferredSkuId?: string | null
 ): Promise<{ priceRow: Record<string, any> | null; snapshot: SotPricingSnapshot | null }> {
     if (skuIds.length === 0) return { priceRow: null, snapshot: null };
 
@@ -519,8 +520,12 @@ export async function fetchPublishedPricing(
         rows = fallbackRows || null;
     }
 
+    const normalizedPreferredSku = String(preferredSkuId || '').trim();
+    const preferredRow = normalizedPreferredSku
+        ? (rows || []).find((row: any) => String(row?.sku_id || '') === normalizedPreferredSku)
+        : null;
     const matchingRow = (rows || []).find((row: any) => toNumber(row.rto_total_state) > 0);
-    const priceRow = matchingRow || (rows || [])[0] || null;
+    const priceRow = preferredRow || matchingRow || (rows || [])[0] || null;
 
     if (!priceRow) return { priceRow: null, snapshot: null };
 
@@ -663,11 +668,13 @@ export async function getPdpSnapshot({
     model,
     variant,
     stateCode,
+    preferredSkuId,
 }: {
     make: string;
     model: string;
     variant: string;
     stateCode: string;
+    preferredSkuId?: string | null;
 }): Promise<PdpSnapshotPayload> {
     const modelRow = await resolveModel(make, model);
     if (!modelRow?.id) {
@@ -716,7 +723,7 @@ export async function getPdpSnapshot({
             : null;
 
     const skuIds = activeSkus.map(s => s.id).filter(Boolean);
-    const { priceRow, snapshot } = await fetchPublishedPricing(skuIds, stateCode);
+    const { priceRow, snapshot } = await fetchPublishedPricing(skuIds, stateCode, preferredSkuId);
 
     return {
         model: modelRow,

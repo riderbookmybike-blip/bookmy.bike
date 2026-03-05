@@ -9,6 +9,7 @@ import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { ProductCard } from '@/components/store/desktop/ProductCard';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { DiscoveryBar } from '@/components/store/DiscoveryBar';
+import { CatalogGridSkeleton } from '@/components/store/CatalogSkeleton';
 
 // Filter Group Component (Extracted)
 const FilterGroup = ({
@@ -210,13 +211,7 @@ export const WishlistClient = () => {
     };
 
     if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center py-24 px-6 text-center animate-pulse">
-                <div className="w-16 h-16 bg-slate-200 rounded-full mb-6" />
-                <div className="h-8 w-48 bg-slate-200 rounded-lg mb-4" />
-                <div className="h-4 w-64 bg-slate-200 rounded-lg" />
-            </div>
-        );
+        return <CatalogGridSkeleton count={4} />;
     }
 
     if (favorites.length === 0) {

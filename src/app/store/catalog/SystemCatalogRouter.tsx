@@ -2,18 +2,10 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
+import { CatalogGridSkeleton } from '@/components/store/CatalogSkeleton';
 
 const DesktopCatalog = dynamic(() => import('@/components/store/DesktopCatalog').then(m => m.DesktopCatalog), {
-    loading: () => (
-        <div className="p-8 space-y-6 animate-pulse">
-            <div className="h-14 bg-slate-100 rounded-2xl" />
-            <div className="grid grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6].map(i => (
-                    <div key={i} className="h-72 bg-slate-100 rounded-3xl" />
-                ))}
-            </div>
-        </div>
-    ),
+    loading: () => <CatalogGridSkeleton count={6} />,
 });
 
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';

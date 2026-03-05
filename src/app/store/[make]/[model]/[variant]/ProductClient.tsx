@@ -41,13 +41,31 @@ function isAbortError(err: unknown): boolean {
 // Dynamic imports for heavy PDP components (bundle optimization)
 const PDPSkeleton = () => (
     <div className="min-h-screen bg-slate-50 animate-pulse">
-        <div className="h-16 bg-white border-b border-slate-200" />
-        <div className="max-w-7xl mx-auto p-6 grid md:grid-cols-2 gap-8 mt-8">
-            <div className="aspect-square bg-slate-200 rounded-3xl" />
-            <div className="space-y-4">
-                <div className="h-12 bg-slate-200 rounded-xl w-3/4" />
-                <div className="h-8 bg-slate-200 rounded-lg w-1/2" />
-                <div className="h-32 bg-slate-200 rounded-2xl mt-8" />
+        {/* Mobile (< md): stacked image → price pill */}
+        <div className="md:hidden">
+            <div className="aspect-[4/3] bg-slate-200 w-full" />
+            <div className="p-4 space-y-3 mt-2">
+                <div className="h-3 bg-slate-200 rounded w-20" />
+                <div className="h-6 bg-slate-200 rounded w-40" />
+                <div className="flex gap-2 mt-3">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="w-8 h-8 bg-slate-200 rounded-full" />
+                    ))}
+                </div>
+                <div className="h-24 bg-slate-200 rounded-2xl mt-2" />
+                <div className="h-12 bg-slate-200 rounded-2xl mt-2" />
+            </div>
+        </div>
+        {/* Desktop (md+): 2-col image + details */}
+        <div className="hidden md:block">
+            <div className="h-16 bg-white border-b border-slate-200" />
+            <div className="max-w-7xl mx-auto p-6 grid md:grid-cols-2 gap-8 mt-8">
+                <div className="aspect-square bg-slate-200 rounded-3xl" />
+                <div className="space-y-4">
+                    <div className="h-12 bg-slate-200 rounded-xl w-3/4" />
+                    <div className="h-8 bg-slate-200 rounded-lg w-1/2" />
+                    <div className="h-32 bg-slate-200 rounded-2xl mt-8" />
+                </div>
             </div>
         </div>
     </div>
