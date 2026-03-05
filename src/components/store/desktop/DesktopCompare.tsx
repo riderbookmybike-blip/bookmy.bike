@@ -218,6 +218,7 @@ export default function DesktopCompare() {
     const [showDiffOnly, setShowDiffOnly] = useState(false);
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
     const [shareTooltip, setShareTooltip] = useState(false);
+    const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
     // Per-variant selected color image and hex for compact cards
     const [compactColorImages, setCompactColorImages] = useState<Record<string, string>>({});
     const [compactColorHexes, setCompactColorHexes] = useState<Record<string, string>>({});
@@ -807,6 +808,13 @@ export default function DesktopCompare() {
                                     onEditDownpayment={openDpEdit}
                                     pricingMode={pricingMode}
                                     onTogglePricingMode={() => setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))}
+                                    variantCount={activeVariants.length}
+                                    isInCompare={!removedVariantIds.has(v.id)}
+                                    onCompare={() => removeVariant(v.id)}
+                                    onExplodeColors={() => {
+                                        const key = `${v.make}::${v.model}::${v.variant}`;
+                                        setExplodedVariant(prev => (prev === key ? null : key));
+                                    }}
                                 />
                             ))}
                         </div>
