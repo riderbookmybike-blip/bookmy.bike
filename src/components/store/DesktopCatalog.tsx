@@ -753,6 +753,26 @@ export const DesktopCatalog = ({
         return () => window.removeEventListener('keydown', handleEsc);
     }, []);
 
+    // Sync pricing prefs from mobile bottom nav EMI sheet
+    React.useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (!detail) return;
+            if (detail.mode) setPricingMode(detail.mode as 'cash' | 'finance');
+            if (typeof detail.downpayment === 'number') setDownpayment(detail.downpayment);
+            if (typeof detail.tenure === 'number') setTenure(detail.tenure);
+        };
+        window.addEventListener('discoveryPricingChanged', handler);
+        return () => window.removeEventListener('discoveryPricingChanged', handler);
+    }, []);
+
+    // Open Finance panel when card pill dispatches event
+    React.useEffect(() => {
+        const handler = () => openDpEdit();
+        window.addEventListener('openFinancePanel', handler);
+        return () => window.removeEventListener('openFinancePanel', handler);
+    }, []);
+
     // Scroll lock
     React.useEffect(() => {
         if (isFilterOpen) {
@@ -1132,7 +1152,7 @@ export const DesktopCatalog = ({
                 </div>
             )}
             <div
-                className={`flex-1 page-container ${isTv ? 'pt-6' : isPhone ? 'pt-6' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
+                className={`flex-1 page-container ${isTv ? 'pt-6' : isPhone ? 'pt-2' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
             >
                 <DiscoveryBar
                     className={
@@ -1146,7 +1166,10 @@ export const DesktopCatalog = ({
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
                     pricingMode={pricingMode}
-                    onPricingModeChange={mode => setPricingMode(mode as any)}
+                    onPricingModeChange={mode => {
+                        setPricingMode(mode as any);
+                        if (mode === 'finance') openDpEdit();
+                    }}
                     centerContent={
                         <>
                             {isSmart && !smartModel && (
@@ -1249,23 +1272,34 @@ export const DesktopCatalog = ({
                 />
 
                 <div
-                    className="md:hidden sticky z-[90] py-3 mb-4 bg-slate-50/80 backdrop-blur-2xl border-b border-slate-200/60"
+                    className="md:hidden sticky z-[90] py-2 mb-2 bg-slate-50 border-b border-slate-200/60"
                     style={{ top: 'var(--header-h)' }}
                 >
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-slate-200">
-                            <Search size={14} className="text-slate-400" />
+                    <div className="flex items-center gap-2 px-3">
+                        {/* Filter button — left of search bar */}
+                        <button
+                            onClick={() => setIsMobileFilterOpen(true)}
+                            className={`flex items-center justify-center w-9 h-9 rounded-full border transition-all shrink-0 ${
+                                activeFilterCount > 0
+                                    ? 'bg-[#FFD700] border-[#F4B000] text-black'
+                                    : 'bg-white border-slate-200 text-slate-500'
+                            }`}
+                        >
+                            <SlidersHorizontal size={16} strokeWidth={2} />
+                        </button>
+                        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200">
+                            <Search size={14} className="text-slate-400 shrink-0" />
                             <input
                                 type="text"
                                 placeholder="Search brand, product, variant"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="flex-1 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300"
+                                className="flex-1 min-w-0 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300"
                             />
                             {searchQuery && (
                                 <button
                                     onClick={() => setSearchQuery('')}
-                                    className="flex items-center text-slate-400 hover:text-slate-900"
+                                    className="flex items-center text-slate-400 hover:text-slate-900 shrink-0"
                                 >
                                     <X size={14} />
                                 </button>
@@ -1457,18 +1491,6 @@ export const DesktopCatalog = ({
                     </div>
                 </div>
 
-                {/* Floating Filter FAB — Phone Only */}
-                {isPhone && !isMobileFilterOpen && (
-                    <button
-                        onClick={() => setIsMobileFilterOpen(true)}
-                        className="fixed z-[50] w-11 h-11 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 shadow-lg flex items-center justify-center text-[#FFD700] active:scale-90 transition-all"
-                        style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 12px)', right: '12px' }}
-                    >
-                        <SlidersHorizontal size={18} strokeWidth={2.5} />
-                    </button>
-                )}
-
-                {/* Mega Filter Overlay (Grid View Only) */}
                 {isFilterOpen && viewMode === 'grid' ? (
                     <AnimatePresence>
                         {isFilterOpen && viewMode === 'grid' && (
@@ -1590,12 +1612,8 @@ export const DesktopCatalog = ({
                             sections={mobileFilterSections}
                             onClearAll={clearAll}
                             activeFilterCount={activeFilterCount}
-                            downpayment={downpayment}
-                            onDownpaymentChange={setDownpayment}
-                            tenure={tenure}
-                            onTenureChange={setTenure}
                             sortBy={sortBy}
-                            onSortChange={() => {}} // Placeholder as sortBy is currently read-only in this component
+                            onSortChange={() => {}}
                         />
                     </>
                 )}

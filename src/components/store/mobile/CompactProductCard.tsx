@@ -78,11 +78,14 @@ export function CompactProductCard({
     const formatRoundedPrice = (value: number | null | undefined) =>
         Math.ceil(Number(value) || 0).toLocaleString('en-IN');
 
-    // EMI
+    // EMI — skip if loan is too small to be meaningful (auto-cash flip)
+    // Rule: downpayment >= (price - 25000) → cash mode  [= loanAmount < ₹25k]
+    const MIN_LOAN_AMOUNT = 25000;
     const activeTenure = tenure || 36;
     const loanAmount = Math.max(0, displayPrice - downpayment);
     const factor = getEmiFactor(activeTenure);
     const emiValue = Math.max(0, Math.round(loanAmount * factor));
+    const showEmi = loanAmount >= MIN_LOAN_AMOUNT && emiValue > 0;
 
     const bcoinTotal = coinsNeededForPrice(baseDisplayPrice);
 
@@ -304,8 +307,8 @@ export function CompactProductCard({
                         </div>
                     </div>
 
-                    {/* Lowest EMI Block */}
-                    {emiValue > 0 && (
+                    {/* Lowest EMI Block — hidden if loan < ₹15k (auto cash-flip) */}
+                    {showEmi && (
                         <div className="flex flex-col items-start border-t border-slate-100 pt-2">
                             <div className="flex items-center gap-1.5 mb-0.5">
                                 <CircleHelp

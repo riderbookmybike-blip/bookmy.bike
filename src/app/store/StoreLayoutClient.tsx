@@ -5,6 +5,10 @@ import dynamic from 'next/dynamic';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
+const ShopperBottomNav = dynamic(
+    () => import('@/components/store/mobile/ShopperBottomNav').then(m => ({ default: m.ShopperBottomNav })),
+    { ssr: false }
+);
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import { usePathname } from 'next/navigation';
 import { ColorProvider } from '@/contexts/ColorContext';
@@ -141,9 +145,14 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
                         {/* Dealership Gate — blocks marketplace for staff without active dealership */}
                         <DealershipGate />
 
-                        <main className="flex-1" style={{ paddingTop: 'var(--header-h)' }}>
+                        <main className="flex-1 pb-[60px] lg:pb-0" style={{ paddingTop: 'var(--header-h)' }}>
                             {children}
                         </main>
+
+                        {/* Mobile Bottom Nav — hidden on desktop */}
+                        <div className="lg:hidden">
+                            <ShopperBottomNav />
+                        </div>
 
                         {!hideFooter && <MarketplaceFooter />}
 

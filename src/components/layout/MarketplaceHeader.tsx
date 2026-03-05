@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, Heart, Home as HomeIcon } from 'lucide-react';
+import { Heart, Home as HomeIcon } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
 import { AppHeaderShell } from './AppHeaderShell';
@@ -81,13 +81,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         externalOpen={isSidebarOpen}
                         onOpenChange={setIsSidebarOpen}
                     />
-
-                    <button
-                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className="w-10 h-10 rounded-xl transition-all lg:hidden flex items-center justify-center text-white bg-transparent border border-white/25"
-                    >
-                        {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-                    </button>
                 </div>
             }
         />

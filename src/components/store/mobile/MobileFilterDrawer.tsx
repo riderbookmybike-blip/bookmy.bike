@@ -1,8 +1,74 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, SlidersHorizontal } from 'lucide-react';
+
+const VISIBLE_COUNT = 3;
+
+interface FilterSectionRowProps {
+    section: {
+        title: string;
+        options: readonly string[] | string[];
+        selected: string[];
+        onToggle: (val: string) => void;
+        onReset: () => void;
+    };
+}
+
+function FilterSectionRow({ section }: FilterSectionRowProps) {
+    const [expanded, setExpanded] = useState(false);
+    const hasMore = section.options.length > VISIBLE_COUNT;
+    const hiddenCount = section.options.length - VISIBLE_COUNT;
+
+    // Always include selected items so they're not hidden
+    const baseVisible = section.options.slice(0, VISIBLE_COUNT);
+    const extraSelected = section.options.slice(VISIBLE_COUNT).filter(o => section.selected.includes(o));
+    const visible: (typeof section.options)[number][] = expanded
+        ? [...section.options]
+        : [...baseVisible, ...extraSelected];
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 flex items-center gap-2">
+                    <div
+                        className={`w-1.5 h-1.5 rounded-full transition-all ${section.selected.length > 0 ? 'bg-[#F4B000] shadow-[0_0_8px_#F4B000]' : 'bg-slate-300'}`}
+                    />
+                    {section.title}
+                </h4>
+                {section.selected.length > 0 && (
+                    <button onClick={section.onReset} className="text-[9px] font-black uppercase text-rose-500">
+                        Reset
+                    </button>
+                )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+                {visible.map(opt => (
+                    <button
+                        key={opt}
+                        onClick={() => section.onToggle(opt)}
+                        className={`px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all min-h-[40px] ${
+                            section.selected.includes(opt)
+                                ? 'bg-[#F4B000]/15 border-[#F4B000]/50 text-slate-900 border shadow-sm'
+                                : 'bg-white border border-slate-200 text-slate-600'
+                        }`}
+                    >
+                        {opt}
+                    </button>
+                ))}
+                {hasMore && (
+                    <button
+                        onClick={() => setExpanded(e => !e)}
+                        className="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all min-h-[40px] bg-slate-50 border border-dashed border-slate-300 text-slate-400"
+                    >
+                        {expanded ? '− Less' : `+${hiddenCount} more`}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
 
 interface FilterSection {
     title: string;
@@ -18,17 +84,10 @@ interface MobileFilterDrawerProps {
     sections: FilterSection[];
     onClearAll: () => void;
     activeFilterCount: number;
-    /** EMI controls */
-    downpayment: number;
-    onDownpaymentChange: (val: number) => void;
-    tenure: number;
-    onTenureChange: (val: number) => void;
     /** Sort */
     sortBy: string;
     onSortChange: (val: string) => void;
 }
-
-const TENURE_OPTIONS = [12, 24, 36, 48, 60] as const;
 
 export function MobileFilterDrawer({
     isOpen,
@@ -36,10 +95,6 @@ export function MobileFilterDrawer({
     sections,
     onClearAll,
     activeFilterCount,
-    downpayment,
-    onDownpaymentChange,
-    tenure,
-    onTenureChange,
     sortBy,
     onSortChange,
 }: MobileFilterDrawerProps) {
@@ -147,96 +202,9 @@ export function MobileFilterDrawer({
                                 </div>
                             </div>
 
-                            {/* EMI Calculator */}
-                            <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-[#F4B000] shadow-[0_0_8px_#F4B000]" />
-                                    EMI Calculator
-                                </h4>
-
-                                {/* Downpayment slider */}
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                                            Downpayment
-                                        </span>
-                                        <span className="text-sm font-black text-[#F4B000]">
-                                            ₹{downpayment.toLocaleString('en-IN')}
-                                        </span>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min="5000"
-                                        max="50000"
-                                        step="1000"
-                                        value={downpayment}
-                                        onChange={e => onDownpaymentChange(Number(e.target.value))}
-                                        className="w-full h-1.5 rounded-full bg-slate-200 accent-[#F4B000] appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F4B000] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-lg"
-                                    />
-                                </div>
-
-                                {/* Tenure grid */}
-                                <div className="space-y-2">
-                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                                        Tenure
-                                    </span>
-                                    <div className="grid grid-cols-5 gap-2">
-                                        {TENURE_OPTIONS.map(t => (
-                                            <button
-                                                key={t}
-                                                onClick={() => onTenureChange(t)}
-                                                className={`py-2 rounded-xl text-[11px] font-black transition-all ${
-                                                    tenure === t
-                                                        ? 'bg-[#F4B000] text-black shadow-md'
-                                                        : 'bg-white text-slate-600 border border-slate-200'
-                                                }`}
-                                            >
-                                                {t}mo
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Filter Sections */}
                             {sections.map(section => (
-                                <div key={section.title} className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 flex items-center gap-2">
-                                            <div
-                                                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                                                    section.selected.length > 0
-                                                        ? 'bg-[#F4B000] shadow-[0_0_8px_#F4B000]'
-                                                        : 'bg-slate-300'
-                                                }`}
-                                            />
-                                            {section.title}
-                                        </h4>
-                                        {section.selected.length > 0 && (
-                                            <button
-                                                onClick={section.onReset}
-                                                className="text-[9px] font-black uppercase text-rose-500"
-                                            >
-                                                Reset
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {section.options.map(opt => (
-                                            <button
-                                                key={opt}
-                                                onClick={() => section.onToggle(opt)}
-                                                className={`px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all min-h-[40px] ${
-                                                    section.selected.includes(opt)
-                                                        ? 'bg-[#F4B000]/15 border-[#F4B000]/50 text-slate-900 border shadow-sm'
-                                                        : 'bg-white border border-slate-200 text-slate-600'
-                                                }`}
-                                            >
-                                                {opt}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                                <FilterSectionRow key={section.title} section={section} />
                             ))}
                         </div>
 

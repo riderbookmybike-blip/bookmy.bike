@@ -365,9 +365,8 @@ export const ProductCard = ({
     const surge = bestOffer && offerDelta > 0 ? offerDelta : 0;
     const netImpact = bestOffer ? savings - surge : savings;
 
-    // Continuous EMI Flip Logic
-    // const TENURE_OPTIONS = [12, 24, 36, 48, 60];
-
+    // EMI Flip Logic: if loan < ₹25k, force cash side of the flipcard
+    const MIN_LOAN_AMOUNT = 25000;
     const activeTenure = tenure || 36;
     const loanAmount = Math.max(0, basePrice - downpayment);
     const emiIsApprox = !cachedScheme?.interestRate;
@@ -391,6 +390,8 @@ export const ProductCard = ({
             )
         );
     })();
+    // Auto-flip to cash when loan too small to be meaningful
+    const effectivePricingMode: 'cash' | 'finance' = loanAmount < MIN_LOAN_AMOUNT ? 'cash' : cardPricingMode;
 
     // Handle optional serviceability
     const safeServiceability = serviceability || { status: 'unset' };
@@ -1089,7 +1090,6 @@ export const ProductCard = ({
                                 className="mt-3 md:mt-5 border-t border-slate-100 pt-3 md:pt-5"
                                 style={{ WebkitPerspective: '1400px', perspective: '1400px' }}
                             >
-                                {/* Shadow wrapper — filter here is fine because it's outside the preserve-3d container */}
                                 <motion.div
                                     initial={false}
                                     animate={{
@@ -1102,7 +1102,7 @@ export const ProductCard = ({
                                 >
                                     <motion.div
                                         initial={false}
-                                        animate={{ rotateY: cardPricingMode === 'finance' ? 0 : 180 }}
+                                        animate={{ rotateY: effectivePricingMode === 'finance' ? 0 : 180 }}
                                         transition={{ rotateY: { duration: 0.72, ease: [0.25, 0.46, 0.45, 0.94] } }}
                                         style={{ WebkitTransformStyle: 'preserve-3d', transformStyle: 'preserve-3d' }}
                                         className="relative w-full"
@@ -1118,23 +1118,25 @@ export const ProductCard = ({
                                                     'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.3)',
                                             }}
                                         >
-                                            {/* Left: Downpayment */}
-                                            <div className="flex-1 flex flex-col items-start">
-                                                <button
-                                                    onClick={e => {
-                                                        e.stopPropagation();
-                                                        onEditDownpayment?.();
-                                                    }}
-                                                    className="flex items-center gap-1.5 group/edit mb-1"
-                                                >
+                                            {/* Left: Downpayment — click to open global DP panel */}
+                                            <button
+                                                className="flex-1 flex flex-col items-start text-left"
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    e.nativeEvent.stopImmediatePropagation();
+                                                    e.preventDefault();
+                                                    window.dispatchEvent(new CustomEvent('openFinancePanel'));
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-1.5 mb-1">
                                                     <p
                                                         className="text-[9px] font-black uppercase tracking-wider italic leading-none"
                                                         style={{ color: 'rgba(255,255,255,0.55)' }}
                                                     >
                                                         Downpayment
                                                     </p>
-                                                    <Pencil size={9} style={{ color: 'rgba(255,255,255,0.25)' }} />
-                                                </button>
+                                                    <Pencil size={9} style={{ color: 'rgba(255,255,255,0.35)' }} />
+                                                </div>
                                                 <span
                                                     className={`font-black italic leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
                                                     style={{ color: finText }}
@@ -1155,7 +1157,7 @@ export const ProductCard = ({
                                                         </span>
                                                     </div>
                                                 )}
-                                            </div>
+                                            </button>
 
                                             {/* Divider */}
                                             <div
