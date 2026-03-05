@@ -70,6 +70,7 @@ import {
     getBarPercent,
     type SpecRow,
 } from '@/hooks/compareUtils';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 // --- Spec Icon Mapping ---
 const SPEC_ICON_MAP: Record<string, LucideIcon> = {
@@ -241,7 +242,8 @@ export default function DesktopCompare() {
 
     // Scroll-morph state
     const [compactMode, setCompactMode] = useState(false);
-    const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>('finance');
+    const { pricingMode, setPricingMode } = useDiscovery();
+
     const [isPricingExpanded, setIsPricingExpanded] = useState(true);
     const [isDiffExpanded, setIsDiffExpanded] = useState(true);
     const [isAllSpecsExpanded, setIsAllSpecsExpanded] = useState(false);

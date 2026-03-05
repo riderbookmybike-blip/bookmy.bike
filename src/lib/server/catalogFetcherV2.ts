@@ -275,45 +275,13 @@ async function fetchSkuVisitorSignals(days: number = 30): Promise<VisitorSignalM
 }
 
 /**
- * Fetch best dealer offer per SKU from cat_price_dealer.
- * Returns a Map of sku_id → offer_amount (negative = discount, positive = surge).
- */
-async function fetchDealerOffers(stateCode: string = 'MH'): Promise<Map<string, number>> {
-    const { data, error } = await adminClient
-        .from('cat_price_dealer')
-        .select('vehicle_color_id, offer_amount')
-        .eq('state_code', stateCode)
-        .eq('is_active', true);
-
-    if (error || !data) {
-        if (error) console.warn('[CatalogV2Fetch] Dealer offer fetch failed:', error.message);
-        return new Map();
-    }
-
-    // Best offer = most negative (biggest discount). If multiple dealers, pick the best for each SKU.
-    const bestOffers = new Map<string, number>();
-    for (const row of data as Array<any>) {
-        const skuId = String(row?.vehicle_color_id || '').trim();
-        if (!skuId) continue;
-        const amount = Number(row?.offer_amount || 0);
-        const existing = bestOffers.get(skuId);
-        if (existing === undefined || amount < existing) {
-            bestOffers.set(skuId, amount);
-        }
-    }
-
-    return bestOffers;
-}
-
-/**
  * Fetch full catalog from shared Store SOT snapshot and enrich with booking + visitor signals.
  */
 async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRow[]> {
-    const [snapshotRows, bookingCounts, visitorSignals, dealerOffers] = await Promise.all([
+    const [snapshotRows, bookingCounts, visitorSignals] = await Promise.all([
         getCatalogSnapshot(stateCode),
         fetchSkuBookingCounts(180),
         fetchSkuVisitorSignals(30),
-        fetchDealerOffers(stateCode),
     ]);
 
     if (!snapshotRows || snapshotRows.length === 0) {
@@ -341,7 +309,7 @@ async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRo
             booking_count: bookingCount,
             visitor_view_count: visitorViews,
             visitor_dwell_ms: visitorDwellMs,
-            dealer_offer: dealerOffers.get(String(row.sku_id || '').trim()) ?? 0,
+            dealer_offer: 0,
         } as RawProductRow;
     });
 }
@@ -472,7 +440,7 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
         const exShowroom = primarySku.ex_showroom ?? 0;
         const onRoad = primarySku.on_road_price ?? exShowroom;
 
-        // Dealer offer from cat_price_dealer (negative = discount, positive = surge)
+        // Dealer offer is overlaid later by marketplace snapshot route (dealer-aware).
         const dealerDelta = primarySku.dealer_offer ?? 0;
         const offerPrice = onRoad + dealerDelta; // delta is negative for discounts
         const discount = dealerDelta !== 0 ? -dealerDelta : 0; // positive = savings amount

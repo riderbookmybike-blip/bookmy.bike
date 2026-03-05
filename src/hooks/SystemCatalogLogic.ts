@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useState, useEffect } from 'react';
 import { ProductVariant } from '@/types/productMaster';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 
@@ -13,49 +12,49 @@ function isAbortLikeError(err: unknown): boolean {
     return name === 'aborterror' || raw.includes('operation was aborted') || raw.includes('aborterror');
 }
 
+type CatalogSnapshotResponse = {
+    products: ProductVariant[];
+    error?: string;
+    context?: {
+        dealerId?: string | null;
+        dealerName?: string | null;
+        studioId?: string | null;
+        district?: string | null;
+        stateCode?: string;
+        source?: string;
+    };
+};
+
 export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnly?: boolean }) {
     const allowStateOnly = options?.allowStateOnly ?? false;
     const [items, setItems] = useState<ProductVariant[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [skuCount, setSkuCount] = useState<number>(0);
-    const [stateCode, setStateCode] = useState('MH');
-    const [userDistrict, setUserDistrict] = useState<string | null>(null);
     const [locationVersion, setLocationVersion] = useState(0);
     const [needsLocation, setNeedsLocation] = useState(false);
     const [resolvedDealerIdState, setResolvedDealerIdState] = useState<string | null>(null);
     const [resolvedStudioId, setResolvedStudioId] = useState<string | null>(null);
     const [resolvedDealerName, setResolvedDealerName] = useState<string | null>(null);
-    const disableOffersRef = useRef(false);
-    const updateDebug = (_data: Record<string, any>) => {};
-    const isValidUuid = (value: unknown) =>
-        typeof value === 'string' &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
     const resolveLocationFromCache = () => {
         if (typeof window === 'undefined') {
-            return { stateCode: null, district: null, lat: null, lng: null, pincode: null };
+            return { stateCode: null, district: null };
         }
+
         const cached = localStorage.getItem('bkmb_user_pincode');
         if (!cached) {
-            return { stateCode: null, district: null, lat: null, lng: null, pincode: null };
+            return { stateCode: null, district: null };
         }
+
         try {
             const data = JSON.parse(cached) as {
                 state?: string;
                 stateCode?: string;
                 district?: string;
-                taluka?: string;
-                lat?: number;
-                lng?: number;
-                pincode?: string;
             };
 
-            // prefer stateCode
             let code = data.stateCode;
-            const dist = data.district; // Capture district
-
-            // Fallback map if strict stateCode missing
             if (!code && data.state) {
                 const stateMap: Record<string, string> = {
                     MAHARASHTRA: 'MH',
@@ -71,43 +70,12 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
                 code = stateMap[data.state.toUpperCase()] || data.state.substring(0, 2).toUpperCase();
             }
 
-            if (code) {
-                // Construct Label: "District, Code" e.g. "Pune, MH"
-                if (typeof window !== 'undefined') {
-                    // Update global debug context
-                    const supabase = createClient();
-                    const distFinal = dist || data.district || 'MUMBAI_FALLBACK';
-
-                    (async () => {
-                        const {
-                            data: { user },
-                        } = await supabase.auth.getUser();
-
-                        const debugData = {
-                            pricingSource: leadId ? 'PRIMARY_LEAD_DISTRICT' : 'PRIMARY_DEALER',
-                            district: distFinal,
-                            stateCode: code,
-                            leadId: leadId,
-                            locSource: 'CACHE',
-                            pincode: (data as any).pincode || 'UNKNOWN',
-                            userId: user?.email || user?.id || 'GUEST',
-                        };
-
-                        updateDebug(debugData);
-                    })();
-                }
-            }
-
             return {
                 stateCode: code || null,
-                district: dist || null,
-                lat: typeof data.lat === 'number' ? data.lat : null,
-                lng: typeof data.lng === 'number' ? data.lng : null,
-                pincode: data.pincode || null,
+                district: data.district || null,
             };
-        } catch (e) {
-            console.error('Error parsing stored location:', e);
-            return { stateCode: null, district: null, lat: null, lng: null, pincode: null };
+        } catch {
+            return { stateCode: null, district: null };
         }
     };
 
@@ -135,290 +103,50 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
         };
 
         const fetchItems = async () => {
-            // Track whether this specific invocation was aborted by the cleanup.
-            // If so, we must NOT call setIsLoading(false) in the finally block,
-            // because the next effect invocation will immediately set it back to
-            // true — and we don't want a render frame where isLoading=false and
-            // items=[] simultaneously triggers the "Model not found" guard.
             let wasAborted = false;
             try {
                 setIsLoading(true);
-                const supabase = createClient();
-                const cachedLocation = resolveLocationFromCache();
+                setError(null);
 
-                let resolvedStateCode = cachedLocation.stateCode || stateCode || 'MH';
-                let resolvedUserDistrict = cachedLocation.district || userDistrict;
-                if (!resolvedUserDistrict && !leadId && !allowStateOnly) {
+                const cachedLocation = resolveLocationFromCache();
+                const district = cachedLocation.district;
+                const state = cachedLocation.stateCode;
+
+                if (!district && !leadId && !allowStateOnly) {
                     setNeedsLocation(true);
-                    setIsLoading(false);
+                    setItems([]);
                     return;
                 }
                 setNeedsLocation(false);
 
-                const resolvedContext = await fetchJson<{
-                    dealerId?: string | null;
-                    district?: string | null;
-                    stateCode?: string;
-                }>('/api/store/pricing-context', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        leadId: leadId || undefined,
-                        district: resolvedUserDistrict || undefined,
-                        state: resolvedStateCode || undefined,
-                    }),
-                });
-                resolvedStateCode = resolvedContext.stateCode || resolvedStateCode || 'MH';
-                resolvedUserDistrict = resolvedContext.district || resolvedUserDistrict;
+                const params = new URLSearchParams();
+                if (leadId) params.set('leadId', leadId);
+                if (district) params.set('district', district);
+                if (state) params.set('state', state);
 
-                if (resolvedStateCode !== stateCode) setStateCode(resolvedStateCode);
-                if (resolvedUserDistrict && resolvedUserDistrict !== userDistrict) {
-                    setUserDistrict(resolvedUserDistrict);
+                const payload = await fetchJson<CatalogSnapshotResponse>(`/api/store/catalog?${params.toString()}`);
+                if (payload.error) {
+                    throw new Error(payload.error);
                 }
 
-                // ---------------------------------------------------------
-                // Canonical V2 catalog fetch
-                const { products: catalogData, error: catalogError } = await fetchJson<{
-                    products: ProductVariant[];
-                    error?: string;
-                }>(`/api/store/catalog?state=${encodeURIComponent(resolvedStateCode)}`);
-                if (catalogError) {
-                    throw new Error(catalogError);
-                }
+                const nextItems = payload.products || [];
+                setItems(nextItems);
+                setSkuCount(nextItems.reduce((sum, item) => sum + (item.skuIds?.length || 0), 0));
 
-                // Resolve dealer metadata for catalog cards (same context path as PDP)
-                let offerData: any[] = [];
-                let resolvedDealerId: string | null = resolvedContext.dealerId || null;
-                let resolvedDealerDistrict: string | null = null;
-                let resolvedDealerNameLocal: string | null = null;
-                let resolvedStudioIdLocal: string | null = null;
-
-                // Removed TEAM session lock from marketplace to unify experience
-
-                // Fetch dealer info (studio_id, name, district)
-                if (resolvedDealerId) {
-                    const { data: dealerInfo } = await supabase
-                        .from('id_tenants')
-                        .select('studio_id, name')
-                        .eq('id', resolvedDealerId)
-                        .single();
-                    resolvedStudioIdLocal = dealerInfo?.studio_id || null;
-                    resolvedDealerNameLocal = dealerInfo?.name || null;
-                    setResolvedDealerIdState(resolvedDealerId);
-                    setResolvedStudioId(resolvedStudioIdLocal);
-                    setResolvedDealerName(resolvedDealerNameLocal);
-
-                    const { data: dealerLoc } = await supabase
-                        .from('id_locations')
-                        .select('district')
-                        .eq('tenant_id', resolvedDealerId)
-                        .eq('is_active', true)
-                        .order('type', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-
-                    if (dealerLoc?.district) {
-                        resolvedDealerDistrict = dealerLoc.district;
-                        if (!resolvedUserDistrict) {
-                            resolvedUserDistrict = dealerLoc.district;
-                        }
-                    }
-                } else {
-                    setResolvedDealerIdState(null);
-                    setResolvedStudioId(null);
-                    setResolvedDealerName(null);
-                }
-
-                const hasValidDealer = Boolean(resolvedDealerId && isValidUuid(resolvedDealerId));
-
-                if (catalogData && catalogData.length > 0) {
-                    // Get User Location from LocalStorage for Client Side Distance Calc
-                    const userLat: number | null = cachedLocation.lat;
-                    const userLng: number | null = cachedLocation.lng;
-
-                    // Do not gate catalog visibility by dealer-offer coverage.
-                    // Offers affect pricing deltas, not whether a model card appears.
-                    const hasEligibility = false;
-
-                    const mappedItems = catalogData.map((item: any) => ({
-                        ...item,
-                        price: {
-                            ...item.price,
-                            pricingSource:
-                                item.price?.pricingSource ||
-                                `${resolvedUserDistrict || resolvedDealerDistrict || 'ALL'}, ${resolvedStateCode}`,
-                            isEstimate: false,
-                        },
-                        studioName: item.studioName || resolvedDealerNameLocal || resolvedDealerName || undefined,
-                        dealerId: item.dealerId || resolvedDealerId || undefined,
-                        studioCode: item.studioCode || resolvedStudioIdLocal || resolvedStudioId || undefined,
-                        dealerLocation:
-                            item.dealerLocation || resolvedUserDistrict || resolvedDealerDistrict || undefined,
-                    }));
-
-                    let enrichedItems = mappedItems;
-
-                    try {
-                        const primarySkuIds = mappedItems
-                            .map((item: any) => item.availableColors?.[0]?.id || item.skuIds?.[0])
-                            .filter(Boolean) as string[];
-
-                        if (primarySkuIds.length > 0) {
-                            if (hasValidDealer && resolvedDealerId && !disableOffersRef.current) {
-                                try {
-                                    const dealerOffers = await fetchJson<{
-                                        offers: Array<{ vehicle_color_id: string; best_offer: number }>;
-                                        error?: string;
-                                    }>('/api/store/dealer-offers', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                            dealerId: resolvedDealerId,
-                                            stateCode: resolvedStateCode,
-                                            skuIds: primarySkuIds,
-                                        }),
-                                    });
-                                    offerData = ((dealerOffers as any)?.offers || []).map((offer: any) => ({
-                                        ...offer,
-                                        dealer_id: resolvedDealerId,
-                                        dealer_name: resolvedDealerNameLocal || null,
-                                        dealer_location: resolvedDealerDistrict || resolvedUserDistrict || null,
-                                        studio_code: resolvedStudioIdLocal || null,
-                                    }));
-                                } catch (err: unknown) {
-                                    // Abort during navigation/re-render is expected in dev; do not disable offers.
-                                    if (isAbortLikeError(err)) {
-                                        offerData = [];
-                                    } else {
-                                        console.error('[CATALOG] SOT offer fetch error:', getErrorMessage(err) || err);
-                                        disableOffersRef.current = true;
-                                        offerData = [];
-                                    }
-                                }
-                            }
-
-                            // Published SOT: Read directly from state pricing table (canonical)
-                            const { data: priceRows, error: priceError } = await supabase
-                                .from('cat_price_state_mh')
-                                .select(
-                                    `
-                                    sku_id,
-                                    ex_showroom,
-                                    on_road_price,
-                                    rto_total_state,
-                                    ins_gross_premium,
-                                    publish_stage
-                                    `
-                                )
-                                .in('sku_id', primarySkuIds)
-                                .eq('state_code', resolvedStateCode)
-                                .eq('publish_stage', 'PUBLISHED');
-
-                            if (priceError) {
-                                throw priceError;
-                            }
-
-                            const pricingMap = new Map<string, any>();
-                            (priceRows || []).forEach((row: any) => {
-                                const skuId = row?.sku_id;
-                                if (skuId && primarySkuIds.includes(skuId)) {
-                                    const exShowroom = Number(row.ex_showroom) || 0;
-                                    const onRoad = Number(row.on_road_price) || exShowroom;
-                                    pricingMap.set(skuId, {
-                                        ex_showroom: exShowroom,
-                                        rto_total: Number(row.rto_total_state) || 0,
-                                        insurance_total: Number(row.ins_gross_premium) || 0,
-                                        final_on_road: onRoad,
-                                        location: {
-                                            district: resolvedUserDistrict || resolvedDealerDistrict || 'ALL',
-                                            state_code: resolvedStateCode,
-                                        },
-                                    });
-                                }
-                            });
-
-                            enrichedItems = mappedItems.map((item: any) => {
-                                const skuId = item.availableColors?.[0]?.id || item.skuIds?.[0];
-                                const pricing = skuId ? pricingMap.get(skuId) : null;
-                                if (!pricing) return item;
-
-                                const pricingSource = [pricing?.location?.district, pricing?.location?.state_code]
-                                    .filter(Boolean)
-                                    .join(', ');
-
-                                // Find dealer offer from offerData
-                                const dealerOffer = (offerData || []).find((o: any) => o?.vehicle_color_id === skuId);
-                                const offerDelta = Number(dealerOffer?.best_offer || 0);
-
-                                return {
-                                    ...item,
-                                    serverPricing: pricing,
-                                    price: {
-                                        ...item.price,
-                                        exShowroom: pricing?.ex_showroom ?? item.price?.exShowroom,
-                                        onRoad: pricing?.final_on_road ?? item.price?.onRoad,
-                                        offerPrice: (pricing?.final_on_road ?? item.price?.offerPrice) + offerDelta,
-                                        discount: -offerDelta, // Negative = surge, Positive = savings
-                                        pricingSource: pricingSource || item.price?.pricingSource,
-                                        isEstimate: false,
-                                    },
-                                    studioName: dealerOffer?.dealer_name ?? item.studioName,
-                                    dealerId: dealerOffer?.dealer_id ?? item.dealerId,
-                                    // Flattened Dealer Context for UI
-                                    studioCode: dealerOffer?.studio_code ?? item.studioCode,
-                                    dealerLocation: dealerOffer?.dealer_location ?? item.dealerLocation,
-                                };
-                            });
-                        }
-                    } catch (pricingErr) {
-                        if (!isAbortLikeError(pricingErr)) {
-                            console.error('Catalog pricing fetch failed:', getErrorMessage(pricingErr) || pricingErr);
-                        }
-                    }
-
-                    setItems(enrichedItems);
-
-                    updateDebug({
-                        marketOffersCount: (offerData as any[])?.length || 0,
-                    });
-
-                    const { count: skuTotal, error: skuError } = await supabase
-                        .from('cat_skus')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('status', 'ACTIVE');
-                    if (skuError) {
-                        if (!isAbortLikeError(skuError)) {
-                            console.error('Database error fetching sku count:', getErrorMessage(skuError) || skuError);
-                        }
-                    } else {
-                        setSkuCount(skuTotal || 0);
-                    }
-                } else {
-                    setItems([]);
-                }
+                setResolvedDealerIdState(payload.context?.dealerId || null);
+                setResolvedStudioId(payload.context?.studioId || null);
+                setResolvedDealerName(payload.context?.dealerName || null);
             } catch (err: unknown) {
-                // Ignore AbortError - expected in React StrictMode double-render
                 if (isAbortLikeError(err)) {
                     wasAborted = true;
                     return;
                 }
-                console.error('Error fetching catalog:', err);
-                const errAsAny = err as any;
-                if (getErrorMessage(err) && errAsAny?.details) {
-                    console.error('Supabase Error Details:', {
-                        message: getErrorMessage(err),
-                        details: errAsAny.details,
-                        hint: errAsAny.hint,
-                        code: errAsAny.code,
-                    });
-                }
                 setError(err instanceof Error ? getErrorMessage(err) : 'Unknown error');
                 setItems([]);
+                setResolvedDealerIdState(null);
+                setResolvedStudioId(null);
+                setResolvedDealerName(null);
             } finally {
-                // Do NOT release the loading gate when aborted — the second
-                // StrictMode effect invocation will call setIsLoading(true) next
-                // tick, so releasing it now would cause a render with
-                // isLoading=false + items=[] → wrongly shows "Model not found".
                 if (!wasAborted) {
                     setIsLoading(false);
                 }
@@ -427,7 +155,7 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
 
         fetchItems();
         return () => controller.abort();
-    }, [leadId, locationVersion]);
+    }, [leadId, locationVersion, allowStateOnly]);
 
     return {
         items,

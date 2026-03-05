@@ -256,7 +256,9 @@ const buildOptionsFromVariants = (variants: ProductVariant[]): CompareOption[] =
     }));
 
 export function ComparePageClient() {
-    const { items, isLoading } = useSystemCatalogLogic();
+    const searchParams = useSearchParams();
+    const leadId = searchParams.get('leadId');
+    const { items, isLoading } = useSystemCatalogLogic(leadId || undefined);
     const initializedRef = useRef(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [pickerOpen, setPickerOpen] = useState(false);

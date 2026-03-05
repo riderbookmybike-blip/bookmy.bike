@@ -38,10 +38,11 @@ import {
     type LucideIcon,
     ChevronLeft,
 } from 'lucide-react';
-import type { ProductVariant } from '@/types/productMaster';
-import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useSystemCompareLogic } from '@/hooks/useSystemCompareLogic';
-import { flattenObject, formatSpecValue, computeSpecCategories, getDisplayPrice, getEmi } from '@/hooks/compareUtils';
+import { ProductCard } from '@/components/store/desktop/ProductCard';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
+import { flattenObject, formatSpecValue, computeSpecCategories } from '@/hooks/compareUtils';
+import { getEmiFactor } from '@/lib/constants/pricingConstants';
 
 // --- Spec Icon Mapping ---
 const SPEC_ICON_MAP: Record<string, LucideIcon> = {
@@ -94,10 +95,10 @@ const SPEC_ICON_MAP: Record<string, LucideIcon> = {
 export function MobileCompare() {
     const router = useRouter();
 
-    const { activeVariants, isMixedMode, removeVariantBySlug, downpayment, setDownpayment, tenure } =
+    const { activeVariants, isMixedMode, removeVariantBySlug, downpayment, setDownpayment, tenure, setTenure } =
         useSystemCompareLogic();
 
-    const onRemoveVariant = removeVariantBySlug;
+    const { pricingMode, setPricingMode } = useDiscovery();
 
     const allSpecs = useMemo(() => computeSpecCategories(activeVariants), [activeVariants]);
 
@@ -138,9 +139,7 @@ export function MobileCompare() {
 
     const toggleCat = (key: string) => setOpenCats(prev => ({ ...prev, [key]: !prev[key] }));
 
-    // Number of vehicle columns
     const n = activeVariants.length;
-    const colWidth = n <= 2 ? '1fr' : n === 3 ? '1fr' : '1fr';
 
     return (
         <div className="bg-slate-50 text-slate-900 min-h-screen pb-20 font-sans selection:bg-[#F4B000]/30">
@@ -155,13 +154,36 @@ export function MobileCompare() {
                 <div className="flex-1">
                     <h1 className="text-lg font-black uppercase tracking-widest text-[#F4B000]">Compare</h1>
                     <p className="text-[10px] font-semibold text-slate-400 tracking-widest leading-none">
-                        {isMixedMode ? `COMPARING ${n} MODELS` : `${n} VEHICLES SELECTED`}
+                        {isMixedMode ? `COMPARING ${n} MODELS` : `${n} VARIANTS SELECTED`}
                     </p>
                 </div>
             </div>
 
-            {/* ── Mini Cards — side by side ── */}
-            <div className={`grid gap-3 p-4 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {/* ── SECTION 1: Full ProductCards (as-is, same as desktop) ── */}
+            <div className="px-4 pt-4 space-y-4">
+                {activeVariants.map(v => (
+                    <ProductCard
+                        key={v.id}
+                        v={v}
+                        viewMode="grid"
+                        downpayment={downpayment}
+                        tenure={tenure}
+                        onEditDownpayment={() => {}}
+                        pricingMode={pricingMode}
+                        onTogglePricingMode={() => setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))}
+                    />
+                ))}
+            </div>
+
+            {/* ── Divider ── */}
+            <div className="mx-4 my-6 flex items-center gap-3">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Side by Side</span>
+                <div className="flex-1 h-px bg-slate-200" />
+            </div>
+
+            {/* ── SECTION 2: Mini Cards side by side ── */}
+            <div className={`grid gap-3 px-4 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 {activeVariants.map(v => {
                     const price = v.price?.onRoad || v.price?.exShowroom || 0;
                     const emi = Math.round((price - downpayment) * getEmiFactor(tenure));
@@ -170,10 +192,9 @@ export function MobileCompare() {
                             key={v.id}
                             className="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col items-center text-center"
                         >
-                            {/* Remove */}
                             {n > 2 && (
                                 <button
-                                    onClick={() => onRemoveVariant(v.slug)}
+                                    onClick={() => removeVariantBySlug(v.slug)}
                                     className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center border border-red-500/30 z-10"
                                 >
                                     <X size={12} />
@@ -199,8 +220,8 @@ export function MobileCompare() {
                         </div>
                     );
                 })}
-                {/* Add slot */}
-                {n < 4 && (
+                {/* Add slot — only in mixed-mode (cross-model compare) */}
+                {isMixedMode && n < 4 && (
                     <button
                         onClick={() => router.push('/store/catalog')}
                         className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-3 flex flex-col items-center justify-center text-slate-400 hover:border-[#F4B000] hover:text-[#F4B000] transition-colors min-h-[140px]"
@@ -211,8 +232,8 @@ export function MobileCompare() {
                 )}
             </div>
 
-            {/* ── Spec Sections ── */}
-            <div className="px-4 space-y-4">
+            {/* ── SECTION 3: Spec Comparison ── */}
+            <div className="px-4 mt-6 space-y-4">
                 {/* What's Different */}
                 {smartSpecs.diffSpecs.length > 0 && (
                     <div>
@@ -251,11 +272,9 @@ export function MobileCompare() {
                                         <div className="divide-y divide-slate-100">
                                             {cat.specs.map(sp => (
                                                 <div key={sp.key} className="px-4 py-3">
-                                                    {/* Label row */}
                                                     <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
                                                         {sp.label}
                                                     </p>
-                                                    {/* Values side-by-side */}
                                                     <div
                                                         className={`grid gap-2 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}
                                                     >
@@ -329,7 +348,6 @@ export function MobileCompare() {
                                     {isOpen && (
                                         <div className="divide-y divide-slate-100">
                                             {cat.specs.map(sp => {
-                                                // All variants same value here
                                                 const val = formatSpecValue(
                                                     flattenObject(activeVariants[0].specifications || {})[sp.key] ||
                                                         'N/A'

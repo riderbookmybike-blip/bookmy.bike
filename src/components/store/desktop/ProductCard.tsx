@@ -31,6 +31,7 @@ import { Logo } from '@/components/brand/Logo';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
     const fullStars = Math.floor(rating);
@@ -125,6 +126,10 @@ export const ProductCard = ({
     const { isFavorite, toggleFavorite } = useFavorites();
     const { trackEvent } = useAnalytics();
     const { language } = useI18n();
+    const { pricingMode: globalPricingModeCtx, setPricingMode: setGlobalPricingMode } = useDiscovery();
+    // If the parent explicitly wires onTogglePricingMode it is managing mode — use the prop.
+    // Otherwise fall back to the global DiscoveryContext so all cards stay in sync automatically.
+    const resolvedGlobalMode: 'cash' | 'finance' = onTogglePricingMode ? globalPricingMode : globalPricingModeCtx;
     const isSaved = isFavorite(v.id);
     const [selectedColorImage, setSelectedColorImage] = useState<string | null>(v.imageUrl || null);
     const [selectedColorZoom, setSelectedColorZoom] = useState<number | null>(v.zoomFactor || null);
@@ -208,17 +213,19 @@ export const ProductCard = ({
     }, [scaleSpring]);
 
     useEffect(() => {
-        setCardPricingMode(globalPricingMode);
+        setCardPricingMode(resolvedGlobalMode);
         // Trigger flip glow animation
         setIsFlipping(true);
         const t = setTimeout(() => setIsFlipping(false), 900);
         return () => clearTimeout(t);
-    }, [globalPricingMode]);
+    }, [resolvedGlobalMode]);
 
     const handleFlip = (e: React.MouseEvent) => {
         e.stopPropagation();
         const nextMode = cardPricingMode === 'cash' ? 'finance' : 'cash';
         setCardPricingMode(nextMode);
+        // Broadcast to all cards globally
+        setGlobalPricingMode(nextMode);
         if (onTogglePricingMode) onTogglePricingMode();
     };
 
