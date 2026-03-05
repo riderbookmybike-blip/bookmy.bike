@@ -13,16 +13,13 @@ import { getSitemapData } from '@/lib/server/sitemapFetcher';
 import { isAccessoryCompatible } from '@/lib/catalog/accessoryCompatibility';
 import { IDV_DEPRECIATION_RATE } from '@/lib/constants/pricingConstants';
 import {
-    isStoreSotV2Enabled,
     resolveStoreContext,
     resolveModel,
     fetchModelSkus,
     fetchVehicleVariants,
     matchVariant,
     resolveActiveSkus,
-    fetchPublishedPricing,
     getDealerDelta,
-    SKU_SELECT,
     getPdpSnapshot,
     flattenVariantSpecs,
     buildGalleryAssets,
@@ -260,9 +257,6 @@ export default async function Page({ params, searchParams }: Props) {
         location = await resolveLocationByDistrict(resolvedDistrict, stateCode);
     }
 
-    // ── SOT V2 Feature Flag ──────────────────────────────────
-    const SOT_V2 = isStoreSotV2Enabled();
-
     // 2. Fetch Variant + SKUs from V2 catalog tables (via shared SOT layer)
     let modelRow = await resolveModel(resolvedParams.make, resolvedParams.model);
     const modelError = modelRow ? null : { message: 'Model not found' };
@@ -290,25 +284,6 @@ export default async function Page({ params, searchParams }: Props) {
         possibleVariantSlugs,
         resolvedParams.variant
     );
-
-    if (activeVariantSkus.length === 0 && matchedVariantRow?.id) {
-        const { data: variantScopedSkus } = await (supabase as any)
-            .from('cat_skus')
-            .select(SKU_SELECT)
-            .eq('vehicle_variant_id', matchedVariantRow.id)
-            .eq('status', 'ACTIVE');
-
-        activeVariantSkus = (variantScopedSkus || []).map((sku: any) => {
-            const variant = sku.vehicle_variant;
-            return {
-                ...sku,
-                variant,
-                variant_slug: variant?.slug,
-                variant_name: variant?.name,
-                variant_id: variant?.id,
-            };
-        });
-    }
 
     if (activeVariantSkus.length === 0 && normalizedSkus.length > 0) {
         activeVariantSkus = normalizedSkus.filter((sku: any) => {
@@ -354,30 +329,28 @@ export default async function Page({ params, searchParams }: Props) {
 
     let sotPricingSnapshot: any = null;
 
-    // SOT V2 primary path with safe fallback to inline path.
-    if (SOT_V2) {
-        try {
-            const sotSnap = await getPdpSnapshot({
-                make: resolvedParams.make,
-                model: resolvedParams.model,
-                variant: resolvedParams.variant,
-                stateCode,
-            });
+    try {
+        const sotSnap = await getPdpSnapshot({
+            make: resolvedParams.make,
+            model: resolvedParams.model,
+            variant: resolvedParams.variant,
+            stateCode,
+        });
 
-            if (sotSnap?.resolvedVariant) {
-                modelRow = sotSnap.model || modelRow;
-                if (Array.isArray(sotSnap.skus) && sotSnap.skus.length > 0) {
-                    activeVariantSkus = sotSnap.skus as any[];
-                }
-                resolvedVariant = sotSnap.resolvedVariant as CatalogItem;
-                sotPricingSnapshot = sotSnap.pricing;
-                fetchError = null;
-            } else {
-                console.warn('[SOT_V2] Primary snapshot unavailable; using inline PDP fetch path.');
+        if (sotSnap?.resolvedVariant) {
+            modelRow = sotSnap.model || modelRow;
+            if (Array.isArray(sotSnap.skus) && sotSnap.skus.length > 0) {
+                activeVariantSkus = sotSnap.skus as any[];
             }
-        } catch (err) {
-            console.error('[SOT_V2] Primary snapshot failed; using inline PDP fetch path.', err);
+            resolvedVariant = sotSnap.resolvedVariant as CatalogItem;
+            sotPricingSnapshot = sotSnap.pricing;
+            fetchError = null;
+        } else {
+            fetchError = fetchError || { message: 'PDP SOT snapshot unavailable' };
         }
+    } catch (err) {
+        console.error('[PDP_SOT] snapshot fetch failed', err);
+        fetchError = fetchError || { message: 'Failed to load PDP snapshot' };
     }
 
     if (!resolvedVariant) {
@@ -509,25 +482,9 @@ export default async function Page({ params, searchParams }: Props) {
 
     const allSkus = [...(skus || []), ...colorSkus];
 
-    // 2.6 Fetch Prices from canonical state pricing table (via shared SOT layer)
+    // 2.6 Pricing snapshot comes from canonical PDP SOT
     const skuIds = allSkus.map((s: any) => s.id);
-    const { snapshot: inlineSnapshot } = await fetchPublishedPricing(skuIds, stateCode);
-    const publishedPriceData: any = sotPricingSnapshot || inlineSnapshot;
-
-    // SOT V2 shadow comparison (inline vs shared snapshot) for rollout safety.
-    if (SOT_V2 && sotPricingSnapshot && inlineSnapshot) {
-        const sotEx = Number(sotPricingSnapshot?.ex_showroom_price ?? 0);
-        const inlineEx = Number(inlineSnapshot?.ex_showroom_price ?? 0);
-        if (sotEx > 0 && inlineEx > 0 && Math.abs(sotEx - inlineEx) > 1) {
-            console.warn('[SOT_V2 MISMATCH] ex_showroom', {
-                sotEx,
-                inlineEx,
-                make: resolvedParams.make,
-                model: resolvedParams.model,
-                variant: resolvedParams.variant,
-            });
-        }
-    }
+    const publishedPriceData: any = sotPricingSnapshot;
 
     // 3. Fetch RTO/Insurance Rules
     const { data: ruleData } = await supabase
