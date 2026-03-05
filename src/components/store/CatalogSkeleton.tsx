@@ -74,11 +74,38 @@ export const ProductCardSkeleton = ({ viewMode = 'grid' }: SkeletonCardProps) =>
 
 export const CatalogGridSkeleton = ({ count = 6 }: { count?: number }) => {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {Array.from({ length: count }).map((_, i) => (
-                <ProductCardSkeleton key={i} viewMode="grid" />
-            ))}
-        </div>
+        <>
+            {/* Mobile skeleton — compact cards matching CompactProductCard */}
+            <div className="md:hidden flex flex-col gap-4 px-4 pt-2">
+                {Array.from({ length: count }).map((_, i) => (
+                    <div
+                        key={i}
+                        className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse flex gap-3 p-3"
+                    >
+                        {/* Thumbnail */}
+                        <div className="w-28 h-24 bg-slate-200 rounded-xl shrink-0" />
+                        {/* Content */}
+                        <div className="flex-1 space-y-2 py-1">
+                            <div className="h-3 bg-slate-200 rounded w-16" />
+                            <div className="h-4 bg-slate-200 rounded w-28" />
+                            <div className="flex gap-2 mt-2">
+                                <div className="h-5 w-5 bg-slate-200 rounded-full" />
+                                <div className="h-5 w-5 bg-slate-200 rounded-full" />
+                                <div className="h-5 w-5 bg-slate-200 rounded-full" />
+                            </div>
+                            <div className="h-8 bg-slate-200 rounded-xl w-full mt-1" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Desktop skeleton — grid */}
+            <div className="hidden md:grid md:grid-cols-3 gap-6">
+                {Array.from({ length: count }).map((_, i) => (
+                    <ProductCardSkeleton key={i} viewMode="grid" />
+                ))}
+            </div>
+        </>
     );
 };
 
