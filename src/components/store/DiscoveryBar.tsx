@@ -128,45 +128,49 @@ export function DiscoveryBar({
                                 </button>
                             )}
 
-                            {onCompareClick && (
-                                <button
-                                    onClick={onCompareClick}
-                                    title="Compare current items"
-                                    className="mr-2 group relative inline-flex items-center gap-2 px-5 h-10 rounded-2xl bg-slate-900 text-white border border-slate-800 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-black/10"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <div className="relative">
-                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-brand-primary rounded-full animate-pulse" />
-                                            <svg
-                                                width="14"
-                                                height="14"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="3"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            >
-                                                <path d="M16 3h5v5" />
-                                                <path d="M8 3H3v5" />
-                                                <path d="M16 21h5v-5" />
-                                                <path d="M8 21H3v-5" />
-                                                <path d="M15 6l-6 6-6-6" />
-                                                <path d="M9 18l6-6 6 6" />
-                                            </svg>
-                                        </div>
-                                        <span className="text-[9px] font-black uppercase tracking-[0.15em]">
-                                            Compare
-                                        </span>
-                                        {compareCount > 0 && (
-                                            <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-brand-primary text-black text-[9px] font-black rounded-full">
-                                                {compareCount}
-                                            </span>
-                                        )}
-                                    </div>
-                                </button>
-                            )}
-                            <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 h-10 shadow-inner">
+                            <div className="flex items-center p-1 bg-slate-100/80 backdrop-blur-xl rounded-2xl border border-slate-200/40 h-10 shadow-inner">
+                                {onCompareClick && (
+                                    <>
+                                        <button
+                                            onClick={onCompareClick}
+                                            title="Compare current items"
+                                            className="group relative inline-flex items-center gap-2 px-4 h-8 rounded-xl bg-slate-900 text-white border border-slate-800 transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <div className="relative">
+                                                    <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-brand-primary rounded-full animate-pulse" />
+                                                    <svg
+                                                        width="12"
+                                                        height="12"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="3"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    >
+                                                        <path d="M16 3h5v5" />
+                                                        <path d="M8 3H3v5" />
+                                                        <path d="M16 21h5v-5" />
+                                                        <path d="M8 21H3v-5" />
+                                                        <path d="M15 6l-6 6-6-6" />
+                                                        <path d="M9 18l6-6 6 6" />
+                                                    </svg>
+                                                </div>
+                                                <span className="text-[9px] font-black uppercase tracking-widest">
+                                                    Compare
+                                                </span>
+                                                {compareCount > 0 && (
+                                                    <span className="flex items-center justify-center min-w-[16px] h-[16px] px-1 bg-brand-primary text-black text-[9px] font-black rounded-full">
+                                                        {compareCount}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </button>
+                                        <div className="w-px h-4 bg-slate-200/60 mx-1.5" />
+                                    </>
+                                )}
+
                                 {(
                                     [
                                         { id: 'finance', label: 'Finance' },
@@ -175,11 +179,11 @@ export function DiscoveryBar({
                                 ).map(mode => (
                                     <button
                                         key={mode.id}
-                                        onClick={() => onPricingModeChange(mode.id)}
-                                        className={`px-6 h-full rounded-xl text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-300 ${
+                                        onClick={() => onPricingModeChange?.(mode.id)}
+                                        className={`px-5 h-8 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
                                             pricingMode === mode.id
-                                                ? 'bg-[#FFD700] text-black shadow-sm'
-                                                : 'text-slate-500 hover:text-slate-950 hover:bg-slate-200/50'
+                                                ? 'bg-[#F4B000] text-black shadow-[0_2px_8px_rgba(244,176,0,0.25)] scale-[1.02]'
+                                                : 'text-slate-400 hover:text-slate-600'
                                         }`}
                                     >
                                         {mode.label}
