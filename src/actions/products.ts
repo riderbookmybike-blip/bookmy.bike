@@ -1,7 +1,8 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { CACHE_TAGS, tenantTag } from '@/lib/cache/tags';
 
 /**
  * Pricing Ledger Server Actions
@@ -168,6 +169,10 @@ export async function updatePricingLedgerOffer(id: string, amount: number, tenan
         throw error;
     }
 
+    revalidateTag(CACHE_TAGS.catalog_global, 'max');
+    revalidateTag(CACHE_TAGS.catalog, 'max');
+    revalidateTag(CACHE_TAGS.offers, 'max');
+    if (tenantId) revalidateTag(tenantTag(tenantId), 'max');
     revalidatePath('/app/[slug]/dashboard/catalog/pricing');
 }
 
@@ -185,6 +190,8 @@ export async function updatePricingLedgerStatus(id: string, status: string) {
         throw error;
     }
 
+    revalidateTag(CACHE_TAGS.catalog_global, 'max');
+    revalidateTag(CACHE_TAGS.catalog, 'max');
     revalidatePath('/app/[slug]/dashboard/catalog/pricing');
 }
 
@@ -205,6 +212,10 @@ export async function updatePricingLedgerInclusion(id: string, type: string, ten
         throw error;
     }
 
+    revalidateTag(CACHE_TAGS.catalog_global, 'max');
+    revalidateTag(CACHE_TAGS.catalog, 'max');
+    revalidateTag(CACHE_TAGS.offers, 'max');
+    if (tenantId) revalidateTag(tenantTag(tenantId), 'max');
     revalidatePath('/app/[slug]/dashboard/catalog/pricing');
 }
 
@@ -225,5 +236,9 @@ export async function updatePricingLedgerLocalStatus(id: string, isActive: boole
         throw error;
     }
 
+    revalidateTag(CACHE_TAGS.catalog_global, 'max');
+    revalidateTag(CACHE_TAGS.catalog, 'max');
+    revalidateTag(CACHE_TAGS.offers, 'max');
+    if (tenantId) revalidateTag(tenantTag(tenantId), 'max');
     revalidatePath('/app/[slug]/dashboard/catalog/pricing');
 }
