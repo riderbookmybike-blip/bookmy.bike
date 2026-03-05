@@ -325,7 +325,7 @@ export const ModernFooter = () => {
                                     className="flex flex-col rounded-[24px] lg:rounded-[32px] bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] hover:border-brand-primary/20 transition-colors overflow-hidden group/card shadow-2xl shadow-black/80 relative"
                                 >
                                     {/* Card Inner Glow */}
-                                    <div className="absolute inset-0 bg-gradient-to-b from-brand-primary/[0.02] to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+                                    <div className="absolute inset-0 bg-gradient-to-b from-brand-primary/[0.02] to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
                                     <button
                                         onClick={() => toggleSection(section.title)}
