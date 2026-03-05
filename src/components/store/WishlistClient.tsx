@@ -109,6 +109,7 @@ export const WishlistClient = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
     const [selectedCC, setSelectedCC] = useState<string[]>([]);
+
     const [selectedFinishes, setSelectedFinishes] = useState<string[]>([]);
     const [selectedSeatHeight, setSelectedSeatHeight] = useState<string[]>([]);
     const [selectedBrakes, setSelectedBrakes] = useState<string[]>([]);
@@ -196,6 +197,14 @@ export const WishlistClient = () => {
         return items;
     }, [wishlistItems, activeCategory, sortBy, downpayment, searchQuery, selectedMakes, selectedCC]);
 
+    // ── Comparison Logic: All/Top filtered ──
+    const handleCompareAll = () => {
+        // Take first 5 items from filtered list as requested (safety limit)
+        const ids = filteredItems.slice(0, 5).map(v => v.id);
+        if (ids.length === 0) return;
+        router.push(`/store/compare?skus=${ids.join(',')}`);
+    };
+
     // Derive Make Options from Wishlist Items
     const makeOptions = useMemo(() => Array.from(new Set(wishlistItems.map(i => i.make || 'HONDA'))), [wishlistItems]);
 
@@ -259,6 +268,8 @@ export const WishlistClient = () => {
                 onSearchChange={setSearchQuery}
                 pricingMode={pricingMode}
                 onPricingModeChange={mode => setPricingMode(mode as any)}
+                onCompareClick={handleCompareAll}
+                compareCount={filteredItems.length > 5 ? 5 : filteredItems.length}
             />
 
             {/* 2. Mobile Search Bar (Sticky) */}
@@ -266,7 +277,7 @@ export const WishlistClient = () => {
                 className="md:hidden sticky z-[90] py-3 mb-4 bg-slate-50/80 backdrop-blur-2xl border-b border-slate-200/60"
                 style={{ top: 'var(--header-h)' }}
             >
-                <div className="flex items-center gap-3 px-4">
+                <div className="flex items-center gap-3 px-5">
                     <div className="flex-1 flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-slate-200">
                         <Search size={14} className="text-slate-400" />
                         <input
@@ -285,6 +296,28 @@ export const WishlistClient = () => {
                             </button>
                         )}
                     </div>
+                    {/* Mobile Compare Pill */}
+                    <button
+                        onClick={handleCompareAll}
+                        className="flex items-center gap-2 px-4 h-10 rounded-full bg-slate-900 text-white shadow-lg shadow-black/10 active:scale-95 transition-all"
+                    >
+                        <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <path d="M11 5L6 9l5 4" />
+                            <path d="M13 19l5-4-5-4" />
+                            <circle cx="6" cy="9" r="2" fill="white" stroke="none" />
+                            <circle cx="18" cy="15" r="2" fill="white" stroke="none" />
+                        </svg>
+                        <span className="text-[10px] font-black uppercase tracking-wider">Compare</span>
+                    </button>
                 </div>
             </div>
 

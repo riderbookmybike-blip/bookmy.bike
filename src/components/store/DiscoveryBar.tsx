@@ -24,6 +24,10 @@ interface DiscoveryBarProps {
     shareActive?: boolean;
     /** Optional content rendered in the flexible center area (chips, breadcrumbs, etc.) */
     centerContent?: React.ReactNode;
+    /** Optional compare action */
+    onCompareClick?: () => void;
+    /** Count for compare pill */
+    compareCount?: number;
     /**
      * Extra class names applied to the outer <header> element.
      * Use this to control visibility / slide-in animation from the parent.
@@ -52,6 +56,8 @@ export function DiscoveryBar({
     shareLabel = 'Share',
     shareActive = false,
     centerContent,
+    onCompareClick,
+    compareCount = 0,
     className = '',
     disableSticky = false,
 }: DiscoveryBarProps) {
@@ -119,6 +125,45 @@ export function DiscoveryBar({
                                     }`}
                                 >
                                     <Share2 size={13} />
+                                </button>
+                            )}
+
+                            {onCompareClick && (
+                                <button
+                                    onClick={onCompareClick}
+                                    title="Compare current items"
+                                    className="mr-2 group relative inline-flex items-center gap-2 px-5 h-10 rounded-2xl bg-slate-900 text-white border border-slate-800 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-black/10"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative">
+                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-brand-primary rounded-full animate-pulse" />
+                                            <svg
+                                                width="14"
+                                                height="14"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="3"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
+                                                <path d="M16 3h5v5" />
+                                                <path d="M8 3H3v5" />
+                                                <path d="M16 21h5v-5" />
+                                                <path d="M8 21H3v-5" />
+                                                <path d="M15 6l-6 6-6-6" />
+                                                <path d="M9 18l6-6 6 6" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-[9px] font-black uppercase tracking-[0.15em]">
+                                            Compare
+                                        </span>
+                                        {compareCount > 0 && (
+                                            <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-brand-primary text-black text-[9px] font-black rounded-full">
+                                                {compareCount}
+                                            </span>
+                                        )}
+                                    </div>
                                 </button>
                             )}
                             <div className="flex items-center p-1 bg-slate-100/60 rounded-2xl border border-slate-200/40 h-10 shadow-inner">

@@ -39,6 +39,7 @@ import {
     Download,
 } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
+import { OCircleLogo } from '@/components/common/OCircleLogo';
 
 export const ModernFooter = () => {
     const [openSection, setOpenSection] = useState<string | null>(null);
@@ -138,9 +139,9 @@ export const ModernFooter = () => {
             title: 'Support',
             links: [
                 {
-                    label: 'Finance Options',
+                    label: 'Finance Master',
                     href: '/finance',
-                    icon: <Wallet size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                    icon: <Calculator size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
                 {
                     label: 'Insurance Hub',
@@ -148,9 +149,14 @@ export const ModernFooter = () => {
                     icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
                 {
-                    label: 'RTO Rules',
+                    label: 'RTO Master',
                     href: '/rto',
                     icon: <FileText size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
+                    label: 'Price Estimator',
+                    href: '/store/catalog',
+                    icon: <Wallet size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
                 {
                     label: 'Help Center',
@@ -336,7 +342,8 @@ export const ModernFooter = () => {
                 <div className="page-container w-full">
                     {/* Redesigned Minimalist Intro Section */}
                     <div className="mb-4 lg:mb-8 flex flex-col items-center text-center gap-4 lg:gap-6">
-                        <div className="px-5 py-2 rounded-full bg-white/[0.03] border border-white/10 backdrop-blur-xl shadow-[0_0_20px_rgba(255,215,0,0.05)]">
+                        <div className="px-5 py-2 rounded-full bg-white/[0.03] border border-white/10 backdrop-blur-xl shadow-[0_0_20px_rgba(255,215,0,0.05)] flex items-center gap-3">
+                            <OCircleLogo size={12} color="#FFD700" strokeWidth={14} />
                             <span className="text-[10px] font-bold tracking-[0.4em] text-brand-primary">
                                 Powered by The O&apos; Circle
                             </span>
@@ -455,7 +462,7 @@ export const ModernFooter = () => {
                                     {/* Mobile Content */}
                                     {isOpen && (
                                         <div className="lg:hidden">
-                                            <ul className="px-4 pb-4 flex flex-col gap-3">
+                                            <ul className="px-5 pb-4 flex flex-col gap-3">
                                                 {section.links?.map((link: any, i) => (
                                                     <li key={i}>
                                                         <Link
@@ -536,7 +543,11 @@ export const ModernFooter = () => {
                                 <span>
                                     <Heart size={10} className="text-red-500 fill-red-500" />
                                 </span>{' '}
-                                By The O&apos; Circle
+                                By The{' '}
+                                <span className="flex items-center gap-2">
+                                    <OCircleLogo size={14} color="#FFD700" strokeWidth={16} />
+                                    O&apos; Circle
+                                </span>
                             </div>
                         </div>
                     </div>

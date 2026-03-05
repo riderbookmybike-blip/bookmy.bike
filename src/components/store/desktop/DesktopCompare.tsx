@@ -952,143 +952,109 @@ export default function DesktopCompare() {
                                                     );
                                                 })}
                                             </div>
-                                            {/* 4. Downpayment (editable, shared) */}
+                                            {/* 4. Finance (Merged: DP, Tenure, EMI) */}
                                             <div
                                                 className="grid gap-x-6 mt-2"
                                                 style={{
                                                     gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
                                                 }}
                                             >
-                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                                                    <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
-                                                        Downpayment Info
-                                                    </span>
-                                                    <button
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            setEditingDownpayment(true);
-                                                            setDpInputValue(String(downpayment));
-                                                        }}
-                                                        className="ml-auto p-1.5 rounded-lg bg-slate-50 text-slate-300 hover:text-[#F4B000] transition-colors"
-                                                        title="Edit downpayment for all variants"
-                                                    >
-                                                        <Pencil size={10} />
-                                                    </button>
+                                                <div className="px-4 py-4 flex flex-col items-center lg:items-start gap-1 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <div className="flex items-center gap-2">
+                                                        <Percent size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                        <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                            Finance
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-auto">
+                                                        <button
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                setEditingDownpayment(!editingDownpayment);
+                                                                if (!editingDownpayment)
+                                                                    setDpInputValue(String(downpayment));
+                                                                setEditingTenure(false);
+                                                            }}
+                                                            className={`p-1.5 rounded-lg transition-colors ${editingDownpayment ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-slate-50 text-slate-300 hover:text-[#F4B000]'}`}
+                                                            title="Edit Downpayment"
+                                                        >
+                                                            <Pencil size={10} />
+                                                        </button>
+                                                        <button
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                setEditingTenure(!editingTenure);
+                                                                setEditingDownpayment(false);
+                                                            }}
+                                                            className={`p-1.5 rounded-lg transition-colors ${editingTenure ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-slate-50 text-slate-300 hover:text-[#F4B000]'}`}
+                                                            title="Edit Tenure"
+                                                        >
+                                                            <Calendar size={10} />
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                {activeVariants.map((_, vIdx) => (
-                                                    <div
-                                                        key={vIdx}
-                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                                                    >
-                                                        {editingDownpayment ? (
-                                                            <input
-                                                                type="number"
-                                                                value={dpInputValue}
-                                                                onChange={e => setDpInputValue(e.target.value)}
-                                                                onBlur={() => {
-                                                                    const val = parseInt(dpInputValue);
-                                                                    if (!isNaN(val) && val >= 0) setDownpayment(val);
-                                                                    setEditingDownpayment(false);
-                                                                }}
-                                                                onKeyDown={e => {
-                                                                    if (e.key === 'Enter') {
+                                                {activeVariants.map((v, vIdx) => {
+                                                    const emi = getEmi(v, downpayment, tenure);
+                                                    return (
+                                                        <div
+                                                            key={vIdx}
+                                                            className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                        >
+                                                            {editingDownpayment ? (
+                                                                <input
+                                                                    type="number"
+                                                                    value={dpInputValue}
+                                                                    onChange={e => setDpInputValue(e.target.value)}
+                                                                    onBlur={() => {
                                                                         const val = parseInt(dpInputValue);
                                                                         if (!isNaN(val) && val >= 0)
                                                                             setDownpayment(val);
                                                                         setEditingDownpayment(false);
-                                                                    }
-                                                                }}
-                                                                autoFocus={vIdx === 0}
-                                                                className="w-20 text-center text-[11px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
-                                                            />
-                                                        ) : (
-                                                            <span className="text-[11px] font-bold text-slate-600">
-                                                                ₹{downpayment.toLocaleString('en-IN')}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            {/* 5. Tenure (editable, shared) */}
-                                            <div
-                                                className="grid gap-x-6 mt-2"
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
-                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                                                    <Calendar size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
-                                                        Finance Tenure
-                                                    </span>
-                                                    <button
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            setEditingTenure(!editingTenure);
-                                                        }}
-                                                        className="ml-auto p-1.5 rounded-lg bg-slate-50 text-slate-300 hover:text-[#F4B000] transition-colors"
-                                                        title="Change tenure for all variants"
-                                                    >
-                                                        <Pencil size={10} />
-                                                    </button>
-                                                </div>
-                                                {activeVariants.map((_, vIdx) => (
-                                                    <div
-                                                        key={vIdx}
-                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                                                    >
-                                                        {editingTenure ? (
-                                                            <div className="flex gap-1 flex-wrap justify-center">
-                                                                {TENURE_OPTIONS.map(t => (
-                                                                    <button
-                                                                        key={t}
-                                                                        onClick={() => {
-                                                                            setTenure(t);
-                                                                            setEditingTenure(false);
-                                                                        }}
-                                                                        className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all ${
-                                                                            tenure === t
-                                                                                ? 'bg-[#F4B000] text-black'
-                                                                                : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
-                                                                        }`}
-                                                                    >
-                                                                        {t}mo
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-[11px] font-bold text-slate-600">
-                                                                {tenure} months
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            {/* 6. EMI */}
-                                            <div
-                                                className="grid gap-x-6 mt-2"
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
-                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                                                    <CreditCard size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
-                                                        Monthly EMI
-                                                    </span>
-                                                </div>
-                                                {activeVariants.map((v, vIdx) => (
-                                                    <div
-                                                        key={vIdx}
-                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                                                    >
-                                                        <span className="text-[12px] font-black text-[#F4B000]">
-                                                            ₹{getEmi(v, downpayment, tenure).toLocaleString('en-IN')}
-                                                            /mo
-                                                        </span>
-                                                    </div>
-                                                ))}
+                                                                    }}
+                                                                    onKeyDown={e => {
+                                                                        if (e.key === 'Enter') {
+                                                                            const val = parseInt(dpInputValue);
+                                                                            if (!isNaN(val) && val >= 0)
+                                                                                setDownpayment(val);
+                                                                            setEditingDownpayment(false);
+                                                                        }
+                                                                    }}
+                                                                    autoFocus={vIdx === 0}
+                                                                    className="w-24 text-center text-[12px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
+                                                                />
+                                                            ) : editingTenure ? (
+                                                                <div className="flex gap-1 flex-wrap justify-center">
+                                                                    {TENURE_OPTIONS.map(t => (
+                                                                        <button
+                                                                            key={t}
+                                                                            onClick={() => {
+                                                                                setTenure(t);
+                                                                                setEditingTenure(false);
+                                                                            }}
+                                                                            className={`px-2 py-1 rounded-md text-[9px] font-black transition-all ${
+                                                                                tenure === t
+                                                                                    ? 'bg-[#F4B000] text-black'
+                                                                                    : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
+                                                                            }`}
+                                                                        >
+                                                                            {t}m
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col items-center">
+                                                                    <span className="text-[13px] font-black text-[#F4B000]">
+                                                                        ₹{emi.toLocaleString('en-IN')}/mo
+                                                                    </span>
+                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-wider whitespace-nowrap">
+                                                                        ₹{downpayment.toLocaleString('en-IN')} DP ·{' '}
+                                                                        {tenure} MO
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </motion.div>
                                     )}
