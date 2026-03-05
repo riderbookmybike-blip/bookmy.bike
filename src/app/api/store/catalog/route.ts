@@ -7,8 +7,8 @@ import type { ProductVariant } from '@/types/productMaster';
 
 export async function GET(request: NextRequest) {
     try {
-        const leadId = request.nextUrl.searchParams.get('leadId');
-        const dealerId = request.nextUrl.searchParams.get('dealerId');
+        const leadId = request.nextUrl.searchParams.get('leadId') || request.nextUrl.searchParams.get('lead_id');
+        const dealerId = request.nextUrl.searchParams.get('dealerId') || request.nextUrl.searchParams.get('dealer_id');
         const district = request.nextUrl.searchParams.get('district');
         const state = request.nextUrl.searchParams.get('state');
         const studio = request.nextUrl.searchParams.get('studio');
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
             studio: studio || null,
         });
 
-        const stateCode = (context.stateCode || 'MH').trim().toUpperCase();
+        const stateCode = context.stateCode.trim().toUpperCase();
         const products = await fetchCatalogV2(stateCode);
 
         let resolvedStudioId: string | null = null;

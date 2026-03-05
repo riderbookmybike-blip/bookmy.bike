@@ -257,7 +257,7 @@ const buildOptionsFromVariants = (variants: ProductVariant[]): CompareOption[] =
 
 export function ComparePageClient() {
     const searchParams = useSearchParams();
-    const leadId = searchParams.get('leadId');
+    const leadId = searchParams.get('leadId') || searchParams.get('lead_id');
     const { items, isLoading } = useSystemCatalogLogic(leadId || undefined);
     const initializedRef = useRef(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
