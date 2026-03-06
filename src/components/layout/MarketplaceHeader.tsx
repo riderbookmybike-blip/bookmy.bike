@@ -27,8 +27,10 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [isVisible, setIsVisible] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isQuickLeadOpen, setIsQuickLeadOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         const handleScroll = () => {
             setScrolled(window.scrollY > 100);
             setIsVisible(true);
@@ -76,13 +78,13 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             </Link>
                             <Link href="/wishlist" className={`${navBtnClass} relative`}>
                                 <Heart size={20} />
-                                {favorites.length > 0 && (
+                                {mounted && favorites.length > 0 && (
                                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in duration-300">
                                         {favorites.length}
                                     </span>
                                 )}
                             </Link>
-                            {isTeamUser && (
+                            {mounted && isTeamUser && (
                                 <button
                                     type="button"
                                     onClick={() => setIsQuickLeadOpen(true)}

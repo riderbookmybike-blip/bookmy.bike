@@ -708,37 +708,38 @@ export function ProfileDropdown({
 
     return (
         <>
-            {user ? (
-                <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    ref={dropdownRef}
-                    className={`flex h-11 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass} ${hideTrigger ? 'hidden' : ''}`}
-                >
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner">
-                        <img
-                            src={user.user_metadata?.avatar_url || getDefaultAvatar(user.id, displayName)}
-                            alt="Profile"
-                            className="w-full h-full object-cover"
-                        />
-                    </div>
-                    <div className="flex items-center gap-1.5 leading-none">
-                        <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">
-                            HI,
-                        </span>
-                        <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap max-w-[150px] truncate">
-                            {displayName}
-                        </span>
-                    </div>
-                </button>
-            ) : (
-                <button
-                    onClick={onLoginClick}
-                    className={`flex w-10 h-10 rounded-full border items-center justify-center transition-all duration-300 group ${triggerClass}`}
-                    title="Sign In"
-                >
-                    <LucideUser size={20} />
-                </button>
-            )}
+            {mounted &&
+                (user ? (
+                    <button
+                        onClick={() => setIsOpen(!isOpen)}
+                        ref={dropdownRef}
+                        className={`flex h-11 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass} ${hideTrigger ? 'hidden' : ''}`}
+                    >
+                        <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner">
+                            <img
+                                src={user.user_metadata?.avatar_url || getDefaultAvatar(user.id, displayName)}
+                                alt="Profile"
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1.5 leading-none">
+                            <span className="text-[11px] font-black uppercase tracking-widest group-hover:opacity-100 transition-opacity">
+                                HI,
+                            </span>
+                            <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap max-w-[150px] truncate">
+                                {displayName}
+                            </span>
+                        </div>
+                    </button>
+                ) : (
+                    <button
+                        onClick={onLoginClick}
+                        className={`flex w-10 h-10 rounded-full border items-center justify-center transition-all duration-300 group ${triggerClass}`}
+                        title="Sign In"
+                    >
+                        <LucideUser size={20} />
+                    </button>
+                ))}
 
             {/* Full Screen Sidebar Portal */}
             {mounted &&
