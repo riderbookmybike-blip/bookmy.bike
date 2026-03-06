@@ -3,7 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
-import { toAppStorageFormat, isValidPhone } from '@/lib/utils/phoneUtils';
+import { toAppStorageFormat, isValidPhone, toE164IN, getPhoneLookupVariants } from '@/lib/utils/phoneUtils';
 
 const toTitleCase = (str: string) =>
     str
@@ -50,9 +50,10 @@ const buildOrFilter = (filters: Array<string | null>) => filters.filter(Boolean)
 export async function findMemberMatch(input: { phone?: string; panNumber?: string; aadhaarNumber?: string }) {
     const cleanPhone = input.phone ? toAppStorageFormat(input.phone) : undefined;
     const validPhone = cleanPhone && isValidPhone(cleanPhone) ? cleanPhone : undefined;
+    const phoneVariants = getPhoneLookupVariants(validPhone);
 
     const orFilter = buildOrFilter([
-        validPhone ? `primary_phone.eq.${validPhone}` : null,
+        ...phoneVariants.flatMap(p => [`primary_phone.eq.${p}`, `phone.eq.${p}`]),
         input.panNumber ? `pan_number.eq.${input.panNumber}` : null,
         input.aadhaarNumber ? `aadhaar_number.eq.${input.aadhaarNumber}` : null,
     ]);
@@ -166,6 +167,7 @@ export async function createOrLinkMember(input: MemberCreateInput) {
                     id: authId ?? undefined,
                     full_name: toTitleCase(input.fullName),
                     primary_phone: input.phone ? toAppStorageFormat(input.phone) : undefined,
+                    phone: input.phone ? toE164IN(input.phone) : undefined,
                     primary_email: input.email,
                     pan_number: input.panNumber,
                     aadhaar_number: input.aadhaarNumber,

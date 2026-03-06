@@ -426,6 +426,15 @@ export function ProfileDropdown({
         [sortedMemberships]
     );
 
+    const adminMemberships = useMemo(
+        () =>
+            sortedMemberships.filter(m => {
+                const type = String(m.tenants?.type || '').toUpperCase();
+                return type === 'SUPER_ADMIN' || type === 'MARKETPLACE';
+            }),
+        [sortedMemberships]
+    );
+
     const financeMemberships = useMemo(
         () => sortedMemberships.filter(m => String(m.tenants?.type || '').toUpperCase() === 'BANK'),
         [sortedMemberships]
@@ -1039,6 +1048,30 @@ export function ProfileDropdown({
                                                     {businessMode && sortedMemberships.length > 0 && (
                                                         <div className="space-y-3">
                                                             <div className="space-y-1.5">
+                                                                {adminMemberships.length > 0 && (
+                                                                    <div className="space-y-1.5">
+                                                                        <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20">
+                                                                            <div>
+                                                                                <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-300">
+                                                                                    AUMS Console
+                                                                                </p>
+                                                                                <p className="text-xs font-black text-slate-900 dark:text-white">
+                                                                                    {adminMemberships[0]?.tenants
+                                                                                        ?.name || 'AUMS'}
+                                                                                </p>
+                                                                            </div>
+                                                                            <a
+                                                                                href={getWorkspaceDashboardHref(
+                                                                                    adminMemberships[0]?.tenants?.slug
+                                                                                )}
+                                                                                onClick={() => setIsOpen(false)}
+                                                                                className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
+                                                                            >
+                                                                                Open
+                                                                            </a>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                                 <div className="space-y-1.5">
                                                                     <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-500/20">
                                                                         <div>
@@ -1059,6 +1092,37 @@ export function ProfileDropdown({
                                                                                 }
                                                                             </p>
                                                                         </div>
+                                                                        <a
+                                                                            href={
+                                                                                sortedMemberships.find(
+                                                                                    m => m.tenant_id === activeTenantId
+                                                                                )?.tenants?.slug
+                                                                                    ? getWorkspaceDashboardHref(
+                                                                                          sortedMemberships.find(
+                                                                                              m =>
+                                                                                                  m.tenant_id ===
+                                                                                                  activeTenantId
+                                                                                          )?.tenants?.slug
+                                                                                      )
+                                                                                    : '#'
+                                                                            }
+                                                                            onClick={e => {
+                                                                                if (
+                                                                                    !sortedMemberships.find(
+                                                                                        m =>
+                                                                                            m.tenant_id ===
+                                                                                            activeTenantId
+                                                                                    )?.tenants?.slug
+                                                                                ) {
+                                                                                    e.preventDefault();
+                                                                                    return;
+                                                                                }
+                                                                                setIsOpen(false);
+                                                                            }}
+                                                                            className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
+                                                                        >
+                                                                            Open
+                                                                        </a>
                                                                     </div>
                                                                     <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200/70 dark:border-indigo-500/20">
                                                                         <div>
@@ -1081,6 +1145,39 @@ export function ProfileDropdown({
                                                                                 }
                                                                             </p>
                                                                         </div>
+                                                                        <a
+                                                                            href={
+                                                                                sortedMemberships.find(
+                                                                                    m =>
+                                                                                        m.tenant_id ===
+                                                                                        effectiveActiveFinanceId
+                                                                                )?.tenants?.slug
+                                                                                    ? getWorkspaceDashboardHref(
+                                                                                          sortedMemberships.find(
+                                                                                              m =>
+                                                                                                  m.tenant_id ===
+                                                                                                  effectiveActiveFinanceId
+                                                                                          )?.tenants?.slug
+                                                                                      )
+                                                                                    : '#'
+                                                                            }
+                                                                            onClick={e => {
+                                                                                if (
+                                                                                    !sortedMemberships.find(
+                                                                                        m =>
+                                                                                            m.tenant_id ===
+                                                                                            effectiveActiveFinanceId
+                                                                                    )?.tenants?.slug
+                                                                                ) {
+                                                                                    e.preventDefault();
+                                                                                    return;
+                                                                                }
+                                                                                setIsOpen(false);
+                                                                            }}
+                                                                            className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
+                                                                        >
+                                                                            Open
+                                                                        </a>
                                                                     </div>
                                                                 </div>
 
@@ -1110,14 +1207,29 @@ export function ProfileDropdown({
                                                                                     <p className="text-xs font-black text-slate-900 dark:text-white truncate">
                                                                                         {d.name}
                                                                                     </p>
-                                                                                    <button
-                                                                                        onClick={() =>
-                                                                                            setDealerContext(d.id)
-                                                                                        }
-                                                                                        className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
-                                                                                    >
-                                                                                        Activate
-                                                                                    </button>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <button
+                                                                                            onClick={() =>
+                                                                                                setDealerContext(d.id)
+                                                                                            }
+                                                                                            className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
+                                                                                        >
+                                                                                            Activate
+                                                                                        </button>
+                                                                                        {'slug' in d && d.slug ? (
+                                                                                            <a
+                                                                                                href={getWorkspaceDashboardHref(
+                                                                                                    d.slug
+                                                                                                )}
+                                                                                                onClick={() =>
+                                                                                                    setIsOpen(false)
+                                                                                                }
+                                                                                                className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-[8px] font-black uppercase tracking-wider"
+                                                                                            >
+                                                                                                Open
+                                                                                            </a>
+                                                                                        ) : null}
+                                                                                    </div>
                                                                                 </div>
                                                                             ))}
                                                                     </div>
@@ -1134,14 +1246,29 @@ export function ProfileDropdown({
                                                                                 <p className="text-xs font-black text-slate-900 dark:text-white truncate">
                                                                                     {f.name}
                                                                                 </p>
-                                                                                <button
-                                                                                    onClick={() =>
-                                                                                        handleFinanceLogin(f.id)
-                                                                                    }
-                                                                                    className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
-                                                                                >
-                                                                                    Activate
-                                                                                </button>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <button
+                                                                                        onClick={() =>
+                                                                                            handleFinanceLogin(f.id)
+                                                                                        }
+                                                                                        className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
+                                                                                    >
+                                                                                        Activate
+                                                                                    </button>
+                                                                                    {f.slug ? (
+                                                                                        <a
+                                                                                            href={getWorkspaceDashboardHref(
+                                                                                                f.slug
+                                                                                            )}
+                                                                                            onClick={() =>
+                                                                                                setIsOpen(false)
+                                                                                            }
+                                                                                            className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-[8px] font-black uppercase tracking-wider"
+                                                                                        >
+                                                                                            Open
+                                                                                        </a>
+                                                                                    ) : null}
+                                                                                </div>
                                                                             </div>
                                                                         ))}
                                                             </div>

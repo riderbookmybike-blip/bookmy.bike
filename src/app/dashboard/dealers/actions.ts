@@ -3,6 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { getPhoneLookupVariants } from '@/lib/utils/phoneUtils';
 
 /**
  * Lookup member by phone number - used for dealer onboarding verification
@@ -14,17 +15,16 @@ export async function lookupMemberByPhone(phone: string): Promise<{
     error?: string;
 }> {
     try {
-        // Normalize Phone (support 10-digit, 12-digit with 91, or +91 format)
-        const rawPhone = phone.replace(/\D/g, '');
-        let formattedPhone = rawPhone;
-        if (rawPhone.length === 10) {
-            formattedPhone = `91${rawPhone}`;
+        const phoneVariants = getPhoneLookupVariants(phone);
+        if (phoneVariants.length === 0) {
+            return { found: false, error: 'Invalid phone number' };
         }
+        const phoneFilter = phoneVariants.flatMap(p => [`primary_phone.eq.${p}`, `phone.eq.${p}`]).join(',');
 
         const { data: member, error } = await adminClient
             .from('id_members')
             .select('id, full_name, primary_phone')
-            .or(`primary_phone.eq.${rawPhone},primary_phone.eq.${formattedPhone},primary_phone.eq.+${formattedPhone}`)
+            .or(phoneFilter)
             .order('created_at', { ascending: true })
             .limit(1)
             .maybeSingle();

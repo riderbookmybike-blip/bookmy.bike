@@ -24,3 +24,14 @@ export const isValidPhone = (input: string | null | undefined): boolean => {
 export const toAppStorageFormat = (input: string | null | undefined): string => {
     return normalizePhone(input);
 };
+
+export const toE164IN = (input: string | null | undefined): string => {
+    const clean = normalizePhone(input);
+    return clean.length === 10 ? `+91${clean}` : '';
+};
+
+export const getPhoneLookupVariants = (input: string | null | undefined): string[] => {
+    const clean = normalizePhone(input);
+    if (clean.length !== 10) return [];
+    return [clean, `91${clean}`, `+91${clean}`];
+};

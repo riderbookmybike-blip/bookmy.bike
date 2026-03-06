@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { generateDisplayId } from '@/lib/displayId';
 import { FinanceRoutingTable, FinanceRoutingConfig, RoutingStrategy } from '@/types/bankPartner';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { getPhoneLookupVariants } from '@/lib/utils/phoneUtils';
 
 export async function onboardBank(formData: { bankName: string; website: string; adminPhone: string; slug?: string }) {
     // console.log('[OnboardBank] Starting onboarding for:', formData.bankName);
@@ -54,18 +55,17 @@ export async function onboardBank(formData: { bankName: string; website: string;
 
         // console.log('[OnboardBank] Tenant created:', tenant.id);
 
-        // 3. Normalize Phone
-        const rawPhone = formData.adminPhone.replace(/\D/g, '');
-        let formattedPhone = rawPhone;
-        if (rawPhone.length === 10) {
-            formattedPhone = `91${rawPhone}`;
+        const phoneVariants = getPhoneLookupVariants(formData.adminPhone);
+        if (phoneVariants.length === 0) {
+            throw new Error('Invalid phone number');
         }
+        const phoneFilter = phoneVariants.flatMap(p => [`primary_phone.eq.${p}`, `phone.eq.${p}`]).join(',');
 
         // 4. Resolve Existing Member
         const { data: existingMember } = await adminClient
             .from('id_members')
             .select('id')
-            .or(`primary_phone.eq.${rawPhone},primary_phone.eq.${formattedPhone},primary_phone.eq.+${formattedPhone}`)
+            .or(phoneFilter)
             .order('created_at', { ascending: true })
             .limit(1)
             .maybeSingle();
