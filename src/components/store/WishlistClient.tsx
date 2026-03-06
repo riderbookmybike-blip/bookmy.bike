@@ -26,7 +26,7 @@ const FilterGroup = ({
     const [isOpen, setIsOpen] = useState(true);
 
     return (
-        <div className="store-page-shell">
+        <div>
             <div className="flex items-center justify-between">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
@@ -261,7 +261,7 @@ export const WishlistClient = () => {
     }
 
     return (
-        <div>
+        <div className="store-page-shell">
             <DiscoveryBar
                 onFilterClick={() => setIsFilterOpen(true)}
                 searchQuery={searchQuery}
@@ -297,14 +297,14 @@ export const WishlistClient = () => {
                         )}
                     </div>
                     {/* Mobile Integrated Console (Compare + Pricing) */}
-                    <div className="flex items-center p-1 bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-lg h-11 shrink-0 overflow-hidden">
+                    <div className="flex items-center p-0.5 bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-md h-10 shrink-0 overflow-hidden">
                         <button
                             onClick={handleCompareAll}
-                            className="group relative flex items-center gap-2 px-4 h-9 rounded-xl bg-slate-900 text-white active:scale-95 transition-all z-10"
+                            className="group relative flex items-center gap-1.5 px-3 h-8.5 rounded-xl bg-slate-900 text-white active:scale-95 transition-all z-10"
                         >
                             <svg
-                                width="12"
-                                height="12"
+                                width="10"
+                                height="10"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
@@ -319,37 +319,37 @@ export const WishlistClient = () => {
                                 <path d="M10 10l4 4" />
                                 <path d="M14 10l-4 4" />
                             </svg>
-                            <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
+                            <span className="text-[8px] font-black uppercase tracking-widest whitespace-nowrap">
                                 Compare
                             </span>
                             {filteredItems.length > 0 && (
                                 <motion.span
                                     initial={{ scale: 0 }}
                                     animate={{ scale: 1 }}
-                                    className="flex items-center justify-center min-w-[15px] h-[15px] bg-brand-primary text-black text-[8px] font-black rounded-full"
+                                    className="flex items-center justify-center min-w-[14px] h-[14px] bg-brand-primary text-black text-[7px] font-black rounded-full"
                                 >
                                     {filteredItems.length > 5 ? 5 : filteredItems.length}
                                 </motion.span>
                             )}
                         </button>
 
-                        <div className="w-px h-5 bg-slate-200/60 mx-1.5" />
+                        <div className="w-px h-4 bg-slate-200/60 mx-1" />
 
                         <div className="relative flex items-center bg-slate-100/50 rounded-xl p-0.5">
                             {/* Sliding Highlighter */}
                             <motion.div
-                                className="absolute h-8 bg-[#F4B000] rounded-lg shadow-sm"
+                                className="absolute h-7.5 bg-[#F4B000] rounded-lg shadow-sm"
                                 initial={false}
                                 animate={{
-                                    x: pricingMode === 'finance' ? 0 : 50,
+                                    x: pricingMode === 'finance' ? 0 : 42,
                                 }}
                                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                                style={{ width: '50px' }}
+                                style={{ width: '42px' }}
                             />
 
                             <button
                                 onClick={() => setPricingMode('finance')}
-                                className={`relative z-10 w-[50px] h-8 flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-colors ${
+                                className={`relative z-10 w-[42px] h-7.5 flex items-center justify-center text-[8px] font-black uppercase tracking-widest transition-colors ${
                                     pricingMode === 'finance' ? 'text-black' : 'text-slate-400'
                                 }`}
                             >
@@ -357,7 +357,7 @@ export const WishlistClient = () => {
                             </button>
                             <button
                                 onClick={() => setPricingMode('cash')}
-                                className={`relative z-10 w-[50px] h-8 flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-colors ${
+                                className={`relative z-10 w-[42px] h-7.5 flex items-center justify-center text-[8px] font-black uppercase tracking-widest transition-colors ${
                                     pricingMode === 'cash' ? 'text-black' : 'text-slate-400'
                                 }`}
                             >

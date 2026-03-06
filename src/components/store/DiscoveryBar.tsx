@@ -134,12 +134,12 @@ export function DiscoveryBar({
                                     <>
                                         <button
                                             onClick={onCompareClick}
-                                            className="group relative flex items-center gap-2 px-5 h-9 rounded-xl bg-slate-900 text-white transition-all duration-300 hover:bg-black active:scale-[0.98] shadow-sm z-10"
+                                            className="group relative flex items-center gap-1.5 px-3.5 h-8.5 rounded-xl bg-slate-900 text-white transition-all duration-300 hover:bg-black active:scale-[0.98] shadow-sm z-10"
                                         >
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1.5">
                                                 <svg
-                                                    width="12"
-                                                    height="12"
+                                                    width="11"
+                                                    height="11"
                                                     viewBox="0 0 24 24"
                                                     fill="none"
                                                     stroke="currentColor"
@@ -155,21 +155,21 @@ export function DiscoveryBar({
                                                     <path d="M10 10l4 4" />
                                                     <path d="M14 10l-4 4" />
                                                 </svg>
-                                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                                <span className="text-[9px] font-black uppercase tracking-widest">
                                                     Compare
                                                 </span>
                                                 {compareCount > 0 && (
                                                     <motion.span
                                                         initial={{ scale: 0 }}
                                                         animate={{ scale: 1 }}
-                                                        className="flex items-center justify-center min-w-[18px] h-[18px] bg-brand-primary text-black text-[9px] font-black rounded-full"
+                                                        className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[8px] font-black rounded-full"
                                                     >
                                                         {compareCount}
                                                     </motion.span>
                                                 )}
                                             </div>
                                         </button>
-                                        <div className="w-px h-5 bg-slate-200/60 mx-2" />
+                                        <div className="w-px h-4 bg-slate-200/60 mx-1.5" />
                                     </>
                                 )}
 
