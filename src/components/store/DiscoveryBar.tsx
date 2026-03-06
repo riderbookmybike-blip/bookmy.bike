@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Menu, Search, Share2, X } from 'lucide-react';
+import { Menu, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 
 interface DiscoveryBarProps {
     /** Called when the hamburger/filter button is clicked */
@@ -65,7 +66,7 @@ export function DiscoveryBar({
     return (
         <header
             className={`hidden md:block ${disableSticky ? '' : 'sticky z-[90] mb-6'} py-0 transition-all duration-700 ease-in-out ${className}`}
-            style={disableSticky ? {} : { top: 'var(--header-h)', marginTop: '20px' }}
+            style={disableSticky ? {} : { top: 'var(--header-h)' }}
         >
             <div className="w-full">
                 <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
@@ -80,31 +81,20 @@ export function DiscoveryBar({
 
                         {/* ── Search bar ── */}
                         <div className="flex-none min-w-[240px] lg:min-w-[320px]">
-                            <div className="relative flex items-center gap-3 w-full bg-slate-100/30 hover:bg-slate-100/50 border border-slate-200/30 rounded-2xl px-4 h-10 transition-all duration-500 group focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-primary/5 focus-within:border-brand-primary/10">
-                                <Search
-                                    size={16}
-                                    className="text-slate-400 group-focus-within:text-brand-primary group-focus-within:scale-110 transition-all duration-300"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="FIND YOUR NEXT MACHINE..."
+                            <div
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter' && searchQuery.trim()) {
+                                        onSearchSubmit?.(searchQuery.trim());
+                                    }
+                                }}
+                            >
+                                <StoreSearchBar
                                     value={searchQuery}
-                                    onChange={e => onSearchChange(e.target.value)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter' && searchQuery.trim()) {
-                                            onSearchSubmit?.(searchQuery.trim());
-                                        }
-                                    }}
-                                    className="flex-1 min-w-0 bg-transparent text-[10px] font-black tracking-[0.2em] uppercase focus:outline-none placeholder:text-slate-400/50"
+                                    placeholder="FIND YOUR NEXT MACHINE..."
+                                    onChange={onSearchChange}
+                                    onClear={() => onSearchChange('')}
+                                    className="h-10 bg-slate-100/30 hover:bg-slate-100/50 border-slate-200/30 rounded-2xl transition-all duration-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-primary/5 focus-within:border-brand-primary/10"
                                 />
-                                {searchQuery && (
-                                    <button
-                                        onClick={() => onSearchChange('')}
-                                        className="flex items-center justify-center w-6 h-6 rounded-full text-slate-300 hover:text-slate-900 hover:bg-slate-200/50 transition-all"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                )}
                             </div>
                         </div>
 

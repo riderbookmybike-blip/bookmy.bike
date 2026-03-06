@@ -50,6 +50,7 @@ import { getSelfMemberLocation, updateSelfMemberLocation } from '@/actions/membe
 import { resolveIpLocation } from '@/actions/resolveIpLocation';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
+import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
@@ -1295,24 +1296,13 @@ export const DesktopCatalog = ({
                         >
                             <SlidersHorizontal size={16} strokeWidth={2} />
                         </button>
-                        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-full bg-white/80 border border-slate-200">
-                            <Search size={14} className="text-slate-400 shrink-0" />
-                            <input
-                                type="text"
-                                placeholder="Search brand, product, variant"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                className="flex-1 min-w-0 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300"
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery('')}
-                                    className="flex items-center text-slate-400 hover:text-slate-900 shrink-0"
-                                >
-                                    <X size={14} />
-                                </button>
-                            )}
-                        </div>
+                        <StoreSearchBar
+                            value={searchQuery}
+                            placeholder="Search brand, product, variant"
+                            onChange={setSearchQuery}
+                            onClear={() => setSearchQuery('')}
+                            className="flex-1"
+                        />
                     </div>
                 </div>
 
