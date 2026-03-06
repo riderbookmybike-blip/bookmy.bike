@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Menu, Search, Share2, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface DiscoveryBarProps {
     /** Called when the hamburger/filter button is clicked */
@@ -128,64 +129,82 @@ export function DiscoveryBar({
                                 </button>
                             )}
 
-                            <div className="flex items-center gap-2">
+                            <div className="relative flex items-center p-1 bg-white/60 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.03)] h-11 overflow-hidden">
                                 {onCompareClick && (
-                                    <button
-                                        onClick={onCompareClick}
-                                        title="Compare current items"
-                                        className="group relative inline-flex items-center gap-2 px-6 h-10 rounded-2xl bg-slate-900 text-white border border-slate-800 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-black/10"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <div className="relative">
-                                                <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-brand-primary rounded-full animate-pulse" />
+                                    <>
+                                        <button
+                                            onClick={onCompareClick}
+                                            className="group relative flex items-center gap-2 px-5 h-9 rounded-xl bg-slate-900 text-white transition-all duration-300 hover:bg-black active:scale-[0.98] shadow-sm z-10"
+                                        >
+                                            <div className="flex items-center gap-2">
                                                 <svg
                                                     width="12"
                                                     height="12"
                                                     viewBox="0 0 24 24"
                                                     fill="none"
                                                     stroke="currentColor"
-                                                    strokeWidth="3"
+                                                    strokeWidth="3.5"
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"
+                                                    className="group-hover:rotate-180 transition-transform duration-500"
                                                 >
                                                     <path d="M16 3h5v5" />
                                                     <path d="M8 3H3v5" />
                                                     <path d="M16 21h5v-5" />
                                                     <path d="M8 21H3v-5" />
-                                                    <path d="M15 6l-6 6-6-6" />
-                                                    <path d="M9 18l6-6 6 6" />
+                                                    <path d="M10 10l4 4" />
+                                                    <path d="M14 10l-4 4" />
                                                 </svg>
-                                            </div>
-                                            <span className="text-[10px] font-black uppercase tracking-widest">
-                                                Compare
-                                            </span>
-                                            {compareCount > 0 && (
-                                                <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-brand-primary text-black text-[10px] font-bold rounded-full">
-                                                    {compareCount}
+                                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                                    Compare
                                                 </span>
-                                            )}
-                                        </div>
-                                    </button>
+                                                {compareCount > 0 && (
+                                                    <motion.span
+                                                        initial={{ scale: 0 }}
+                                                        animate={{ scale: 1 }}
+                                                        className="flex items-center justify-center min-w-[18px] h-[18px] bg-brand-primary text-black text-[9px] font-black rounded-full"
+                                                    >
+                                                        {compareCount}
+                                                    </motion.span>
+                                                )}
+                                            </div>
+                                        </button>
+                                        <div className="w-px h-5 bg-slate-200/60 mx-2" />
+                                    </>
                                 )}
 
-                                {(
-                                    [
-                                        { id: 'finance', label: 'Finance' },
-                                        { id: 'cash', label: 'Cash' },
-                                    ] as const
-                                ).map(mode => (
-                                    <button
-                                        key={mode.id}
-                                        onClick={() => onPricingModeChange?.(mode.id)}
-                                        className={`px-8 h-10 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] transition-all duration-300 border ${
-                                            pricingMode === mode.id
-                                                ? 'bg-[#F4B000] text-black border-[#F4B000] shadow-[0_4px_12px_rgba(244,176,0,0.3)] scale-[1.05]'
-                                                : 'bg-white text-slate-500 border-slate-200/60 hover:border-slate-300 hover:text-slate-900 shadow-sm'
-                                        }`}
-                                    >
-                                        {mode.label}
-                                    </button>
-                                ))}
+                                <div className="relative flex items-center">
+                                    {/* Sliding Highlighter */}
+                                    <motion.div
+                                        className="absolute h-9 bg-[#F4B000] rounded-xl shadow-[0_2px_10px_rgba(244,176,0,0.25)]"
+                                        initial={false}
+                                        animate={{
+                                            x: pricingMode === 'finance' ? 0 : 76,
+                                            width: pricingMode === 'finance' ? 76 : 64,
+                                        }}
+                                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                                    />
+
+                                    {(
+                                        [
+                                            { id: 'finance', label: 'Finance', w: 76 },
+                                            { id: 'cash', label: 'Cash', w: 64 },
+                                        ] as const
+                                    ).map(mode => (
+                                        <button
+                                            key={mode.id}
+                                            onClick={() => onPricingModeChange?.(mode.id)}
+                                            className={`relative z-10 flex items-center justify-center h-9 transition-colors duration-300 text-[10px] font-black uppercase tracking-widest ${
+                                                pricingMode === mode.id
+                                                    ? 'text-black'
+                                                    : 'text-slate-400 hover:text-slate-600'
+                                            }`}
+                                            style={{ width: mode.w }}
+                                        >
+                                            {mode.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>

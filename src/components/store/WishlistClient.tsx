@@ -26,7 +26,7 @@ const FilterGroup = ({
     const [isOpen, setIsOpen] = useState(true);
 
     return (
-        <div className="page-container pt-0 pb-10 md:pb-16">
+        <div className="store-page-shell">
             <div className="flex items-center justify-between">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
@@ -261,7 +261,7 @@ export const WishlistClient = () => {
     }
 
     return (
-        <div className="page-container pt-0 pb-10 md:pb-16">
+        <div>
             <DiscoveryBar
                 onFilterClick={() => setIsFilterOpen(true)}
                 searchQuery={searchQuery}
@@ -296,10 +296,11 @@ export const WishlistClient = () => {
                             </button>
                         )}
                     </div>
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+                    {/* Mobile Integrated Console (Compare + Pricing) */}
+                    <div className="flex items-center p-1 bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-lg h-11 shrink-0 overflow-hidden">
                         <button
                             onClick={handleCompareAll}
-                            className="group relative inline-flex items-center gap-2 px-4 h-9 rounded-2xl bg-slate-900 text-white shadow-lg shadow-black/10 active:scale-95 transition-all border border-slate-800 shrink-0"
+                            className="group relative flex items-center gap-2 px-4 h-9 rounded-xl bg-slate-900 text-white active:scale-95 transition-all z-10"
                         >
                             <svg
                                 width="12"
@@ -307,7 +308,7 @@ export const WishlistClient = () => {
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                strokeWidth="3"
+                                strokeWidth="3.5"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                             >
@@ -315,40 +316,54 @@ export const WishlistClient = () => {
                                 <path d="M8 3H3v5" />
                                 <path d="M16 21h5v-5" />
                                 <path d="M8 21H3v-5" />
-                                <path d="M15 6l-6 6-6-6" />
-                                <path d="M9 18l6-6 6 6" />
+                                <path d="M10 10l4 4" />
+                                <path d="M14 10l-4 4" />
                             </svg>
                             <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
                                 Compare
                             </span>
                             {filteredItems.length > 0 && (
-                                <span className="flex items-center justify-center min-w-[15px] h-[15px] px-1 bg-brand-primary text-black text-[8px] font-bold rounded-full">
+                                <motion.span
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className="flex items-center justify-center min-w-[15px] h-[15px] bg-brand-primary text-black text-[8px] font-black rounded-full"
+                                >
                                     {filteredItems.length > 5 ? 5 : filteredItems.length}
-                                </span>
+                                </motion.span>
                             )}
                         </button>
 
-                        <button
-                            onClick={() => setPricingMode('finance')}
-                            className={`px-4 h-9 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${
-                                pricingMode === 'finance'
-                                    ? 'bg-[#F4B000] text-black border-[#F4B000] shadow-md scale-105'
-                                    : 'bg-white text-slate-400 border-slate-200'
-                            }`}
-                        >
-                            Fin
-                        </button>
+                        <div className="w-px h-5 bg-slate-200/60 mx-1.5" />
 
-                        <button
-                            onClick={() => setPricingMode('cash')}
-                            className={`px-4 h-9 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${
-                                pricingMode === 'cash'
-                                    ? 'bg-[#F4B000] text-black border-[#F4B000] shadow-md scale-105'
-                                    : 'bg-white text-slate-400 border-slate-200'
-                            }`}
-                        >
-                            Cash
-                        </button>
+                        <div className="relative flex items-center bg-slate-100/50 rounded-xl p-0.5">
+                            {/* Sliding Highlighter */}
+                            <motion.div
+                                className="absolute h-8 bg-[#F4B000] rounded-lg shadow-sm"
+                                initial={false}
+                                animate={{
+                                    x: pricingMode === 'finance' ? 0 : 50,
+                                }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                                style={{ width: '50px' }}
+                            />
+
+                            <button
+                                onClick={() => setPricingMode('finance')}
+                                className={`relative z-10 w-[50px] h-8 flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-colors ${
+                                    pricingMode === 'finance' ? 'text-black' : 'text-slate-400'
+                                }`}
+                            >
+                                Fin
+                            </button>
+                            <button
+                                onClick={() => setPricingMode('cash')}
+                                className={`relative z-10 w-[50px] h-8 flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-colors ${
+                                    pricingMode === 'cash' ? 'text-black' : 'text-slate-400'
+                                }`}
+                            >
+                                Cash
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
