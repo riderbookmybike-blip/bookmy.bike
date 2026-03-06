@@ -19,16 +19,9 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import { toast } from 'sonner';
 import AddBrandModal from '@/components/catalog/AddBrandModal';
 import { getHierarchyLabels } from '@/lib/constants/catalogLabels';
+import { createClient } from '@/lib/supabase/client';
 // Types from neutral file (no 'use server' boundary)
 import type { ProductType, CatalogModel, CatalogSku, CatalogColour } from '@/types/catalog';
-// Lean page-level actions — no heavy pricing chain (see catalogPageActions.ts)
-import {
-    listBrandsForPage,
-    listVariantsForPage,
-    listSkusByModelForPage,
-    listColoursForPage,
-    getFullProductTreeForPage,
-} from '@/actions/catalog/catalogPageActions';
 
 // V2 Step Components
 import BrandStepV2 from './steps/BrandStepV2';
@@ -67,6 +60,7 @@ export default function StudioV2Page() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { tenantSlug, tenantType } = useTenant();
+    const supabase = createClient();
 
     // Redirect dealers
     useEffect(() => {
@@ -97,6 +91,78 @@ export default function StudioV2Page() {
     // ── Brand Modal ──
     const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState<any>(null);
+
+    const listBrandsForPage = useCallback(async () => {
+        const { data, error } = await supabase.from('cat_brands').select('*').eq('is_active', true).order('name');
+        if (error) throw new Error(`listBrands failed: ${error.message}`);
+        return data || [];
+    }, [supabase]);
+
+    const listVariantsForPage = useCallback(
+        async (modelId: string, productType: ProductType) => {
+            const tableByType = {
+                VEHICLE: 'cat_variants_vehicle',
+                ACCESSORY: 'cat_variants_accessory',
+                SERVICE: 'cat_variants_service',
+            } as const;
+            const tableName = tableByType[productType] || 'cat_variants_vehicle';
+            const { data, error } = await supabase
+                .from(tableName)
+                .select('*')
+                .eq('model_id', modelId)
+                .order('position');
+            if (error) throw new Error(`listVariants failed: ${error.message}`);
+            return data || [];
+        },
+        [supabase]
+    );
+
+    const listColoursForPage = useCallback(
+        async (modelId: string): Promise<CatalogColour[]> => {
+            const { data, error } = await supabase
+                .from('cat_colours')
+                .select('*')
+                .eq('model_id', modelId)
+                .order('position');
+            if (error) throw new Error(`listColours failed: ${error.message}`);
+            return (data || []) as CatalogColour[];
+        },
+        [supabase]
+    );
+
+    const listSkusByModelForPage = useCallback(
+        async (modelId: string): Promise<CatalogSku[]> => {
+            const { data, error } = await supabase
+                .from('cat_skus')
+                .select('*')
+                .eq('model_id', modelId)
+                .order('position');
+            if (error) throw new Error(`listSkusByModel failed: ${error.message}`);
+            return (data || []) as CatalogSku[];
+        },
+        [supabase]
+    );
+
+    const getFullProductTreeForPage = useCallback(
+        async (modelId: string) => {
+            const { data: model, error: modelErr } = await supabase
+                .from('cat_models')
+                .select('*')
+                .eq('id', modelId)
+                .maybeSingle();
+            if (modelErr) throw new Error(`getModel failed: ${modelErr.message}`);
+            if (!model) return null;
+
+            const { data: brand } = await supabase.from('cat_brands').select('*').eq('id', model.brand_id).single();
+            const [variants, colours, allSkus] = await Promise.all([
+                listVariantsForPage(modelId, model.product_type as ProductType),
+                listColoursForPage(modelId),
+                listSkusByModelForPage(modelId),
+            ]);
+            return { model: model as CatalogModel, brand, variants, colours, allSkus };
+        },
+        [supabase, listColoursForPage, listSkusByModelForPage, listVariantsForPage]
+    );
 
     // ── URL sync ──
     const updateStepUrl = useCallback(
@@ -131,7 +197,7 @@ export default function StudioV2Page() {
     // ── Initial Data Load ──
     useEffect(() => {
         fetchInitialData();
-    }, []);
+    }, [listBrandsForPage, getFullProductTreeForPage]);
 
     const fetchInitialData = async () => {
         setIsLoading(true);
