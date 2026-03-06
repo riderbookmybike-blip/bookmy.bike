@@ -785,14 +785,8 @@ export default function DesktopCompare() {
                                     onEditDownpayment={openDpEdit}
                                     pricingMode={pricingMode}
                                     onTogglePricingMode={() => setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))}
-                                    variantCount={activeVariants.length}
                                     isInCompare={!removedVariantIds.has(v.id)}
                                     onCompare={() => removeVariant(v.id)}
-                                    onExplore={() => {
-                                        const make = (v.make || '').toLowerCase();
-                                        const model = (v.modelSlug || v.model || '').toLowerCase();
-                                        router.push(`/store/compare/${make}/${model}`);
-                                    }}
                                 />
                             ))}
                         </div>

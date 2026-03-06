@@ -139,68 +139,14 @@ export const ModernFooter = () => {
             title: 'Support',
             links: [
                 {
-                    label: 'Finance Master',
-                    href: '/finance',
-                    icon: <Calculator size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                },
-                {
-                    label: 'Insurance Hub',
-                    href: '/insurance',
-                    icon: <ShieldCheck size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                },
-                {
-                    label: 'RTO Master',
-                    href: '/rto',
-                    icon: <FileText size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                },
-                {
-                    label: 'Price Estimator',
-                    href: '/store/catalog',
-                    icon: <Wallet size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                },
-                {
-                    label: 'Help Center',
-                    href: '/help',
-                    icon: <HelpCircle size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                },
-            ],
-            nested: [
-                {
-                    brand: 'Useful Links',
-                    icon: <Link2 size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    links: [
-                        { label: 'Compare Bikes', href: '/store/compare' },
-                        { label: 'EMI Calculator', href: '/store/catalog#emi' },
-                        { label: 'Book Test Ride', href: '/store/catalog' },
-                        { label: 'Nearest Dealer', href: '/store/catalog#dealers' },
-                        { label: 'Bike Valuation', href: '/store/valuation' },
-                    ],
-                },
-                {
-                    brand: 'Download Apps',
+                    label: 'Useful Apps',
+                    href: '/store/apps',
                     icon: <Download size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                    links: [
-                        {
-                            label: 'Parivahan (RC / DL)',
-                            href: 'https://play.google.com/store/apps/details?id=com.parivahan.digital',
-                        },
-                        {
-                            label: 'L&T Finance',
-                            href: 'https://play.google.com/store/apps/details?id=com.ltfs.ltfsapp',
-                        },
-                        {
-                            label: 'Shriram One',
-                            href: 'https://play.google.com/store/apps/details?id=com.shriramgroup.shriramone',
-                        },
-                        {
-                            label: 'VAHAN (Vehicle Info)',
-                            href: 'https://play.google.com/store/apps/details?id=com.nic.vahan.eService.mvl',
-                        },
-                        {
-                            label: 'DigiLocker (Docs)',
-                            href: 'https://play.google.com/store/apps/details?id=com.digilocker.android',
-                        },
-                    ],
+                },
+                {
+                    label: 'Track your RC',
+                    href: 'https://vahan.parivahan.gov.in/vahanservice/vahan/ui/usermgmt/login.xhtml',
+                    icon: <Info size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
             ],
         },

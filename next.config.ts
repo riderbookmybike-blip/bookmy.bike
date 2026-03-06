@@ -40,6 +40,18 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
                 hostname: 'cdni.iconscout.com',
             },
+            {
+                protocol: 'https',
+                hostname: 'upload.wikimedia.org',
+            },
+            {
+                protocol: 'https',
+                hostname: '**.parivahan.gov.in',
+            },
+            {
+                protocol: 'https',
+                hostname: '**.shriramfinance.in',
+            },
         ],
     },
     async headers() {

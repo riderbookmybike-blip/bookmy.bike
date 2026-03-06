@@ -16,7 +16,7 @@ import { MobileViewBanner } from '@/components/layout/MobileViewBanner';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
-    const { userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded, tenantConfig } = useTenant();
+    const { tenantType, userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded, tenantConfig } = useTenant();
     const pathname = usePathname();
     const { device, hydrated: breakpointHydrated } = useBreakpoint();
     const [isSidebarPinned, setIsSidebarPinned] = useState(false);
@@ -39,7 +39,10 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     const primaryColor = tenantConfig?.brand?.primaryColor;
 
     // Intelligent Role Fallback (Only fallback within safe boundaries)
-    const effectiveRole = activeRole || userRole || (isAppRoute ? undefined : 'BMB_USER');
+    const effectiveRole =
+        tenantType === 'AUMS'
+            ? userRole || activeRole || (isAppRoute ? undefined : 'BMB_USER')
+            : activeRole || userRole || (isAppRoute ? undefined : 'BMB_USER');
 
     // DETECT REGULAR USER (BMB Visitors)
     // Fix: check based on effectiveRole to avoid flicker during initial undefined state

@@ -197,7 +197,7 @@ export default function TeamTab({
             const response = await fetch('/api/finance-partners/lookup-member', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: lookupMobile }),
+                body: JSON.stringify({ phone: lookupMobile, tenantId }),
             });
 
             if (!response.ok) {

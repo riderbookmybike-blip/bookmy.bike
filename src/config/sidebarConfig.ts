@@ -535,8 +535,8 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 href: '/dashboard/finance-partners',
                 icon: Landmark,
                 color: 'text-emerald-600',
-                allowedTenants: ['MARKETPLACE', 'AUMS'],
-                allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
+                allowedTenants: ['AUMS'],
+                allowedRoles: ['SUPER_ADMIN'],
             },
             {
                 title: 'System Users',
