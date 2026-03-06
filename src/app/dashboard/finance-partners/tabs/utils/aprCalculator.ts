@@ -246,6 +246,20 @@ export function calculateAPR(scheme: BankScheme, assetValue: number = 100000, te
     // 3. Initial Calculation
     let metrics = calculateMetrics(loanAmount);
 
+    // Optional mode for APR comparison views: force customer downpayment to zero by financing upfront charges.
+    // This converges toward: loan ~= assetValue + upfrontCharges
+    const forceZeroDownpayment = true;
+    if (forceZeroDownpayment) {
+        for (let i = 0; i < 8; i++) {
+            metrics = calculateMetrics(loanAmount);
+            const targetLoan = Math.min(capLoan, assetValue + metrics.upfrontCharges);
+            const delta = targetLoan - loanAmount;
+            loanAmount = targetLoan;
+            if (Math.abs(delta) < 1) break;
+        }
+        metrics = calculateMetrics(loanAmount);
+    }
+
     // 4. Constraint Check: Downpayment cannot be negative
     // If Downpayment < 0, it means Loan > (Asset + UpfrontConstraints)
     // We must reduce the loan amount to make Downpayment == 0
@@ -283,7 +297,7 @@ export function calculateAPR(scheme: BankScheme, assetValue: number = 100000, te
     const upfrontCharges = metrics.upfrontCharges;
     const fundedCharges = metrics.fundedCharges;
     const finalGrossLoan = metrics.grossLoan;
-    const downpayment = Math.max(0, metrics.downpayment); // Clamp for display safety
+    const downpayment = forceZeroDownpayment ? 0 : Math.max(0, metrics.downpayment); // Clamp for display safety
 
     // 5. Calculate EMI
     const monthlyRate = scheme.interestRate / 12 / 100;

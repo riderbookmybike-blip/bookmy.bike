@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -12,6 +12,8 @@ import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { DiscoveryBar } from '@/components/store/DiscoveryBar';
 import { CatalogGridSkeleton } from '@/components/store/CatalogSkeleton';
 import { buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
+import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
+import { FilterChip } from '@/components/store/ui/FilterChip';
 
 // Filter Group Component (Extracted)
 const FilterGroup = ({
@@ -22,6 +24,7 @@ const FilterGroup = ({
     onReset,
     showReset = false,
     allVisible = false,
+    lightMotion = false,
 }: any) => {
     const [isOpen, setIsOpen] = useState(true);
 
@@ -48,14 +51,9 @@ const FilterGroup = ({
                 )}
             </div>
 
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                    >
+            {lightMotion ? (
+                isOpen ? (
+                    <div className="overflow-hidden">
                         <div className="flex flex-wrap gap-2 pt-2">
                             {options.map((opt: string) => {
                                 const isSelected = selectedValues.includes(opt);
@@ -74,9 +72,39 @@ const FilterGroup = ({
                                 );
                             })}
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    </div>
+                ) : null
+            ) : (
+                <AnimatePresence>
+                    {isOpen && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                {options.map((opt: string) => {
+                                    const isSelected = selectedValues.includes(opt);
+                                    return (
+                                        <button
+                                            key={opt}
+                                            onClick={() => onToggle(opt)}
+                                            className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all duration-300 ${
+                                                isSelected
+                                                    ? 'bg-slate-900 text-white border-slate-900 shadow-lg'
+                                                    : 'bg-transparent border-slate-200 text-slate-500 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            {opt}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            )}
         </div>
     );
 };
@@ -114,6 +142,30 @@ export const WishlistClient = () => {
     const [selectedSeatHeight, setSelectedSeatHeight] = useState<string[]>([]);
     const [selectedBrakes, setSelectedBrakes] = useState<string[]>([]);
     const [selectedWheels, setSelectedWheels] = useState<string[]>([]);
+    const [isMobileViewport, setIsMobileViewport] = useState(false);
+    const [isReducedMotion, setIsReducedMotion] = useState(false);
+    const [isPending, startTransition] = useTransition();
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const mobileQuery = window.matchMedia('(max-width: 768px)');
+        const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+        const sync = () => {
+            setIsMobileViewport(mobileQuery.matches);
+            setIsReducedMotion(reducedMotionQuery.matches);
+        };
+        sync();
+
+        mobileQuery.addEventListener('change', sync);
+        reducedMotionQuery.addEventListener('change', sync);
+        return () => {
+            mobileQuery.removeEventListener('change', sync);
+            reducedMotionQuery.removeEventListener('change', sync);
+        };
+    }, []);
+
+    const lightMotion = isMobileViewport || isReducedMotion;
 
     // Advanced Filter Helpers
     const toggleFilter = (setter: any, value: string) => {
@@ -202,26 +254,13 @@ export const WishlistClient = () => {
         // Take first 5 items from filtered list as requested (safety limit)
         const ids = filteredItems.slice(0, 5).map(v => v.id);
         if (ids.length === 0) return;
-        router.push(`/store/compare?skus=${ids.join(',')}`);
+        startTransition(() => {
+            router.push(`/store/compare?skus=${ids.join(',')}`);
+        });
     };
 
     // Derive Make Options from Wishlist Items
     const makeOptions = useMemo(() => Array.from(new Set(wishlistItems.map(i => i.make || 'HONDA'))), [wishlistItems]);
-
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-            },
-        },
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 },
-    };
 
     if (isLoading) {
         return <CatalogGridSkeleton count={4} />;
@@ -277,94 +316,60 @@ export const WishlistClient = () => {
                 className="md:hidden sticky z-[90] py-3 mb-4 bg-slate-50/80 backdrop-blur-2xl border-b border-slate-200/60"
                 style={{ top: 'var(--header-h)' }}
             >
-                <div className="flex items-center gap-3 px-5">
-                    <div className="flex-1 flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-slate-200">
-                        <Search size={14} className="text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search saved rides..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="flex-1 bg-transparent text-[11px] font-black tracking-widest uppercase focus:outline-none placeholder:text-slate-300"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="flex items-center text-slate-400 hover:text-slate-900"
-                            >
-                                <X size={14} />
-                            </button>
-                        )}
-                    </div>
-                    {/* Mobile Integrated Console (Compare + Pricing) */}
-                    <div className="flex items-center p-0.5 bg-white/70 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-md h-10 shrink-0 overflow-hidden">
-                        <button
-                            onClick={handleCompareAll}
-                            className="group relative flex items-center gap-1.5 px-3 h-8.5 rounded-xl bg-slate-900 text-white active:scale-95 transition-all z-10"
+                <div className="flex items-center gap-3 px-5 min-w-0">
+                    {/* Search bar */}
+                    <StoreSearchBar
+                        value={searchQuery}
+                        placeholder="Search saved rides..."
+                        onChange={setSearchQuery}
+                        onClear={() => setSearchQuery('')}
+                        className="flex-1 min-w-0"
+                    />
+                    {/* Compare pill — right */}
+                    <button
+                        onClick={handleCompareAll}
+                        disabled={isPending}
+                        className={`relative shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-2xl bg-slate-900 text-white active:scale-95 transition-all ${
+                            isPending ? 'opacity-60 pointer-events-none' : ''
+                        }`}
+                    >
+                        <svg
+                            width="11"
+                            height="11"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                         >
-                            <svg
-                                width="10"
-                                height="10"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="3.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            >
-                                <path d="M16 3h5v5" />
-                                <path d="M8 3H3v5" />
-                                <path d="M16 21h5v-5" />
-                                <path d="M8 21H3v-5" />
-                                <path d="M10 10l4 4" />
-                                <path d="M14 10l-4 4" />
-                            </svg>
-                            <span className="text-[8px] font-black uppercase tracking-widest whitespace-nowrap">
-                                Compare
+                            <path d="M16 3h5v5" />
+                            <path d="M8 3H3v5" />
+                            <path d="M16 21h5v-5" />
+                            <path d="M8 21H3v-5" />
+                            <path d="M10 10l4 4" />
+                            <path d="M14 10l-4 4" />
+                        </svg>
+                        <span className="text-[9px] font-black uppercase tracking-widest">Compare</span>
+                        {filteredItems.length > 0 && (
+                            <span className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[7px] font-black rounded-full px-0.5">
+                                {filteredItems.length > 5 ? 5 : filteredItems.length}
                             </span>
-                            {filteredItems.length > 0 && (
-                                <motion.span
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="flex items-center justify-center min-w-[14px] h-[14px] bg-brand-primary text-black text-[7px] font-black rounded-full"
-                                >
-                                    {filteredItems.length > 5 ? 5 : filteredItems.length}
-                                </motion.span>
-                            )}
-                        </button>
-
-                        <div className="w-px h-4 bg-slate-200/60 mx-1" />
-
-                        <div className="relative flex items-center bg-slate-100/50 rounded-xl p-0.5">
-                            {/* Sliding Highlighter */}
-                            <motion.div
-                                className="absolute h-7.5 bg-[#F4B000] rounded-lg shadow-sm"
-                                initial={false}
-                                animate={{
-                                    x: pricingMode === 'finance' ? 0 : 42,
-                                }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                                style={{ width: '42px' }}
-                            />
-
-                            <button
-                                onClick={() => setPricingMode('finance')}
-                                className={`relative z-10 w-[42px] h-7.5 flex items-center justify-center text-[8px] font-black uppercase tracking-widest transition-colors ${
-                                    pricingMode === 'finance' ? 'text-black' : 'text-slate-400'
-                                }`}
-                            >
-                                Fin
-                            </button>
-                            <button
-                                onClick={() => setPricingMode('cash')}
-                                className={`relative z-10 w-[42px] h-7.5 flex items-center justify-center text-[8px] font-black uppercase tracking-widest transition-colors ${
-                                    pricingMode === 'cash' ? 'text-black' : 'text-slate-400'
-                                }`}
-                            >
-                                Cash
-                            </button>
-                        </div>
-                    </div>
+                        )}
+                    </button>
+                    {/* Filter pill — right */}
+                    <button
+                        onClick={() => setIsFilterOpen(true)}
+                        className="relative shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-2xl border border-slate-200 bg-white/80 text-slate-700 active:scale-95 transition-all"
+                    >
+                        <Menu size={13} />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Filter</span>
+                        {activeFilterCount > 0 && (
+                            <span className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[7px] font-black rounded-full px-0.5">
+                                {activeFilterCount}
+                            </span>
+                        )}
+                    </button>
                 </div>
             </div>
 
@@ -378,44 +383,19 @@ export const WishlistClient = () => {
                 selectedMakes.length > 0) && (
                 <div className="flex flex-wrap items-center gap-2 mb-6">
                     {searchQuery && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-full">
-                            <span className="text-[9px] font-black uppercase text-slate-400">Search</span>
-                            <span className="text-[10px] font-bold text-slate-900">{searchQuery}</span>
-                            <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-900">
-                                <X size={10} />
-                            </button>
-                        </div>
+                        <FilterChip label="Search" value={searchQuery} onRemove={() => setSearchQuery('')} />
                     )}
                     {/* Make Chips */}
                     {selectedMakes.map((m: string) => (
-                        <div
+                        <FilterChip
                             key={m}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-full"
-                        >
-                            <span className="text-[9px] font-black uppercase text-slate-400">Brand</span>
-                            <span className="text-[10px] font-bold text-slate-900">{m}</span>
-                            <button
-                                onClick={() => toggleFilter(setSelectedMakes, m)}
-                                className="text-slate-400 hover:text-slate-900"
-                            >
-                                <X size={10} />
-                            </button>
-                        </div>
+                            label="Brand"
+                            value={m}
+                            onRemove={() => toggleFilter(setSelectedMakes, m)}
+                        />
                     ))}
                     {selectedCC.map((cc: string) => (
-                        <div
-                            key={cc}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-full"
-                        >
-                            <span className="text-[9px] font-black uppercase text-slate-400">CC</span>
-                            <span className="text-[10px] font-bold text-slate-900">{cc}</span>
-                            <button
-                                onClick={() => toggleFilter(setSelectedCC, cc)}
-                                className="text-slate-400 hover:text-slate-900"
-                            >
-                                <X size={10} />
-                            </button>
-                        </div>
+                        <FilterChip key={cc} label="CC" value={cc} onRemove={() => toggleFilter(setSelectedCC, cc)} />
                     ))}
                     <button
                         onClick={clearAll}
@@ -427,21 +407,11 @@ export const WishlistClient = () => {
             )}
 
             {/* Grid Section - Using filteredItems */}
-            <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[50vh]"
-            >
-                <AnimatePresence mode="popLayout">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[50vh]">
+                <AnimatePresence mode={lightMotion ? 'wait' : 'popLayout'}>
                     {filteredItems.length > 0 ? (
                         filteredItems.map(v => (
-                            <motion.div
-                                key={v.id}
-                                layout
-                                variants={itemVariants}
-                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            >
+                            <div key={v.id} className="transition-transform duration-200">
                                 <ProductCard
                                     v={v}
                                     viewMode="grid"
@@ -454,21 +424,19 @@ export const WishlistClient = () => {
                                     variantCount={2}
                                     onExplore={() => {
                                         const url = buildVariantExplorerUrl(v.make || '', v.model || '');
-                                        router.push(url);
+                                        startTransition(() => {
+                                            router.push(url);
+                                        });
                                     }}
                                     onExplodeColors={() => {
                                         const key = `${v.make}::${v.model}::${v.variant}`;
                                         setExplodedVariant(prev => (prev === key ? null : key));
                                     }}
                                 />
-                            </motion.div>
+                            </div>
                         ))
                     ) : (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="col-span-full flex flex-col items-center justify-center py-20 text-center"
-                        >
+                        <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
                             <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
                                 <Search size={24} className="text-slate-400" />
                             </div>
@@ -481,10 +449,10 @@ export const WishlistClient = () => {
                             >
                                 Clear Filters
                             </button>
-                        </motion.div>
+                        </div>
                     )}
                 </AnimatePresence>
-            </motion.div>
+            </div>
 
             {/* In case some items are not in catalog anymore */}
             {wishlistItems.length < favorites.length && (
@@ -535,19 +503,13 @@ export const WishlistClient = () => {
                                         <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
                                             Search
                                         </h4>
-                                        <div className="relative">
-                                            <Search
-                                                className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"
-                                                size={20}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="SEARCH FAVOURITES..."
-                                                value={searchQuery}
-                                                onChange={e => setSearchQuery(e.target.value)}
-                                                className="w-full py-5 pl-16 pr-6 bg-slate-50 border border-slate-200 rounded-3xl text-[11px] font-black tracking-widest uppercase focus:ring-2 focus:ring-[#F4B000]/20"
-                                            />
-                                        </div>
+                                        <StoreSearchBar
+                                            value={searchQuery}
+                                            placeholder="SEARCH FAVOURITES..."
+                                            onChange={setSearchQuery}
+                                            onClear={() => setSearchQuery('')}
+                                            className="w-full py-3"
+                                        />
                                     </div>
                                 </div>
 
@@ -560,6 +522,7 @@ export const WishlistClient = () => {
                                         onToggle={(v: string) => toggleFilter(setSelectedMakes, v)}
                                         onReset={() => setSelectedMakes(makeOptions)}
                                         showReset={selectedMakes.length < makeOptions.length}
+                                        lightMotion={lightMotion}
                                     />
                                     <FilterGroup
                                         title="Engine Displacement"
@@ -568,6 +531,7 @@ export const WishlistClient = () => {
                                         onToggle={(v: string) => toggleFilter(setSelectedCC, v)}
                                         onReset={() => setSelectedCC([])}
                                         showReset
+                                        lightMotion={lightMotion}
                                     />
                                     {/* Additional Groups for Finish/Brake if we had data, simplified for wishlist */}
                                 </div>
@@ -584,7 +548,7 @@ export const WishlistClient = () => {
                             </button>
                             <button
                                 onClick={() => setIsFilterOpen(false)}
-                                className="px-12 py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-[#F4B000]/20 hover:scale-105 transition-all"
+                                className="px-12 py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-[#F4B000]/20 hover:scale-105 active:scale-95 transition-all"
                             >
                                 Show {filteredItems.length} Results
                             </button>

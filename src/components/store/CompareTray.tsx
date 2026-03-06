@@ -4,6 +4,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, GitCompareArrows, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
+import { StoreButton } from '@/components/store/ui/StoreButton';
 
 export interface CompareItem {
     id: string;
@@ -34,7 +35,7 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
                 className="fixed bottom-0 inset-x-0 z-[100] pb-[env(safe-area-inset-bottom)]"
             >
                 <div className="mx-auto max-w-3xl px-4 pb-4">
-                    <div className="bg-white/95 backdrop-blur-2xl rounded-2xl border border-slate-200 shadow-[0_-8px_40px_rgba(0,0,0,0.15)],0,0,0.5)] p-3">
+                    <div className="bg-white/95 backdrop-blur-2xl rounded-2xl border border-slate-200 shadow-[0_-8px_40px_rgba(0,0,0,0.15)] p-3">
                         <div className="flex items-center gap-3">
                             {/* Icon + Label */}
                             <div className="flex items-center gap-2 pl-2 shrink-0">
@@ -101,20 +102,18 @@ export const CompareTray: React.FC<CompareTrayProps> = ({ items, onRemove, onCom
 
                             {/* Actions */}
                             <div className="flex items-center gap-2 shrink-0">
-                                <button
+                                <StoreButton
                                     onClick={onClear}
-                                    className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-colors px-2"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="px-2 text-slate-400 hover:text-red-500"
                                 >
                                     Clear
-                                </button>
-                                <button
-                                    onClick={onCompareNow}
-                                    disabled={items.length < 1}
-                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#F4B000] text-black text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[#F4B000]/20 hover:shadow-[#F4B000]/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
+                                </StoreButton>
+                                <StoreButton onClick={onCompareNow} disabled={items.length < 1}>
                                     Compare
                                     <ArrowRight size={14} />
-                                </button>
+                                </StoreButton>
                             </div>
                         </div>
                     </div>
