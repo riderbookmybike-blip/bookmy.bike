@@ -37,13 +37,25 @@ import {
     Bike as BikeIcon,
     Star,
     Download,
+    UserPlus,
 } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
+import { useTenant } from '@/lib/tenant/tenantContext';
+import { QuickLeadMiniModal } from '@/components/leads/QuickLeadMiniModal';
 
 export const ModernFooter = () => {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [openNested, setOpenNested] = useState<string | null>(null);
+    const [isQuickLeadOpen, setIsQuickLeadOpen] = useState(false);
+    const { userRole, memberships } = useTenant();
+    const hasActiveTeamMembership = (memberships || []).some(m => {
+        if (String(m?.status || '').toUpperCase() !== 'ACTIVE') return false;
+        const type = String(m?.tenants?.type || '').toUpperCase();
+        return type === 'DEALER' || type === 'DEALERSHIP' || type === 'BANK' || type === 'SUPER_ADMIN';
+    });
+    const isTeamRole = Boolean(userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
+    const isTeamUser = hasActiveTeamMembership || isTeamRole;
 
     const toggleSection = (title: string) => setOpenSection(openSection === title ? null : title);
     const toggleNested = (brand: string) => setOpenNested(openNested === brand ? null : brand);
@@ -148,6 +160,15 @@ export const ModernFooter = () => {
                     href: 'https://vahan.parivahan.gov.in/vahanservice/vahan/ui/usermgmt/login.xhtml',
                     icon: <Info size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
+                ...(isTeamUser
+                    ? [
+                          {
+                              label: 'Create Quick Lead',
+                              onClick: () => setIsQuickLeadOpen(true),
+                              icon: <UserPlus size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                          },
+                      ]
+                    : []),
             ],
         },
 
@@ -358,13 +379,28 @@ export const ModernFooter = () => {
 
                                                 return (
                                                     <li key={i}>
-                                                        <Link
-                                                            href={link.href}
-                                                            className={`flex items-center gap-3 text-[12px] font-semibold tracking-wide transition-all duration-300 ${hoverClass}`}
-                                                        >
-                                                            {link.icon && <span className="shrink-0">{link.icon}</span>}
-                                                            <span>{link.label}</span>
-                                                        </Link>
+                                                        {'onClick' in link ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={link.onClick}
+                                                                className={`flex items-center gap-3 text-[12px] font-semibold tracking-wide transition-all duration-300 ${hoverClass}`}
+                                                            >
+                                                                {link.icon && (
+                                                                    <span className="shrink-0">{link.icon}</span>
+                                                                )}
+                                                                <span>{link.label}</span>
+                                                            </button>
+                                                        ) : (
+                                                            <Link
+                                                                href={link.href}
+                                                                className={`flex items-center gap-3 text-[12px] font-semibold tracking-wide transition-all duration-300 ${hoverClass}`}
+                                                            >
+                                                                {link.icon && (
+                                                                    <span className="shrink-0">{link.icon}</span>
+                                                                )}
+                                                                <span>{link.label}</span>
+                                                            </Link>
+                                                        )}
                                                     </li>
                                                 );
                                             })}
@@ -411,13 +447,28 @@ export const ModernFooter = () => {
                                             <ul className="px-5 pb-4 flex flex-col gap-3">
                                                 {section.links?.map((link: any, i) => (
                                                     <li key={i}>
-                                                        <Link
-                                                            href={link.href}
-                                                            className="flex items-center gap-3 text-xs font-semibold text-white/70 active:text-brand-primary"
-                                                        >
-                                                            {link.icon && <span className="shrink-0">{link.icon}</span>}
-                                                            <span>{link.label}</span>
-                                                        </Link>
+                                                        {'onClick' in link ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={link.onClick}
+                                                                className="flex items-center gap-3 text-xs font-semibold text-white/70 active:text-brand-primary"
+                                                            >
+                                                                {link.icon && (
+                                                                    <span className="shrink-0">{link.icon}</span>
+                                                                )}
+                                                                <span>{link.label}</span>
+                                                            </button>
+                                                        ) : (
+                                                            <Link
+                                                                href={link.href}
+                                                                className="flex items-center gap-3 text-xs font-semibold text-white/70 active:text-brand-primary"
+                                                            >
+                                                                {link.icon && (
+                                                                    <span className="shrink-0">{link.icon}</span>
+                                                                )}
+                                                                <span>{link.label}</span>
+                                                            </Link>
+                                                        )}
                                                     </li>
                                                 ))}
                                                 {section.nested?.map((brandObj, i) => (
@@ -499,6 +550,7 @@ export const ModernFooter = () => {
                     </div>
                 </div>
             </div>
+            <QuickLeadMiniModal isOpen={isQuickLeadOpen} onClose={() => setIsQuickLeadOpen(false)} />
         </footer>
     );
 };

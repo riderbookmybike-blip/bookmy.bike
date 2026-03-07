@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Heart, Home as HomeIcon, Menu, UserPlus } from 'lucide-react';
+import { Heart, Home as HomeIcon, Menu } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
 import { AppHeaderShell } from './AppHeaderShell';
 import { ProfileDropdown } from './ProfileDropdown';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
-import { useTenant } from '@/lib/tenant/tenantContext';
-import { QuickLeadMiniModal } from '@/components/leads/QuickLeadMiniModal';
 
 interface MarketplaceHeaderProps {
     onLoginClick: () => void;
@@ -15,18 +13,9 @@ interface MarketplaceHeaderProps {
 
 export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const { favorites } = useFavorites();
-    const { userRole, memberships } = useTenant();
-    const hasActiveTeamMembership = (memberships || []).some(m => {
-        if (String(m?.status || '').toUpperCase() !== 'ACTIVE') return false;
-        const type = String(m?.tenants?.type || '').toUpperCase();
-        return type === 'DEALER' || type === 'DEALERSHIP' || type === 'BANK' || type === 'SUPER_ADMIN';
-    });
-    const isTeamRole = Boolean(userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
-    const isTeamUser = hasActiveTeamMembership || isTeamRole;
     const [scrolled, setScrolled] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [isQuickLeadOpen, setIsQuickLeadOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -84,16 +73,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                     </span>
                                 )}
                             </Link>
-                            {mounted && isTeamUser && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsQuickLeadOpen(true)}
-                                    className={navBtnClass}
-                                    aria-label="Quick lead"
-                                >
-                                    <UserPlus size={20} />
-                                </button>
-                            )}
                             <ProfileDropdown
                                 onLoginClick={onLoginClick}
                                 scrolled={false}
@@ -128,7 +107,6 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                     </div>
                 }
             />
-            <QuickLeadMiniModal isOpen={isQuickLeadOpen} onClose={() => setIsQuickLeadOpen(false)} />
         </>
     );
 };

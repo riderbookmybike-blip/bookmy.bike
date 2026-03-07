@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Share2, SlidersHorizontal, LayoutGrid, List, Zap, Banknote } from 'lucide-react';
+import { SlidersHorizontal, LayoutGrid, List, Zap, Banknote } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 
@@ -47,7 +47,6 @@ export function DiscoveryBar({
     /* shared styles for pill buttons */
     const pillBase =
         'inline-flex items-center gap-1.5 px-4 h-10 rounded-2xl border transition-all duration-300 text-[9px] font-black uppercase tracking-[0.1em]';
-    const pillActive = 'bg-[#F4B000] text-black border-[#F4B000] shadow-[0_2px_10px_rgba(244,176,0,0.25)]';
     const pillInactive =
         'bg-white/70 text-slate-500 border-[#F4B000]/25 hover:bg-white hover:text-slate-900 hover:border-[#F4B000]/50';
 
@@ -106,56 +105,28 @@ export function DiscoveryBar({
 
                         {/* ── Right: All controls as separate pill buttons ── */}
                         <div className="flex-none flex items-center gap-1.5">
-                            {/* ── GRID VIEW button ── */}
+                            {/* ── VIEW MODE toggle button (shows opposite mode) ── */}
                             {onViewModeChange && viewMode && (
                                 <button
-                                    onClick={() => onViewModeChange('grid')}
-                                    className={`${pillBase} ${viewMode === 'grid' ? pillActive : pillInactive}`}
-                                    aria-label="Grid view"
-                                    aria-pressed={viewMode === 'grid'}
+                                    onClick={() => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid')}
+                                    className={`${pillBase} ${pillInactive}`}
+                                    aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
                                 >
-                                    <LayoutGrid size={13} />
-                                    <span>Grid View</span>
+                                    {viewMode === 'grid' ? <List size={13} /> : <LayoutGrid size={13} />}
+                                    <span>{viewMode === 'grid' ? 'List View' : 'Grid View'}</span>
                                 </button>
                             )}
 
-                            {/* ── LIST VIEW button ── */}
-                            {onViewModeChange && viewMode && (
-                                <button
-                                    onClick={() => onViewModeChange('list')}
-                                    className={`${pillBase} ${viewMode === 'list' ? pillActive : pillInactive}`}
-                                    aria-label="List view"
-                                    aria-pressed={viewMode === 'list'}
-                                >
-                                    <List size={13} />
-                                    <span>List View</span>
-                                </button>
-                            )}
-
-                            {/* ── FINANCE button ── */}
+                            {/* ── PRICING MODE toggle button (shows opposite mode) ── */}
                             <button
-                                onClick={() => onPricingModeChange('finance')}
-                                className={`${pillBase} ${
-                                    pricingMode === 'finance'
-                                        ? 'bg-[#F4B000] text-black border-[#F4B000] shadow-[0_2px_10px_rgba(244,176,0,0.25)]'
-                                        : pillInactive
-                                }`}
+                                onClick={() => onPricingModeChange(pricingMode === 'finance' ? 'cash' : 'finance')}
+                                className={`${pillBase} ${pillInactive}`}
+                                aria-label={
+                                    pricingMode === 'finance' ? 'Switch to cash pricing' : 'Switch to finance pricing'
+                                }
                             >
-                                <Zap size={12} />
-                                Finance
-                            </button>
-
-                            {/* ── CASH button ── */}
-                            <button
-                                onClick={() => onPricingModeChange('cash')}
-                                className={`${pillBase} ${
-                                    pricingMode === 'cash'
-                                        ? 'bg-[#F4B000] text-black border-[#F4B000] shadow-[0_2px_10px_rgba(244,176,0,0.25)]'
-                                        : pillInactive
-                                }`}
-                            >
-                                <Banknote size={12} />
-                                Cash
+                                {pricingMode === 'finance' ? <Banknote size={12} /> : <Zap size={12} />}
+                                {pricingMode === 'finance' ? 'Cash' : 'Finance'}
                             </button>
 
                             {/* ── FILTER button ── */}
@@ -176,20 +147,6 @@ export function DiscoveryBar({
                                     {hasActiveFilters && (
                                         <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#F4B000] rounded-full ring-2 ring-white" />
                                     )}
-                                </button>
-                            )}
-
-                            {/* ── SHARE button ── */}
-                            {onShareClick && (
-                                <button
-                                    onClick={onShareClick}
-                                    title={shareActive ? 'Copied' : 'Copy compare message'}
-                                    className={`${pillBase} ${
-                                        shareActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : pillInactive
-                                    }`}
-                                >
-                                    <Share2 size={13} />
-                                    <span>Share</span>
                                 </button>
                             )}
 

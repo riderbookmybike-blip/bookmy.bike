@@ -727,6 +727,89 @@ export default function DesktopCompare() {
                     {viewMode === 'list' && allSpecs.length > 0 && (
                         <div className="pb-6 space-y-10">
                             <div className="overflow-visible">
+                                {/* ── Sticky List Header: Preview + Variant (always pinned in list view) ── */}
+                                <div
+                                    className="sticky z-[70] bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60 pb-2 mb-2"
+                                    style={{ top: 'calc(var(--header-h) + 56px)' }}
+                                >
+                                    <div
+                                        className="grid gap-x-6 mt-0"
+                                        style={{
+                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                        }}
+                                    >
+                                        <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                            <ImageIcon size={12} className="text-[#F4B000]/70 shrink-0" />
+                                            <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                Preview
+                                            </span>
+                                        </div>
+                                        {activeVariants.map((v, vIdx) => {
+                                            const currentImage = compactColorImages[v.id] || v.imageUrl;
+                                            const swatches = (v.availableColors || [])
+                                                .filter(
+                                                    c => typeof c?.hexCode === 'string' && c.hexCode.trim().length > 0
+                                                )
+                                                .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+                                            const currentHexRaw =
+                                                compactColorHexes[v.id] || swatches[0]?.hexCode || null;
+                                            let hexVal = currentHexRaw ? currentHexRaw.replace('#', '').trim() : null;
+                                            if (hexVal && hexVal.length === 3) {
+                                                hexVal = hexVal
+                                                    .split('')
+                                                    .map((c: string) => c + c)
+                                                    .join('');
+                                            }
+                                            const hexFull = hexVal && hexVal.length === 6 ? `#${hexVal}` : null;
+
+                                            return (
+                                                <div
+                                                    key={`sticky-preview-${vIdx}`}
+                                                    className="relative flex items-center justify-center py-4 border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] overflow-hidden"
+                                                    style={{
+                                                        background: hexFull
+                                                            ? `linear-gradient(135deg, ${hexFull}26, ${hexFull}0D), rgba(248, 250, 252, 0.85)`
+                                                            : 'white',
+                                                    }}
+                                                >
+                                                    <span className="absolute inset-0 flex items-center justify-center text-[60px] font-black uppercase tracking-tighter italic text-black/[0.06] whitespace-nowrap leading-none pointer-events-none select-none">
+                                                        {v.make}
+                                                    </span>
+                                                    <img
+                                                        src={currentImage}
+                                                        alt={v.variant}
+                                                        className="relative z-10 h-[80px] w-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div
+                                        className="grid gap-x-6 mt-2"
+                                        style={{
+                                            gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                        }}
+                                    >
+                                        <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                            <Bike size={12} className="text-[#F4B000]/70 shrink-0" />
+                                            <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                Variant
+                                            </span>
+                                        </div>
+                                        {activeVariants.map((v, vIdx) => (
+                                            <div
+                                                key={`sticky-variant-${vIdx}`}
+                                                className="px-4 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                            >
+                                                <span className="text-[11px] font-black tracking-tight text-slate-900 break-words text-center leading-tight">
+                                                    {v.variant}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {/* ── Financial Comparison Section (sticky/frozen in list mode) ── */}
                                 <AnimatePresence initial={false}>
                                     {isPricingExpanded && (
@@ -735,16 +818,10 @@ export default function DesktopCompare() {
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
                                             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                                            className="overflow-hidden sticky z-[70] pb-3 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60"
-                                            style={{ top: 'calc(var(--header-h) + 56px)' }}
+                                            className="overflow-visible"
                                         >
                                             {/* 00. Mini Card Images Row */}
-                                            <div
-                                                className="grid gap-x-6 mt-4"
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
+                                            <div className="hidden">
                                                 <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                                                     <ImageIcon size={12} className="text-[#F4B000]/70 shrink-0" />
                                                     <span className="text-[11px] font-bold tracking-wide text-slate-500">
@@ -798,12 +875,7 @@ export default function DesktopCompare() {
                                             </div>
 
                                             {/* 00b. Model Name Row */}
-                                            <div
-                                                className="grid gap-x-6 mt-2"
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
+                                            <div className="hidden">
                                                 <div className="px-4 py-3 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                                                     <Bike size={12} className="text-[#F4B000]/70 shrink-0" />
                                                     <span className="text-[11px] font-bold tracking-wide text-slate-500">
@@ -823,12 +895,7 @@ export default function DesktopCompare() {
                                             </div>
 
                                             {/* 0. Variant */}
-                                            <div
-                                                className="grid gap-x-6 mt-4"
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
+                                            <div className="hidden">
                                                 <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                                                     <Bike size={12} className="text-[#F4B000]/70 shrink-0" />
                                                     <span className="text-[11px] font-bold tracking-wide text-slate-500">
