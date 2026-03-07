@@ -255,7 +255,7 @@ export const WishlistClient = () => {
         const ids = filteredItems.slice(0, 5).map(v => v.id);
         if (ids.length === 0) return;
         startTransition(() => {
-            router.push(`/store/compare?skus=${ids.join(',')}`);
+            router.push(`/store/compare?tab=studio&items=${ids.join(',')}`);
         });
     };
 

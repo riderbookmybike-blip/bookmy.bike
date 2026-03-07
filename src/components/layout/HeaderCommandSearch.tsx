@@ -53,7 +53,12 @@ export function HeaderCommandSearch({ className, iconSize = 18 }: HeaderCommandS
         if (!tenantType) {
             return [
                 { key: 'catalog', label: 'Catalog', href: '/store/catalog', group: 'Marketplace' },
-                { key: 'wishlist', label: 'Wishlist', href: '/wishlist', group: 'Marketplace' },
+                {
+                    key: 'wishlist',
+                    label: 'Wishlist',
+                    href: '/store/compare?tab=wishlist',
+                    group: 'Marketplace',
+                },
                 { key: 'profile', label: 'Profile', href: '/profile', group: 'Account' },
                 { key: 'orders', label: 'Orders', href: '/orders', group: 'Account' },
             ];

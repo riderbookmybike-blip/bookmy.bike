@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Share2, SlidersHorizontal, LayoutGrid, List } from 'lucide-react';
+import { Share2, SlidersHorizontal, LayoutGrid, List, Zap, Banknote } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 
@@ -49,7 +49,7 @@ export function DiscoveryBar({
         'inline-flex items-center gap-1.5 px-4 h-10 rounded-2xl border transition-all duration-300 text-[9px] font-black uppercase tracking-[0.1em]';
     const pillActive = 'bg-[#F4B000] text-black border-[#F4B000] shadow-[0_2px_10px_rgba(244,176,0,0.25)]';
     const pillInactive =
-        'bg-white/70 text-slate-500 border-slate-200/60 hover:bg-white hover:text-slate-900 hover:border-slate-300';
+        'bg-white/70 text-slate-500 border-[#F4B000]/25 hover:bg-white hover:text-slate-900 hover:border-[#F4B000]/50';
 
     return (
         <header
@@ -57,7 +57,21 @@ export function DiscoveryBar({
             style={disableSticky ? {} : { top: 'var(--header-h)' }}
         >
             <div className="w-full">
-                <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
+                <div
+                    className="h-14 pr-2 pl-4 flex items-center rounded-[2rem] transition-all duration-500"
+                    style={{
+                        background: 'rgba(255,255,255,0.55)',
+                        backdropFilter: 'blur(32px) saturate(160%)',
+                        WebkitBackdropFilter: 'blur(32px) saturate(160%)',
+                        border: '1px solid rgba(255,255,255,0.7)',
+                        boxShadow: [
+                            '0 8px 32px rgba(0,0,0,0.08)',
+                            '0 1px 0 rgba(255,255,255,0.9) inset',
+                            '0 -1px 0 rgba(255,255,255,0.3) inset',
+                            '0 0 0 1px rgba(255,255,255,0.4) inset',
+                        ].join(','),
+                    }}
+                >
                     <div className="flex items-center gap-3 w-full">
                         {/* ── Search bar (left) ── */}
                         <div className="flex-none min-w-[220px] lg:min-w-[300px]">
@@ -67,13 +81,20 @@ export function DiscoveryBar({
                                         onSearchSubmit?.(searchQuery.trim());
                                     }
                                 }}
+                                className="h-10 rounded-2xl transition-all duration-300 focus-within:shadow-[0_0_0_2px_rgba(244,176,0,0.2)]"
+                                style={{
+                                    background: 'rgba(255,255,255,0.35)',
+                                    backdropFilter: 'blur(8px)',
+                                    WebkitBackdropFilter: 'blur(8px)',
+                                    border: '1px solid rgba(255,255,255,0.6)',
+                                }}
                             >
                                 <StoreSearchBar
                                     value={searchQuery}
-                                    placeholder="FIND YOUR NEXT MACHINE..."
+                                    placeholder="FIND YOUR NEXT RIDE PARTNER..."
                                     onChange={onSearchChange}
                                     onClear={() => onSearchChange('')}
-                                    className="h-10 bg-slate-100/30 hover:bg-slate-100/50 border-slate-200/30 rounded-2xl transition-all duration-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-primary/5 focus-within:border-brand-primary/10"
+                                    className="h-10 bg-transparent border-0"
                                 />
                             </div>
                         </div>
@@ -120,6 +141,7 @@ export function DiscoveryBar({
                                         : pillInactive
                                 }`}
                             >
+                                <Zap size={12} />
                                 Finance
                             </button>
 
@@ -132,6 +154,7 @@ export function DiscoveryBar({
                                         : pillInactive
                                 }`}
                             >
+                                <Banknote size={12} />
                                 Cash
                             </button>
 

@@ -20,7 +20,7 @@ const STATIC_TABS = [
     { key: 'home', label: 'Home', icon: Home, href: '/' },
     { key: 'ride', label: 'Ride', icon: MotorcycleIcon, href: '/store/catalog' },
     { key: 'pricing', label: 'EMI', icon: CreditCard, href: null },
-    { key: 'love', label: 'Love', icon: Heart, href: '/wishlist' },
+    { key: 'wishlist', label: 'Wishlist', icon: Heart, href: '/store/compare?tab=wishlist' },
     { key: 'ocircle', label: "O' Circle", icon: Globe, href: '/store/ocircle' },
 ] as const;
 
@@ -288,7 +288,7 @@ export function ShopperBottomNav() {
                 <div className="flex items-stretch justify-around h-[60px]">
                     {(isTeamUser ? tabs : STATIC_TABS).map(tab => {
                         const isPricing = tab.key === 'pricing';
-                        const isLove = tab.key === 'love';
+                        const isWishlist = tab.key === 'wishlist';
                         const active = isPricing ? sheetOpen : tab.href ? isTabActive(tab.href) : false;
 
                         const Icon = tab.icon;
@@ -340,7 +340,7 @@ export function ShopperBottomNav() {
                             <Link key={tab.key} href={tab.href!} className={cls}>
                                 <div className="relative">
                                     <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
-                                    {isLove && favorites.length > 0 && (
+                                    {isWishlist && favorites.length > 0 && (
                                         <span className="absolute -top-1.5 -right-2.5 w-4 h-4 bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border border-white">
                                             {favorites.length > 9 ? '9+' : favorites.length}
                                         </span>

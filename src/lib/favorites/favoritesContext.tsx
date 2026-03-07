@@ -35,11 +35,13 @@ let hasWarnedMissingProvider = false; // eslint-disable-line react-hooks/globals
 export const FavoritesProvider = ({ children }: { children: React.ReactNode }) => {
     const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
     const [mounted, setMounted] = useState(false);
+    const wishlistStorageKey = 'bmb_wishlist';
+    const legacyFavoritesStorageKey = 'bmb_favorites';
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
-        const stored = localStorage.getItem('bmb_favorites');
+        const stored = localStorage.getItem(wishlistStorageKey) || localStorage.getItem(legacyFavoritesStorageKey);
         if (stored) {
             try {
                 setFavorites(JSON.parse(stored));
@@ -51,7 +53,8 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 
     useEffect(() => {
         if (mounted) {
-            localStorage.setItem('bmb_favorites', JSON.stringify(favorites));
+            localStorage.setItem(wishlistStorageKey, JSON.stringify(favorites));
+            localStorage.removeItem(legacyFavoritesStorageKey);
         }
     }, [favorites, mounted]);
 

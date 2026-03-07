@@ -176,7 +176,7 @@ export default function SidebarHUD({
                     <button
                         onClick={onSave}
                         className="p-2.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-rose-500 transition-all"
-                        title="Add to Favorites"
+                        title="Add to Wishlist"
                     >
                         <Heart size={16} />
                     </button>

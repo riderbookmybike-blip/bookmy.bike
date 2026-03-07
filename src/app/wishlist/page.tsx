@@ -1,12 +1,5 @@
-'use client';
-
-import React from 'react';
-import { WishlistClient } from '@/components/store/WishlistClient';
+import { redirect } from 'next/navigation';
 
 export default function WishlistPage() {
-    return (
-        <main className="min-h-[70vh]">
-            <WishlistClient />
-        </main>
-    );
+    redirect('/store/compare?tab=wishlist');
 }

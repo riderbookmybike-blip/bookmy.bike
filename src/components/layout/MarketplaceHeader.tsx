@@ -76,7 +76,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             <Link href="/store/catalog" className={navBtnClass}>
                                 <MotorcycleIcon size={22} />
                             </Link>
-                            <Link href="/wishlist" className={`${navBtnClass} relative`}>
+                            <Link href="/store/compare?tab=wishlist" className={`${navBtnClass} relative`}>
                                 <Heart size={20} />
                                 {mounted && favorites.length > 0 && (
                                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in duration-300">

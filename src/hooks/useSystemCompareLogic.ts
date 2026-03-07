@@ -15,8 +15,8 @@ import type { ProductVariant } from '@/types/productMaster';
 export function useSystemCompareLogic() {
     const params = useParams();
     const searchParams = useSearchParams();
-    const makeSlug = (params.make as string) || '';
-    const modelSlug = (params.model as string) || '';
+    const makeSlug = ((params.make as string) || searchParams.get('make') || '').toLowerCase();
+    const modelSlug = ((params.model as string) || searchParams.get('model') || '').toLowerCase();
     const skuIdsParam = searchParams.get('skus');
 
     const { items, isLoading, needsLocation } = useSystemCatalogLogic(undefined, { allowStateOnly: true });
@@ -28,7 +28,14 @@ export function useSystemCompareLogic() {
     const modelGroup = useMemo(() => {
         if (!items.length || !makeSlug || !modelSlug) return null;
         const groups = groupProductsByModel(items);
-        const sameMakeGroups = groups.filter(g => slugify(g.make) === makeSlug);
+        const sameMakeGroups = groups.filter(g => {
+            const groupMakeSlug = slugify(g.make || '');
+            return (
+                groupMakeSlug === makeSlug ||
+                groupMakeSlug.startsWith(`${makeSlug}-`) ||
+                makeSlug.startsWith(`${groupMakeSlug}-`)
+            );
+        });
 
         // Prefer exact model/group slug match to avoid collisions like:
         // "jupiter" accidentally matching "jupiter-125".

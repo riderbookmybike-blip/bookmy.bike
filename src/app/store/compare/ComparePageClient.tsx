@@ -7,6 +7,7 @@ import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { ProductVariant } from '@/types/productMaster';
 import { formatRating } from '@/utils/formatVehicleSpec';
 import { EMI_FACTORS, getEmiFactor } from '@/lib/constants/pricingConstants';
+import { slugify } from '@/utils/slugs';
 
 const MAX_COMPARE = 3;
 const DEFAULT_TENURE = 36;
@@ -275,11 +276,32 @@ export function ComparePageClient() {
         if (isLoading) return;
         const params = new URLSearchParams(window.location.search);
         const paramIds = params.get('items')?.split(',').filter(Boolean) || [];
+        const makeParam = params.get('make') || '';
+        const modelParam = params.get('model') || '';
         const availableIds = new Set(catalogOptions.map(opt => opt.id));
         const validParamIds = paramIds.filter(id => availableIds.has(id));
 
         if (validParamIds.length > 0) {
             setSelectedIds(validParamIds.slice(0, MAX_COMPARE));
+        } else if (makeParam && modelParam) {
+            const matchingIds = catalogVariants
+                .filter(item => {
+                    const makeSlug = slugify(item.make || '');
+                    const modelSlug = slugify(item.model || '');
+                    const makeMatches = makeSlug === makeParam;
+                    const modelMatches =
+                        modelSlug === modelParam ||
+                        modelSlug.startsWith(`${modelParam}-`) ||
+                        modelParam.startsWith(`${modelSlug}-`);
+                    return makeMatches && modelMatches;
+                })
+                .slice(0, MAX_COMPARE)
+                .map(item => item.id);
+            if (matchingIds.length > 0) {
+                setSelectedIds(matchingIds);
+            } else {
+                setSelectedIds(catalogOptions.slice(0, MAX_COMPARE).map(opt => opt.id));
+            }
         } else {
             const cached = localStorage.getItem(STORAGE_KEY);
             const cachedIds = cached ? cached.split(',').filter(id => availableIds.has(id)) : [];

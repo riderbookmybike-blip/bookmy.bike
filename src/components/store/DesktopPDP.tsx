@@ -682,7 +682,7 @@ export function DesktopPDP({
                                             <button
                                                 onClick={() => handleSaveQuote()}
                                                 className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-all hover:scale-110 border border-black/10"
-                                                title="Save to Favorites"
+                                                title="Save to Wishlist"
                                             >
                                                 <Heart size={14} className="text-rose-400" />
                                             </button>

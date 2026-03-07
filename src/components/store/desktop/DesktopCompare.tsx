@@ -252,18 +252,7 @@ export default function DesktopCompare() {
     const fullCardsRef = useRef<HTMLDivElement>(null);
     const scrollAnchorRef = useRef<HTMLDivElement>(null);
 
-    // Scroll listener: when scroll anchor goes above viewport → switch to compact
-    useEffect(() => {
-        const onScroll = () => {
-            const anchor = scrollAnchorRef.current;
-            if (!anchor) return;
-            const rect = anchor.getBoundingClientRect();
-            setCompactMode(rect.bottom < 160);
-        };
-        onScroll(); // Fix: sync on mount
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => window.removeEventListener('scroll', onScroll);
-    }, []);
+    // compactMode is static — no auto-flip on scroll (user controls view mode manually)
 
     const allSpecs = useMemo(() => computeSpecRows(activeVariants), [activeVariants]);
 
@@ -736,7 +725,7 @@ export default function DesktopCompare() {
 
                     {/* ────── Comparison Specifications Section (list mode only) ────── */}
                     {viewMode === 'list' && allSpecs.length > 0 && (
-                        <div className="py-6 space-y-10">
+                        <div className="pb-6 space-y-10">
                             <div className="overflow-visible">
                                 {/* ── Financial Comparison Section ── */}
                                 <AnimatePresence initial={false}>
@@ -918,87 +907,7 @@ export default function DesktopCompare() {
                                                 })}
                                             </div>
 
-                                            {/* 1. On-Road Price */}
-                                            <div
-                                                className="grid gap-x-6 mt-2"
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
-                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                                                    <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
-                                                        On-Road Price
-                                                    </span>
-                                                </div>
-                                                {activeVariants.map((v, vIdx) => (
-                                                    <div
-                                                        key={vIdx}
-                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                                                    >
-                                                        <span className="text-[12px] font-black text-slate-900">
-                                                            ₹
-                                                            {(
-                                                                v.price?.onRoad ||
-                                                                v.price?.exShowroom ||
-                                                                0
-                                                            ).toLocaleString('en-IN')}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            {/* 2. Discount / Surge */}
-                                            <div
-                                                className="grid gap-x-6 mt-2"
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
-                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                                                    <GitCompareArrows
-                                                        size={12}
-                                                        className="text-[#F4B000]/70 shrink-0"
-                                                    />
-                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
-                                                        Price Difference
-                                                    </span>
-                                                </div>
-                                                {activeVariants.map((v, vIdx) => {
-                                                    const currentPrice = getDisplayPrice(v);
-                                                    if (vIdx === 0) {
-                                                        return (
-                                                            <div
-                                                                key={vIdx}
-                                                                className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                                                            >
-                                                                <span className="text-[11px] font-black text-slate-400">
-                                                                    BASE
-                                                                </span>
-                                                            </div>
-                                                        );
-                                                    }
-
-                                                    const prevPrice = getDisplayPrice(activeVariants[vIdx - 1]);
-                                                    const gap = currentPrice - prevPrice;
-                                                    const isGapDrop = gap < 0;
-                                                    const isGapSurge = gap > 0;
-
-                                                    return (
-                                                        <div
-                                                            key={vIdx}
-                                                            className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                                                        >
-                                                            <span
-                                                                className={`text-[11px] font-black ${isGapDrop ? 'text-emerald-600' : isGapSurge ? 'text-red-500' : 'text-slate-400'}`}
-                                                            >
-                                                                {isGapSurge ? '+' : isGapDrop ? '−' : ''}₹
-                                                                {Math.abs(gap).toLocaleString('en-IN')}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            {/* 3. Offer (pricing-mode aware) */}
+                                            {/* 1. Finance / Cash Offer Price (shown first) */}
                                             <div
                                                 className="grid gap-x-6 mt-2"
                                                 style={{
@@ -1060,11 +969,9 @@ export default function DesktopCompare() {
                                                                     const isSurge = saving < 0;
                                                                     return (
                                                                         <>
-                                                                            {/* Cash: Offer Price */}
                                                                             <span className="text-[13px] font-black text-slate-900">
                                                                                 ₹{offerPrice.toLocaleString('en-IN')}
                                                                             </span>
-                                                                            {/* Cash: Discount / Surge vs On-Road */}
                                                                             {isSaving ? (
                                                                                 <span className="text-[10px] font-black text-emerald-600">
                                                                                     Save ₹
@@ -1082,7 +989,6 @@ export default function DesktopCompare() {
                                                                                     No discount
                                                                                 </span>
                                                                             )}
-                                                                            {/* Cash: B Coin */}
                                                                             <div className="flex items-center gap-1">
                                                                                 <Logo variant="icon" size={10} />
                                                                                 <span className="text-[11px] font-black text-[#F4B000] italic">
@@ -1094,7 +1000,6 @@ export default function DesktopCompare() {
                                                                 })()
                                                             ) : (
                                                                 <>
-                                                                    {/* Finance: EMI + Downpayment */}
                                                                     {editingDownpayment ? (
                                                                         <input
                                                                             type="number"
@@ -1152,6 +1057,86 @@ export default function DesktopCompare() {
                                                                     )}
                                                                 </>
                                                             )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* 2. On-Road Price (below offer) */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        On-Road Price
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => (
+                                                    <div
+                                                        key={vIdx}
+                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                    >
+                                                        <span className="text-[12px] font-black text-slate-900">
+                                                            ₹
+                                                            {(
+                                                                v.price?.onRoad ||
+                                                                v.price?.exShowroom ||
+                                                                0
+                                                            ).toLocaleString('en-IN')}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* 3. Price Difference (below on-road price) */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <GitCompareArrows
+                                                        size={12}
+                                                        className="text-[#F4B000]/70 shrink-0"
+                                                    />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Price Difference
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => {
+                                                    const currentPrice = getDisplayPrice(v);
+                                                    if (vIdx === 0) {
+                                                        return (
+                                                            <div
+                                                                key={vIdx}
+                                                                className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                            >
+                                                                <span className="text-[11px] font-black text-slate-400">
+                                                                    BASE
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    const prevPrice = getDisplayPrice(activeVariants[vIdx - 1]);
+                                                    const gap = currentPrice - prevPrice;
+                                                    const isGapDrop = gap < 0;
+                                                    const isGapSurge = gap > 0;
+                                                    return (
+                                                        <div
+                                                            key={vIdx}
+                                                            className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                        >
+                                                            <span
+                                                                className={`text-[11px] font-black ${isGapDrop ? 'text-emerald-600' : isGapSurge ? 'text-red-500' : 'text-slate-400'}`}
+                                                            >
+                                                                {isGapSurge ? '+' : isGapDrop ? '−' : ''}₹
+                                                                {Math.abs(gap).toLocaleString('en-IN')}
+                                                            </span>
                                                         </div>
                                                     );
                                                 })}

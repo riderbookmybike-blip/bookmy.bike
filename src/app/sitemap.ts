@@ -10,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         : 'https://bookmy.bike';
 
     // Static pages
-    const staticPages = ['', '/landing', '/blog', '/store/favorites', '/store/compare'].map(route => ({
+    const staticPages = ['', '/landing', '/blog', '/store/compare'].map(route => ({
         url: `${baseUrl}${route}`,
         lastModified: new Date(),
         changeFrequency: 'weekly' as const,
