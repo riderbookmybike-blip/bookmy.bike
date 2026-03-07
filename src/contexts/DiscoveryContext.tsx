@@ -16,6 +16,8 @@ interface DiscoveryContextType {
     setShowDiscoveryBar: (show: boolean) => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
+    isFilterPanelOpen: boolean;
+    setFilterPanelOpen: (open: boolean) => void;
 }
 
 const DiscoveryContext = createContext<DiscoveryContextType | undefined>(undefined);
@@ -45,6 +47,7 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
     const [locationLabel, setLocationLabel] = useState<string | null>(null);
     const [showDiscoveryBar, setShowDiscoveryBar] = useState(false);
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+    const [isFilterPanelOpen, setFilterPanelOpen] = useState(false);
 
     return (
         <DiscoveryContext.Provider
@@ -59,6 +62,8 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
                 setShowDiscoveryBar,
                 searchQuery,
                 setSearchQuery,
+                isFilterPanelOpen,
+                setFilterPanelOpen,
             }}
         >
             {children}

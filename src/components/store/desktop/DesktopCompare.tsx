@@ -48,6 +48,7 @@ import {
     Calendar,
     TrendingDown,
     Share2,
+    ImageIcon,
     ChevronRight,
     type LucideIcon,
 } from 'lucide-react';
@@ -243,6 +244,7 @@ export default function DesktopCompare() {
     // Scroll-morph state
     const [compactMode, setCompactMode] = useState(false);
     const { pricingMode, setPricingMode } = useDiscovery();
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     const [isPricingExpanded, setIsPricingExpanded] = useState(true);
     const [isDiffExpanded, setIsDiffExpanded] = useState(true);
@@ -494,7 +496,7 @@ export default function DesktopCompare() {
                     {/* ────── 3D Flip Sticky Header ────── */}
                     <div
                         className="sticky z-[90] w-full transition-all duration-500 ease-in-out"
-                        style={{ top: 'var(--header-h)', marginTop: '20px' }}
+                        style={{ top: 'var(--header-h)' }}
                     >
                         <div style={{ perspective: '1200px' }}>
                             <motion.div
@@ -522,6 +524,8 @@ export default function DesktopCompare() {
                                         shareActive={shareTooltip}
                                         pricingMode={pricingMode}
                                         onPricingModeChange={setPricingMode}
+                                        viewMode={viewMode}
+                                        onViewModeChange={setViewMode}
                                     />
                                 </div>
 
@@ -706,28 +710,32 @@ export default function DesktopCompare() {
                     {/* Spacer to maintain flow height for the absolute faces */}
                     <div className="mb-6 hidden md:block" />
 
-                    {/* ────── Full Cards (normal flow — scrolls away) ────── */}
-                    <div ref={fullCardsRef}>
-                        <div ref={scrollAnchorRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pb-4">
-                            {activeVariants.map(v => (
-                                <ProductCard
-                                    key={v.id}
-                                    v={v}
-                                    viewMode="grid"
-                                    downpayment={downpayment}
-                                    tenure={tenure}
-                                    onEditDownpayment={openDpEdit}
-                                    pricingMode={pricingMode}
-                                    onTogglePricingMode={() => setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))}
-                                    isInCompare={!removedVariantIds.has(v.id)}
-                                    onCompare={() => removeVariant(v.id)}
-                                />
-                            ))}
+                    {/* ────── Full Cards (grid mode only) ────── */}
+                    {viewMode === 'grid' && (
+                        <div ref={fullCardsRef}>
+                            <div ref={scrollAnchorRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pb-4">
+                                {activeVariants.map(v => (
+                                    <ProductCard
+                                        key={v.id}
+                                        v={v}
+                                        viewMode="grid"
+                                        downpayment={downpayment}
+                                        tenure={tenure}
+                                        onEditDownpayment={openDpEdit}
+                                        pricingMode={pricingMode}
+                                        onTogglePricingMode={() =>
+                                            setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))
+                                        }
+                                        isInCompare={!removedVariantIds.has(v.id)}
+                                        onCompare={() => removeVariant(v.id)}
+                                    />
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* ────── Comparison Specifications Section ────── */}
-                    {allSpecs.length > 0 && (
+                    {/* ────── Comparison Specifications Section (list mode only) ────── */}
+                    {viewMode === 'list' && allSpecs.length > 0 && (
                         <div className="py-6 space-y-10">
                             <div className="overflow-visible">
                                 {/* ── Financial Comparison Section ── */}
@@ -740,7 +748,91 @@ export default function DesktopCompare() {
                                             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                                             className="overflow-hidden"
                                         >
-                                            {/* 0. Variant Name */}
+                                            {/* 00. Mini Card Images Row */}
+                                            <div
+                                                className="grid gap-x-6 mt-4"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <ImageIcon size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Preview
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => {
+                                                    const currentImage = compactColorImages[v.id] || v.imageUrl;
+                                                    const swatches = (v.availableColors || [])
+                                                        .filter(
+                                                            c =>
+                                                                typeof c?.hexCode === 'string' &&
+                                                                c.hexCode.trim().length > 0
+                                                        )
+                                                        .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+                                                    const currentHexRaw =
+                                                        compactColorHexes[v.id] || swatches[0]?.hexCode || null;
+                                                    let hexVal = currentHexRaw
+                                                        ? currentHexRaw.replace('#', '').trim()
+                                                        : null;
+                                                    if (hexVal && hexVal.length === 3)
+                                                        hexVal = hexVal
+                                                            .split('')
+                                                            .map((c: string) => c + c)
+                                                            .join('');
+                                                    const hexFull = hexVal && hexVal.length === 6 ? `#${hexVal}` : null;
+
+                                                    return (
+                                                        <div
+                                                            key={vIdx}
+                                                            className="relative flex items-center justify-center py-4 border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] overflow-hidden"
+                                                            style={{
+                                                                background: hexFull
+                                                                    ? `linear-gradient(135deg, ${hexFull}26, ${hexFull}0D), rgba(248, 250, 252, 0.85)`
+                                                                    : 'white',
+                                                            }}
+                                                        >
+                                                            {/* Brand Watermark */}
+                                                            <span className="absolute inset-0 flex items-center justify-center text-[60px] font-black uppercase tracking-tighter italic text-black/[0.06] whitespace-nowrap leading-none pointer-events-none select-none">
+                                                                {v.make}
+                                                            </span>
+                                                            {/* Bike Image */}
+                                                            <img
+                                                                src={currentImage}
+                                                                alt={v.variant}
+                                                                className="relative z-10 h-[80px] w-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
+                                                            />
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* 00b. Model Name Row */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-3 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <Bike size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Model
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => (
+                                                    <div
+                                                        key={vIdx}
+                                                        className="px-4 py-3 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                    >
+                                                        <span className="text-[11px] font-black tracking-tight text-slate-700">
+                                                            {v.model}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* 0. Variant */}
                                             <div
                                                 className="grid gap-x-6 mt-4"
                                                 style={{
@@ -750,7 +842,32 @@ export default function DesktopCompare() {
                                                 <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                                                     <Bike size={12} className="text-[#F4B000]/70 shrink-0" />
                                                     <span className="text-[11px] font-bold tracking-wide text-slate-500">
-                                                        Variant Name
+                                                        Variant
+                                                    </span>
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => (
+                                                    <div
+                                                        key={vIdx}
+                                                        className="px-4 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                    >
+                                                        <span className="text-[11px] font-black tracking-tight text-slate-900 break-words text-center leading-tight">
+                                                            {v.variant}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* 0b. Colours */}
+                                            <div
+                                                className="grid gap-x-6 mt-2"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-3 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <Circle size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        Colours
                                                     </span>
                                                 </div>
                                                 {activeVariants.map((v, vIdx) => {
@@ -764,12 +881,9 @@ export default function DesktopCompare() {
                                                     return (
                                                         <div
                                                             key={vIdx}
-                                                            className="px-4 py-4 flex flex-col items-center justify-center gap-2 text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                            className="px-4 py-3 flex items-center justify-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
                                                         >
-                                                            <span className="text-[11px] font-black uppercase tracking-tight text-slate-900 break-words text-center leading-tight">
-                                                                {v.variant}
-                                                            </span>
-                                                            {vSwatches.length > 0 && (
+                                                            {vSwatches.length > 0 ? (
                                                                 <div className="flex items-center justify-center flex-wrap gap-1">
                                                                     {vSwatches.map((c, ci) => {
                                                                         let sHex = c.hexCode?.replace('#', '') || '000';
@@ -794,6 +908,10 @@ export default function DesktopCompare() {
                                                                         );
                                                                     })}
                                                                 </div>
+                                                            ) : (
+                                                                <span className="text-slate-300 italic text-[11px]">
+                                                                    —
+                                                                </span>
                                                             )}
                                                         </div>
                                                     );
@@ -880,156 +998,159 @@ export default function DesktopCompare() {
                                                     );
                                                 })}
                                             </div>
-                                            {/* 3a. Offer Price — INR row */}
+                                            {/* 3. Offer (pricing-mode aware) */}
                                             <div
                                                 className="grid gap-x-6 mt-2"
                                                 style={{
                                                     gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
                                                 }}
                                             >
-                                                <div className="px-4 py-4 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                                                    <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
-                                                        Offer Price
-                                                    </span>
-                                                </div>
-                                                {activeVariants.map((v, vIdx) => (
-                                                    <div
-                                                        key={vIdx}
-                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                                                    >
-                                                        <span className="text-[12px] font-black text-slate-900">
-                                                            ₹{getDisplayPrice(v).toLocaleString('en-IN')}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            {/* 3b. Offer Price — B Coin row */}
-                                            <div
-                                                className="grid gap-x-6 mt-1"
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
-                                                <div className="px-4 py-3 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                                                    <Logo variant="icon" size={12} />
-                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
-                                                        B Coin
-                                                    </span>
-                                                </div>
-                                                {activeVariants.map((v, vIdx) => {
-                                                    const bCoin = coinsNeededForPrice(getDisplayPrice(v));
-                                                    return (
-                                                        <div
-                                                            key={vIdx}
-                                                            className="px-6 py-3 flex items-center justify-center gap-1 text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                                                        >
-                                                            <Logo variant="icon" size={10} />
-                                                            <span className="text-[12px] font-black text-[#F4B000] italic">
-                                                                {bCoin.toLocaleString('en-IN')}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            {/* 4. Finance (Merged: DP, Tenure, EMI) */}
-                                            <div
-                                                className="grid gap-x-6 mt-2"
-                                                style={{
-                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
-                                                <div className="px-4 py-4 flex flex-col items-center lg:items-start gap-1 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                <div className="px-4 py-4 flex flex-col items-start gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                                                     <div className="flex items-center gap-2">
-                                                        <Percent size={12} className="text-[#F4B000]/70 shrink-0" />
+                                                        <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
                                                         <span className="text-[11px] font-bold tracking-wide text-slate-500">
-                                                            Finance
+                                                            {pricingMode === 'finance' ? 'Finance Offer' : 'Cash Offer'}
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 mt-auto">
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                setEditingDownpayment(!editingDownpayment);
-                                                                if (!editingDownpayment)
-                                                                    setDpInputValue(String(downpayment));
-                                                                setEditingTenure(false);
-                                                            }}
-                                                            className={`p-1.5 rounded-lg transition-colors ${editingDownpayment ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-slate-50 text-slate-300 hover:text-[#F4B000]'}`}
-                                                            title="Edit Downpayment"
-                                                        >
-                                                            <Pencil size={10} />
-                                                        </button>
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                setEditingTenure(!editingTenure);
-                                                                setEditingDownpayment(false);
-                                                            }}
-                                                            className={`p-1.5 rounded-lg transition-colors ${editingTenure ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-slate-50 text-slate-300 hover:text-[#F4B000]'}`}
-                                                            title="Edit Tenure"
-                                                        >
-                                                            <Calendar size={10} />
-                                                        </button>
-                                                    </div>
+                                                    {pricingMode === 'finance' && (
+                                                        <div className="flex items-center gap-2 mt-auto">
+                                                            <button
+                                                                onClick={e => {
+                                                                    e.stopPropagation();
+                                                                    setEditingDownpayment(!editingDownpayment);
+                                                                    if (!editingDownpayment)
+                                                                        setDpInputValue(String(downpayment));
+                                                                    setEditingTenure(false);
+                                                                }}
+                                                                className={`p-1.5 rounded-lg transition-colors ${editingDownpayment ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-slate-50 text-slate-300 hover:text-[#F4B000]'}`}
+                                                                title="Edit Downpayment"
+                                                            >
+                                                                <Pencil size={10} />
+                                                            </button>
+                                                            <button
+                                                                onClick={e => {
+                                                                    e.stopPropagation();
+                                                                    setEditingTenure(!editingTenure);
+                                                                    setEditingDownpayment(false);
+                                                                }}
+                                                                className={`p-1.5 rounded-lg transition-colors ${editingTenure ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-slate-50 text-slate-300 hover:text-[#F4B000]'}`}
+                                                                title="Edit Tenure"
+                                                            >
+                                                                <Calendar size={10} />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 {activeVariants.map((v, vIdx) => {
+                                                    const cashPrice = v.price?.onRoad || v.price?.exShowroom || 0;
+                                                    const bCoin = coinsNeededForPrice(cashPrice);
                                                     const emi = getEmi(v, downpayment, tenure);
                                                     return (
                                                         <div
                                                             key={vIdx}
-                                                            className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                            className="px-4 py-4 flex flex-col items-center justify-center gap-1.5 text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
                                                         >
-                                                            {editingDownpayment ? (
-                                                                <input
-                                                                    type="number"
-                                                                    value={dpInputValue}
-                                                                    onChange={e => setDpInputValue(e.target.value)}
-                                                                    onBlur={() => {
-                                                                        const val = parseInt(dpInputValue);
-                                                                        if (!isNaN(val) && val >= 0)
-                                                                            setDownpayment(val);
-                                                                        setEditingDownpayment(false);
-                                                                    }}
-                                                                    onKeyDown={e => {
-                                                                        if (e.key === 'Enter') {
-                                                                            const val = parseInt(dpInputValue);
-                                                                            if (!isNaN(val) && val >= 0)
-                                                                                setDownpayment(val);
-                                                                            setEditingDownpayment(false);
-                                                                        }
-                                                                    }}
-                                                                    autoFocus={vIdx === 0}
-                                                                    className="w-24 text-center text-[12px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
-                                                                />
-                                                            ) : editingTenure ? (
-                                                                <div className="flex gap-1 flex-wrap justify-center">
-                                                                    {TENURE_OPTIONS.map(t => (
-                                                                        <button
-                                                                            key={t}
-                                                                            onClick={() => {
-                                                                                setTenure(t);
-                                                                                setEditingTenure(false);
-                                                                            }}
-                                                                            className={`px-2 py-1 rounded-md text-[9px] font-black transition-all ${
-                                                                                tenure === t
-                                                                                    ? 'bg-[#F4B000] text-black'
-                                                                                    : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
-                                                                            }`}
-                                                                        >
-                                                                            {t}m
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
+                                                            {pricingMode === 'cash' ? (
+                                                                (() => {
+                                                                    const onRoad =
+                                                                        v.price?.onRoad || v.price?.exShowroom || 0;
+                                                                    const offerPrice = v.price?.offerPrice || onRoad;
+                                                                    const saving = onRoad - offerPrice;
+                                                                    const isSaving = saving > 0;
+                                                                    const isSurge = saving < 0;
+                                                                    return (
+                                                                        <>
+                                                                            {/* Cash: Offer Price */}
+                                                                            <span className="text-[13px] font-black text-slate-900">
+                                                                                ₹{offerPrice.toLocaleString('en-IN')}
+                                                                            </span>
+                                                                            {/* Cash: Discount / Surge vs On-Road */}
+                                                                            {isSaving ? (
+                                                                                <span className="text-[10px] font-black text-emerald-600">
+                                                                                    Save ₹
+                                                                                    {saving.toLocaleString('en-IN')}
+                                                                                </span>
+                                                                            ) : isSurge ? (
+                                                                                <span className="text-[10px] font-black text-red-500">
+                                                                                    +₹
+                                                                                    {Math.abs(saving).toLocaleString(
+                                                                                        'en-IN'
+                                                                                    )}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-[10px] font-bold text-slate-400">
+                                                                                    No discount
+                                                                                </span>
+                                                                            )}
+                                                                            {/* Cash: B Coin */}
+                                                                            <div className="flex items-center gap-1">
+                                                                                <Logo variant="icon" size={10} />
+                                                                                <span className="text-[11px] font-black text-[#F4B000] italic">
+                                                                                    {bCoin.toLocaleString('en-IN')}
+                                                                                </span>
+                                                                            </div>
+                                                                        </>
+                                                                    );
+                                                                })()
                                                             ) : (
-                                                                <div className="flex flex-col items-center">
-                                                                    <span className="text-[13px] font-black text-[#F4B000]">
-                                                                        ₹{emi.toLocaleString('en-IN')} × {tenure}mo
-                                                                    </span>
-                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-wider whitespace-nowrap">
-                                                                        ₹{downpayment.toLocaleString('en-IN')} DP
-                                                                    </span>
-                                                                </div>
+                                                                <>
+                                                                    {/* Finance: EMI + Downpayment */}
+                                                                    {editingDownpayment ? (
+                                                                        <input
+                                                                            type="number"
+                                                                            value={dpInputValue}
+                                                                            onChange={e =>
+                                                                                setDpInputValue(e.target.value)
+                                                                            }
+                                                                            onBlur={() => {
+                                                                                const val = parseInt(dpInputValue);
+                                                                                if (!isNaN(val) && val >= 0)
+                                                                                    setDownpayment(val);
+                                                                                setEditingDownpayment(false);
+                                                                            }}
+                                                                            onKeyDown={e => {
+                                                                                if (e.key === 'Enter') {
+                                                                                    const val = parseInt(dpInputValue);
+                                                                                    if (!isNaN(val) && val >= 0)
+                                                                                        setDownpayment(val);
+                                                                                    setEditingDownpayment(false);
+                                                                                }
+                                                                            }}
+                                                                            autoFocus={vIdx === 0}
+                                                                            className="w-24 text-center text-[12px] font-black bg-[#F4B000]/10 border border-[#F4B000]/30 rounded-lg px-2 py-1 outline-none focus:border-[#F4B000]"
+                                                                        />
+                                                                    ) : editingTenure ? (
+                                                                        <div className="flex gap-1 flex-wrap justify-center">
+                                                                            {TENURE_OPTIONS.map(t => (
+                                                                                <button
+                                                                                    key={t}
+                                                                                    onClick={() => {
+                                                                                        setTenure(t);
+                                                                                        setEditingTenure(false);
+                                                                                    }}
+                                                                                    className={`px-2 py-1 rounded-md text-[9px] font-black transition-all ${
+                                                                                        tenure === t
+                                                                                            ? 'bg-[#F4B000] text-black'
+                                                                                            : 'bg-slate-100 text-slate-500 hover:bg-[#F4B000]/20 hover:text-[#F4B000]'
+                                                                                    }`}
+                                                                                >
+                                                                                    {t}m
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex flex-col items-center gap-0.5">
+                                                                            <span className="text-[13px] font-black text-[#F4B000]">
+                                                                                ₹{emi.toLocaleString('en-IN')} ×{' '}
+                                                                                {tenure}mo
+                                                                            </span>
+                                                                            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                                                                                ₹{downpayment.toLocaleString('en-IN')}{' '}
+                                                                                Downpayment
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </>
                                                             )}
                                                         </div>
                                                     );

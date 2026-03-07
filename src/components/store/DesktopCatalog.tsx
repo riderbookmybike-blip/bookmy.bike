@@ -1161,7 +1161,7 @@ export const DesktopCatalog = ({
                 </div>
             )}
             <div
-                className={`flex-1 page-container ${isTv ? 'pt-6' : isPhone ? 'pt-2' : 'pt-0'} pb-10 md:pb-16 ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
+                className={`flex-1 store-page-shell ${isTv ? 'pt-6' : isPhone ? 'pt-2' : 'pt-0'} ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
             >
                 <DiscoveryBar
                     className={

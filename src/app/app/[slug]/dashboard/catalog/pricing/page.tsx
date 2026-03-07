@@ -26,6 +26,7 @@ import {
     Package,
     TrendingUp,
     Sparkles,
+    RefreshCw,
 } from 'lucide-react';
 import { KpiCard } from '@/components/dashboard/DashboardWidgets';
 import { KPIItem } from '@/components/layout/KPIBar';
@@ -33,6 +34,7 @@ import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
 import { savePrices } from '@/actions/savePrices';
 import { formatCurrencyCompact } from '@/utils/formatVehicleSpec';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { toast } from 'sonner';
 
 interface SKUPriceRow {
     id: string; // vehicle_color_id
@@ -102,6 +104,11 @@ export default function PricingPage() {
     const [selectedVariant, setSelectedVariant] = useState<string>(searchParams.get('variant') || 'ALL');
     const [skus, setSkus] = useState<SKUPriceRow[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [isHydrated, setIsHydrated] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveQueued, setSaveQueued] = useState(false);
+    const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [lastEditTime, setLastEditTime] = useState<number | null>(null);
     const [tableSummary, setTableSummary] = useState<{ count: number; value: number }>({ count: 0, value: 0 });
@@ -120,9 +127,24 @@ export default function PricingPage() {
     };
     const realtimeCalcTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const realtimeCalcSeqRef = useRef<Record<string, number>>({});
+    const saveQueuedRef = useRef(false);
+    const lastPriceEngineToastAtRef = useRef(0);
+
+    const notifyPriceEngineFailure = (message: string) => {
+        const now = Date.now();
+        if (now - lastPriceEngineToastAtRef.current > 2500) {
+            toast.error(message);
+            lastPriceEngineToastAtRef.current = now;
+        }
+    };
+
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
 
     // Sync filters to URL when they change (persist across reloads)
     useEffect(() => {
+        if (!isHydrated) return;
         const params = new URLSearchParams(searchParams.toString());
         if (selectedStateId) params.set('state', selectedStateId);
         if (selectedBrand !== 'ALL') params.set('brand', selectedBrand);
@@ -136,7 +158,15 @@ export default function PricingPage() {
         if (selectedVariant !== 'ALL') params.set('variant', selectedVariant);
         else params.delete('variant');
         router.replace(`?${params.toString()}`, { scroll: false });
-    }, [selectedStateId, selectedBrand, selectedCategory, selectedSubCategory, selectedModel, selectedVariant]);
+    }, [
+        isHydrated,
+        selectedStateId,
+        selectedBrand,
+        selectedCategory,
+        selectedSubCategory,
+        selectedModel,
+        selectedVariant,
+    ]);
 
     // Initial Load - Fetch Rules
     useEffect(() => {
@@ -145,10 +175,10 @@ export default function PricingPage() {
 
     // Fetch Data when Filters Change
     useEffect(() => {
-        if (selectedStateId) {
+        if (isHydrated && selectedStateId) {
             fetchSKUsAndPrices();
         }
-    }, [selectedStateId]);
+    }, [isHydrated, selectedStateId]);
 
     useEffect(() => {
         return () => {
@@ -159,13 +189,13 @@ export default function PricingPage() {
 
     // Auto-Save Logic (5 seconds debounce)
     useEffect(() => {
-        if (hasUnsavedChanges && lastEditTime) {
+        if (hasUnsavedChanges && lastEditTime && !isSaving) {
             const timer = setTimeout(() => {
                 handleSaveAll();
             }, 5000);
             return () => clearTimeout(timer);
         }
-    }, [lastEditTime, hasUnsavedChanges]);
+    }, [lastEditTime, hasUnsavedChanges, isSaving]);
 
     const fetchRules = async () => {
         const { data, error } = await supabase
@@ -177,6 +207,7 @@ export default function PricingPage() {
         if (error) {
             console.error('Fetch Rules Error:', error);
             if (getErrorMessage(error)) console.error('Fetch Rules Message:', getErrorMessage(error));
+            toast.error(`Failed to load states: ${getErrorMessage(error)}`);
             return;
         }
 
@@ -198,6 +229,7 @@ export default function PricingPage() {
 
     const fetchSKUsAndPrices = async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             // 0. Resolve allowed brands for this dealer (mono vs multi-brand)
             //    AUMS superadmin → no rows in dealer_brands → sees ALL brands
@@ -242,11 +274,7 @@ export default function PricingPage() {
             const [priceRes, offerRes] = await Promise.all([
                 // Authoritative SOT for pricing: State specific table
                 supabase
-                    .from(
-                        activeStateCode.toUpperCase() === 'MH'
-                            ? 'cat_price_state_mh'
-                            : `cat_price_${activeStateCode.toLowerCase()}`
-                    )
+                    .from('cat_price_state_mh')
                     .select(
                         `
                         sku_id, state_code,
@@ -520,11 +548,21 @@ export default function PricingPage() {
                 };
             });
 
-            formattedSkus.sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model));
+            formattedSkus.sort(
+                (a, b) =>
+                    a.brand.localeCompare(b.brand) ||
+                    a.model.localeCompare(b.model) ||
+                    (a.variantPosition || 0) - (b.variantPosition || 0) ||
+                    (a.position || 0) - (b.position || 0) ||
+                    a.color.localeCompare(b.color)
+            );
 
             setSkus(formattedSkus);
         } catch (error: unknown) {
             console.error('Error fetching data:', error);
+            const message = getErrorMessage(error) || 'Failed to load pricing data';
+            setLoadError(message);
+            toast.error(message);
         } finally {
             setLoading(false);
             setHasUnsavedChanges(false);
@@ -534,7 +572,7 @@ export default function PricingPage() {
     const syncPricingSnapshotForSku = useCallback(
         async (skuId: string, stateCode: string) => {
             const { data } = await supabase
-                .from(stateCode.toUpperCase() === 'MH' ? 'cat_price_state_mh' : `cat_price_${stateCode.toLowerCase()}`)
+                .from('cat_price_state_mh')
                 .select(
                     `
                     sku_id,
@@ -661,6 +699,7 @@ export default function PricingPage() {
             const result = await calculatePricingBySkuIds(deduped, stateCode);
             if (!result.success) {
                 console.error('[Pricing Realtime] Engine failed:', result.errors.join(' | '));
+                notifyPriceEngineFailure('Price engine failed. Please retry.');
                 return false;
             }
 
@@ -717,12 +756,14 @@ export default function PricingPage() {
                     const result = await calculatePricingBySkuIds([{ skuId, exShowroom }], activeStateCode);
                     if (!result.success) {
                         console.error('[Pricing Realtime] Engine failed:', result.errors.join(' | '));
+                        notifyPriceEngineFailure('Realtime price calculation failed');
                         return;
                     }
                     if (realtimeCalcSeqRef.current[skuId] !== seq) return;
                     await syncPricingSnapshotForSku(skuId, activeStateCode);
                 } catch (err) {
                     console.error('[Pricing Realtime] Unexpected failure:', err);
+                    notifyPriceEngineFailure('Realtime price calculation failed');
                 } finally {
                     delete realtimeCalcTimersRef.current[skuId];
                 }
@@ -750,6 +791,7 @@ export default function PricingPage() {
     };
 
     const handleUpdateOffer = (skuId: string, offer: number) => {
+        if (tenantSlug === 'aums') return;
         const normalized = clampOfferDelta(offer);
         setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, offerAmount: normalized } : s)));
         setHasUnsavedChanges(true);
@@ -757,6 +799,7 @@ export default function PricingPage() {
     };
 
     const handleUpdateInclusion = (skuId: string, type: 'MANDATORY' | 'OPTIONAL' | 'BUNDLE') => {
+        if (tenantSlug === 'aums') return;
         setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, inclusionType: type } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
@@ -847,154 +890,194 @@ export default function PricingPage() {
 
     const handleBulkUpdate = (ids: string[], price: number) => {
         const safePrice = Number.isFinite(price) && price > 0 ? Math.round(price) : 0;
-        setSkus(prev => prev.map(s => (ids.includes(s.id) ? { ...s, exShowroom: safePrice } : s)));
+        setSkus(prev =>
+            prev.map(s => {
+                if (!ids.includes(s.id)) return s;
+                const gstRate = s.gstRate || 18;
+                const exFactory = Math.round(safePrice / (1 + gstRate / 100));
+                const exFactoryGst = safePrice - exFactory;
+                return { ...s, exShowroom: safePrice, exFactory, exFactoryGst };
+            })
+        );
         ids.forEach(id => scheduleRealtimePriceEngine(id, safePrice));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
     };
 
     const handleSaveAll = async () => {
+        if (isSaving) {
+            saveQueuedRef.current = true;
+            setSaveQueued(true);
+            return;
+        }
         const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode;
         if (!activeStateCode) return;
 
         const isAums = tenantSlug === 'aums';
+        setIsSaving(true);
 
-        if (isAums) {
-            // Safety: save only rows that actually changed; prevents accidental zero-overwrite on untouched rows.
-            const changedPriceRows = skus.filter(
-                s =>
-                    s.exShowroom !== s.originalExShowroom ||
-                    s.isPopular !== s.originalIsPopular ||
-                    s.publishStage !== s.originalPublishStage
-            );
+        try {
+            if (isAums) {
+                // Safety: save only rows that actually changed; prevents accidental zero-overwrite on untouched rows.
+                const changedPriceRows = skus.filter(
+                    s =>
+                        s.exShowroom !== s.originalExShowroom ||
+                        s.isPopular !== s.originalIsPopular ||
+                        s.publishStage !== s.originalPublishStage
+                );
 
-            const changedExShowroomInputs = changedPriceRows
-                .filter(s => s.exShowroom !== s.originalExShowroom && Number(s.exShowroom) > 0)
-                .map(s => ({ skuId: s.id, exShowroom: Number(s.exShowroom) }));
+                const changedExShowroomInputs = changedPriceRows
+                    .filter(s => s.exShowroom !== s.originalExShowroom && Number(s.exShowroom) > 0)
+                    .map(s => ({ skuId: s.id, exShowroom: Number(s.exShowroom) }));
 
-            if (changedExShowroomInputs.length > 0) {
-                for (const item of changedExShowroomInputs) {
-                    const timer = realtimeCalcTimersRef.current[item.skuId];
-                    if (timer) {
-                        clearTimeout(timer);
-                        delete realtimeCalcTimersRef.current[item.skuId];
+                if (changedExShowroomInputs.length > 0) {
+                    for (const item of changedExShowroomInputs) {
+                        const timer = realtimeCalcTimersRef.current[item.skuId];
+                        if (timer) {
+                            clearTimeout(timer);
+                            delete realtimeCalcTimersRef.current[item.skuId];
+                        }
+                    }
+                    const engineOk = await runPriceEngineCalculation(changedExShowroomInputs, activeStateCode);
+                    if (!engineOk) {
+                        const msg = 'Price engine calculation failed for one or more edited SKUs. Save aborted.';
+                        toast.error(msg);
+                        return;
                     }
                 }
-                const engineOk = await runPriceEngineCalculation(changedExShowroomInputs, activeStateCode);
-                if (!engineOk) {
-                    alert('Price engine calculation failed for one or more edited SKUs. Save aborted.');
-                    return;
+
+                const pricePayload = changedPriceRows
+                    .map(s => {
+                        const exShowroomSafe =
+                            Number(s.exShowroom) > 0
+                                ? Number(s.exShowroom)
+                                : Number(s.originalExShowroom) > 0
+                                  ? Number(s.originalExShowroom)
+                                  : 0;
+
+                        return {
+                            vehicle_color_id: s.id,
+                            state_code: activeStateCode,
+                            district: 'ALL',
+                            ex_showroom_price: exShowroomSafe,
+                            is_active: true,
+                            is_popular: s.isPopular || false,
+                            ...(s.publishStage !== s.originalPublishStage && { publish_stage: s.publishStage }),
+                        };
+                    })
+                    .filter(row => row.ex_showroom_price > 0);
+
+                const modifiedStatusSkus = skus.filter(s => s.status !== s.originalStatus);
+                const statusPayload = modifiedStatusSkus.map(sku => ({
+                    id: sku.id,
+                    status: sku.status,
+                }));
+
+                const result = await savePrices(pricePayload, statusPayload);
+
+                if (result.error) {
+                    toast.error(`Failed to save changes: ${result.error}`);
+                } else {
+                    setHasUnsavedChanges(false);
+                    setSkus(prev =>
+                        prev.map(s => ({
+                            ...s,
+                            originalExShowroom: s.exShowroom,
+                            originalOfferAmount: s.offerAmount,
+                            originalStatus: s.status,
+                            originalIsPopular: s.isPopular,
+                        }))
+                    );
+                    setLastSavedAt(Date.now());
+                    toast.success('Pricing changes saved');
+                    try {
+                        const {
+                            data: { user },
+                        } = await supabase.auth.getUser();
+                        if (user?.id && tenantId) {
+                            await supabase.from('audit_logs').insert({
+                                tenant_id: tenantId,
+                                actor_id: user.id,
+                                action: 'PRICING_PUBLISH_STAGE_UPDATED',
+                                entity_type: 'PRICING_LEDGER',
+                                entity_id: activeStateCode,
+                                metadata: {
+                                    state_code: activeStateCode,
+                                    updated_rows: skus.length,
+                                },
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('Audit log failed:', e);
+                    }
+                }
+            } else {
+                const changedDealerRows = skus.filter(
+                    s =>
+                        s.offerAmount !== s.originalOfferAmount ||
+                        s.inclusionType !== s.originalInclusionType ||
+                        s.localIsActive !== s.originalLocalIsActive ||
+                        s.isPopular !== s.originalIsPopular
+                );
+
+                const offerPayload = changedDealerRows.map(s => ({
+                    tenant_id: tenantId,
+                    vehicle_color_id: s.id,
+                    state_code: activeStateCode,
+                    offer_amount: clampOfferDelta(s.offerAmount),
+                    inclusion_type: s.inclusionType,
+                    is_active: s.localIsActive,
+                    is_popular: s.isPopular || false,
+                }));
+
+                const { error } = await supabase.rpc('upsert_dealer_offers', { offers: offerPayload });
+
+                if (error) {
+                    toast.error(`Failed to save changes: ${getErrorMessage(error)}`);
+                } else {
+                    setHasUnsavedChanges(false);
+                    setSkus(prev =>
+                        prev.map(s => ({
+                            ...s,
+                            originalExShowroom: s.exShowroom,
+                            originalOfferAmount: s.offerAmount,
+                            originalInclusionType: s.inclusionType,
+                            originalStatus: s.status,
+                            originalLocalIsActive: s.localIsActive,
+                            originalIsPopular: s.isPopular,
+                        }))
+                    );
+                    setLastSavedAt(Date.now());
+                    toast.success('Dealer offers saved');
+                    try {
+                        const {
+                            data: { user },
+                        } = await supabase.auth.getUser();
+                        if (user?.id && tenantId) {
+                            await supabase.from('audit_logs').insert({
+                                tenant_id: tenantId,
+                                actor_id: user.id,
+                                action: 'DEALER_PRICING_UPDATED',
+                                entity_type: 'PRICING_LEDGER',
+                                entity_id: activeStateCode,
+                                metadata: {
+                                    state_code: activeStateCode,
+                                    updated_rows: skus.length,
+                                },
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('Audit log failed:', e);
+                    }
                 }
             }
-
-            const pricePayload = changedPriceRows
-                .map(s => {
-                    const exShowroomSafe =
-                        Number(s.exShowroom) > 0
-                            ? Number(s.exShowroom)
-                            : Number(s.originalExShowroom) > 0
-                              ? Number(s.originalExShowroom)
-                              : 0;
-
-                    return {
-                        vehicle_color_id: s.id,
-                        state_code: activeStateCode,
-                        district: 'ALL',
-                        ex_showroom_price: exShowroomSafe,
-                        is_active: true,
-                        is_popular: s.isPopular || false,
-                        ...(s.publishStage !== s.originalPublishStage && { publish_stage: s.publishStage }),
-                    };
-                })
-                .filter(row => row.ex_showroom_price > 0);
-
-            const modifiedStatusSkus = skus.filter(s => s.status !== s.originalStatus);
-            const statusPayload = modifiedStatusSkus.map(sku => ({
-                id: sku.id,
-                status: sku.status,
-            }));
-
-            const result = await savePrices(pricePayload, statusPayload);
-
-            if (result.error) {
-                alert(`Failed to save changes: ${result.error}`);
-            } else {
-                setHasUnsavedChanges(false);
-                setSkus(prev =>
-                    prev.map(s => ({
-                        ...s,
-                        originalExShowroom: s.exShowroom,
-                        originalOfferAmount: s.offerAmount,
-                        originalStatus: s.status,
-                        originalIsPopular: s.isPopular,
-                    }))
-                );
-                try {
-                    const {
-                        data: { user },
-                    } = await supabase.auth.getUser();
-                    if (user?.id && tenantId) {
-                        await supabase.from('audit_logs').insert({
-                            tenant_id: tenantId,
-                            actor_id: user.id,
-                            action: 'PRICING_PUBLISH_STAGE_UPDATED',
-                            entity_type: 'PRICING_LEDGER',
-                            entity_id: activeStateCode,
-                            metadata: {
-                                state_code: activeStateCode,
-                                updated_rows: skus.length,
-                            },
-                        });
-                    }
-                } catch (e) {
-                    console.warn('Audit log failed:', e);
-                }
-            }
-        } else {
-            const offerPayload = skus.map(s => ({
-                tenant_id: tenantId,
-                vehicle_color_id: s.id,
-                state_code: activeStateCode,
-                offer_amount: clampOfferDelta(s.offerAmount),
-                inclusion_type: s.inclusionType,
-                is_active: s.localIsActive,
-                is_popular: s.isPopular || false,
-            }));
-
-            const { error } = await supabase.rpc('upsert_dealer_offers', { offers: offerPayload });
-
-            if (error) {
-                alert(`Failed to save changes: ${getErrorMessage(error)}`);
-            } else {
-                setHasUnsavedChanges(false);
-                setSkus(prev =>
-                    prev.map(s => ({
-                        ...s,
-                        originalExShowroom: s.exShowroom,
-                        originalOfferAmount: s.offerAmount,
-                        originalStatus: s.status,
-                        originalIsPopular: s.isPopular,
-                    }))
-                );
-                try {
-                    const {
-                        data: { user },
-                    } = await supabase.auth.getUser();
-                    if (user?.id && tenantId) {
-                        await supabase.from('audit_logs').insert({
-                            tenant_id: tenantId,
-                            actor_id: user.id,
-                            action: 'DEALER_PRICING_UPDATED',
-                            entity_type: 'PRICING_LEDGER',
-                            entity_id: activeStateCode,
-                            metadata: {
-                                state_code: activeStateCode,
-                                updated_rows: skus.length,
-                            },
-                        });
-                    }
-                } catch (e) {
-                    console.warn('Audit log failed:', e);
+        } finally {
+            setIsSaving(false);
+            if (saveQueuedRef.current) {
+                saveQueuedRef.current = false;
+                setSaveQueued(false);
+                if (hasUnsavedChanges) {
+                    setTimeout(() => handleSaveAll(), 0);
                 }
             }
         }
@@ -1082,9 +1165,10 @@ export default function PricingPage() {
             tenantSlug === 'aums'
                 ? s.displayState === 'Live' || s.displayState === 'Published'
                 : s.localIsActive === true;
+        const isPipeline = (s: SKUPriceRow) => !isMarketReady(s);
 
         if (quickFilter === 'market_ready') return baseFiltered.filter(isMarketReady);
-        if (quickFilter === 'pipeline') return baseFiltered.filter(s => s.status !== 'ACTIVE');
+        if (quickFilter === 'pipeline') return baseFiltered.filter(isPipeline);
         return baseFiltered;
     }, [
         skus,
@@ -1101,16 +1185,24 @@ export default function PricingPage() {
 
     const renderHeader = () => {
         const missingPrices = skus.filter(s => s.exShowroom === 0).length;
-        const liveSkus = skus.filter(s => s.status === 'ACTIVE').length;
-        const draftSkus = skus.filter(s => s.status !== 'ACTIVE').length;
+        const isMarketReadySku = (s: SKUPriceRow) =>
+            tenantSlug === 'aums'
+                ? s.displayState === 'Live' || s.displayState === 'Published'
+                : s.localIsActive === true;
+        const isPipelineSku = (s: SKUPriceRow) => !isMarketReadySku(s);
+        const liveSkus = skus.filter(isMarketReadySku).length;
+        const draftSkus = skus.filter(isPipelineSku).length;
         const pendingSaves = hasUnsavedChanges
-            ? skus.filter(
-                  s =>
-                      s.exShowroom !== s.originalExShowroom ||
-                      s.offerAmount !== s.originalOfferAmount ||
-                      s.inclusionType !== s.originalInclusionType ||
-                      s.status !== s.originalStatus ||
-                      s.localIsActive !== s.originalLocalIsActive
+            ? skus.filter(s =>
+                  tenantSlug === 'aums'
+                      ? s.exShowroom !== s.originalExShowroom ||
+                        s.isPopular !== s.originalIsPopular ||
+                        s.publishStage !== s.originalPublishStage ||
+                        s.status !== s.originalStatus
+                      : s.offerAmount !== s.originalOfferAmount ||
+                        s.inclusionType !== s.originalInclusionType ||
+                        s.localIsActive !== s.originalLocalIsActive ||
+                        s.isPopular !== s.originalIsPopular
               ).length
             : 0;
         const activeRuleObj = states.find(s => s.id === selectedStateId);
@@ -1144,6 +1236,16 @@ export default function PricingPage() {
                     </div>
 
                     <div className="flex items-center gap-4 relative z-10">
+                        {loadError && (
+                            <button
+                                onClick={fetchSKUsAndPrices}
+                                className="group flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-xl transition-all duration-300 shadow-xl active:scale-95"
+                                title={loadError}
+                            >
+                                <RefreshCw size={14} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Retry Load</span>
+                            </button>
+                        )}
                         {tenantSlug === 'aums' && (
                             <button
                                 onClick={handleBackfill}
@@ -1164,6 +1266,23 @@ export default function PricingPage() {
                                 Unsaved Changes
                             </span>
                         </div>
+                        {isSaving && (
+                            <div className="flex items-center gap-2 text-[10px] font-bold px-3 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                                <Loader2 size={12} className="animate-spin" />
+                                <span className="uppercase tracking-widest">Saving...</span>
+                            </div>
+                        )}
+                        {!isSaving && saveQueued && (
+                            <div className="flex items-center gap-2 text-[10px] font-bold px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                                <Save size={12} />
+                                <span className="uppercase tracking-widest">Save Queued</span>
+                            </div>
+                        )}
+                        {!isSaving && !hasUnsavedChanges && lastSavedAt && (
+                            <div className="flex items-center gap-2 text-[10px] font-bold px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span className="uppercase tracking-widest">Saved</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -1390,7 +1509,7 @@ export default function PricingPage() {
                             selectedVariant={selectedVariant}
                             onVariantChange={setSelectedVariant}
                             hasUnsavedChanges={hasUnsavedChanges}
-                            isSaving={false}
+                            isSaving={isSaving}
                             onSummaryChange={setTableSummary}
                         />
                     )}

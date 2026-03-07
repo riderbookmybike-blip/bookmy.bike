@@ -1614,7 +1614,7 @@ export default function PricingLedgerTable({
                                         </th>
                                     )}
 
-                                    {activeCategory !== 'vehicles' && (
+                                    {activeCategory !== 'vehicles' && !isAums && (
                                         <th
                                             className="px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-center cursor-pointer hover:text-emerald-600 transition-colors"
                                             onClick={() => handleSort('offerAmount')}
@@ -2338,24 +2338,34 @@ export default function PricingLedgerTable({
                                             {activeCategory !== 'vehicles' && (
                                                 <>
                                                     <td className="px-3 py-1.5 text-center">
-                                                        <select
-                                                            value={sku.inclusionType || 'OPTIONAL'}
-                                                            onChange={e => {
-                                                                const type = e.target.value as
-                                                                    | 'MANDATORY'
-                                                                    | 'OPTIONAL'
-                                                                    | 'BUNDLE';
-                                                                onUpdateInclusion(sku.id, type);
-                                                                if (type === 'MANDATORY' || type === 'BUNDLE')
-                                                                    onUpdateOffer(sku.id, -sku.exShowroom);
-                                                                else onUpdateOffer(sku.id, 0);
-                                                            }}
-                                                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest outline-none border transition-all ${sku.inclusionType === 'MANDATORY' ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30' : sku.inclusionType === 'BUNDLE' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
-                                                        >
-                                                            <option value="OPTIONAL">Optional</option>
-                                                            <option value="MANDATORY">Mandatory</option>
-                                                            <option value="BUNDLE">Bundle</option>
-                                                        </select>
+                                                        {isAums ? (
+                                                            <div
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                                                                title="Inclusion and offer delta are dealer-managed fields. Locked for AUMS."
+                                                            >
+                                                                <Lock size={11} />
+                                                                {sku.inclusionType || 'Optional'}
+                                                            </div>
+                                                        ) : (
+                                                            <select
+                                                                value={sku.inclusionType || 'OPTIONAL'}
+                                                                onChange={e => {
+                                                                    const type = e.target.value as
+                                                                        | 'MANDATORY'
+                                                                        | 'OPTIONAL'
+                                                                        | 'BUNDLE';
+                                                                    onUpdateInclusion(sku.id, type);
+                                                                    if (type === 'MANDATORY' || type === 'BUNDLE')
+                                                                        onUpdateOffer(sku.id, -sku.exShowroom);
+                                                                    else onUpdateOffer(sku.id, 0);
+                                                                }}
+                                                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest outline-none border transition-all ${sku.inclusionType === 'MANDATORY' ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30' : sku.inclusionType === 'BUNDLE' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
+                                                            >
+                                                                <option value="OPTIONAL">Optional</option>
+                                                                <option value="MANDATORY">Mandatory</option>
+                                                                <option value="BUNDLE">Bundle</option>
+                                                            </select>
+                                                        )}
                                                     </td>
                                                     {!isAums && (
                                                         <td className="px-2 py-1 text-center">

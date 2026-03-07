@@ -1,52 +1,30 @@
 'use client';
 
 import React from 'react';
-import { Menu, Share2 } from 'lucide-react';
+import { Share2, SlidersHorizontal, LayoutGrid, List } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 
 interface DiscoveryBarProps {
-    /** Called when the hamburger/filter button is clicked */
     onFilterClick?: () => void;
-    /** Current search text */
     searchQuery: string;
-    /** Called whenever the search input changes */
     onSearchChange: (query: string) => void;
-    /** Called when the user presses Enter in the search box */
     onSearchSubmit?: (query: string) => void;
-    /** Active pricing mode */
     pricingMode: 'cash' | 'finance';
-    /** Called when the user switches cash/finance */
     onPricingModeChange: (mode: 'cash' | 'finance') => void;
-    /** Optional share action shown before cash/finance toggle */
     onShareClick?: () => void;
-    /** Optional label override for share button */
     shareLabel?: string;
-    /** Optional copied/success visual state */
     shareActive?: boolean;
-    /** Optional content rendered in the flexible center area (chips, breadcrumbs, etc.) */
     centerContent?: React.ReactNode;
-    /** Optional compare action */
     onCompareClick?: () => void;
-    /** Count for compare pill */
     compareCount?: number;
-    /**
-     * Extra class names applied to the outer <header> element.
-     * Use this to control visibility / slide-in animation from the parent.
-     * Defaults to 'opacity-100 translate-y-0'.
-     */
+    viewMode?: 'grid' | 'list';
+    onViewModeChange?: (mode: 'grid' | 'list') => void;
+    hasActiveFilters?: boolean;
     className?: string;
-    /** Disable sticky positioning and top margins (used for embedding in 3D flip containers) */
     disableSticky?: boolean;
 }
 
-/**
- * DiscoveryBar — the single shared second sticky navbar used on
- * Catalog, Wishlist, and Compare pages.
- *
- * Drop it anywhere inside a `page-container` div and pass the
- * page-specific state/handlers as props.
- */
 export function DiscoveryBar({
     onFilterClick,
     searchQuery,
@@ -60,9 +38,19 @@ export function DiscoveryBar({
     centerContent,
     onCompareClick,
     compareCount = 0,
+    viewMode,
+    onViewModeChange,
+    hasActiveFilters = false,
     className = '',
     disableSticky = false,
 }: DiscoveryBarProps) {
+    /* shared styles for pill buttons */
+    const pillBase =
+        'inline-flex items-center gap-1.5 px-4 h-10 rounded-2xl border transition-all duration-300 text-[9px] font-black uppercase tracking-[0.1em]';
+    const pillActive = 'bg-[#F4B000] text-black border-[#F4B000] shadow-[0_2px_10px_rgba(244,176,0,0.25)]';
+    const pillInactive =
+        'bg-white/70 text-slate-500 border-slate-200/60 hover:bg-white hover:text-slate-900 hover:border-slate-300';
+
     return (
         <header
             className={`hidden md:block ${disableSticky ? '' : 'sticky z-[90] mb-6'} py-0 transition-all duration-700 ease-in-out ${className}`}
@@ -70,17 +58,9 @@ export function DiscoveryBar({
         >
             <div className="w-full">
                 <div className="rounded-[2rem] bg-white/75 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_0_1px_rgba(255,255,255,0.4)_inset] h-14 pr-2 pl-4 flex items-center transition-all duration-500 hover:shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
-                    <div className="flex items-center gap-4 w-full">
-                        {/* ── Left: Filter / Menu button ── */}
-                        <button
-                            onClick={onFilterClick}
-                            className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white/40 border border-slate-200/40 text-slate-500 hover:text-slate-900 hover:bg-white hover:border-slate-300 transition-all duration-300 shrink-0 group"
-                        >
-                            <Menu size={18} className="group-hover:rotate-180 transition-transform duration-500" />
-                        </button>
-
-                        {/* ── Search bar ── */}
-                        <div className="flex-none min-w-[240px] lg:min-w-[320px]">
+                    <div className="flex items-center gap-3 w-full">
+                        {/* ── Search bar (left) ── */}
+                        <div className="flex-none min-w-[220px] lg:min-w-[300px]">
                             <div
                                 onKeyDown={e => {
                                     if (e.key === 'Enter' && searchQuery.trim()) {
@@ -98,104 +78,134 @@ export function DiscoveryBar({
                             </div>
                         </div>
 
-                        {/* ── Center: flexible slot for chips / breadcrumbs ── */}
-                        <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar pl-2">
+                        {/* ── Center: flexible slot ── */}
+                        <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar pl-1">
                             {centerContent}
                         </div>
 
-                        {/* ── Right: Share + Cash / Finance toggle ── */}
-                        <div className="flex-none flex items-center ml-4 pl-6 border-l border-slate-200/40">
+                        {/* ── Right: All controls as separate pill buttons ── */}
+                        <div className="flex-none flex items-center gap-1.5">
+                            {/* ── GRID VIEW button ── */}
+                            {onViewModeChange && viewMode && (
+                                <button
+                                    onClick={() => onViewModeChange('grid')}
+                                    className={`${pillBase} ${viewMode === 'grid' ? pillActive : pillInactive}`}
+                                    aria-label="Grid view"
+                                    aria-pressed={viewMode === 'grid'}
+                                >
+                                    <LayoutGrid size={13} />
+                                    <span>Grid View</span>
+                                </button>
+                            )}
+
+                            {/* ── LIST VIEW button ── */}
+                            {onViewModeChange && viewMode && (
+                                <button
+                                    onClick={() => onViewModeChange('list')}
+                                    className={`${pillBase} ${viewMode === 'list' ? pillActive : pillInactive}`}
+                                    aria-label="List view"
+                                    aria-pressed={viewMode === 'list'}
+                                >
+                                    <List size={13} />
+                                    <span>List View</span>
+                                </button>
+                            )}
+
+                            {/* ── FINANCE button ── */}
+                            <button
+                                onClick={() => onPricingModeChange('finance')}
+                                className={`${pillBase} ${
+                                    pricingMode === 'finance'
+                                        ? 'bg-[#F4B000] text-black border-[#F4B000] shadow-[0_2px_10px_rgba(244,176,0,0.25)]'
+                                        : pillInactive
+                                }`}
+                            >
+                                Finance
+                            </button>
+
+                            {/* ── CASH button ── */}
+                            <button
+                                onClick={() => onPricingModeChange('cash')}
+                                className={`${pillBase} ${
+                                    pricingMode === 'cash'
+                                        ? 'bg-[#F4B000] text-black border-[#F4B000] shadow-[0_2px_10px_rgba(244,176,0,0.25)]'
+                                        : pillInactive
+                                }`}
+                            >
+                                Cash
+                            </button>
+
+                            {/* ── FILTER button ── */}
+                            {onFilterClick && (
+                                <button
+                                    onClick={onFilterClick}
+                                    className={`${pillBase} relative group ${
+                                        hasActiveFilters
+                                            ? 'bg-[#F4B000]/10 text-[#b8860b] border-[#F4B000]/30 hover:bg-[#F4B000]/15'
+                                            : pillInactive
+                                    }`}
+                                >
+                                    <SlidersHorizontal
+                                        size={13}
+                                        className="group-hover:rotate-12 transition-transform duration-500"
+                                    />
+                                    <span>Filter</span>
+                                    {hasActiveFilters && (
+                                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#F4B000] rounded-full ring-2 ring-white" />
+                                    )}
+                                </button>
+                            )}
+
+                            {/* ── SHARE button ── */}
                             {onShareClick && (
                                 <button
                                     onClick={onShareClick}
                                     title={shareActive ? 'Copied' : 'Copy compare message'}
-                                    className={`mr-2 inline-flex items-center gap-1.5 px-4 h-10 rounded-2xl border transition-all duration-300 text-[9px] font-black uppercase tracking-[0.1em] ${
-                                        shareActive
-                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                            : 'bg-white/70 text-slate-600 border-slate-200/60 hover:bg-white hover:text-slate-900'
+                                    className={`${pillBase} ${
+                                        shareActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : pillInactive
                                     }`}
                                 >
                                     <Share2 size={13} />
+                                    <span>Share</span>
                                 </button>
                             )}
 
-                            <div className="relative flex items-center p-1 bg-white/60 backdrop-blur-xl rounded-2xl border border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.03)] h-11 overflow-hidden">
-                                {onCompareClick && (
-                                    <>
-                                        <button
-                                            onClick={onCompareClick}
-                                            className="group relative flex items-center gap-1.5 px-3.5 h-8.5 rounded-xl bg-slate-900 text-white transition-all duration-300 hover:bg-black active:scale-[0.98] shadow-sm z-10"
+                            {/* ── COMPARE button ── */}
+                            {onCompareClick && (
+                                <button
+                                    onClick={onCompareClick}
+                                    className={`${pillBase} ${pillActive} group active:scale-[0.98]`}
+                                >
+                                    <svg
+                                        width="11"
+                                        height="11"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="3.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="group-hover:rotate-180 transition-transform duration-500"
+                                    >
+                                        <path d="M16 3h5v5" />
+                                        <path d="M8 3H3v5" />
+                                        <path d="M16 21h5v-5" />
+                                        <path d="M8 21H3v-5" />
+                                        <path d="M10 10l4 4" />
+                                        <path d="M14 10l-4 4" />
+                                    </svg>
+                                    <span>Compare</span>
+                                    {compareCount > 0 && (
+                                        <motion.span
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[8px] font-black rounded-full"
                                         >
-                                            <div className="flex items-center gap-1.5">
-                                                <svg
-                                                    width="11"
-                                                    height="11"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="3.5"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    className="group-hover:rotate-180 transition-transform duration-500"
-                                                >
-                                                    <path d="M16 3h5v5" />
-                                                    <path d="M8 3H3v5" />
-                                                    <path d="M16 21h5v-5" />
-                                                    <path d="M8 21H3v-5" />
-                                                    <path d="M10 10l4 4" />
-                                                    <path d="M14 10l-4 4" />
-                                                </svg>
-                                                <span className="text-[9px] font-black uppercase tracking-widest">
-                                                    Compare
-                                                </span>
-                                                {compareCount > 0 && (
-                                                    <motion.span
-                                                        initial={{ scale: 0 }}
-                                                        animate={{ scale: 1 }}
-                                                        className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[8px] font-black rounded-full"
-                                                    >
-                                                        {compareCount}
-                                                    </motion.span>
-                                                )}
-                                            </div>
-                                        </button>
-                                        <div className="w-px h-4 bg-slate-200/60 mx-1.5" />
-                                    </>
-                                )}
-
-                                <div className="relative flex items-center">
-                                    {/* Sliding Highlighter */}
-                                    <motion.div
-                                        className="absolute h-9 bg-[#F4B000] rounded-xl shadow-[0_2px_10px_rgba(244,176,0,0.25)]"
-                                        initial={false}
-                                        animate={{
-                                            x: pricingMode === 'finance' ? 0 : 76,
-                                            width: pricingMode === 'finance' ? 76 : 64,
-                                        }}
-                                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                                    />
-
-                                    {(
-                                        [
-                                            { id: 'finance', label: 'Finance', w: 76 },
-                                            { id: 'cash', label: 'Cash', w: 64 },
-                                        ] as const
-                                    ).map(mode => (
-                                        <button
-                                            key={mode.id}
-                                            onClick={() => onPricingModeChange?.(mode.id)}
-                                            className={`relative z-10 flex items-center justify-center h-9 transition-colors duration-300 text-[10px] font-black uppercase tracking-widest ${
-                                                pricingMode === mode.id
-                                                    ? 'text-black'
-                                                    : 'text-slate-400 hover:text-slate-600'
-                                            }`}
-                                            style={{ width: mode.w }}
-                                        >
-                                            {mode.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                                            {compareCount}
+                                        </motion.span>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
