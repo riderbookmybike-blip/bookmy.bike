@@ -3,7 +3,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 
 type CompareTab = 'wishlist' | 'variants' | 'studio';
@@ -44,8 +44,6 @@ const CompareStudio = dynamic(() => import('./ComparePageClient').then(m => ({ d
 
 export function SystemCompareRouter() {
     const searchParams = useSearchParams();
-    const router = useRouter();
-    const pathname = usePathname();
     const { favorites } = useFavorites();
     const tabParam = searchParams.get('tab');
     const hasModelContext = Boolean(searchParams.get('make') && searchParams.get('model'));
@@ -56,36 +54,8 @@ export function SystemCompareRouter() {
               ? 'wishlist'
               : 'studio';
 
-    const setTab = (tab: CompareTab) => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('tab', tab);
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    };
-
     return (
         <div className="pb-6">
-            <div className="store-page-shell pt-4">
-                <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-                    {(
-                        [
-                            { id: 'wishlist', label: 'Wishlist' },
-                            { id: 'variants', label: 'Variants' },
-                            { id: 'studio', label: 'Studio' },
-                        ] as { id: CompareTab; label: string }[]
-                    ).map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setTab(tab.id)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${
-                                activeTab === tab.id ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
             {activeTab === 'wishlist' && <WishlistClient />}
 
             {activeTab === 'studio' && <CompareStudio />}

@@ -123,6 +123,7 @@ export const WishlistClient = () => {
     const [activeCategory, setActiveCategory] = useState<'ALL' | 'MOTORCYCLE' | 'SCOOTER' | 'MOPED'>('ALL');
     const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
     const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>('finance');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     // Map favorites to full ProductVariant data from catalog
     const wishlistItems = useMemo(() => {
@@ -307,6 +308,8 @@ export const WishlistClient = () => {
                 onSearchChange={setSearchQuery}
                 pricingMode={pricingMode}
                 onPricingModeChange={mode => setPricingMode(mode as any)}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
                 onCompareClick={handleCompareAll}
                 compareCount={filteredItems.length > 5 ? 5 : filteredItems.length}
             />
@@ -407,14 +410,18 @@ export const WishlistClient = () => {
             )}
 
             {/* Grid Section - Using filteredItems */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[50vh]">
+            <div
+                className={`grid gap-6 min-h-[50vh] ${
+                    viewMode === 'list' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                }`}
+            >
                 <AnimatePresence mode={lightMotion ? 'wait' : 'popLayout'}>
                     {filteredItems.length > 0 ? (
                         filteredItems.map(v => (
                             <div key={v.id} className="transition-transform duration-200">
                                 <ProductCard
                                     v={v}
-                                    viewMode="grid"
+                                    viewMode={viewMode}
                                     downpayment={downpayment}
                                     tenure={tenure}
                                     pricingMode={pricingMode}

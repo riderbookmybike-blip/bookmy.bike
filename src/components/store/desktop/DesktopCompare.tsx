@@ -727,7 +727,7 @@ export default function DesktopCompare() {
                     {viewMode === 'list' && allSpecs.length > 0 && (
                         <div className="pb-6 space-y-10">
                             <div className="overflow-visible">
-                                {/* ── Financial Comparison Section ── */}
+                                {/* ── Financial Comparison Section (sticky/frozen in list mode) ── */}
                                 <AnimatePresence initial={false}>
                                     {isPricingExpanded && (
                                         <motion.div
@@ -735,7 +735,8 @@ export default function DesktopCompare() {
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
                                             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                                            className="overflow-hidden"
+                                            className="overflow-hidden sticky z-[70] pb-3 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/60"
+                                            style={{ top: 'calc(var(--header-h) + 56px)' }}
                                         >
                                             {/* 00. Mini Card Images Row */}
                                             <div
