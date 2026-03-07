@@ -178,7 +178,7 @@
 
     /* Marketplace content shell used by catalog/compare/favorites/pdp */
     .store-page-shell {
-        @apply w-full max-w-[1440px] mx-auto px-5 md:px-6 pt-0 pb-10 md:pb-16;
+        @apply w-full max-w-[1440px] mx-auto px-5 md:px-6 pt-4 md:pt-6 pb-10 md:pb-16;
     }
 
     /* --- TFT SYNERGY: DIGITAL INSTRUMENT CLUSTER --- */
