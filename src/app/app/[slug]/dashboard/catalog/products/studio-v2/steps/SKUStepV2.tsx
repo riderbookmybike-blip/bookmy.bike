@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     Palette,
     Grid3X3,
@@ -71,6 +71,8 @@ export default function SKUStepV2({
     const [activeMediaSku, setActiveMediaSku] = useState<CatalogSku | null>(null);
     const [editingOemSku, setEditingOemSku] = useState<string | null>(null); // SKU id being edited
     const [oemDraft, setOemDraft] = useState<string>('');
+    const [focusedColourId, setFocusedColourId] = useState<string | null>(null);
+    const [focusedVariantId, setFocusedVariantId] = useState<string | null>(null);
 
     // Get variant FK field name
     const variantFkField =
@@ -110,6 +112,52 @@ export default function SKUStepV2({
     const getSkuForCell = (variantId: string, colourId: string) =>
         skus.find(s => (s as any)[variantFkField] === variantId && s.colour_id === colourId);
 
+    // For non-accessory matrix: dynamically order columns by focus + density.
+    const orderedVariants = useMemo(() => {
+        const withIndex = variants.map((variant: any, index: number) => {
+            const filledRows = sortedColours.filter(c => !!getSkuForCell(variant.id, c.id)).length;
+            const hasFocusedColour = focusedColourId ? !!getSkuForCell(variant.id, focusedColourId) : false;
+            const isFocusedVariant = focusedVariantId ? variant.id === focusedVariantId : false;
+            return { variant, index, filledRows, hasFocusedColour, isFocusedVariant };
+        });
+
+        return withIndex
+            .sort((a, b) => {
+                if (a.isFocusedVariant !== b.isFocusedVariant) {
+                    return a.isFocusedVariant ? -1 : 1;
+                }
+                if (focusedColourId && a.hasFocusedColour !== b.hasFocusedColour) {
+                    return a.hasFocusedColour ? -1 : 1;
+                }
+                if (b.filledRows !== a.filledRows) return b.filledRows - a.filledRows;
+                return a.index - b.index;
+            })
+            .map(item => item.variant);
+    }, [variants, sortedColours, skus, focusedColourId, focusedVariantId, variantFkField]);
+
+    // For non-accessory matrix: dynamically order rows by focus + density.
+    const orderedColours = useMemo(() => {
+        const withIndex = sortedColours.map((colour, index) => {
+            const filledCols = variants.filter((v: any) => !!getSkuForCell(v.id, colour.id)).length;
+            const hasFocusedVariant = focusedVariantId ? !!getSkuForCell(focusedVariantId, colour.id) : false;
+            const isFocusedColour = focusedColourId ? colour.id === focusedColourId : false;
+            return { colour, index, filledCols, hasFocusedVariant, isFocusedColour };
+        });
+
+        return withIndex
+            .sort((a, b) => {
+                if (a.isFocusedColour !== b.isFocusedColour) {
+                    return a.isFocusedColour ? -1 : 1;
+                }
+                if (focusedVariantId && a.hasFocusedVariant !== b.hasFocusedVariant) {
+                    return a.hasFocusedVariant ? -1 : 1;
+                }
+                if (b.filledCols !== a.filledCols) return b.filledCols - a.filledCols;
+                return a.index - b.index;
+            })
+            .map(item => item.colour);
+    }, [sortedColours, variants, skus, focusedVariantId, focusedColourId, variantFkField]);
+
     // Resolve colour swatch for a SKU
     const getSkuSwatch = (sku: CatalogSku) => {
         if (sku.colour_id) {
@@ -147,6 +195,10 @@ export default function SKUStepV2({
 
     // Toggle SKU existence (create/delete)
     const handleToggleSku = async (variantId: string, colour: CatalogColour) => {
+        if (productType !== 'ACCESSORY') {
+            setFocusedColourId(colour.id);
+            setFocusedVariantId(variantId);
+        }
         const cellKey = `${variantId}-${colour.id}`;
         const existingSku = getSkuForCell(variantId, colour.id);
 
@@ -341,6 +393,9 @@ export default function SKUStepV2({
 
     // Select/deselect all colours for a variant
     const handleToggleAllForVariant = async (variantId: string) => {
+        if (productType !== 'ACCESSORY') {
+            setFocusedVariantId(variantId);
+        }
         const variant = variants.find((v: any) => v.id === variantId);
         const existingCount = sortedColours.filter(c => getSkuForCell(variantId, c.id)).length;
         const shouldAdd = existingCount < sortedColours.length;
@@ -361,6 +416,9 @@ export default function SKUStepV2({
 
     // Select/deselect all variants for a colour
     const handleToggleAllForColour = async (colour: CatalogColour) => {
+        if (productType !== 'ACCESSORY') {
+            setFocusedColourId(colour.id);
+        }
         const existingCount = variants.filter((v: any) => getSkuForCell(v.id, colour.id)).length;
         const shouldAdd = existingCount < variants.length;
 
@@ -521,11 +579,11 @@ export default function SKUStepV2({
                                                   </th>
                                               );
                                           })
-                                        : variants.map((variant: any) => {
-                                              const variantSkuCount = sortedColours.filter(c =>
+                                        : orderedVariants.map((variant: any) => {
+                                              const variantSkuCount = orderedColours.filter(c =>
                                                   getSkuForCell(variant.id, c.id)
                                               ).length;
-                                              const allChecked = variantSkuCount === sortedColours.length;
+                                              const allChecked = variantSkuCount === orderedColours.length;
                                               const variantActiveSkus = skus.filter(
                                                   s =>
                                                       (s as any)[variantFkField] === variant.id && s.status === 'ACTIVE'
@@ -540,6 +598,7 @@ export default function SKUStepV2({
                                                   >
                                                       <div className="flex flex-col items-center gap-1.5">
                                                           <span
+                                                              onClick={() => setFocusedVariantId(variant.id)}
                                                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider"
                                                               style={
                                                                   hex
@@ -574,14 +633,17 @@ export default function SKUStepV2({
                                 </tr>
                                 {/* Sub-header: Brand / Model / Variant context row */}
                                 <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
-                                    <th className="px-5 py-2 text-left sticky left-0 bg-slate-50/80 dark:bg-slate-900/80 z-10">
+                                    <th className="px-5 py-2 text-left sticky left-0 top-0 bg-slate-50/95 dark:bg-slate-900/95 z-30">
                                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">
                                             Brand · Model · {labels.variant}
                                         </span>
                                     </th>
                                     {productType === 'ACCESSORY'
                                         ? sortedColours.map(colour => (
-                                              <th key={colour.id} className="px-3 py-2 text-center">
+                                              <th
+                                                  key={colour.id}
+                                                  className="px-3 py-2 text-center sticky top-0 z-20 bg-slate-50/95 dark:bg-slate-900/95"
+                                              >
                                                   <div className="flex flex-col items-center gap-0.5">
                                                       {brandName && (
                                                           <span className="text-[7px] font-black uppercase tracking-widest text-indigo-400">
@@ -597,8 +659,11 @@ export default function SKUStepV2({
                                                   </div>
                                               </th>
                                           ))
-                                        : variants.map((variant: any) => (
-                                              <th key={variant.id} className="px-3 py-2 text-center">
+                                        : orderedVariants.map((variant: any) => (
+                                              <th
+                                                  key={variant.id}
+                                                  className="px-3 py-2 text-center sticky top-0 z-20 bg-slate-50/95 dark:bg-slate-900/95"
+                                              >
                                                   <div className="flex flex-col items-center gap-0.5">
                                                       {brandName && (
                                                           <span className="text-[7px] font-black uppercase tracking-widest text-indigo-400">
@@ -845,11 +910,11 @@ export default function SKUStepV2({
                                               </tr>
                                           );
                                       })
-                                    : sortedColours.map(colour => {
-                                          const coloursForRow = variants.filter((v: any) =>
+                                    : orderedColours.map(colour => {
+                                          const coloursForRow = orderedVariants.filter((v: any) =>
                                               getSkuForCell(v.id, colour.id)
                                           );
-                                          const allVariantsChecked = coloursForRow.length === variants.length;
+                                          const allVariantsChecked = coloursForRow.length === orderedVariants.length;
 
                                           return (
                                               <tr
@@ -859,6 +924,7 @@ export default function SKUStepV2({
                                                   <td className="px-5 py-3 sticky left-0 bg-white dark:bg-slate-900 z-10 min-w-[180px] max-w-[220px]">
                                                       <div className="flex items-center gap-2">
                                                           <span
+                                                              onClick={() => setFocusedColourId(colour.id)}
                                                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border flex-1 min-w-0"
                                                               style={
                                                                   colour.hex_primary
@@ -924,7 +990,7 @@ export default function SKUStepV2({
                                                           </button>
                                                       </div>
                                                   </td>
-                                                  {variants.map((variant: any) => {
+                                                  {orderedVariants.map((variant: any) => {
                                                       const sku = getSkuForCell(variant.id, colour.id);
                                                       const cellKey = `${variant.id}-${colour.id}`;
                                                       const isBusy = busyCells.has(cellKey);
@@ -1239,6 +1305,15 @@ export default function SKUStepV2({
             {activeMediaSku && (
                 <SKUMediaManager
                     skuName={activeMediaSku.name}
+                    skuContext={`Variant: ${
+                        variants.find(
+                            (v: any) =>
+                                v.id ===
+                                (activeMediaSku.vehicle_variant_id ||
+                                    activeMediaSku.accessory_variant_id ||
+                                    activeMediaSku.service_variant_id)
+                        )?.name || 'Unknown'
+                    } · Colour: ${colours.find(c => c.id === activeMediaSku.colour_id)?.name || activeMediaSku.color_name || 'Unknown'}`}
                     initialImages={skuToGalleryArray(activeMediaSku)}
                     initialVideos={skuToVideoArray(activeMediaSku)}
                     initialPdfs={skuToPdfArray(activeMediaSku)}

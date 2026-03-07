@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     Loader2,
     Plus,
@@ -60,10 +60,12 @@ const finishStyles: Record<string, { bg: string; text: string; label: string }> 
 interface ColourPoolStepProps {
     model: CatalogModel;
     colours: CatalogColour[];
+    variants: any[];
+    skus: any[];
     onUpdate: (colours: CatalogColour[]) => void;
 }
 
-export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoolStepProps) {
+export default function ColourPoolStepV2({ model, colours, variants, skus, onUpdate }: ColourPoolStepProps) {
     const productType = (model.product_type || 'VEHICLE') as string;
     const isVehicle = productType === 'VEHICLE';
     const labels = getHierarchyLabels(productType);
@@ -154,7 +156,49 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
         }
     };
 
-    const handleReposition = async (currentIndex: number, newPosition: number) => {
+    const displayColours = useMemo(() => {
+        const usageByColour = new Map<string, number>();
+        for (const colour of colours) {
+            const variantCount = new Set(
+                skus
+                    .filter((s: any) => s.colour_id === colour.id)
+                    .map((s: any) => s.vehicle_variant_id || s.accessory_variant_id || s.service_variant_id)
+                    .filter(Boolean)
+            ).size;
+            usageByColour.set(colour.id, variantCount);
+        }
+
+        return [...colours].sort((a, b) => {
+            const aCount = usageByColour.get(a.id) || 0;
+            const bCount = usageByColour.get(b.id) || 0;
+            if (bCount !== aCount) return bCount - aCount;
+            return (a.position ?? 9999) - (b.position ?? 9999);
+        });
+    }, [colours, skus]);
+
+    const getColourVariantIds = (colourId: string): string[] =>
+        Array.from(
+            new Set(
+                skus
+                    .filter((s: any) => s.colour_id === colourId)
+                    .map((s: any) => s.vehicle_variant_id || s.accessory_variant_id || s.service_variant_id)
+                    .filter(Boolean)
+            )
+        );
+
+    const getColourUsage = (colourId: string) => getColourVariantIds(colourId).length;
+
+    const getColourVariantNames = (colourId: string): string[] => {
+        const ids = new Set(getColourVariantIds(colourId));
+        return variants
+            .filter((v: any) => ids.has(v.id))
+            .map((v: any) => String(v.name || '').trim())
+            .filter(Boolean);
+    };
+
+    const handleReposition = async (colourId: string, newPosition: number) => {
+        const currentIndex = colours.findIndex(c => c.id === colourId);
+        if (currentIndex < 0) return;
         const targetIdx = Math.max(0, Math.min(colours.length - 1, newPosition - 1));
         if (targetIdx === currentIndex) return;
 
@@ -432,10 +476,12 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
 
                 {/* Colour List */}
                 <div className="space-y-3">
-                    {colours.map((colour, index) => {
+                    {displayColours.map((colour, index) => {
                         const isEditing = editingId === colour.id;
                         const data = editData[colour.id] || colour;
                         const finish = finishStyles[colour.finish || ''];
+                        const usageCount = getColourUsage(colour.id);
+                        const usageVariantNames = getColourVariantNames(colour.id);
 
                         return (
                             <div
@@ -446,10 +492,10 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                         : 'border-slate-100 dark:border-white/5 bg-white dark:bg-white/[0.03] hover:border-slate-200 dark:hover:border-white/10'
                                 }`}
                             >
-                                <div className="p-5">
-                                    <div className="flex items-center gap-4">
+                                <div className="p-3">
+                                    <div className="flex items-center gap-2.5">
                                         {/* Reorder handle + swatch/icon */}
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 shrink-0">
                                             <input
                                                 type="number"
                                                 min={1}
@@ -459,13 +505,13 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                                 onClick={e => e.stopPropagation()}
                                                 onBlur={e => {
                                                     const val = parseInt(e.target.value);
-                                                    if (!isNaN(val)) handleReposition(index, val);
+                                                    if (!isNaN(val)) handleReposition(colour.id, val);
                                                 }}
                                                 onKeyDown={e => {
                                                     if (e.key === 'Enter') {
                                                         e.preventDefault();
                                                         const val = parseInt((e.target as HTMLInputElement).value);
-                                                        if (!isNaN(val)) handleReposition(index, val);
+                                                        if (!isNaN(val)) handleReposition(colour.id, val);
                                                     }
                                                 }}
                                                 className="w-10 h-8 text-center text-xs font-black bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full outline-none focus:ring-2 focus:ring-indigo-500 text-slate-600 dark:text-white"
@@ -474,19 +520,19 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
 
                                             {!isVehicle ? (
                                                 /* Tier icon */
-                                                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center transition-transform group-hover:scale-110">
-                                                    <Layers size={20} className="text-emerald-500" />
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center transition-transform group-hover:scale-110">
+                                                    <Layers size={14} className="text-emerald-500" />
                                                 </div>
                                             ) : (
                                                 /* Dual colour swatch */
                                                 <div className="relative">
                                                     <div
-                                                        className="w-12 h-12 rounded-2xl shadow-md border-2 border-white dark:border-slate-700 transition-transform group-hover:scale-110"
+                                                        className="w-8 h-8 rounded-lg shadow-sm border border-white dark:border-slate-700 transition-transform group-hover:scale-110"
                                                         style={{ backgroundColor: colour.hex_primary || '#ccc' }}
                                                     />
                                                     {colour.hex_secondary && (
                                                         <div
-                                                            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-lg border-2 border-white dark:border-slate-700 shadow"
+                                                            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded border border-white dark:border-slate-700 shadow"
                                                             style={{ backgroundColor: colour.hex_secondary }}
                                                         />
                                                     )}
@@ -498,7 +544,7 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
                                         {isVehicle && (
                                             <button
                                                 onClick={() => setActiveMediaColour(colour)}
-                                                className={`w-16 h-12 rounded-lg border transition-all overflow-hidden flex items-center justify-center group/media relative ${
+                                                className={`w-10 h-8 rounded-md border transition-all overflow-hidden flex items-center justify-center group/media relative shrink-0 ${
                                                     colour.primary_image
                                                         ? 'border-indigo-500/30 hover:border-indigo-500'
                                                         : 'bg-slate-50 dark:bg-black/40 border-dashed border-slate-200 dark:border-white/10 text-slate-300 hover:text-indigo-500 hover:border-indigo-400'
@@ -524,34 +570,36 @@ export default function ColourPoolStepV2({ model, colours, onUpdate }: ColourPoo
 
                                         {/* Details */}
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 text-[11px] min-w-0 whitespace-nowrap overflow-hidden">
                                                 <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
                                                     {colour.name}
                                                 </h4>
                                                 {finish && (
                                                     <span
-                                                        className={`text-[8px] px-2 py-0.5 rounded-full font-bold uppercase ${finish.bg} ${finish.text}`}
+                                                        className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${finish.bg} ${finish.text}`}
                                                     >
                                                         {finish.label}
                                                     </span>
                                                 )}
-                                                <span className="text-[10px] font-mono text-slate-300">
-                                                    #{index + 1}
-                                                </span>
-                                            </div>
-                                            {isVehicle && (
-                                                <div className="flex items-center gap-3 mt-1">
+                                                {isVehicle && (
                                                     <span className="text-[10px] font-mono text-slate-400">
-                                                        {colour.hex_primary || 'no hex'}
+                                                        {colour.hex_primary || 'no-hex'}
+                                                        {colour.hex_secondary ? ` + ${colour.hex_secondary}` : ''}
                                                     </span>
-                                                    {colour.hex_secondary && (
-                                                        <span className="text-[10px] font-mono text-slate-400">
-                                                            + {colour.hex_secondary}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                            <CopyableId id={colour.id} />
+                                                )}
+                                                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider shrink-0">
+                                                    {usageCount}/{variants.length} variants
+                                                </span>
+                                                {usageVariantNames.length > 0 && (
+                                                    <span
+                                                        className="text-[10px] text-slate-500 truncate min-w-0"
+                                                        title={usageVariantNames.join(', ')}
+                                                    >
+                                                        {usageVariantNames.join(' · ')}
+                                                    </span>
+                                                )}
+                                                <CopyableId id={colour.id} />
+                                            </div>
                                         </div>
 
                                         {/* Actions */}

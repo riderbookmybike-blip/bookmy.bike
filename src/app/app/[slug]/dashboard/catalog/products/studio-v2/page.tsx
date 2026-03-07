@@ -425,6 +425,8 @@ export default function StudioV2Page() {
                         <ColourPoolStepV2
                             model={modelData}
                             colours={colours}
+                            variants={variants}
+                            skus={skus}
                             onUpdate={(c: CatalogColour[]) => setColours(c)}
                         />
                     )}

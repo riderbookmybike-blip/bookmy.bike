@@ -1706,6 +1706,7 @@ export async function createLeadAction(data: {
     const isCrmManualSource = normalizedSource === 'CRM_MANUAL';
     const authUser = await getAuthUser();
     let actorIsStaff = false;
+    let actorActiveTenantId: string | null = null;
 
     // Strict sanitation
     const strictPhone = toAppStorageFormat(data.customer_phone);
@@ -1766,6 +1767,16 @@ export async function createLeadAction(data: {
         }
 
         if (authUser?.id) {
+            const { data: activeTeamMembership } = await adminClient
+                .from('id_team')
+                .select('tenant_id')
+                .eq('user_id', authUser.id)
+                .eq('status', 'ACTIVE')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            actorActiveTenantId = activeTeamMembership?.tenant_id || null;
+
             const { data: actorMember } = await adminClient
                 .from('id_members')
                 .select('role')
@@ -1878,8 +1889,35 @@ export async function createLeadAction(data: {
         // console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
         const hasActiveDelivery = await hasMemberActiveDelivery(customerId);
         const referralBenefitEligible = !hasActiveDelivery;
-        const hasReferralInput = Boolean(referredByCodeInput || referredByPhoneInput || referredByNameInput);
-        const resolvedReferrer = hasReferralInput
+        const hasExplicitReferralInput = Boolean(referredByCodeInput || referredByPhoneInput || referredByNameInput);
+        const isInternalTeamCrmLead = isCrmManualSource && (actorIsStaff || isStaffContextSource(data.source));
+
+        let defaultDealerReferralCode: string | null = null;
+        let defaultDealerReferralTenantId: string | null = null;
+        let defaultDealerReferralName: string | null = null;
+
+        if (isInternalTeamCrmLead && !hasExplicitReferralInput) {
+            const referralTenantId = actorActiveTenantId || data.selected_dealer_id || effectiveOwnerId || null;
+            if (referralTenantId) {
+                const { data: referralDealer } = await adminClient
+                    .from('id_tenants')
+                    .select('id, display_id, name')
+                    .eq('id', referralTenantId)
+                    .maybeSingle();
+
+                if (referralDealer?.id) {
+                    defaultDealerReferralTenantId = referralDealer.id;
+                    defaultDealerReferralCode = referralDealer.display_id || null;
+                    defaultDealerReferralName = referralDealer.name || null;
+                }
+            }
+        }
+
+        const hasReferralInput = Boolean(
+            hasExplicitReferralInput || defaultDealerReferralCode || defaultDealerReferralName
+        );
+
+        const resolvedReferrer = hasExplicitReferralInput
             ? await findLeadReferrerByCodeOrPhone({
                   referralCode: referredByCodeInput,
                   referralPhone: referredByPhoneInput,
@@ -1892,18 +1930,20 @@ export async function createLeadAction(data: {
 
         const referralContext = hasReferralInput
             ? {
-                  input_code: referredByCodeInput || null,
+                  input_code: referredByCodeInput || defaultDealerReferralCode || null,
                   input_phone: referredByPhoneInput || null,
-                  input_name: referredByNameInput || null,
+                  input_name: referredByNameInput || defaultDealerReferralName || null,
                   resolved: !!resolvedReferrer?.memberId,
                   resolved_referrer_member_id: resolvedReferrer?.memberId || null,
                   resolved_referrer_name: resolvedReferrer?.name || null,
                   resolved_referrer_phone: resolvedReferrer?.phone || null,
                   resolved_referrer_membership_id: resolvedReferrer?.membershipId || null,
+                  default_dealer_referral_tenant_id: defaultDealerReferralTenantId,
                   referrer_type: resolvedReferrer?.memberId ? 'MEMBER' : 'EXTERNAL',
                   repeat_delivery_member: hasActiveDelivery,
                   referral_bonus_eligible: referralBenefitEligible,
                   referral_bonus_reason: referralBenefitEligible ? null : 'REPEAT_ACTIVE_DELIVERY',
+                  referral_defaulted_from_dealer: !!defaultDealerReferralCode,
                   captured_at: nowIso,
                   captured_by: authUser?.id || null,
               }
@@ -2049,7 +2089,7 @@ export async function createLeadAction(data: {
         if (
             isCrmManualSource &&
             referralBenefitEligible &&
-            hasReferralInput &&
+            hasExplicitReferralInput &&
             !resolvedReferrer?.memberId &&
             !referredByPhoneInput &&
             !referredByNameInput
@@ -2075,7 +2115,12 @@ export async function createLeadAction(data: {
                 owner_tenant_id: effectiveOwnerId,
                 selected_dealer_tenant_id: financeTenantId || data.selected_dealer_id || null,
                 referred_by_id: resolvedReferrer?.memberId || null,
-                referred_by_name: resolvedReferrer?.name || referredByNameInput || null,
+                referred_by_name:
+                    resolvedReferrer?.name ||
+                    referredByNameInput ||
+                    defaultDealerReferralCode ||
+                    defaultDealerReferralName ||
+                    null,
                 status: status,
                 is_serviceable: isServiceable,
                 source: normalizedSource || 'WALKIN',
@@ -2098,7 +2143,10 @@ export async function createLeadAction(data: {
         }
 
         let referralBonusApplied = false;
-        if (resolvedReferrer?.memberId && referralBenefitEligible) {
+        const shouldBlockInternalDealerReferralPayout =
+            isInternalTeamCrmLead && !!defaultDealerReferralCode && !hasExplicitReferralInput;
+
+        if (resolvedReferrer?.memberId && referralBenefitEligible && !shouldBlockInternalDealerReferralPayout) {
             try {
                 await adminClient.rpc(
                     'oclub_credit_referral' as any,
@@ -2119,11 +2167,13 @@ export async function createLeadAction(data: {
                 ...referralContext,
                 referral_bonus_applied: referralBonusApplied,
                 referral_bonus_status: referralBenefitEligible
-                    ? resolvedReferrer?.memberId
-                        ? referralBonusApplied
-                            ? 'LOCKED'
-                            : 'ERROR'
-                        : 'PENDING_EXTERNAL_REFERRER'
+                    ? shouldBlockInternalDealerReferralPayout
+                        ? 'SKIPPED_INTERNAL_DEALERSHIP_DEFAULT'
+                        : resolvedReferrer?.memberId
+                          ? referralBonusApplied
+                              ? 'LOCKED'
+                              : 'ERROR'
+                          : 'PENDING_EXTERNAL_REFERRER'
                     : 'NOT_APPLICABLE_REPEAT_DELIVERY',
             };
             try {

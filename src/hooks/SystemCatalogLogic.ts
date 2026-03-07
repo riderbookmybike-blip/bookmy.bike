@@ -25,6 +25,8 @@ type CatalogSnapshotResponse = {
     };
 };
 
+const CATALOG_CACHE_TTL_MS = 60_000;
+
 export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnly?: boolean }) {
     const allowStateOnly = options?.allowStateOnly ?? false;
     const [items, setItems] = useState<ProductVariant[]>([]);
@@ -93,7 +95,6 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
             const res = await fetch(input, {
                 ...init,
                 signal: controller.signal,
-                cache: 'no-store',
             });
             if (!res.ok) {
                 const text = await res.text();
@@ -104,8 +105,8 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
 
         const fetchItems = async () => {
             let wasAborted = false;
+            let hadWarmCache = false;
             try {
-                setIsLoading(true);
                 setError(null);
 
                 const cachedLocation = resolveLocationFromCache();
@@ -123,6 +124,36 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
                 if (leadId) params.set('leadId', leadId);
                 if (district) params.set('district', district);
                 if (state) params.set('state', state);
+                const cacheKey = `bmb_catalog_snapshot:${params.toString()}`;
+
+                if (typeof window !== 'undefined') {
+                    try {
+                        const raw = sessionStorage.getItem(cacheKey);
+                        if (raw) {
+                            const parsed = JSON.parse(raw) as {
+                                ts: number;
+                                payload: CatalogSnapshotResponse;
+                            };
+                            if (Date.now() - parsed.ts < CATALOG_CACHE_TTL_MS && parsed.payload?.products?.length) {
+                                const warm = parsed.payload;
+                                const warmItems = warm.products || [];
+                                setItems(warmItems);
+                                setSkuCount(warmItems.reduce((sum, item) => sum + (item.skuIds?.length || 0), 0));
+                                setResolvedDealerIdState(warm.context?.dealerId || null);
+                                setResolvedStudioId(warm.context?.studioId || null);
+                                setResolvedDealerName(warm.context?.dealerName || null);
+                                setIsLoading(false);
+                                hadWarmCache = true;
+                            }
+                        }
+                    } catch {
+                        // Ignore invalid cache payloads and continue with network fetch.
+                    }
+                }
+
+                if (!hadWarmCache) {
+                    setIsLoading(true);
+                }
 
                 const payload = await fetchJson<CatalogSnapshotResponse>(`/api/store/catalog?${params.toString()}`);
                 if (payload.error) {
@@ -136,16 +167,26 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
                 setResolvedDealerIdState(payload.context?.dealerId || null);
                 setResolvedStudioId(payload.context?.studioId || null);
                 setResolvedDealerName(payload.context?.dealerName || null);
+
+                if (typeof window !== 'undefined') {
+                    try {
+                        sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), payload }));
+                    } catch {
+                        // Storage full/unavailable should not block catalog render.
+                    }
+                }
             } catch (err: unknown) {
                 if (isAbortLikeError(err)) {
                     wasAborted = true;
                     return;
                 }
-                setError(err instanceof Error ? getErrorMessage(err) : 'Unknown error');
-                setItems([]);
-                setResolvedDealerIdState(null);
-                setResolvedStudioId(null);
-                setResolvedDealerName(null);
+                if (!hadWarmCache) {
+                    setError(err instanceof Error ? getErrorMessage(err) : 'Unknown error');
+                    setItems([]);
+                    setResolvedDealerIdState(null);
+                    setResolvedStudioId(null);
+                    setResolvedDealerName(null);
+                }
             } finally {
                 if (!wasAborted) {
                     setIsLoading(false);

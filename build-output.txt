@@ -1,0 +1,200 @@
+
+> bookmy.bike@0.1.0 build
+> node scripts/check-env.js && next build
+
+[32m✓ Environment configuration valid.[0m
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 24.4s
+  Skipping validation of types
+  Collecting page data using 7 workers ...
+⚠ Using edge runtime on a page currently disables static generation for that page
+  Generating static pages using 7 workers (0/141) ...
+  Generating static pages using 7 workers (35/141) 
+  Generating static pages using 7 workers (70/141) 
+  Generating static pages using 7 workers (105/141) 
+✓ Generating static pages using 7 workers (141/141) in 1082.7ms
+  Finalizing page optimization ...
+
+Route (app)                                            Revalidate  Expire
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /403
+├ ƒ /api/admin/registration-rules/delete
+├ ƒ /api/admin/reward-wheel/grant
+├ ƒ /api/admin/seed
+├ ƒ /api/admin/seed-templates
+├ ƒ /api/admin/seed/items
+├ ƒ /api/admin/templates/[id]
+├ ƒ /api/admin/templates/[id]/clone
+├ ƒ /api/admin/templates/assign
+├ ƒ /api/analytics/track
+├ ƒ /api/auth/check-membership
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/msg91/send
+├ ƒ /api/auth/msg91/sync
+├ ƒ /api/auth/msg91/verify
+├ ƒ /api/auth/otp
+├ ƒ /api/auth/register
+├ ƒ /api/auth/signup
+├ ƒ /api/backfill-lead-locations
+├ ƒ /api/crm/upload-document
+├ ƒ /api/dealers/add-member
+├ ƒ /api/finance-partners/add-member
+├ ƒ /api/finance-partners/lookup-member
+├ ƒ /api/health
+├ ƒ /api/i18n/marketplace
+├ ƒ /api/me/dashboard-config
+├ ƒ /api/me/oclub-wallet
+├ ƒ /api/me/wheel
+├ ƒ /api/migrate-pincodes
+├ ƒ /api/og
+├ ƒ /api/proxy-image
+├ ƒ /api/revalidate
+├ ƒ /api/seed
+├ ƒ /api/sms/store-visit
+├ ƒ /api/store/catalog
+├ ƒ /api/store/dealer-offers
+├ ƒ /api/store/pricing-context
+├ ƒ /app/[slug]
+├ ƒ /app/[slug]/bookings
+├ ƒ /app/[slug]/books
+├ ƒ /app/[slug]/dashboard
+├ ƒ /app/[slug]/dashboard/admin/catalog-playground
+├ ƒ /app/[slug]/dashboard/admin/templates
+├ ƒ /app/[slug]/dashboard/admin/translations
+├ ƒ /app/[slug]/dashboard/blog
+├ ƒ /app/[slug]/dashboard/blog/new
+├ ƒ /app/[slug]/dashboard/catalog/audit
+├ ƒ /app/[slug]/dashboard/catalog/hsn
+├ ƒ /app/[slug]/dashboard/catalog/insurance
+├ ƒ /app/[slug]/dashboard/catalog/insurance/[id]
+├ ƒ /app/[slug]/dashboard/catalog/pricing
+├ ƒ /app/[slug]/dashboard/catalog/products
+├ ƒ /app/[slug]/dashboard/catalog/products/studio
+├ ƒ /app/[slug]/dashboard/catalog/products/studio-v2
+├ ƒ /app/[slug]/dashboard/catalog/registration
+├ ƒ /app/[slug]/dashboard/catalog/registration/[id]
+├ ƒ /app/[slug]/dashboard/catalog/services
+├ ƒ /app/[slug]/dashboard/catalog/services/[id]
+├ ƒ /app/[slug]/dashboard/company-profile
+├ ƒ /app/[slug]/dashboard/crm-preview
+├ ƒ /app/[slug]/dashboard/dealers
+├ ƒ /app/[slug]/dashboard/dealers/[id]
+├ ƒ /app/[slug]/dashboard/design-system
+├ ƒ /app/[slug]/dashboard/finance-partners
+├ ƒ /app/[slug]/dashboard/finance-partners/[id]
+├ ƒ /app/[slug]/dashboard/inventory/orders
+├ ƒ /app/[slug]/dashboard/inventory/orders/[id]
+├ ƒ /app/[slug]/dashboard/inventory/orders/[id]/grn
+├ ƒ /app/[slug]/dashboard/inventory/requisitions
+├ ƒ /app/[slug]/dashboard/inventory/requisitions/[id]
+├ ƒ /app/[slug]/dashboard/inventory/stock
+├ ƒ /app/[slug]/dashboard/oclub
+├ ƒ /app/[slug]/dashboard/profile
+├ ƒ /app/[slug]/dashboard/settings
+├ ƒ /app/[slug]/dashboard/settings/financer
+├ ƒ /app/[slug]/dashboard/settings/profile
+├ ƒ /app/[slug]/dashboard/settings/reward-wheel
+├ ƒ /app/[slug]/dashboard/settings/team
+├ ƒ /app/[slug]/dashboard/users
+├ ƒ /app/[slug]/dashboard/whitepaper
+├ ƒ /app/[slug]/leads
+├ ƒ /app/[slug]/leads/[id]
+├ ƒ /app/[slug]/members
+├ ƒ /app/[slug]/members/[id]
+├ ƒ /app/[slug]/members/list
+├ ƒ /app/[slug]/members/new
+├ ƒ /app/[slug]/quotes
+├ ƒ /app/[slug]/quotes/[id]
+├ ƒ /app/[slug]/receipts
+├ ƒ /app/[slug]/receipts/[id]
+├ ƒ /app/[slug]/sales-orders
+├ ƒ /app/[slug]/sales-orders/[id]
+├ ƒ /app/[slug]/sales-orders/[id]/allotment
+├ ƒ /app/[slug]/sales-orders/[id]/finance
+├ ƒ /app/[slug]/sales-orders/[id]/insurance
+├ ƒ /app/[slug]/sales-orders/[id]/pdi
+├ ƒ /app/[slug]/sales-orders/[id]/receipt
+├ ƒ /app/[slug]/sales-orders/[id]/registration
+├ ƒ /app/[slug]/superadmin/service-area
+├ ○ /app/aums/dashboard/dynamic-demo
+├ ○ /aums-landing
+├ ○ /aums/dashboard/mockup
+├ ○ /auth/auth-code-error
+├ ƒ /auth/callback
+├ ƒ /auth/verify-access
+├ ○ /blocked
+├ ○ /blog
+├ ● /blog/[slug]
+│ ├ /blog/next-gen-bajaj-chetak-evolution
+│ └ /blog/tvs-ntorq-150-performance-arrives
+├ ○ /brand-enablement
+├ ƒ /brand-enablement/[id]
+├ ƒ /d2
+├ ƒ /d3
+├ ƒ /d4
+├ ƒ /d5
+├ ƒ /d6
+├ ƒ /d7
+├ ƒ /d8
+├ ○ /dashboard
+├ ○ /dashboard/dealers
+├ ƒ /dashboard/dealers/[id]
+├ ○ /dashboard/design-system
+├ ○ /dashboard/finance-partners
+├ ƒ /dashboard/finance-partners/[id]
+├ ○ /dashboard/inventory/orders
+├ ƒ /dashboard/inventory/orders/[id]
+├ ƒ /dashboard/inventory/orders/[id]/grn
+├ ○ /dashboard/inventory/requisitions
+├ ƒ /dashboard/inventory/requisitions/[id]
+├ ○ /dashboard/inventory/stock
+├ ƒ /dashboard/inventory/stock/[id]
+├ ○ /dashboard/profile
+├ ○ /dashboard/settings
+├ ○ /dashboard/settings/profile
+├ ○ /dashboard/settings/reward-wheel
+├ ○ /dashboard/settings/team
+├ ○ /dashboard/users
+├ ƒ /dossier/[displayId]
+├ ○ /forgot-password
+├ ○ /help
+├ ƒ /icon
+├ ○ /invite
+├ ○ /login
+├ ○ /logout
+├ ○ /mediakit
+├ ○ /members
+├ ƒ /notifications
+├ ƒ /orders
+├ ƒ /profile
+├ ƒ /q/[displayId]
+├ ○ /reset-password
+├ ƒ /robots.txt
+├ ○ /select-tenant
+├ ƒ /settings
+├ ○ /setup
+├ ○ /sitemap.xml                                               1d      1y
+├ ƒ /store
+├ ƒ /store/[make]
+├ ƒ /store/[make]/[model]/[variant]
+├ ƒ /store/apps
+├ ƒ /store/catalog
+├ ƒ /store/compare
+├ ƒ /store/compare/[make]/[model]
+├ ƒ /store/favorites
+├ ƒ /store/ocircle
+├ ƒ /store/yamaha/r15m
+├ ƒ /store/yamaha/r15m-v2
+└ ƒ /wishlist
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+

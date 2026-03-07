@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { BankPartner } from '@/types/bankPartner';
 import { calculateAPRForAllSchemes, APRCalculation } from './utils/aprCalculator';
-import { BarChart3, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Info, Calculator } from 'lucide-react';
+import { BarChart3, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Info } from 'lucide-react';
 
 type SortField = keyof APRCalculation;
 type SortDirection = 'asc' | 'desc' | null;
 
 export default function APRTab({ partner }: { partner: BankPartner }) {
+    const assetValue = 100000;
+    const downpayment = 0;
+    const tenureMonths = 36;
     const [sortField, setSortField] = useState<SortField | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -15,8 +18,8 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
 
     // Calculate APR for all schemes
     const aprData = useMemo(() => {
-        return calculateAPRForAllSchemes(partner.schemes, 100000, 36);
-    }, [partner.schemes]);
+        return calculateAPRForAllSchemes(partner.schemes, assetValue, tenureMonths);
+    }, [partner.schemes, assetValue, tenureMonths]);
 
     // Apply filters and sorting
     const filteredAndSortedData = useMemo(() => {
@@ -24,9 +27,7 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
 
         // Text search filter
         if (searchQuery) {
-            data = data.filter(item =>
-                item.schemeName.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+            data = data.filter(item => item.schemeName.toLowerCase().includes(searchQuery.toLowerCase()));
         }
 
         // ROI range filter
@@ -53,9 +54,7 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                 if (sortField === 'dealerPayout') {
                     const aPayoutVal = (a.dealerPayout as any).value;
                     const bPayoutVal = (b.dealerPayout as any).value;
-                    return sortDirection === 'asc'
-                        ? aPayoutVal - bPayoutVal
-                        : bPayoutVal - aPayoutVal;
+                    return sortDirection === 'asc' ? aPayoutVal - bPayoutVal : bPayoutVal - aPayoutVal;
                 }
 
                 if (typeof aVal === 'number' && typeof bVal === 'number') {
@@ -63,9 +62,7 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                 }
 
                 if (typeof aVal === 'string' && typeof bVal === 'string') {
-                    return sortDirection === 'asc'
-                        ? aVal.localeCompare(bVal)
-                        : bVal.localeCompare(aVal);
+                    return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
                 }
 
                 return 0;
@@ -99,6 +96,34 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
     };
 
     const hasActiveFilters = searchQuery || roiFilter.min || roiFilter.max || aprFilter.min || aprFilter.max;
+    const picks = useMemo(() => {
+        if (!filteredAndSortedData.length) {
+            return { customer: '', dealership: '', balanced: '' };
+        }
+
+        const keyOf = (item: APRCalculation) => item.schemeId;
+        const byCustomer = [...filteredAndSortedData].sort((a, b) => a.apr - b.apr)[0];
+        const byDealership = [...filteredAndSortedData].sort((a, b) => (b.netMargin || 0) - (a.netMargin || 0))[0];
+
+        const aprValues = filteredAndSortedData.map(x => x.apr).sort((a, b) => a - b);
+        const marginValues = filteredAndSortedData.map(x => x.netMargin || 0).sort((a, b) => a - b);
+        const aprMedian = aprValues[Math.floor(aprValues.length / 2)];
+        const marginMedian = marginValues[Math.floor(marginValues.length / 2)];
+
+        const excluded = new Set([keyOf(byCustomer), keyOf(byDealership)]);
+        const candidates = filteredAndSortedData.filter(x => !excluded.has(keyOf(x)));
+        const balancedSource = (candidates.length ? candidates : filteredAndSortedData).reduce((best, cur) => {
+            const curScore = Math.abs(cur.apr - aprMedian) + Math.abs((cur.netMargin || 0) - marginMedian);
+            const bestScore = Math.abs(best.apr - aprMedian) + Math.abs((best.netMargin || 0) - marginMedian);
+            return curScore < bestScore ? cur : best;
+        });
+
+        return {
+            customer: keyOf(byCustomer),
+            dealership: keyOf(byDealership),
+            balanced: keyOf(balancedSource),
+        };
+    }, [filteredAndSortedData]);
 
     return (
         <div className="space-y-6">
@@ -116,10 +141,10 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                             True cost of financing with standardized calculations
                         </p>
                     </div>
-                    <div className="text-right">
-                        <div className="text-xs font-black text-slate-400 uppercase tracking-widest">Based on</div>
-                        <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">₹1,00,000</div>
-                        <div className="text-xs text-slate-500 font-bold mt-1">Asset Value • 36 Months</div>
+                    <div className="grid grid-cols-3 gap-3 min-w-[420px]">
+                        <SummaryStat label="Vehicle Cost" value={formatCurrency(assetValue)} />
+                        <SummaryStat label="Downpayment" value={formatCurrency(downpayment)} />
+                        <SummaryStat label="Tenure" value={`${tenureMonths} Months`} />
                     </div>
                 </div>
             </div>
@@ -136,7 +161,7 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                             type="text"
                             placeholder="Type scheme name..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={e => setSearchQuery(e.target.value)}
                             className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                         />
                     </div>
@@ -151,14 +176,14 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                                 type="number"
                                 placeholder="Min"
                                 value={roiFilter.min}
-                                onChange={(e) => setRoiFilter({ ...roiFilter, min: e.target.value })}
+                                onChange={e => setRoiFilter({ ...roiFilter, min: e.target.value })}
                                 className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500/50 transition-all"
                             />
                             <input
                                 type="number"
                                 placeholder="Max"
                                 value={roiFilter.max}
-                                onChange={(e) => setRoiFilter({ ...roiFilter, max: e.target.value })}
+                                onChange={e => setRoiFilter({ ...roiFilter, max: e.target.value })}
                                 className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500/50 transition-all"
                             />
                         </div>
@@ -174,14 +199,14 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                                 type="number"
                                 placeholder="Min"
                                 value={aprFilter.min}
-                                onChange={(e) => setAprFilter({ ...aprFilter, min: e.target.value })}
+                                onChange={e => setAprFilter({ ...aprFilter, min: e.target.value })}
                                 className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500/50 transition-all"
                             />
                             <input
                                 type="number"
                                 placeholder="Max"
                                 value={aprFilter.max}
-                                onChange={(e) => setAprFilter({ ...aprFilter, max: e.target.value })}
+                                onChange={e => setAprFilter({ ...aprFilter, max: e.target.value })}
                                 className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500/50 transition-all"
                             />
                         </div>
@@ -202,9 +227,9 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
             </div>
 
             {/* Table */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-[32px] overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full text-sm border-separate border-spacing-0 [&_th]:border-r [&_th]:border-slate-200/80 dark:[&_th]:border-white/10 [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-slate-200/70 dark:[&_td]:border-white/10 [&_td:last-child]:border-r-0 [&_td]:border-b [&_td]:border-slate-200/70 dark:[&_td]:border-white/10">
                         <thead className="bg-slate-50 dark:bg-black/20 border-b border-slate-200 dark:border-white/5">
                             <tr>
                                 <SortableHeader
@@ -222,15 +247,22 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                                     onSort={handleSort}
                                 />
                                 <SortableHeader
-                                    label="Upfront"
+                                    label="Upfront Charges"
                                     field="upfrontCharges"
                                     currentField={sortField}
                                     direction={sortDirection}
                                     onSort={handleSort}
                                 />
                                 <SortableHeader
-                                    label="Funded"
+                                    label="Funded Charges"
                                     field="fundedCharges"
+                                    currentField={sortField}
+                                    direction={sortDirection}
+                                    onSort={handleSort}
+                                />
+                                <SortableHeader
+                                    label="Gross Loan Amount"
+                                    field="grossLoanAmount"
                                     currentField={sortField}
                                     direction={sortDirection}
                                     onSort={handleSort}
@@ -238,13 +270,6 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                                 <SortableHeader
                                     label="Payout"
                                     field="dealerPayout"
-                                    currentField={sortField}
-                                    direction={sortDirection}
-                                    onSort={handleSort}
-                                />
-                                <SortableHeader
-                                    label="Downpayment"
-                                    field="downpayment"
                                     currentField={sortField}
                                     direction={sortDirection}
                                     onSort={handleSort}
@@ -262,6 +287,7 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                                     currentField={sortField}
                                     direction={sortDirection}
                                     onSort={handleSort}
+                                    tooltip="APR (Annual Percentage Rate): True annual borrowing cost including interest and charges."
                                 />
                             </tr>
                         </thead>
@@ -277,47 +303,69 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredAndSortedData.map((item) => (
+                                filteredAndSortedData.map(item => (
                                     <tr
                                         key={item.schemeId}
                                         className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
                                     >
-                                        <td className="px-6 py-4">
-                                            <div className="font-bold text-sm text-slate-900 dark:text-white">
+                                        <td className="px-3 py-2.5">
+                                            <div className="font-bold text-xs text-slate-900 dark:text-white">
                                                 {item.schemeName}
                                             </div>
+                                            {item.schemeId === picks.customer && (
+                                                <div className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 mt-1">
+                                                    Best for Customer
+                                                </div>
+                                            )}
+                                            {item.schemeId === picks.dealership && (
+                                                <div className="text-[9px] font-black text-fuchsia-700 dark:text-fuchsia-400 mt-1">
+                                                    Best for Dealership
+                                                </div>
+                                            )}
+                                            {item.schemeId === picks.balanced && (
+                                                <div className="text-[9px] font-black text-sky-700 dark:text-sky-400 mt-1">
+                                                    Balanced Choice
+                                                </div>
+                                            )}
                                             {!item.isActive && (
-                                                <span className="text-[9px] font-black text-red-500 uppercase">Inactive</span>
+                                                <span className="text-[9px] font-black text-red-500 uppercase">
+                                                    Inactive
+                                                </span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 text-sm font-bold text-blue-600 dark:text-blue-400">
-                                            {item.roi}%
+                                        <td className="px-3 py-2.5 text-xs font-bold text-blue-600 dark:text-blue-400">
+                                            {formatPercent(item.roi)}
                                         </td>
-                                        <td className="px-6 py-4 text-sm font-bold text-amber-600 dark:text-amber-400">
-                                            ₹{item.upfrontCharges.toLocaleString()}
+                                        <td className="px-3 py-2.5 text-xs font-black text-amber-600 dark:text-amber-400">
+                                            {formatCurrency(item.upfrontCharges)}
                                         </td>
-                                        <td className="px-6 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                                            ₹{item.fundedCharges.toLocaleString()}
+                                        <td className="px-3 py-2.5 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                                            {formatCurrency(item.fundedCharges)}
                                         </td>
-                                        <td className="px-6 py-4 text-sm font-bold text-purple-600 dark:text-purple-400">
-                                            {item.dealerPayout.type === 'PERCENTAGE'
-                                                ? `${item.dealerPayout.value}%`
-                                                : `₹${item.dealerPayout.value.toLocaleString()}`}
+                                        <td className="px-3 py-2.5 text-xs font-black text-slate-900 dark:text-white">
+                                            {formatCurrency(assetValue + item.upfrontCharges + item.fundedCharges)}
                                         </td>
-                                        <td className="px-6 py-4 text-sm font-bold text-slate-700 dark:text-slate-300">
-                                            ₹{item.downpayment.toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-lg font-black text-slate-900 dark:text-white">
-                                                ₹{item.emi.toLocaleString()}
+                                        <td className="px-3 py-2.5">
+                                            <div className="text-xs font-black text-purple-600 dark:text-purple-400">
+                                                {item.dealerPayout.type === 'PERCENTAGE'
+                                                    ? `${formatPercent(item.dealerPayout.value)}`
+                                                    : formatCurrency(item.dealerPayout.value)}
                                             </div>
-                                            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                                            <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">
+                                                {formatPayoutBasis(item.dealerPayout.basis)}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2.5">
+                                            <div className="text-base font-black text-slate-900 dark:text-white">
+                                                {formatCurrency(item.emi)}
+                                            </div>
+                                            <div className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
                                                 per month
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className={`text-xl font-black ${getAPRColor(item.apr)}`}>
-                                                {item.apr}%
+                                        <td className="px-3 py-2.5">
+                                            <div className={`text-base font-black ${getAPRColor(item.apr)}`}>
+                                                {formatPercent(item.apr)}
                                             </div>
                                         </td>
                                     </tr>
@@ -333,10 +381,13 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
                         <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                         <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
                             <p className="font-bold">
-                                <strong>APR (Annual Percentage Rate)</strong> = True cost of borrowing including interest + all fees
+                                <strong>APR (Annual Percentage Rate)</strong> = True cost of borrowing including
+                                interest + all fees
                             </p>
                             <p className="font-medium opacity-80">
-                                Lower APR means better value for customers. All calculations assume ₹1,00,000 asset value with 36-month tenure.
+                                Lower APR means better value for customers. All calculations assume{' '}
+                                {formatCurrency(assetValue)} vehicle cost, {formatCurrency(downpayment)} downpayment and{' '}
+                                {tenureMonths}-month tenure.
                             </p>
                         </div>
                     </div>
@@ -352,31 +403,50 @@ export default function APRTab({ partner }: { partner: BankPartner }) {
     );
 }
 
+function SummaryStat({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-right">
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</div>
+            <div className="text-lg font-black text-slate-900 dark:text-white tracking-tight mt-1">{value}</div>
+        </div>
+    );
+}
+
 // Sortable Header Component
 function SortableHeader({
     label,
     field,
     currentField,
     direction,
-    onSort
+    onSort,
+    tooltip,
 }: {
     label: string;
     field: SortField;
     currentField: SortField | null;
     direction: SortDirection;
     onSort: (field: SortField) => void;
+    tooltip?: string;
 }) {
     const isActive = currentField === field;
 
     return (
         <th
-            className="px-6 py-4 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors group"
+            className="px-3 py-2 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors group"
             onClick={() => onSort(field)}
         >
             <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     {label}
                 </span>
+                {tooltip && (
+                    <span
+                        title={tooltip}
+                        className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
+                        <Info size={12} />
+                    </span>
+                )}
                 <div className="text-slate-400">
                     {!isActive && <ArrowUpDown size={14} className="opacity-0 group-hover:opacity-50" />}
                     {isActive && direction === 'asc' && <ArrowUp size={14} className="text-blue-600" />}
@@ -393,4 +463,27 @@ function getAPRColor(apr: number): string {
     if (apr < 20) return 'text-yellow-600 dark:text-yellow-400';
     if (apr < 25) return 'text-orange-600 dark:text-orange-400';
     return 'text-red-600 dark:text-red-400';
+}
+
+function formatPayoutBasis(basis?: string): string {
+    switch (basis) {
+        case 'LOAN_AMOUNT':
+            return 'On Loan Amount';
+        case 'GROSS_LOAN_AMOUNT':
+            return 'On Gross Loan';
+        case 'DISBURSAL_AMOUNT':
+            return 'On Disbursal';
+        case 'VEHICLE_PRICE':
+            return 'On Vehicle Price';
+        default:
+            return 'On Loan Amount';
+    }
+}
+
+function formatCurrency(value: number): string {
+    return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatPercent(value: number): string {
+    return `${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }

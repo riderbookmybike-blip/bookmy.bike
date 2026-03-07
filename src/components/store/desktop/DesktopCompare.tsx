@@ -662,7 +662,7 @@ export default function DesktopCompare() {
                                                             )}
 
                                                             {/* ── Image with Pop-out (Outside clipping) ── */}
-                                                            <div className="relative w-24 shrink-0 flex items-center justify-center -ml-4 pointer-events-none z-20">
+                                                            <div className="relative w-24 shrink-0 flex flex-col items-center justify-center gap-1 -ml-4 z-20">
                                                                 {/* Outer glow shadow (ambient) */}
                                                                 <div className="absolute inset-0 bg-white/40 blur-3xl rounded-full scale-125 opacity-0 group-hover/minicard:opacity-100 transition-opacity duration-700" />
 
@@ -683,81 +683,15 @@ export default function DesktopCompare() {
                                                                     layoutId={`compact-img-${v.id}`}
                                                                     src={currentImage}
                                                                     alt={v.variant}
-                                                                    className="relative h-[90px] w-auto object-contain transition-all duration-500 group-hover/minicard:scale-115 group-hover/minicard:-translate-y-4 group-hover/minicard:drop-shadow-[0_15px_30px_rgba(0,0,0,0.25)] filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
+                                                                    className="pointer-events-none relative h-[80px] w-auto object-contain transition-all duration-500 group-hover/minicard:scale-115 group-hover/minicard:-translate-y-2 group-hover/minicard:drop-shadow-[0_15px_30px_rgba(0,0,0,0.25)] filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
                                                                 />
                                                             </div>
 
-                                                            {/* ── Text Content Alignment ── */}
+                                                            {/* ── Model name only ── */}
                                                             <div className="flex-1 min-w-0 z-10 text-right">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 truncate leading-none mb-1">
-                                                                        {v.model}
-                                                                    </span>
-                                                                    <h4 className="text-[14px] font-black uppercase tracking-tight text-slate-900 leading-none truncate">
-                                                                        {v.variant}
-                                                                    </h4>
-                                                                </div>
-
-                                                                <div className="flex items-center justify-end gap-1.5 mt-3">
-                                                                    {swatches.map((c, ci) => {
-                                                                        let sHex = c.hexCode?.replace('#', '') || '000';
-                                                                        if (sHex.length === 3)
-                                                                            sHex = sHex
-                                                                                .split('')
-                                                                                .map(x => x + x)
-                                                                                .join('');
-                                                                        const sHexFull = `#${sHex}`;
-                                                                        const finish = (c.finish || '').toUpperCase();
-                                                                        const isGlossy = finish.includes('GLOSS');
-                                                                        const isMatte = finish.includes('MATTE');
-                                                                        const isMetallic = finish.includes('METALLIC');
-
-                                                                        return (
-                                                                            <button
-                                                                                key={ci}
-                                                                                onClick={e => {
-                                                                                    e.stopPropagation();
-                                                                                    if (c.imageUrl)
-                                                                                        setCompactColorImages(p => ({
-                                                                                            ...p,
-                                                                                            [v.id]: c.imageUrl!,
-                                                                                        }));
-                                                                                    if (c.hexCode) {
-                                                                                        setCompactColorHexes(p => ({
-                                                                                            ...p,
-                                                                                            [v.id]: c.hexCode,
-                                                                                        }));
-                                                                                        // Trigger ripple
-                                                                                        setRipples(p => ({
-                                                                                            ...p,
-                                                                                            [v.id]: {
-                                                                                                color: c.hexCode!,
-                                                                                                key: Date.now(),
-                                                                                            },
-                                                                                        }));
-                                                                                    }
-                                                                                }}
-                                                                                className={`w-4 h-4 rounded-full relative overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.2),inset_0_-1px_2px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:scale-150 transition-all duration-300 ${currentHex === sHexFull ? 'ring-2 ring-[#F4B000] ring-offset-1' : 'hover:ring-1 hover:ring-[#F4B000]'}`}
-                                                                                style={{
-                                                                                    backgroundColor: sHexFull,
-                                                                                }}
-                                                                                title={`${c.name} (${c.finish || 'Standard'})`}
-                                                                            >
-                                                                                {/* Surface Effects */}
-                                                                                {isGlossy && (
-                                                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
-                                                                                )}
-                                                                                {isMatte && (
-                                                                                    <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
-                                                                                )}
-                                                                                {isMetallic && (
-                                                                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_rgba(255,255,255,0.4)_0%,_transparent_60%)] pointer-events-none" />
-                                                                                )}
-                                                                                <div className="absolute inset-0 shadow-[inset_0_1px_4px_rgba(0,0,0,0.1)] pointer-events-none" />
-                                                                            </button>
-                                                                        );
-                                                                    })}
-                                                                </div>
+                                                                <span className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 truncate leading-none block">
+                                                                    {v.model}
+                                                                </span>
                                                             </div>
                                                         </motion.div>
                                                     );
@@ -819,16 +753,51 @@ export default function DesktopCompare() {
                                                         Variant Name
                                                     </span>
                                                 </div>
-                                                {activeVariants.map((v, vIdx) => (
-                                                    <div
-                                                        key={vIdx}
-                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                                                    >
-                                                        <span className="text-[11px] font-black uppercase tracking-tight text-slate-900 truncate px-2">
-                                                            {v.variant}
-                                                        </span>
-                                                    </div>
-                                                ))}
+                                                {activeVariants.map((v, vIdx) => {
+                                                    const vSwatches = (v.availableColors || [])
+                                                        .filter(
+                                                            c =>
+                                                                typeof c?.hexCode === 'string' &&
+                                                                c.hexCode.trim().length > 0
+                                                        )
+                                                        .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+                                                    return (
+                                                        <div
+                                                            key={vIdx}
+                                                            className="px-4 py-4 flex flex-col items-center justify-center gap-2 text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                        >
+                                                            <span className="text-[11px] font-black uppercase tracking-tight text-slate-900 break-words text-center leading-tight">
+                                                                {v.variant}
+                                                            </span>
+                                                            {vSwatches.length > 0 && (
+                                                                <div className="flex items-center justify-center flex-wrap gap-1">
+                                                                    {vSwatches.map((c, ci) => {
+                                                                        let sHex = c.hexCode?.replace('#', '') || '000';
+                                                                        if (sHex.length === 3)
+                                                                            sHex = sHex
+                                                                                .split('')
+                                                                                .map(x => x + x)
+                                                                                .join('');
+                                                                        const sHexFull = `#${sHex}`;
+                                                                        const finish = (c.finish || '').toUpperCase();
+                                                                        return (
+                                                                            <div
+                                                                                key={ci}
+                                                                                className="relative overflow-hidden w-3.5 h-3.5 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.3)]"
+                                                                                style={{ backgroundColor: sHexFull }}
+                                                                                title={`${c.name} (${c.finish || 'Standard'})`}
+                                                                            >
+                                                                                {finish.includes('GLOSS') && (
+                                                                                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/60 to-white/20" />
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
 
                                             {/* 1. On-Road Price */}
@@ -911,7 +880,7 @@ export default function DesktopCompare() {
                                                     );
                                                 })}
                                             </div>
-                                            {/* 3. Offer Price (INR) + B Coin side by side */}
+                                            {/* 3a. Offer Price — INR row */}
                                             <div
                                                 className="grid gap-x-6 mt-2"
                                                 style={{
@@ -924,23 +893,40 @@ export default function DesktopCompare() {
                                                         Offer Price
                                                     </span>
                                                 </div>
+                                                {activeVariants.map((v, vIdx) => (
+                                                    <div
+                                                        key={vIdx}
+                                                        className="px-6 py-4 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                    >
+                                                        <span className="text-[12px] font-black text-slate-900">
+                                                            ₹{getDisplayPrice(v).toLocaleString('en-IN')}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {/* 3b. Offer Price — B Coin row */}
+                                            <div
+                                                className="grid gap-x-6 mt-1"
+                                                style={{
+                                                    gridTemplateColumns: `180px repeat(${activeVariants.length}, 1fr)`,
+                                                }}
+                                            >
+                                                <div className="px-4 py-3 flex items-center gap-2 bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                                                    <Logo variant="icon" size={12} />
+                                                    <span className="text-[11px] font-bold tracking-wide text-slate-500">
+                                                        B Coin
+                                                    </span>
+                                                </div>
                                                 {activeVariants.map((v, vIdx) => {
-                                                    const offerPrice = getDisplayPrice(v);
-                                                    const bCoin = coinsNeededForPrice(offerPrice);
+                                                    const bCoin = coinsNeededForPrice(getDisplayPrice(v));
                                                     return (
                                                         <div
                                                             key={vIdx}
-                                                            className="px-6 py-4 flex items-center justify-center gap-3 text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                                                            className="px-6 py-3 flex items-center justify-center gap-1 text-center bg-white border border-black/[0.04] rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
                                                         >
-                                                            <span className="text-[12px] font-black text-slate-900">
-                                                                ₹{offerPrice.toLocaleString('en-IN')}
-                                                            </span>
-                                                            <span className="text-[8px] text-slate-300">|</span>
-                                                            <span className="flex items-center gap-0.5">
-                                                                <Logo variant="icon" size={10} />
-                                                                <span className="text-[10px] font-black text-[#F4B000] italic">
-                                                                    {bCoin.toLocaleString('en-IN')}
-                                                                </span>
+                                                            <Logo variant="icon" size={10} />
+                                                            <span className="text-[12px] font-black text-[#F4B000] italic">
+                                                                {bCoin.toLocaleString('en-IN')}
                                                             </span>
                                                         </div>
                                                     );
@@ -1038,11 +1024,10 @@ export default function DesktopCompare() {
                                                             ) : (
                                                                 <div className="flex flex-col items-center">
                                                                     <span className="text-[13px] font-black text-[#F4B000]">
-                                                                        ₹{emi.toLocaleString('en-IN')}/mo
+                                                                        ₹{emi.toLocaleString('en-IN')} × {tenure}mo
                                                                     </span>
                                                                     <span className="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-wider whitespace-nowrap">
-                                                                        ₹{downpayment.toLocaleString('en-IN')} DP ·{' '}
-                                                                        {tenure} MO
+                                                                        ₹{downpayment.toLocaleString('en-IN')} DP
                                                                     </span>
                                                                 </div>
                                                             )}

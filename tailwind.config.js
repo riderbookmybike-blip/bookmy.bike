@@ -1,6 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-    content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
+    // Limit scanning to view-layer files only to avoid extracting false-positive utilities
+    // from server/action/data TypeScript files.
+    content: ['./src/**/*.{js,jsx,tsx,mdx}'],
     darkMode: 'class', // Enables class-based toggling (.dark)
     theme: {
         screens: {

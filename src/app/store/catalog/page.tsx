@@ -5,6 +5,8 @@ import { Metadata } from 'next';
 import { getInitialDeviceType } from '@/lib/utils/device';
 import { resolvePricingContext } from '@/lib/server/pricingContext';
 
+export const revalidate = 300;
+
 export const metadata: Metadata = {
     title: 'Catalog | BookMyBike',
     description: 'Browse the latest bikes and scooters with best market offers.',

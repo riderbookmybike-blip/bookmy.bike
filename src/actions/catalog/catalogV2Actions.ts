@@ -338,13 +338,33 @@ export async function updateSku(id: string, updates: Partial<CatalogSku>) {
 }
 
 export async function deleteSku(id: string) {
-    // Delete dependent pricing rows first (FK NO ACTION constraint)
-    const { error: pricingError } = await adminClient.from('cat_price_state_mh').delete().eq('sku_id', id);
-    if (pricingError) throw new Error(`deleteSku pricing cleanup failed: ${pricingError.message}`);
+    const formatDbError = (err: any): string => {
+        if (!err) return 'Unknown database error';
+        return [err.message, err.code ? `code=${err.code}` : '', err.details || '', err.hint || '']
+            .filter(Boolean)
+            .join(' | ');
+    };
 
-    const { error } = await adminClient.from('cat_skus').delete().eq('id', id);
-    if (error) throw new Error(`deleteSku failed: ${error.message}`);
-    return true;
+    // Fast path: try deleting SKU first. This succeeds if no dependent rows exist
+    // (or if DB-side FKs already cascade).
+    const { error: directDeleteError } = await adminClient.from('cat_skus').delete().eq('id', id);
+    if (!directDeleteError) return true;
+
+    // FK violation: cleanup dependent pricing rows then retry SKU delete.
+    if (directDeleteError.code === '23503') {
+        const { error: pricingError } = await adminClient.from('cat_price_state_mh').delete().eq('sku_id', id);
+        if (pricingError) {
+            throw new Error(`deleteSku pricing cleanup failed: ${formatDbError(pricingError)}`);
+        }
+
+        const { error: retryDeleteError } = await adminClient.from('cat_skus').delete().eq('id', id);
+        if (retryDeleteError) {
+            throw new Error(`deleteSku failed after pricing cleanup: ${formatDbError(retryDeleteError)}`);
+        }
+        return true;
+    }
+
+    throw new Error(`deleteSku failed: ${formatDbError(directDeleteError)}`);
 }
 
 // ============================================================

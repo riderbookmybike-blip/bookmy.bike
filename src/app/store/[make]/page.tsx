@@ -54,9 +54,7 @@ export default function BrandPage() {
                                 </p>
                             </div>
 
-                            <p className="text-lg text-slate-500 max-w-xl font-medium leading-relaxed">
-                                {brandDesc}
-                            </p>
+                            <p className="text-lg text-slate-500 max-w-xl font-medium leading-relaxed">{brandDesc}</p>
 
                             <div className="flex flex-col sm:flex-row items-center gap-4 pt-8">
                                 <Link
@@ -205,7 +203,7 @@ export default function BrandPage() {
                                         <img
                                             src={cat.img}
                                             alt={cat.title}
-                                            className="w-[95%] max-w-none h-auto object-contain filter contrast-110 drop-shadow-[0_40px_80px_rgba(0,0,0,0.25)],255,255,0.08)]"
+                                            className="w-[95%] max-w-none h-auto object-contain filter contrast-110 drop-shadow-[0_40px_80px_rgba(0,0,0,0.25)]"
                                         />
                                     </div>
                                 </div>

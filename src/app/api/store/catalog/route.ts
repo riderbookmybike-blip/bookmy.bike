@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
             };
         });
 
-        return NextResponse.json({
+        const response = NextResponse.json({
             products: hydratedProducts,
             context: {
                 dealerId: context.dealerId,
@@ -86,6 +86,17 @@ export async function GET(request: NextRequest) {
                 source: context.source,
             },
         });
+
+        // Cache only generalized catalog queries. Lead/dealer-specific snapshots stay uncached.
+        const isGeneralCatalog = !leadId && !dealerId && !studio;
+        response.headers.set(
+            'Cache-Control',
+            isGeneralCatalog
+                ? 'public, s-maxage=60, stale-while-revalidate=300'
+                : 'private, no-cache, no-store, must-revalidate'
+        );
+
+        return response;
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to fetch catalog';
         return NextResponse.json({ products: [], error: message }, { status: 500 });

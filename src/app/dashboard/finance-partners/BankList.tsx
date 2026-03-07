@@ -1,31 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { MOCK_BANK_PARTNERS } from '@/types/bankPartner';
-import {
-    Search,
-    Plus,
-    Upload,
-    Filter,
-    Building2,
-    Edit3,
-    Trash2,
-    ShieldCheck,
-    BarChart4,
-    TrendingUp,
-    Zap,
-} from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { Building2, ShieldCheck, TrendingUp, Zap } from 'lucide-react';
 import ListPanel from '@/components/templates/ListPanel';
 import { createClient } from '@/lib/supabase/client';
 import OnboardBankModal from '@/components/finance/OnboardBankModal';
 import { LayoutGrid, List, BarChart3 } from 'lucide-react';
 import FinanceTargetingTab from './tabs/FinanceTargetingTab';
-import { BankPartner } from '@/types/bankPartner';
 import AllSchemesAPRView from './AllSchemesAPRView';
 
 export default function BankList() {
-    const router = useRouter();
     const params = useParams();
     const slug = params?.slug as string;
     const [view, setView] = useState<'list' | 'routing' | 'apr'>('list');
@@ -79,9 +64,16 @@ export default function BankList() {
         { key: 'status', header: 'Status', type: 'badge' as const, align: 'center' as const, width: '120px' },
     ];
 
+    const getSchemesCount = (config: unknown) => {
+        if (!config || typeof config !== 'object') return 0;
+        const record = config as Record<string, unknown>;
+        const schemes = record.schemes;
+        return Array.isArray(schemes) ? schemes.length : 0;
+    };
+
     // Combine real data with display properties
     const finalData = banks.map(p => {
-        const schemesCount = (p.config as any)?.schemes?.length || 0;
+        const schemesCount = getSchemesCount(p.config);
         return {
             ...p,
             displayId: p.display_id || p.id.slice(0, 8).toUpperCase(),
@@ -91,18 +83,28 @@ export default function BankList() {
         };
     });
 
+    const totalSchemes = finalData.reduce((acc, p) => acc + (p.rawSchemesCount || 0), 0);
+    const activePartners = finalData.filter(p => p.status === 'ACTIVE').length;
+    const avgSchemesPerPartner = finalData.length ? (totalSchemes / finalData.length).toFixed(1) : '0.0';
+    const partnerActivityRate = finalData.length ? `${Math.round((activePartners / finalData.length) * 100)}%` : '0%';
+
     const metrics = (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             {[
                 { label: 'Total Partners', value: finalData.length, icon: Building2, color: 'text-blue-500' },
                 {
                     label: 'Active Schemes',
-                    value: finalData.reduce((acc, p) => acc + (p.rawSchemesCount || 0), 0),
+                    value: totalSchemes,
                     icon: Zap,
                     color: 'text-emerald-500',
                 },
-                { label: 'Avg. ROI', value: '10.5%', icon: TrendingUp, color: 'text-purple-500' },
-                { label: 'Lending Reach', value: 'PAN India', icon: ShieldCheck, color: 'text-amber-500' },
+                {
+                    label: 'Avg Schemes/Partner',
+                    value: avgSchemesPerPartner,
+                    icon: TrendingUp,
+                    color: 'text-purple-500',
+                },
+                { label: 'Active Partners', value: partnerActivityRate, icon: ShieldCheck, color: 'text-amber-500' },
             ].map((stat, i) => (
                 <div
                     key={i}

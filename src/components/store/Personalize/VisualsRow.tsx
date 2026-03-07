@@ -159,7 +159,7 @@ export default function VisualsRow({
                             src={productImage || '/images/categories/scooter_nobg.png'}
                             alt="Product Visual"
                             onLoad={() => setImageLoaded(true)}
-                            className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)],0,0,0.9)] transition-opacity duration-500 ${
+                            className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] transition-opacity duration-500 ${
                                 imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
                             }`}
                             style={{

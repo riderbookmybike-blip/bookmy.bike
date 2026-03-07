@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useTransition } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import {
     Heart,
@@ -28,7 +28,7 @@ import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { coinsNeededForPrice, discountForCoins } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
@@ -163,6 +163,9 @@ export const ProductCard = ({
     }, []);
     const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>(globalPricingMode);
     const [isFlipping, setIsFlipping] = useState(false);
+    const [isNavigating, setIsNavigating] = useState(false);
+    const [isPending, startTransition] = useTransition();
+    const pathname = usePathname();
 
     // 3D tilt effect
     const cardRef = useRef<HTMLDivElement>(null);
@@ -219,6 +222,10 @@ export const ProductCard = ({
         const t = setTimeout(() => setIsFlipping(false), 900);
         return () => clearTimeout(t);
     }, [resolvedGlobalMode]);
+
+    useEffect(() => {
+        setIsNavigating(false);
+    }, [pathname]);
 
     const handleFlip = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -435,6 +442,8 @@ export const ProductCard = ({
         basePath,
     }).url;
     const handleCardClick = () => {
+        if (isPending || isNavigating) return;
+        setIsNavigating(true);
         trackEvent('INTENT_SIGNAL', 'catalog_vehicle_click', {
             lead_id: leadId || undefined,
             sku_id: v.availableColors?.[0]?.id || undefined,
@@ -443,7 +452,9 @@ export const ProductCard = ({
             variant_slug: slugify(v.variant || ''),
             source: 'STORE_CATALOG',
         });
-        router.push(variantUrl);
+        startTransition(() => {
+            router.push(variantUrl);
+        });
     };
 
     // Force Grid View for consistency if requested or stick to logic
@@ -780,7 +791,7 @@ export const ProductCard = ({
                     transformStyle: 'flat',
                     transformOrigin: 'center center',
                 }}
-                className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-[border-color,box-shadow] duration-700 ${isTv ? 'min-h-[328px]' : 'min-h-[580px] md:min-h-[660px]'}`}
+                className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-[border-color,box-shadow,opacity] duration-700 ${isTv ? 'min-h-[328px]' : 'min-h-[580px] md:min-h-[660px]'} ${isNavigating || isPending ? 'opacity-80' : ''}`}
             >
                 {/* Glare overlay */}
                 <motion.div
@@ -997,7 +1008,7 @@ export const ProductCard = ({
                                                                 onColorChange(c.id);
                                                             }
                                                         }}
-                                                        className="w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)],255,255,0.15)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden"
+                                                        className="w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden"
                                                         style={{ background: c.hexCode }}
                                                         title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
                                                     >
@@ -1422,11 +1433,14 @@ export const ProductCard = ({
                                 <button
                                     onClick={e => {
                                         e.stopPropagation();
+                                        if (isNavigating || isPending) return;
+                                        setIsNavigating(true);
                                         onExplore();
                                     }}
-                                    className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all`}
+                                    disabled={isNavigating || isPending}
+                                    className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all disabled:opacity-70 disabled:pointer-events-none`}
                                 >
-                                    Compare Variants
+                                    {isNavigating || isPending ? 'Opening...' : 'Compare Variants'}
                                     <ArrowRight
                                         size={12}
                                         className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
@@ -1447,9 +1461,10 @@ export const ProductCard = ({
                                             basePath,
                                         }).url
                                     }
-                                    className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 transition-all`}
+                                    onClick={() => setIsNavigating(true)}
+                                    className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
                                 >
-                                    Know More
+                                    {isNavigating || isPending ? 'Opening...' : 'Know More'}
                                     <ArrowRight
                                         size={12}
                                         className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"

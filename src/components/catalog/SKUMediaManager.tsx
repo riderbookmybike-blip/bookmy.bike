@@ -32,6 +32,7 @@ import { getProxiedUrl } from '@/lib/utils/urlHelper';
 
 interface SKUMediaManagerProps {
     skuName: string;
+    skuContext?: string;
     initialImages?: string[];
     initialVideos?: string[];
     initialPdfs?: string[];
@@ -60,6 +61,7 @@ interface SKUMediaManagerProps {
 
 export default function SKUMediaManager({
     skuName,
+    skuContext,
     initialImages = [],
     initialVideos = [],
     initialPdfs = [],
@@ -584,6 +586,11 @@ export default function SKUMediaManager({
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
                                 Refining {skuName}
                             </p>
+                            {skuContext ? (
+                                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mt-1">
+                                    {skuContext}
+                                </p>
+                            ) : null}
                         </div>
                     </div>
                     <button
