@@ -2,7 +2,7 @@
 
 // Refined Modern Footer - Optimized SSR
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
     Facebook,
@@ -48,6 +48,7 @@ export const ModernFooter = () => {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [openNested, setOpenNested] = useState<string | null>(null);
     const [isQuickLeadOpen, setIsQuickLeadOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const { userRole, memberships } = useTenant();
     const hasActiveTeamMembership = (memberships || []).some(m => {
         if (String(m?.status || '').toUpperCase() !== 'ACTIVE') return false;
@@ -56,6 +57,11 @@ export const ModernFooter = () => {
     });
     const isTeamRole = Boolean(userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
     const isTeamUser = hasActiveTeamMembership || isTeamRole;
+    const showQuickLeadSupportAction = mounted && isTeamUser;
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const toggleSection = (title: string) => setOpenSection(openSection === title ? null : title);
     const toggleNested = (brand: string) => setOpenNested(openNested === brand ? null : brand);
@@ -160,7 +166,7 @@ export const ModernFooter = () => {
                     href: 'https://vahan.parivahan.gov.in/vahanservice/vahan/ui/usermgmt/login.xhtml',
                     icon: <Info size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
-                ...(isTeamUser
+                ...(showQuickLeadSupportAction
                     ? [
                           {
                               label: 'Create Quick Lead',

@@ -1099,8 +1099,8 @@ export default function PricingLedgerTable({
                         )}
                     </div>
 
-                    {/* Model Filter */}
-                    <div className="relative group w-[160px]">
+                    {/* Model Filter (moved to lower filter list row) */}
+                    <div className="hidden relative group w-[160px]">
                         <button
                             onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'model' ? null : 'model')}
                             className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'model' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
@@ -1177,8 +1177,8 @@ export default function PricingLedgerTable({
                         )}
                     </div>
 
-                    {/* Variant Filter */}
-                    <div className="relative group w-[140px]">
+                    {/* Variant Filter (moved to lower filter list row) */}
+                    <div className="hidden relative group w-[140px]">
                         <button
                             onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'variant' ? null : 'variant')}
                             className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'variant' ? 'border-indigo-500 ring-2 ring-indigo-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
@@ -1293,6 +1293,41 @@ export default function PricingLedgerTable({
                             </button>
                         </div>
                     )}
+
+                    {/* Product / Variant selectors shifted to list filter row */}
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <Package size={12} className="text-emerald-600" />
+                        <select
+                            value={selectedModel}
+                            onChange={e => onModelChange(e.target.value)}
+                            className="bg-transparent text-[9px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 outline-none"
+                            title="Filter Product"
+                        >
+                            <option value="ALL">All Products</option>
+                            {models.map(m => (
+                                <option key={m} value={m}>
+                                    {m}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <Layers size={12} className="text-indigo-600" />
+                        <select
+                            value={selectedVariant}
+                            onChange={e => onVariantChange(e.target.value)}
+                            className="bg-transparent text-[9px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 outline-none"
+                            title="Filter Variant"
+                        >
+                            <option value="ALL">All Variants</option>
+                            {variants.map(v => (
+                                <option key={v} value={v}>
+                                    {v}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
                     {selectedModel !== 'ALL' && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 group animate-in fade-in zoom-in duration-200">

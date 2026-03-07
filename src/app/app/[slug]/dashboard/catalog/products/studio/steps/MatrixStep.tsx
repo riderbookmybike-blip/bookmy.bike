@@ -296,6 +296,105 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
         };
     };
 
+    const resolveSharedImageForCell = (variantId: string, colorName: string, currentSku?: any) => {
+        const normalizedColor = String(colorName || '')
+            .trim()
+            .toUpperCase();
+        const normalizedColorTokens = normalizedColor
+            .split(/\s+/)
+            .map(t => t.trim())
+            .filter(Boolean);
+        const getSkuColorName = (sku: any): string => {
+            const fromSpecs = String(
+                sku?.specs?.[l2Label] ||
+                    sku?.specs?.Color ||
+                    sku?.specs?.Style ||
+                    sku?.color_name ||
+                    sku?.colour?.name ||
+                    ''
+            )
+                .trim()
+                .toUpperCase();
+            if (fromSpecs) return fromSpecs;
+
+            const colorNode = allColors.find((c: any) => String(c.id) === String(sku?.parent_id));
+            if (colorNode?.name) return String(colorNode.name).trim().toUpperCase();
+
+            const skuText = `${String(sku?.name || '')} ${String(sku?.slug || '')}`.toUpperCase();
+            const matchedColor = colors.find((c: any) => {
+                const cname = String(c?.name || '')
+                    .trim()
+                    .toUpperCase();
+                if (!cname) return false;
+                if (skuText.includes(cname)) return true;
+                const tokens = cname.split(/\s+/).filter(Boolean);
+                return tokens.length > 1 && tokens.every(token => skuText.includes(token));
+            });
+            if (matchedColor?.name) return String(matchedColor.name).trim().toUpperCase();
+
+            if (normalizedColorTokens.length > 1 && normalizedColorTokens.every(token => skuText.includes(token))) {
+                return normalizedColor;
+            }
+            return '';
+        };
+
+        const ownImage =
+            currentSku?.image_url ||
+            currentSku?.primary_image ||
+            currentSku?.specs?.primary_image ||
+            currentSku?.gallery_img_1 ||
+            currentSku?.specs?.gallery?.[0] ||
+            currentSku?.gallery_urls?.[0] ||
+            null;
+        if (ownImage) return ownImage;
+
+        const currentVariantIndex = variants.findIndex((v: any) => String(v.id) === String(variantId));
+        const resolveSkuVariantId = (sku: any) => {
+            const direct = variants.find((v: any) => String(v.id) === String(sku?.parent_id));
+            if (direct) return String(direct.id);
+            const unitParent = allColors.find((c: any) => String(c.id) === String(sku?.parent_id));
+            if (unitParent && unitParent.parent_id) return String(unitParent.parent_id);
+            return String(sku?.vehicle_variant_id || sku?.variant_id || '');
+        };
+
+        const sameColorSkus = existingSkus.filter((s: any) => getSkuColorName(s) === normalizedColor);
+
+        const previousVariantFirst = sameColorSkus
+            .filter((s: any) => {
+                const index = variants.findIndex((v: any) => String(v.id) === resolveSkuVariantId(s));
+                return index >= 0 && index < currentVariantIndex;
+            })
+            .sort((a: any, b: any) => {
+                const ia = variants.findIndex((v: any) => String(v.id) === resolveSkuVariantId(a));
+                const ib = variants.findIndex((v: any) => String(v.id) === resolveSkuVariantId(b));
+                return ib - ia;
+            });
+
+        const resolvedPeer = [...previousVariantFirst, ...sameColorSkus].find((s: any) =>
+            Boolean(
+                s?.image_url ||
+                s?.primary_image ||
+                s?.specs?.primary_image ||
+                s?.gallery_img_1 ||
+                s?.specs?.gallery?.[0] ||
+                s?.gallery_urls?.[0]
+            )
+        );
+        if (resolvedPeer) {
+            return (
+                resolvedPeer.image_url ||
+                resolvedPeer.primary_image ||
+                resolvedPeer.specs?.primary_image ||
+                resolvedPeer.gallery_img_1 ||
+                resolvedPeer.specs?.gallery?.[0] ||
+                resolvedPeer.gallery_urls?.[0]
+            );
+        }
+
+        const inherited = getInheritedAssets(variantId, colorName);
+        return inherited.primary || inherited.gallery?.[0] || null;
+    };
+
     const handleSyncAssets = async () => {
         setIsSyncing(true);
         const supabase = createClient();
@@ -493,6 +592,31 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
 
         try {
             const supabase = createClient();
+            const resolveSkuColorKey = (sku: any) => {
+                const fromSpecs = String(
+                    sku?.specs?.[l2Label] ||
+                        sku?.specs?.Color ||
+                        sku?.specs?.Style ||
+                        sku?.color_name ||
+                        sku?.colour?.name ||
+                        ''
+                )
+                    .trim()
+                    .toUpperCase();
+                if (fromSpecs) return fromSpecs;
+                const linkedColor = allColors.find((c: any) => String(c.id) === String(sku?.parent_id));
+                if (linkedColor?.name) return String(linkedColor.name).trim().toUpperCase();
+                const skuText = `${String(sku?.name || '')} ${String(sku?.slug || '')}`.toUpperCase();
+                const matchedColor = colors.find((c: any) =>
+                    skuText.includes(
+                        String(c?.name || '')
+                            .trim()
+                            .toUpperCase()
+                    )
+                );
+                return matchedColor?.name ? String(matchedColor.name).trim().toUpperCase() : '';
+            };
+            const activeColorKey = resolveSkuColorKey(activeMediaSku);
 
             // 1. Prepare assets payload
             const assetsPayload: any[] = [];
@@ -539,6 +663,7 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                 is_flipped: isFlipped || false,
                 offset_x: offsetX || 0,
                 offset_y: offsetY || 0,
+                media_shared: true,
             };
 
             const { data, error } = await (supabase as any)
@@ -558,6 +683,76 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
 
             if (data) {
                 onUpdate(existingSkus.map((s: any) => (s.id === activeMediaSku.id ? data : s)));
+            }
+
+            // Default behavior: share same-color media across variants unless target SKU is explicitly unique.
+            if (activeColorKey) {
+                const peerSkus = existingSkus.filter((s: any) => {
+                    if (s.id === activeMediaSku.id) return false;
+                    const peerColor = resolveSkuColorKey(s);
+                    return peerColor === activeColorKey;
+                });
+
+                if (peerSkus.length > 0) {
+                    const peerUpdates = peerSkus.map(async (peer: any) => {
+                        const hasOwnImage =
+                            Boolean(peer.primary_image) ||
+                            Boolean(peer.gallery_img_1) ||
+                            Boolean(peer.image_url) ||
+                            Boolean(peer?.specs?.primary_image) ||
+                            Boolean(peer?.specs?.gallery?.[0]);
+                        const isUniqueLocked = peer.media_shared === false && hasOwnImage;
+                        if (isUniqueLocked) return peer;
+
+                        const sharedSpecs = {
+                            ...(peer.specs || {}),
+                            gallery: images,
+                            primary_image: primary,
+                            video_urls: videos,
+                            pdf_urls: pdfs,
+                        };
+
+                        const sharedPayload: any = {
+                            primary_image: primary,
+                            gallery_img_1: images[0] || null,
+                            gallery_img_2: images[1] || null,
+                            gallery_img_3: images[2] || null,
+                            gallery_img_4: images[3] || null,
+                            gallery_img_5: images[4] || null,
+                            gallery_img_6: images[5] || null,
+                            video_url_1: videos[0] || null,
+                            video_url_2: videos[1] || null,
+                            zoom_factor: zoomFactor || 1.1,
+                            is_flipped: isFlipped || false,
+                            offset_x: offsetX || 0,
+                            offset_y: offsetY || 0,
+                            media_shared: true,
+                            specs: sharedSpecs,
+                        };
+
+                        const { data: updatedPeer, error: peerError } = await (supabase as any)
+                            .from('cat_skus')
+                            .update(sharedPayload)
+                            .eq('id', peer.id)
+                            .select()
+                            .single();
+
+                        if (peerError) {
+                            console.warn('[MatrixStep] Shared media sync skipped for peer SKU:', peer.id, peerError);
+                            return peer;
+                        }
+                        return updatedPeer || { ...peer, ...sharedPayload };
+                    });
+
+                    const peerResults = await Promise.all(peerUpdates);
+                    const peerMap = new Map(peerResults.map((s: any) => [s.id, s]));
+                    onUpdate(
+                        existingSkus.map((s: any) => {
+                            if (s.id === activeMediaSku.id) return data || s;
+                            return peerMap.get(s.id) || s;
+                        })
+                    );
+                }
             }
 
             // Handle bulk update if needed
@@ -712,10 +907,22 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
 
                                         // 3. Match by name in specs or parent link
                                         const specs = s.specs || {};
+                                        const linkedColor = allColors.find(
+                                            (c: any) => String(c.id) === String(s.parent_id)
+                                        );
+                                        const normalizedSkuColor = String(
+                                            specs[l2Label] ||
+                                                specs.Color ||
+                                                specs.Style ||
+                                                s.color_name ||
+                                                s?.colour?.name ||
+                                                linkedColor?.name ||
+                                                ''
+                                        )
+                                            .toUpperCase()
+                                            .trim();
                                         return (
-                                            (specs[l2Label] || '').toUpperCase() === colorNameUpper ||
-                                            (specs.Color || '').toUpperCase() === colorNameUpper ||
-                                            (specs.Style || '').toUpperCase() === colorNameUpper ||
+                                            normalizedSkuColor === colorNameUpper ||
                                             (localColor && s.parent_id === localColor.id)
                                         );
                                     });
@@ -797,14 +1004,54 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
 
                                                 {sku && (
                                                     <div className="flex flex-col items-center gap-1 flex-1 justify-center w-full">
+                                                        <div
+                                                            className={`px-2 py-0.5 rounded-md border text-[7px] font-black uppercase tracking-widest ${
+                                                                sku.media_shared === false
+                                                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                                    : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                                            }`}
+                                                            title={
+                                                                sku.media_shared === false
+                                                                    ? 'Variant-specific media'
+                                                                    : 'Shared media'
+                                                            }
+                                                        >
+                                                            {sku.media_shared === false ? 'Unique' : 'Shared'}
+                                                        </div>
+
                                                         <button
                                                             onClick={() => setActiveMediaSku(sku)}
-                                                            className={`w-14 h-14 rounded-xl border-2 transition-all overflow-hidden flex items-center justify-center group/media relative ${sku.image_url || sku.specs?.primary_image || sku.video_url || sku.specs?.video_urls?.[0] ? 'border-indigo-600/30' : 'bg-slate-50 dark:bg-black/40 border-dashed border-slate-200 dark:border-white/10 text-slate-400 hover:text-indigo-600 hover:border-indigo-600/50'}`}
+                                                            className={`w-14 h-14 rounded-xl border-2 transition-all overflow-hidden flex items-center justify-center group/media relative ${
+                                                                resolveSharedImageForCell(
+                                                                    variant.id,
+                                                                    color.name,
+                                                                    sku
+                                                                ) ||
+                                                                sku.video_url ||
+                                                                sku.specs?.video_urls?.[0]
+                                                                    ? 'border-indigo-600/30'
+                                                                    : 'bg-slate-50 dark:bg-black/40 border-dashed border-slate-200 dark:border-white/10 text-slate-400 hover:text-indigo-600 hover:border-indigo-600/50'
+                                                            }`}
                                                             title="Manage Media"
                                                         >
                                                             {(() => {
-                                                                const imgUrl =
-                                                                    sku.image_url || sku.specs?.primary_image;
+                                                                const inherited = getInheritedAssets(
+                                                                    variant.id,
+                                                                    color.name
+                                                                );
+                                                                const ownImgUrl =
+                                                                    sku.image_url ||
+                                                                    sku.primary_image ||
+                                                                    sku.specs?.primary_image ||
+                                                                    sku.gallery_img_1 ||
+                                                                    null;
+                                                                const inheritedImgUrl = resolveSharedImageForCell(
+                                                                    variant.id,
+                                                                    color.name,
+                                                                    sku
+                                                                );
+                                                                const imgUrl = ownImgUrl || inheritedImgUrl;
+                                                                const isSharedMedia = !ownImgUrl && !!inheritedImgUrl;
                                                                 const vidUrl =
                                                                     sku.video_url || sku.specs?.video_urls?.[0];
                                                                 const vidThumb = vidUrl
@@ -825,6 +1072,17 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                                                                                         size={8}
                                                                                         fill="currentColor"
                                                                                     />
+                                                                                </div>
+                                                                            )}
+                                                                            {isSharedMedia && (
+                                                                                <div
+                                                                                    className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-indigo-600/90 text-white border border-indigo-300/30 flex items-center gap-1"
+                                                                                    title="Shared media (inherited)"
+                                                                                >
+                                                                                    <Link2 size={8} />
+                                                                                    <span className="text-[7px] font-black uppercase tracking-widest">
+                                                                                        Shared
+                                                                                    </span>
                                                                                 </div>
                                                                             )}
                                                                             <div className="absolute inset-0 bg-indigo-600/60 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center text-white">
@@ -918,15 +1176,31 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
             {activeMediaSku && (
                 <SKUMediaManager
                     skuName={activeMediaSku.name}
-                    initialImages={activeMediaSku.gallery_urls || activeMediaSku.specs?.gallery || []}
+                    initialImages={
+                        activeMediaSku.gallery_urls ||
+                        activeMediaSku.specs?.gallery ||
+                        (activeMediaSku.primary_image ? [activeMediaSku.primary_image] : [])
+                    }
                     initialVideos={
                         activeMediaSku.specs?.video_urls || (activeMediaSku.video_url ? [activeMediaSku.video_url] : [])
+                    }
+                    inheritedImages={
+                        getInheritedAssets(activeMediaSku.parent_id, activeMediaSku.specs[l2Label]).gallery || []
                     }
                     inheritedVideos={getInheritedAssets(activeMediaSku.parent_id, activeMediaSku.specs[l2Label]).videos}
                     initialPdfs={activeMediaSku.specs?.pdf_urls || []}
                     inheritedPdfs={getInheritedAssets(activeMediaSku.parent_id, activeMediaSku.specs[l2Label]).pdfs}
                     inheritedFrom={`${family.brand?.name || 'Brand'} / ${family.name} / ${variants.find((v: any) => v.id === activeMediaSku.parent_id)?.name || 'Variant'}`}
-                    initialPrimary={activeMediaSku.image_url || activeMediaSku.specs?.primary_image}
+                    initialPrimary={
+                        activeMediaSku.image_url ||
+                        activeMediaSku.primary_image ||
+                        activeMediaSku.specs?.primary_image ||
+                        resolveSharedImageForCell(
+                            activeMediaSku.parent_id,
+                            activeMediaSku.specs[l2Label],
+                            activeMediaSku
+                        )
+                    }
                     initialZoomFactor={activeMediaSku.zoom_factor || 1.0}
                     initialIsFlipped={activeMediaSku.is_flipped || false}
                     initialOffsetX={activeMediaSku.offset_x || 0}

@@ -327,9 +327,10 @@ export default function SKUStepV2({
         if (!activeMediaSku) return;
 
         try {
+            const resolvedPrimary = primary || images[0] || null;
             // Map arrays → flat cat_skus columns
             const mediaUpdate: Partial<CatalogSku> = {
-                primary_image: primary || images[0] || null,
+                primary_image: resolvedPrimary,
                 gallery_img_1: images[0] || null,
                 gallery_img_2: images[1] || null,
                 gallery_img_3: images[2] || null,
@@ -343,11 +344,42 @@ export default function SKUStepV2({
                 is_flipped: isFlipped ?? false,
                 offset_x: offsetX ?? 0,
                 offset_y: offsetY ?? 0,
+                media_shared: true,
             };
 
             const updated = await updateSku(activeMediaSku.id, mediaUpdate);
             if (updated) {
-                onUpdate(skus.map(s => (s.id === activeMediaSku.id ? updated : s)));
+                // Default behavior: keep same-colour SKUs in sync across variants unless a peer is explicitly unique.
+                const sameColourPeers = skus.filter(
+                    s => s.colour_id === activeMediaSku.colour_id && s.id !== activeMediaSku.id
+                );
+                const syncedPeers = await Promise.all(
+                    sameColourPeers.map(async peer => {
+                        const peerOwnImage =
+                            peer.primary_image ||
+                            peer.gallery_img_1 ||
+                            peer.image_url ||
+                            peer.specs?.primary_image ||
+                            peer.specs?.gallery?.[0] ||
+                            null;
+                        const isUniqueLocked = peer.media_shared === false && !!peerOwnImage;
+                        if (isUniqueLocked) return peer;
+                        try {
+                            const synced = await updateSku(peer.id, mediaUpdate);
+                            return synced || ({ ...peer, ...mediaUpdate } as CatalogSku);
+                        } catch {
+                            return peer;
+                        }
+                    })
+                );
+
+                const peerMap = new Map(syncedPeers.map(s => [s.id, s]));
+                onUpdate(
+                    skus.map(s => {
+                        if (s.id === activeMediaSku.id) return updated;
+                        return peerMap.get(s.id) || s;
+                    })
+                );
                 toast.success('Media saved');
             }
         } catch (err: unknown) {

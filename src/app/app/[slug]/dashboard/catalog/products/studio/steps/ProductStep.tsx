@@ -895,7 +895,17 @@ export default function ProductStep({
                         initialVideos={formData.specs.video_urls || []}
                         initialPdfs={formData.specs.pdf_urls || []}
                         initialPrimary={formData.specs.primary_image}
-                        onSave={async (images, videos, pdfs, primary, applyToAll) => {
+                        onSave={async (
+                            images,
+                            videos,
+                            pdfs,
+                            primary,
+                            applyToAll,
+                            zoomFactor,
+                            isFlipped,
+                            offsetX,
+                            offsetY
+                        ) => {
                             setFormData({
                                 ...formData,
                                 specs: {
@@ -904,6 +914,10 @@ export default function ProductStep({
                                     video_urls: videos,
                                     pdf_urls: pdfs,
                                     primary_image: primary,
+                                    zoom_factor: zoomFactor ?? (formData.specs as any)?.zoom_factor,
+                                    is_flipped: isFlipped ?? (formData.specs as any)?.is_flipped,
+                                    offset_x: offsetX ?? (formData.specs as any)?.offset_x,
+                                    offset_y: offsetY ?? (formData.specs as any)?.offset_y,
                                 },
                             });
 
@@ -937,21 +951,56 @@ export default function ProductStep({
                                         .in('vehicle_variant_id', variantIds);
 
                                     if (skusToUpdate) {
+                                        const toCol = (list: string[], index: number) => list[index] || null;
                                         const updates = skusToUpdate.map((sku: any) => {
-                                            const skuSpecs = sku.specs as any;
+                                            const mediaColumnsPayload = {
+                                                primary_image: primary || toCol(images, 0),
+                                                gallery_img_1: toCol(images, 0),
+                                                gallery_img_2: toCol(images, 1),
+                                                gallery_img_3: toCol(images, 2),
+                                                gallery_img_4: toCol(images, 3),
+                                                gallery_img_5: toCol(images, 4),
+                                                gallery_img_6: toCol(images, 5),
+                                                video_url_1: toCol(videos, 0),
+                                                video_url_2: toCol(videos, 1),
+                                                pdf_url_1: toCol(pdfs, 0),
+                                                media_shared: true,
+                                                zoom_factor: zoomFactor ?? null,
+                                                is_flipped: isFlipped ?? false,
+                                                offset_x: offsetX ?? 0,
+                                                offset_y: offsetY ?? 0,
+                                            };
                                             return (supabase as any)
                                                 .from('cat_skus')
-                                                .update({
-                                                    video_url: videos[0] || null,
-                                                    specs: {
-                                                        ...skuSpecs,
-                                                        video_urls: videos,
-                                                        pdf_urls: pdfs,
-                                                    },
-                                                })
+                                                .update(mediaColumnsPayload)
                                                 .eq('id', sku.id);
                                         });
-                                        await Promise.all(updates);
+                                        const results = await Promise.all(updates);
+                                        const failed = results.some((r: any) => r?.error);
+
+                                        // Fallback for environments still using JSON specs media model.
+                                        if (failed) {
+                                            const fallbackUpdates = skusToUpdate.map((sku: any) => {
+                                                const skuSpecs = (sku.specs || {}) as any;
+                                                return (supabase as any)
+                                                    .from('cat_skus')
+                                                    .update({
+                                                        specs: {
+                                                            ...skuSpecs,
+                                                            gallery: images,
+                                                            video_urls: videos,
+                                                            pdf_urls: pdfs,
+                                                            primary_image: primary,
+                                                            zoom_factor: zoomFactor ?? skuSpecs.zoom_factor ?? null,
+                                                            is_flipped: isFlipped ?? skuSpecs.is_flipped ?? false,
+                                                            offset_x: offsetX ?? skuSpecs.offset_x ?? 0,
+                                                            offset_y: offsetY ?? skuSpecs.offset_y ?? 0,
+                                                        },
+                                                    })
+                                                    .eq('id', sku.id);
+                                            });
+                                            await Promise.all(fallbackUpdates);
+                                        }
                                     }
                                 }
                             }

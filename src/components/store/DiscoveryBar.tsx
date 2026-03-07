@@ -48,7 +48,7 @@ export function DiscoveryBar({
     const pillBase =
         'inline-flex items-center gap-1.5 px-4 h-10 rounded-2xl border transition-all duration-300 text-[9px] font-black uppercase tracking-[0.1em]';
     const pillInactive =
-        'bg-white/70 text-slate-500 border-[#F4B000]/25 hover:bg-white hover:text-slate-900 hover:border-[#F4B000]/50';
+        'bg-white/70 text-slate-500 border-black/10 hover:bg-white hover:text-slate-900 hover:border-black/20';
 
     return (
         <header
@@ -73,19 +73,18 @@ export function DiscoveryBar({
                 >
                     <div className="flex items-center gap-3 w-full">
                         {/* ── Search bar (left) ── */}
-                        <div className="flex-none min-w-[220px] lg:min-w-[300px]">
+                        <div className="flex-none min-w-[220px] lg:min-w-[300px] py-1">
                             <div
                                 onKeyDown={e => {
                                     if (e.key === 'Enter' && searchQuery.trim()) {
                                         onSearchSubmit?.(searchQuery.trim());
                                     }
                                 }}
-                                className="h-10 rounded-2xl transition-all duration-300 focus-within:shadow-[0_0_0_2px_rgba(244,176,0,0.2)]"
+                                className="h-10 rounded-2xl transition-all duration-300 border border-black/10"
                                 style={{
-                                    background: 'rgba(255,255,255,0.35)',
+                                    background: 'rgba(255,255,255,0.45)',
                                     backdropFilter: 'blur(8px)',
                                     WebkitBackdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.6)',
                                 }}
                             >
                                 <StoreSearchBar
@@ -93,7 +92,7 @@ export function DiscoveryBar({
                                     placeholder="FIND YOUR NEXT RIDE PARTNER..."
                                     onChange={onSearchChange}
                                     onClear={() => onSearchChange('')}
-                                    className="h-10 bg-transparent border-0"
+                                    className="h-full bg-transparent border-0"
                                 />
                             </div>
                         </div>
@@ -134,9 +133,7 @@ export function DiscoveryBar({
                                 <button
                                     onClick={onFilterClick}
                                     className={`${pillBase} relative group ${
-                                        hasActiveFilters
-                                            ? 'bg-[#F4B000]/10 text-[#b8860b] border-[#F4B000]/30 hover:bg-[#F4B000]/15'
-                                            : pillInactive
+                                        hasActiveFilters ? 'bg-[#F4B000] text-black border-black/20' : pillInactive
                                     }`}
                                 >
                                     <SlidersHorizontal
@@ -154,7 +151,11 @@ export function DiscoveryBar({
                             {onCompareClick && (
                                 <button
                                     onClick={onCompareClick}
-                                    className={`${pillBase} ${pillActive} group active:scale-[0.98]`}
+                                    className={`${pillBase} ${
+                                        compareCount > 0
+                                            ? 'bg-[#F4B000] text-black border-black/10 shadow-lg shadow-black/20'
+                                            : pillInactive
+                                    } group active:scale-[0.98]`}
                                 >
                                     <svg
                                         width="11"

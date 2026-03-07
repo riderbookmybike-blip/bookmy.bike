@@ -595,7 +595,8 @@ export async function fetchPublishedPricing(
 // ─── 5. Color Config Builder ─────────────────────────────────
 
 /** Build gallery assets from primary_image + gallery_img_* columns.
- *  Falls back through hierarchy: SKU → Colour → Variant → Model (if media_shared). */
+ * Falls back through hierarchy: SKU → Colour → Variant → Model.
+ * `media_shared` is treated as enabled unless explicitly `false`. */
 export function buildGalleryAssets(sku: any): SotAsset[] {
     let urls = [
         sku.primary_image,
@@ -610,15 +611,15 @@ export function buildGalleryAssets(sku: any): SotAsset[] {
     // If SKU has no images, fall back through hierarchy
     if (urls.length === 0) {
         const colour = sku.colour;
-        if (colour?.primary_image && colour.media_shared) {
+        if (colour?.primary_image && colour.media_shared !== false) {
             urls = [colour.primary_image];
         } else {
             const variant = sku.vehicle_variant;
-            if (variant?.primary_image && variant.media_shared) {
+            if (variant?.primary_image && variant.media_shared !== false) {
                 urls = [variant.primary_image];
             } else {
                 const model = sku.model;
-                if (model?.primary_image && model.media_shared) {
+                if (model?.primary_image && model.media_shared !== false) {
                     urls = [model.primary_image];
                 }
             }
@@ -914,11 +915,39 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
 
         const pricedVehicleSkus = vehicleSkus.filter((sku: any) => pricingMap.has(sku.id));
 
+        const modelColorImageMap = new Map<string, string>();
+        const modelImageMap = new Map<string, string>();
+        pricedVehicleSkus.forEach((sku: any) => {
+            const modelId = String(sku?.model?.id || '');
+            const colorName = String(sku?.colour?.name || sku?.color_name || '')
+                .trim()
+                .toUpperCase();
+            const ownImage =
+                sku?.primary_image ||
+                sku?.gallery_img_1 ||
+                (sku?.colour?.media_shared !== false ? sku?.colour?.primary_image : null) ||
+                (sku?.vehicle_variant?.media_shared !== false ? sku?.vehicle_variant?.primary_image : null) ||
+                (sku?.model?.media_shared !== false ? sku?.model?.primary_image : null) ||
+                null;
+            if (!ownImage) return;
+            if (modelId && !modelImageMap.has(modelId)) modelImageMap.set(modelId, ownImage);
+            if (modelId && colorName) {
+                const key = `${modelId}::${colorName}`;
+                if (!modelColorImageMap.has(key)) modelColorImageMap.set(key, ownImage);
+            }
+        });
+
         return pricedVehicleSkus.map((sku: any) => {
             const model = sku.model;
             const brand = model?.brand;
             const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
             const price = pricingMap.get(sku.id);
+            const modelId = String(model?.id || '');
+            const colorName = String(sku.colour?.name ?? sku.color_name ?? '')
+                .trim()
+                .toUpperCase();
+            const colorFallback = modelColorImageMap.get(`${modelId}::${colorName}`) || null;
+            const modelFallback = modelImageMap.get(modelId) || null;
 
             return {
                 sku_id: sku.id,
@@ -936,9 +965,14 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
                 finish: sku.colour?.finish ?? sku.finish,
                 primary_image:
                     sku.primary_image ||
-                    (sku.colour?.primary_image && sku.colour?.media_shared ? sku.colour.primary_image : null) ||
-                    (variant?.primary_image && variant?.media_shared ? variant.primary_image : null) ||
-                    (model?.primary_image && model?.media_shared ? model.primary_image : null),
+                    sku.gallery_img_1 ||
+                    colorFallback ||
+                    (sku.colour?.primary_image && sku.colour?.media_shared !== false
+                        ? sku.colour.primary_image
+                        : null) ||
+                    (variant?.primary_image && variant?.media_shared !== false ? variant.primary_image : null) ||
+                    (model?.primary_image && model?.media_shared !== false ? model.primary_image : null) ||
+                    modelFallback,
                 gallery_img_1: sku.gallery_img_1,
                 gallery_img_2: sku.gallery_img_2,
                 gallery_img_3: sku.gallery_img_3,

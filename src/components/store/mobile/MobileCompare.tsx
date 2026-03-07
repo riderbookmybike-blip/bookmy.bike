@@ -201,7 +201,7 @@ export function MobileCompare() {
                                 </button>
                             )}
                             <img
-                                src={v.imageUrl || ''}
+                                src={v.imageUrl || '/images/templates/t3_night.webp'}
                                 alt={v.model}
                                 className="h-16 object-contain mb-2 drop-shadow-lg"
                             />

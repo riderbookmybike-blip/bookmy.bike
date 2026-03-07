@@ -499,6 +499,19 @@ export default async function Page({ params, searchParams }: Props) {
 
     // 2.5 Fetch SKUs EARLY (Needed for Market Offer Filtering)
     const colorSkus: any[] = activeVariantSkus.map((sku: any) => {
+        const modelColorFallback =
+            normalizedSkus.find((candidate: any) => {
+                const sameColor =
+                    String(candidate?.colour?.name || candidate?.color_name || '')
+                        .trim()
+                        .toUpperCase() ===
+                    String(sku?.colour?.name || sku?.color_name || '')
+                        .trim()
+                        .toUpperCase();
+                if (!sameColor) return false;
+                return Boolean(candidate?.primary_image || candidate?.gallery_img_1);
+            }) || null;
+
         // Build assets via SOT hierarchy: SKU → Colour → Variant → Model (if media_shared)
         const skuWithModel = { ...sku, model: modelRow };
         const assets = buildGalleryAssets(skuWithModel);
@@ -506,11 +519,14 @@ export default async function Page({ params, searchParams }: Props) {
         // Resolve primary image through inheritance chain
         const resolvedImage =
             sku.primary_image ||
-            (sku.colour?.primary_image && sku.colour?.media_shared ? sku.colour.primary_image : null) ||
-            (sku.vehicle_variant?.primary_image && sku.vehicle_variant?.media_shared
+            sku.gallery_img_1 ||
+            modelColorFallback?.primary_image ||
+            modelColorFallback?.gallery_img_1 ||
+            (sku.colour?.primary_image && sku.colour?.media_shared !== false ? sku.colour.primary_image : null) ||
+            (sku.vehicle_variant?.primary_image && sku.vehicle_variant?.media_shared !== false
                 ? sku.vehicle_variant.primary_image
                 : null) ||
-            (modelRow?.primary_image && modelRow?.media_shared ? modelRow.primary_image : null) ||
+            (modelRow?.primary_image && modelRow?.media_shared !== false ? modelRow.primary_image : null) ||
             null;
 
         return {

@@ -143,6 +143,20 @@ type VisitorSignalMaps = {
     variantDwellMs: Map<string, number>;
 };
 
+function cleanImageUrl(value: unknown): string {
+    const url = typeof value === 'string' ? value.trim() : '';
+    if (!url) return '';
+    const lowered = url.toLowerCase();
+    if (lowered === 'null' || lowered === 'undefined') return '';
+    return url;
+}
+
+function colorKey(value: unknown): string {
+    return String(value || '')
+        .trim()
+        .toLowerCase();
+}
+
 function normalizeVariantKey(modelSlug?: string | null, variantSlug?: string | null): string | null {
     const model = String(modelSlug || '')
         .trim()
@@ -319,6 +333,23 @@ async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRo
 // ============================================================
 
 function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
+    // Model-level media fallback: if a variant has blank media, reuse first
+    // available image from another variant of the same model.
+    const modelFallbackImage = new Map<string, string>();
+    const modelColorFallbackImage = new Map<string, string>();
+    for (const row of rows) {
+        const image = cleanImageUrl(row.primary_image);
+        if (!image) continue;
+        if (!modelFallbackImage.has(row.model_id)) {
+            modelFallbackImage.set(row.model_id, image);
+        }
+        const key = `${row.model_id}::${colorKey(row.color_name)}`;
+        if (key.endsWith('::')) continue;
+        if (!modelColorFallbackImage.has(key)) {
+            modelColorFallbackImage.set(key, image);
+        }
+    }
+
     // Group by model_id + variant_id (same as V1 "family + variant")
     const variantGroups = new Map<
         string,
@@ -342,8 +373,15 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
         const { model: m, skus } = group;
 
         // Find primary SKU (or first with image)
-        const primarySku = skus.find(s => s.is_primary) || skus.find(s => s.primary_image) || skus[0];
+        const primarySku =
+            skus.find(s => s.is_primary && Boolean(cleanImageUrl(s.primary_image))) ||
+            skus.find(s => Boolean(cleanImageUrl(s.primary_image))) ||
+            skus.find(s => s.is_primary) ||
+            skus[0];
         if (!primarySku) continue;
+        const fallbackImage = modelFallbackImage.get(m.model_id) || '';
+        const primaryColorFallback =
+            modelColorFallbackImage.get(`${m.model_id}::${colorKey(primarySku.color_name)}`) || '';
 
         // Build available colors from all SKUs in this variant
         const availableColors = skus
@@ -352,7 +390,11 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 id: s.sku_id,
                 name: s.color_name || s.sku_name || 'Default',
                 hexCode: s.hex_primary || '#000000',
-                imageUrl: s.primary_image || undefined,
+                imageUrl:
+                    cleanImageUrl(s.primary_image) ||
+                    modelColorFallbackImage.get(`${m.model_id}::${colorKey(s.color_name)}`) ||
+                    fallbackImage ||
+                    undefined,
                 zoomFactor: s.zoom_factor ?? undefined,
                 isFlipped: s.is_flipped || undefined,
                 offsetX: s.offset_x ?? undefined,
@@ -497,10 +539,14 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                               id: primarySku.sku_id,
                               name: primarySku.color_name || 'Default',
                               hexCode: primarySku.hex_primary || '#333333',
-                              imageUrl: primarySku.primary_image || undefined,
+                              imageUrl:
+                                  cleanImageUrl(primarySku.primary_image) ||
+                                  primaryColorFallback ||
+                                  fallbackImage ||
+                                  undefined,
                           },
                       ],
-            imageUrl: primarySku.primary_image || '',
+            imageUrl: cleanImageUrl(primarySku.primary_image) || primaryColorFallback || fallbackImage || '',
             zoomFactor: primarySku.zoom_factor ?? undefined,
             isFlipped: primarySku.is_flipped || undefined,
             offsetX: primarySku.offset_x ?? undefined,

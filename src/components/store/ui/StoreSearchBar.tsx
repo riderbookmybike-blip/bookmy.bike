@@ -18,9 +18,9 @@ export function StoreSearchBar({
 }) {
     return (
         <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-slate-200 ${className}`}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/80 border border-black/10 ${className.includes('h-') ? '' : 'h-10'} ${className.includes('border-') ? '' : 'border-black/10'} ${className}`}
         >
-            <Search size={14} className="text-slate-400" />
+            <Search size={13} className="text-slate-400 shrink-0" />
             <input
                 type="text"
                 placeholder={placeholder}

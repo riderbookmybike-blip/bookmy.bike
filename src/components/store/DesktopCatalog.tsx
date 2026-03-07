@@ -1181,6 +1181,54 @@ export const DesktopCatalog = ({
                     }}
                     centerContent={
                         <>
+                            {/* Body type quick-filter pills — show when no search is typed */}
+                            {!searchQuery && (
+                                <div className="flex items-center gap-1.5">
+                                    {bodyOptions.map(type => {
+                                        const isActive = selectedBodyTypes.includes(type);
+                                        const icon =
+                                            type === 'MOTORCYCLE' ? (
+                                                <img
+                                                    src="/media/motorcycle.svg"
+                                                    className={`w-6 h-6 object-contain transition-all scale-x-[-1] ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
+                                                    alt="Motorcycle"
+                                                />
+                                            ) : type === 'SCOOTER' ? (
+                                                <img
+                                                    src="/media/scooter.svg"
+                                                    className={`w-6 h-6 object-contain transition-all scale-x-[-1] ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
+                                                    alt="Scooter"
+                                                />
+                                            ) : (
+                                                <img
+                                                    src="/media/moped.svg"
+                                                    className={`w-6 h-6 object-contain transition-all ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
+                                                    alt="Moped"
+                                                />
+                                            );
+                                        const label =
+                                            type === 'MOTORCYCLE'
+                                                ? 'Motorcycle'
+                                                : type === 'SCOOTER'
+                                                  ? 'Scooter'
+                                                  : 'Moped';
+                                        return (
+                                            <button
+                                                key={type}
+                                                onClick={() => setSelectedBodyTypes(isActive ? [] : [type])}
+                                                className={`inline-flex items-center gap-2 px-4 h-10 rounded-2xl border text-[10px] font-black uppercase tracking-[0.1em] whitespace-nowrap transition-all duration-300 ${
+                                                    isActive
+                                                        ? 'bg-[#F4B000] text-black border-black/20 shadow-md shadow-black/5'
+                                                        : 'bg-white/70 text-slate-500 border-black/10 hover:bg-white hover:text-slate-900 hover:border-black/20'
+                                                }`}
+                                            >
+                                                {icon}
+                                                <span className="leading-none select-none">{label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                             {isSmart && !smartModel && (
                                 <div className="flex items-center gap-2">
                                     {modelOptions.map(model => (
@@ -1281,7 +1329,7 @@ export const DesktopCatalog = ({
                 />
 
                 <div
-                    className="md:hidden sticky z-[90] py-2 mb-2 bg-slate-50 border-b border-slate-200/60"
+                    className="md:hidden sticky z-[90] pb-2 pt-2 bg-slate-50 border-b border-slate-200/60"
                     style={{ top: 'var(--header-h)' }}
                 >
                     <div className="flex items-center gap-2 px-3">
@@ -1290,19 +1338,63 @@ export const DesktopCatalog = ({
                             onClick={() => setIsMobileFilterOpen(true)}
                             className={`flex items-center justify-center w-9 h-9 rounded-full border transition-all shrink-0 ${
                                 activeFilterCount > 0
-                                    ? 'bg-[#FFD700] border-[#F4B000] text-black'
-                                    : 'bg-white border-slate-200 text-slate-500'
+                                    ? 'bg-[#FFD700] border-black/20 text-black'
+                                    : 'bg-white border-black/10 text-slate-500'
                             }`}
                         >
                             <SlidersHorizontal size={16} strokeWidth={2} />
                         </button>
-                        <StoreSearchBar
-                            value={searchQuery}
-                            placeholder="Search brand, product, variant"
-                            onChange={setSearchQuery}
-                            onClear={() => setSearchQuery('')}
-                            className="flex-1"
-                        />
+                        <div className="flex-1 rounded-full border border-black/10 overflow-hidden">
+                            <StoreSearchBar
+                                value={searchQuery}
+                                placeholder="Search brand, product, variant"
+                                onChange={setSearchQuery}
+                                onClear={() => setSearchQuery('')}
+                                className="border-0 bg-white"
+                            />
+                        </div>
+                    </div>
+                    {/* Body type pills — horizontal scroll row */}
+                    <div className="flex items-center gap-2 px-3 pt-2 overflow-x-auto scrollbar-none">
+                        {bodyOptions.map(type => {
+                            const isActive = selectedBodyTypes.includes(type);
+                            const icon =
+                                type === 'MOTORCYCLE' ? (
+                                    <img
+                                        src="/media/motorcycle.svg"
+                                        className={`w-5 h-5 object-contain transition-all scale-x-[-1] ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
+                                        alt="Motorcycle"
+                                    />
+                                ) : type === 'SCOOTER' ? (
+                                    <img
+                                        src="/media/scooter.svg"
+                                        className={`w-5 h-5 object-contain transition-all scale-x-[-1] ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
+                                        alt="Scooter"
+                                    />
+                                ) : (
+                                    <img
+                                        src="/media/moped.svg"
+                                        className={`w-5 h-5 object-contain transition-all ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
+                                        alt="Moped"
+                                    />
+                                );
+                            const label =
+                                type === 'MOTORCYCLE' ? 'Motorcycle' : type === 'SCOOTER' ? 'Scooter' : 'Moped';
+                            return (
+                                <button
+                                    key={type}
+                                    onClick={() => setSelectedBodyTypes(isActive ? [] : [type])}
+                                    className={`inline-flex items-center gap-1.5 px-3 h-9 rounded-full border text-[9px] font-black uppercase tracking-wider transition-all duration-200 shrink-0 ${
+                                        isActive
+                                            ? 'bg-[#F4B000] text-black border-black/20 shadow-md shadow-black/10'
+                                            : 'bg-white border border-black/10 text-slate-600 active:bg-slate-100'
+                                    }`}
+                                >
+                                    {icon}
+                                    <span className="leading-none select-none">{label}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -1461,7 +1553,7 @@ export const DesktopCatalog = ({
                                                 make: group.make,
                                                 model: group.model,
                                                 modelSlug: group.modelSlug,
-                                                imageUrl: v.imageUrl || '',
+                                                imageUrl: v.imageUrl || '/images/templates/t3_night.webp',
                                             })
                                         }
                                         isInCompare={compareItems.some(c => c.id === v.id)}
