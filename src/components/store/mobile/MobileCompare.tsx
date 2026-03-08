@@ -43,6 +43,8 @@ import { VariantCompareCardAdapter } from '@/components/store/cards/VehicleCardA
 import { useDiscovery } from '@/contexts/DiscoveryContext';
 import { flattenObject, formatSpecValue, computeSpecCategories } from '@/hooks/compareUtils';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
+import { useOClubWallet } from '@/hooks/useOClubWallet';
+import { discountForCoins } from '@/lib/oclub/coin';
 
 // --- Spec Icon Mapping ---
 const SPEC_ICON_MAP: Record<string, LucideIcon> = {
@@ -94,11 +96,15 @@ const SPEC_ICON_MAP: Record<string, LucideIcon> = {
 // --- Main Mobile Component ---
 export function MobileCompare() {
     const router = useRouter();
+    const { availableCoins, isLoggedIn } = useOClubWallet();
 
     const { activeVariants, isMixedMode, removeVariantBySlug, downpayment, setDownpayment, tenure, setTenure } =
         useSystemCompareLogic();
 
     const { pricingMode, setPricingMode } = useDiscovery();
+    const walletDiscount = isLoggedIn ? discountForCoins(Math.floor(availableCoins / 13) * 13) : 0;
+    const getEffectiveCashPrice = (v: any) =>
+        Math.max(0, (v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0) - walletDiscount);
 
     const allSpecs = useMemo(() => computeSpecCategories(activeVariants), [activeVariants]);
 
@@ -164,6 +170,8 @@ export function MobileCompare() {
                         viewMode="grid"
                         downpayment={downpayment}
                         tenure={tenure}
+                        walletCoins={isLoggedIn ? availableCoins : null}
+                        showOClubPrompt={!isLoggedIn}
                         onEditDownpayment={() => {}}
                         pricingMode={pricingMode}
                         onTogglePricingMode={() => setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))}
@@ -181,7 +189,7 @@ export function MobileCompare() {
             {/* ── SECTION 2: Mini Cards side by side ── */}
             <div className={`grid gap-3 px-5 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 {activeVariants.map(v => {
-                    const price = v.price?.onRoad || v.price?.exShowroom || 0;
+                    const price = getEffectiveCashPrice(v);
                     const emi = Math.round((price - downpayment) * getEmiFactor(tenure));
                     return (
                         <div

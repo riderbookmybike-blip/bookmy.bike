@@ -578,6 +578,20 @@ export function ProfileDropdown({
             // O'Circle / consumer mode
             return [
                 {
+                    label: 'Home',
+                    icon: HomeIcon,
+                    href: '/',
+                    color: 'text-slate-500',
+                    bg: 'bg-slate-500/10',
+                },
+                {
+                    label: 'Catalog',
+                    icon: Bike,
+                    href: '/catalog',
+                    color: 'text-indigo-500',
+                    bg: 'bg-indigo-500/10',
+                },
+                {
                     label: "O'Circle",
                     icon: Zap,
                     href: '/store/ocircle',
@@ -604,6 +618,13 @@ export function ProfileDropdown({
                     href: '/store/compare/favorites',
                     color: 'text-rose-500',
                     bg: 'bg-rose-500/10',
+                },
+                {
+                    label: 'Compare',
+                    icon: ArrowRightLeft,
+                    href: '/compare',
+                    color: 'text-teal-500',
+                    bg: 'bg-teal-500/10',
                 },
                 {
                     label: 'Orders',
@@ -958,68 +979,6 @@ export function ProfileDropdown({
                                                     {/* Account & Profile Section — O'Circle mode only */}
                                                     {(!businessMode || !hasWorkspaceAccess) && (
                                                         <>
-                                                            {/* Main Menu — inside O'Circle mode */}
-                                                            <div className="lg:hidden space-y-3 pb-2 pt-1">
-                                                                <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                                                                    Main Menu
-                                                                </p>
-                                                                <div className="grid grid-cols-2 gap-2">
-                                                                    {[
-                                                                        { label: 'Home', icon: HomeIcon, href: '/' },
-                                                                        {
-                                                                            label: 'Catalog',
-                                                                            icon: Bike,
-                                                                            href: '/catalog',
-                                                                        },
-                                                                        {
-                                                                            label: 'Favorites',
-                                                                            icon: HeartIcon,
-                                                                            href: '/store/compare/favorites',
-                                                                        },
-                                                                        {
-                                                                            label: 'Compare',
-                                                                            icon: ArrowRightLeft,
-                                                                            href: '/compare',
-                                                                        },
-                                                                        { label: 'Zero', icon: Zap, href: '/zero' },
-                                                                        {
-                                                                            label: "O' Circle",
-                                                                            icon: Globe,
-                                                                            href: '#o-circle',
-                                                                            isScroll: true,
-                                                                        },
-                                                                    ].map(nav => (
-                                                                        <a
-                                                                            key={nav.label}
-                                                                            href={nav.href}
-                                                                            onClick={e => {
-                                                                                if (nav.isScroll) {
-                                                                                    e.preventDefault();
-                                                                                    setIsOpen(false);
-                                                                                    const el =
-                                                                                        document.getElementById(
-                                                                                            'o-circle'
-                                                                                        );
-                                                                                    el?.scrollIntoView({
-                                                                                        behavior: 'smooth',
-                                                                                    });
-                                                                                } else {
-                                                                                    setIsOpen(false);
-                                                                                }
-                                                                            }}
-                                                                            className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
-                                                                        >
-                                                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-brand-primary transition-colors shadow-sm">
-                                                                                <nav.icon size={16} />
-                                                                            </div>
-                                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-                                                                                {nav.label}
-                                                                            </span>
-                                                                        </a>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-
                                                             <div className="space-y-3">
                                                                 <div className="space-y-1.5">
                                                                     {accountMenuItems.map(item => (

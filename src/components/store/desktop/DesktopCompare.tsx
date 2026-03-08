@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     ChevronDown,
@@ -54,7 +54,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CompareCardAdapter, VariantCompareCardAdapter } from '@/components/store/cards/VehicleCardAdapters';
-import { coinsNeededForPrice } from '@/lib/oclub/coin';
+import { coinsNeededForPrice, discountForCoins } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { DiscoveryBar } from '@/components/store/DiscoveryBar';
 import { useSystemCompareLogic } from '@/hooks/useSystemCompareLogic';
@@ -64,7 +64,6 @@ import {
     extractNumeric,
     formatSpecValue as formatSpecValuePlain,
     getDisplayPrice,
-    getEmi,
     EMI_FACTORS,
     UNIT_MAP,
     NUMERIC_BAR_SPECS,
@@ -74,6 +73,8 @@ import {
 } from '@/hooks/compareUtils';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
 import { VEHICLE_MODE_CONFIG, getSafeViewMode } from '@/components/store/cards/vehicleModeConfig';
+import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
+import { useOClubWallet } from '@/hooks/useOClubWallet';
 
 // --- Spec Icon Mapping ---
 const SPEC_ICON_MAP: Record<string, LucideIcon> = {
@@ -197,6 +198,7 @@ function formatSpecValue(val: string | null, label: string): React.ReactNode {
 
 export default function DesktopCompare({ isWishlist = false }: { isWishlist?: boolean }) {
     const router = useRouter();
+    const { availableCoins, isLoggedIn } = useOClubWallet();
 
     const {
         makeSlug,
@@ -255,6 +257,15 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
     const [compactMode, setCompactMode] = useState(false);
     const { pricingMode, setPricingMode } = useDiscovery();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.compare.defaultView);
+    const [isTvViewport, setIsTvViewport] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const syncTv = () => setIsTvViewport(document.documentElement.dataset.tv === '1');
+        syncTv();
+        window.addEventListener('resize', syncTv);
+        return () => window.removeEventListener('resize', syncTv);
+    }, []);
 
     useEffect(() => {
         const handler = () => openDpEdit();
@@ -267,6 +278,21 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
     const [isAllSpecsExpanded, setIsAllSpecsExpanded] = useState(true);
     const fullCardsRef = useRef<HTMLDivElement>(null);
     const scrollAnchorRef = useRef<HTMLDivElement>(null);
+    const walletDiscount = useMemo(
+        () => (isLoggedIn ? discountForCoins(Math.floor(availableCoins / 13) * 13) : 0),
+        [availableCoins, isLoggedIn]
+    );
+    const getEffectiveCashPrice = useCallback(
+        (v: any) => Math.max(0, (getDisplayPrice(v) || 0) - walletDiscount),
+        [walletDiscount]
+    );
+    const getEffectiveEmi = useCallback(
+        (v: any) => {
+            const loan = Math.max(0, getEffectiveCashPrice(v) - downpayment);
+            return Math.max(0, Math.round(loan * (EMI_FACTORS[tenure] || EMI_FACTORS[36])));
+        },
+        [downpayment, tenure, getEffectiveCashPrice]
+    );
 
     // compactMode is static — no auto-flip on scroll (user controls view mode manually)
 
@@ -386,14 +412,14 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
             : `Here are the details of ${uniqueModels.join(', ')} comparison.`;
 
         const variantLines = activeVariants.map(v => {
-            const price = getDisplayPrice(v);
-            const emi = getEmi(v, downpayment, tenure);
+            const price = getEffectiveCashPrice(v);
+            const emi = getEffectiveEmi(v);
             const variantLabel = [v.make, v.model, v.variant].filter(Boolean).join(' ');
             return `- ${variantLabel}: On-road ₹${price.toLocaleString('en-IN')} | EMI ₹${emi.toLocaleString('en-IN')}/mo`;
         });
 
         return [title, '', ...variantLines, '', 'Shared via BookMyBike'].join('\n');
-    }, [activeVariants, downpayment, tenure]);
+    }, [activeVariants, getEffectiveCashPrice, getEffectiveEmi]);
 
     const handleShare = async () => {
         const url = window.location.href;
@@ -539,6 +565,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                             setPricingMode(mode);
                                             if (mode === 'finance') openDpEdit();
                                         }}
+                                        reduceEffects={isTvViewport && viewMode === 'list'}
                                         viewMode={viewMode}
                                         allowedViewModes={VEHICLE_MODE_CONFIG.compare.allowedViews}
                                         onViewModeChange={mode => setViewMode(getSafeViewMode('compare', mode))}
@@ -723,6 +750,25 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                             </motion.div>
                         </div>
                     </div>
+
+                    {/* ── Mobile Search Bar (matches catalog pattern) ── */}
+                    <div
+                        className="md:hidden sticky z-[90] pb-2 pt-2 bg-slate-50 border-b border-slate-200/60"
+                        style={{ top: 'var(--header-h)' }}
+                    >
+                        <div className="flex items-center gap-2 px-3">
+                            <div className="flex-1 rounded-full border border-black/10 overflow-hidden">
+                                <StoreSearchBar
+                                    value={searchQuery}
+                                    placeholder="Search brand, product, variant"
+                                    onChange={setSearchQuery}
+                                    onClear={() => setSearchQuery('')}
+                                    className="border-0 bg-white"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     {/* ────── View-Specific Content Containers ────── */}
                     <div className="pt-4 px-5 md:px-0">
                         {/* ────── Full Cards (grid mode only) ────── */}
@@ -741,6 +787,8 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                 viewMode="grid"
                                                 downpayment={downpayment}
                                                 tenure={tenure}
+                                                walletCoins={isLoggedIn ? availableCoins : null}
+                                                showOClubPrompt={!isLoggedIn}
                                                 onEditDownpayment={openDpEdit}
                                                 pricingMode={pricingMode}
                                                 onTogglePricingMode={() =>
@@ -960,8 +1008,8 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                     </span>
                                                 </div>
                                                 {activeVariants.map((v, vIdx) => {
-                                                    const cashPrice = v.price?.onRoad || v.price?.exShowroom || 0;
-                                                    const emi = getEmi(v, downpayment, tenure);
+                                                    const cashPrice = getEffectiveCashPrice(v);
+                                                    const emi = getEffectiveEmi(v);
                                                     return (
                                                         <div
                                                             key={vIdx}
@@ -970,9 +1018,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                             <span className="text-[10px] font-black text-[#F4B000]">
                                                                 ₹
                                                                 {pricingMode === 'cash'
-                                                                    ? (v.price?.offerPrice || cashPrice).toLocaleString(
-                                                                          'en-IN'
-                                                                      )
+                                                                    ? cashPrice.toLocaleString('en-IN')
                                                                     : emi.toLocaleString('en-IN')}
                                                             </span>
                                                         </div>
@@ -1110,12 +1156,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                                 className="px-3 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
                                                             >
                                                                 <span className="text-[10px] font-black text-slate-500">
-                                                                    ₹
-                                                                    {(
-                                                                        v.price?.onRoad ||
-                                                                        v.price?.exShowroom ||
-                                                                        0
-                                                                    ).toLocaleString('en-IN')}
+                                                                    ₹{getEffectiveCashPrice(v).toLocaleString('en-IN')}
                                                                 </span>
                                                             </div>
                                                         ))}
@@ -1142,8 +1183,8 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                             </span>
                                                         </div>
                                                         {activeVariants.map((v, vIdx) => {
-                                                            const basePrice = getDisplayPrice(activeVariants[0]);
-                                                            const currentPrice = getDisplayPrice(v);
+                                                            const basePrice = getEffectiveCashPrice(activeVariants[0]);
+                                                            const currentPrice = getEffectiveCashPrice(v);
                                                             const gap = currentPrice - basePrice;
                                                             if (vIdx === 0)
                                                                 return (

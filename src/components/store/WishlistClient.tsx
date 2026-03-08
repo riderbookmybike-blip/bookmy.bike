@@ -15,6 +15,7 @@ import { buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 import { FilterChip } from '@/components/store/ui/FilterChip';
 import { VEHICLE_MODE_CONFIG, getSafeViewMode } from '@/components/store/cards/vehicleModeConfig';
+import { useOClubWallet } from '@/hooks/useOClubWallet';
 
 // Filter Group Component (Extracted)
 const FilterGroup = ({
@@ -113,6 +114,7 @@ const FilterGroup = ({
 export const WishlistClient = () => {
     const { favorites, clearFavorites } = useFavorites();
     const { items: catalogItems, isLoading } = useSystemCatalogLogic();
+    const { availableCoins, isLoggedIn } = useOClubWallet();
     const router = useRouter();
 
     // UI Local State for Cards
@@ -148,6 +150,7 @@ export const WishlistClient = () => {
     const [selectedWheels, setSelectedWheels] = useState<string[]>([]);
     const [isMobileViewport, setIsMobileViewport] = useState(false);
     const [isReducedMotion, setIsReducedMotion] = useState(false);
+    const [isTvViewport, setIsTvViewport] = useState(false);
     const [isPending, startTransition] = useTransition();
 
     useEffect(() => {
@@ -158,6 +161,7 @@ export const WishlistClient = () => {
         const sync = () => {
             setIsMobileViewport(mobileQuery.matches);
             setIsReducedMotion(reducedMotionQuery.matches);
+            setIsTvViewport(document.documentElement.dataset.tv === '1');
         };
         sync();
 
@@ -173,6 +177,13 @@ export const WishlistClient = () => {
         const handler = () => setIsDpEditOpen(true);
         window.addEventListener('openFinancePanel', handler);
         return () => window.removeEventListener('openFinancePanel', handler);
+    }, []);
+
+    // Open filter from bottom nav Filter tab
+    useEffect(() => {
+        const handler = () => setIsFilterOpen(true);
+        window.addEventListener('openMobileFilter', handler);
+        return () => window.removeEventListener('openMobileFilter', handler);
     }, []);
 
     const lightMotion = isMobileViewport || isReducedMotion;
@@ -336,67 +347,24 @@ export const WishlistClient = () => {
                 onCompareClick={handleCompareAll}
                 compareCap={VEHICLE_MODE_CONFIG.favorites.compareCap}
                 compareCount={Math.min(filteredItems.length, VEHICLE_MODE_CONFIG.favorites.compareCap)}
+                reduceEffects={isTvViewport && viewMode === 'list'}
             />
 
             {/* 2. Mobile Search Bar (Sticky) */}
             <div
-                className="md:hidden sticky z-[90] py-3 mb-4 bg-slate-50/80 backdrop-blur-2xl border-b border-slate-200/60"
+                className="md:hidden sticky z-[90] pb-2 pt-2 bg-slate-50 border-b border-slate-200/60"
                 style={{ top: 'var(--header-h)' }}
             >
-                <div className="flex items-center gap-3 px-5 min-w-0">
-                    {/* Search bar */}
-                    <StoreSearchBar
-                        value={searchQuery}
-                        placeholder="Search saved rides..."
-                        onChange={setSearchQuery}
-                        onClear={() => setSearchQuery('')}
-                        className="flex-1 min-w-0"
-                    />
-                    {/* Compare pill — right */}
-                    <button
-                        onClick={handleCompareAll}
-                        disabled={isPending}
-                        className={`relative shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-2xl bg-slate-900 text-white active:scale-95 transition-all ${
-                            isPending ? 'opacity-60 pointer-events-none' : ''
-                        }`}
-                    >
-                        <svg
-                            width="11"
-                            height="11"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M16 3h5v5" />
-                            <path d="M8 3H3v5" />
-                            <path d="M16 21h5v-5" />
-                            <path d="M8 21H3v-5" />
-                            <path d="M10 10l4 4" />
-                            <path d="M14 10l-4 4" />
-                        </svg>
-                        <span className="text-[9px] font-black uppercase tracking-widest">Compare</span>
-                        {filteredItems.length > 0 && (
-                            <span className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[7px] font-black rounded-full px-0.5">
-                                {Math.min(filteredItems.length, VEHICLE_MODE_CONFIG.favorites.compareCap)}
-                            </span>
-                        )}
-                    </button>
-                    {/* Filter pill — right */}
-                    <button
-                        onClick={() => setIsFilterOpen(true)}
-                        className="relative shrink-0 flex items-center gap-1.5 px-3.5 h-9 rounded-2xl border border-slate-200 bg-white/80 text-slate-700 active:scale-95 transition-all"
-                    >
-                        <Menu size={13} />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Filter</span>
-                        {activeFilterCount > 0 && (
-                            <span className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[7px] font-black rounded-full px-0.5">
-                                {activeFilterCount}
-                            </span>
-                        )}
-                    </button>
+                <div className="flex items-center gap-2 px-3">
+                    <div className="flex-1 rounded-full border border-black/10 overflow-hidden">
+                        <StoreSearchBar
+                            value={searchQuery}
+                            placeholder="Search brand, product, variant"
+                            onChange={setSearchQuery}
+                            onClear={() => setSearchQuery('')}
+                            className="border-0 bg-white"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -448,6 +416,8 @@ export const WishlistClient = () => {
                                     viewMode={viewMode}
                                     downpayment={downpayment}
                                     tenure={tenure}
+                                    walletCoins={isLoggedIn ? availableCoins : null}
+                                    showOClubPrompt={!isLoggedIn}
                                     pricingMode={pricingMode}
                                     onTogglePricingMode={() =>
                                         setPricingMode(prev => {

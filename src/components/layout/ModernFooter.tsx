@@ -9,7 +9,6 @@ import {
     Twitter,
     Linkedin,
     Instagram,
-    Heart,
     Plus,
     Minus,
     MapPin,
@@ -540,17 +539,21 @@ export const ModernFooter = () => {
                         </div>
 
                         {/* Credit Cluster - Positioned at bottom with high visibility and safe margin */}
-                        <div className="flex flex-col items-center lg:items-end gap-3">
-                            <div className="flex items-center gap-3 text-[10px] font-bold tracking-wider text-white/70">
-                                Published with{' '}
-                                <span>
-                                    <Heart size={10} className="text-red-500 fill-red-500" />
-                                </span>{' '}
-                                By The{' '}
-                                <span className="flex items-center gap-2">
-                                    <OCircleLogo size={14} color="#FFD700" strokeWidth={16} />
-                                    O&apos; Circle
-                                </span>
+                        <div className="flex flex-col items-center lg:items-end gap-1">
+                            <div className="flex items-center gap-2 group transition-all duration-300">
+                                <OCircleLogo
+                                    size={30}
+                                    color="#7EB4E2"
+                                    strokeWidth={16}
+                                    className="group-hover:scale-105 transition-transform duration-300"
+                                />
+                                <div className="text-[24px] font-bold tracking-[-0.03em] flex items-center">
+                                    <span className="text-[#7EB4E2]">O&apos;</span>
+                                    <span className="text-white">Circle</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-[10px] font-bold tracking-wider text-white/70 opacity-80">
+                                Powered by
                             </div>
                         </div>
                     </div>

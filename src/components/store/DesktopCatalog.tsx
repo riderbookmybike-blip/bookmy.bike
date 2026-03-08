@@ -765,11 +765,29 @@ export const DesktopCatalog = ({
         return () => window.removeEventListener('discoveryPricingChanged', handler);
     }, []);
 
+    // Sync body type from mobile bottom nav Ride popout
+    React.useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (!detail) return;
+            setSelectedBodyTypes(detail.bodyTypes || []);
+        };
+        window.addEventListener('catalogBodyTypeChanged', handler);
+        return () => window.removeEventListener('catalogBodyTypeChanged', handler);
+    }, []);
+
     // Open Finance panel when card pill dispatches event
     React.useEffect(() => {
         const handler = () => openDpEdit();
         window.addEventListener('openFinancePanel', handler);
         return () => window.removeEventListener('openFinancePanel', handler);
+    }, []);
+
+    // Open mobile filter from bottom nav Filter tab
+    React.useEffect(() => {
+        const handler = () => setIsMobileFilterOpen(true);
+        window.addEventListener('openMobileFilter', handler);
+        return () => window.removeEventListener('openMobileFilter', handler);
     }, []);
 
     // Scroll lock
@@ -1187,6 +1205,7 @@ export const DesktopCatalog = ({
                         setPricingMode(mode as any);
                         if (mode === 'finance') openDpEdit();
                     }}
+                    reduceEffects={isTv && viewMode === 'list'}
                     onCompareClick={() => {
                         if (viewMode === 'list') {
                             setViewMode(getSafeViewMode('catalog', 'grid'));
@@ -1200,7 +1219,7 @@ export const DesktopCatalog = ({
                         <>
                             {/* Body type quick-filter pills — show when no search is typed */}
                             {!searchQuery && (
-                                <div className="flex items-center gap-1.5">
+                                <div className="hidden lg:flex items-center gap-1.5">
                                     {bodyOptions.map(type => {
                                         const isActive = selectedBodyTypes.includes(type);
                                         const icon =
@@ -1350,17 +1369,6 @@ export const DesktopCatalog = ({
                     style={{ top: 'var(--header-h)' }}
                 >
                     <div className="flex items-center gap-2 px-3">
-                        {/* Filter button — left of search bar */}
-                        <button
-                            onClick={() => setIsMobileFilterOpen(true)}
-                            className={`flex items-center justify-center w-9 h-9 rounded-full border transition-all shrink-0 ${
-                                activeFilterCount > 0
-                                    ? 'bg-[#FFD700] border-black/20 text-black'
-                                    : 'bg-white border-black/10 text-slate-500'
-                            }`}
-                        >
-                            <SlidersHorizontal size={16} strokeWidth={2} />
-                        </button>
                         <div className="flex-1 rounded-full border border-black/10 overflow-hidden">
                             <StoreSearchBar
                                 value={searchQuery}
@@ -1372,7 +1380,7 @@ export const DesktopCatalog = ({
                         </div>
                     </div>
                     {/* Body type pills — horizontal scroll row */}
-                    <div className="flex items-center gap-2 px-3 pt-2 overflow-x-auto scrollbar-none">
+                    <div className="hidden lg:flex items-center gap-2 px-3 pt-2 overflow-x-auto scrollbar-none">
                         {bodyOptions.map(type => {
                             const isActive = selectedBodyTypes.includes(type);
                             const icon =
@@ -1482,7 +1490,9 @@ export const DesktopCatalog = ({
                             className="hidden xl:block w-80 flex-shrink-0 space-y-6 sticky self-start pt-2 transition-all animate-in fade-in slide-in-from-left-4"
                             style={{ top: 'calc(var(--header-h) + 24px)' }}
                         >
-                            <div className="flex flex-col gap-8 p-6 bg-white/60 border border-slate-200/60 rounded-[3rem] backdrop-blur-3xl shadow-2xl">
+                            <div
+                                className={`flex flex-col gap-8 p-6 ${isTv ? 'bg-white' : 'bg-white/60 border border-slate-200/60 backdrop-blur-3xl'} rounded-[3rem] shadow-2xl`}
+                            >
                                 {/* Search Bar moved to Navbar via DiscoveryContext */}
                                 {/* Filter Groups in Sidebar (List View) */}
                                 <div className="space-y-6">
@@ -1530,12 +1540,12 @@ export const DesktopCatalog = ({
 
                         <motion.div
                             key={isTv && tvIdleMode ? `tv-ambient-${tvRotationTick}` : 'catalog-static'}
-                            initial={isTv && tvIdleMode ? { opacity: 0.96, y: 10 } : false}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.45, ease: 'easeOut' }}
+                            initial={isTv && tvIdleMode && viewMode !== 'list' ? { opacity: 1, y: 10 } : false}
+                            animate={{ opacity: 1, y: viewMode === 'list' ? 0 : 0 }}
+                            transition={{ duration: viewMode === 'list' ? 0 : 0.45, ease: 'easeOut' }}
                             className={`grid ${
                                 viewMode === 'list'
-                                    ? 'grid-cols-1 w-full gap-6'
+                                    ? 'grid-cols-1 w-full gap-6 subpixel-antialiased'
                                     : isTv
                                       ? 'tv-catalog-grid w-full'
                                       : isPhone

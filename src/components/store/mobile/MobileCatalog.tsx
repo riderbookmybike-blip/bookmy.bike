@@ -35,6 +35,7 @@ import { resolveIpLocation } from '@/actions/resolveIpLocation';
 import { CompareTray, type CompareItem } from '../CompareTray';
 import { CatalogGridSkeleton } from '../CatalogSkeleton';
 import { VEHICLE_MODE_CONFIG, compareLimitMessage } from '../cards/vehicleModeConfig';
+import { useOClubWallet } from '@/hooks/useOClubWallet';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
@@ -63,6 +64,7 @@ export const MobileCatalog = ({
 }: MobileCatalogProps) => {
     const isLoading = externalLoading;
     const router = useRouter();
+    const { availableCoins, isLoggedIn } = useOClubWallet();
     const isSmart = mode === 'smart';
 
     const {
@@ -375,6 +377,8 @@ export const MobileCatalog = ({
                                                       v={v}
                                                       downpayment={downpayment}
                                                       tenure={tenure}
+                                                      walletCoins={isLoggedIn ? availableCoins : null}
+                                                      showOClubPrompt={!isLoggedIn}
                                                       basePath={basePath}
                                                       leadId={leadId}
                                                       fallbackDealerId={resolvedDealerId}
@@ -417,6 +421,8 @@ export const MobileCatalog = ({
                                                       v={v}
                                                       downpayment={downpayment}
                                                       tenure={tenure}
+                                                      walletCoins={isLoggedIn ? availableCoins : null}
+                                                      showOClubPrompt={!isLoggedIn}
                                                       basePath={basePath}
                                                       leadId={leadId}
                                                       fallbackDealerId={resolvedDealerId}

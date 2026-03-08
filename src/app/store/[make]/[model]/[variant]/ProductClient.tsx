@@ -434,16 +434,17 @@ export default function ProductClient({
     const shouldForcePhoneCapture = isTeamMember;
 
     // Unified Dealer Context Hook
-    const { dealerColors, dealerAccessories, bestOffer, resolvedLocation, serverPricing } = useSystemDealerContext({
-        product,
-        initialAccessories,
-        initialLocation,
-        selectedColor, // This relies on the color state from useSystemPDPLogic
-        overrideDealerId: initialDealerId, // Prioritize this dealer
-        disabled: hasResolvedDealer,
-        prefetchedPricing: initialServerPricing,
-        prefetchedLocation: initialLocation,
-    });
+    const { dealerColors, dealerAccessories, bestOffer, otherOffers, resolvedLocation, serverPricing } =
+        useSystemDealerContext({
+            product,
+            initialAccessories,
+            initialLocation,
+            selectedColor, // This relies on the color state from useSystemPDPLogic
+            overrideDealerId: initialDealerId, // Prioritize this dealer
+            disabled: hasResolvedDealer,
+            prefetchedPricing: initialServerPricing,
+            prefetchedLocation: initialLocation,
+        });
 
     // Update client state when hook returns new data
     useEffect(() => {
@@ -971,6 +972,7 @@ export default function ProductClient({
         leadContext: leadContext || undefined,
         initialLocation: resolvedLocation || initialLocation,
         bestOffer, // Passing bestOffer to children
+        otherOffers,
         serverPricing, // SSPP v1: Server-calculated pricing breakdown
         walletCoins: isLoggedIn ? availableCoins : null,
         showOClubPrompt: !isLoggedIn,

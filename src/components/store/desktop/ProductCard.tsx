@@ -519,7 +519,7 @@ export const ProductCard = ({
                         <div className="space-y-1.5">
                             <div className="flex items-center gap-4">
                                 <h3
-                                    className={`${isTv ? 'text-2xl' : 'text-3xl'} font-black uppercase tracking-tighter italic text-slate-900 leading-none`}
+                                    className={`${isTv ? 'text-3xl' : 'text-3xl'} font-black uppercase tracking-tighter italic text-slate-900 leading-none`}
                                 >
                                     {displayModel}
                                 </h3>
@@ -528,7 +528,7 @@ export const ProductCard = ({
                                 >
                                     <StarRating rating={v.rating || 4.5} size={isTv ? 8 : 10} />
                                     <span
-                                        className={`text-[10px] font-black uppercase tracking-widest text-slate-600 ${isTv ? 'scale-90' : ''}`}
+                                        className={`text-[10px] font-black uppercase tracking-widest text-slate-600 ${isTv ? '' : ''}`}
                                     >
                                         {v.rating || '4.5'}
                                     </span>
@@ -644,7 +644,9 @@ export const ProductCard = ({
                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">EMI</p>
                                 <div className="h-10 relative">
                                     <div className="flex flex-col">
-                                        <p className="text-3xl font-black text-brand-primary drop-shadow-[0_0_8px_rgba(244,176,0,0.2)] leading-none">
+                                        <p
+                                            className={`text-3xl font-black text-brand-primary ${isTv ? '' : 'drop-shadow-[0_0_8px_rgba(244,176,0,0.2)]'} leading-none`}
+                                        >
                                             {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
                                         </p>
                                         <div className="flex items-center gap-1.5 mt-2">
@@ -1157,7 +1159,7 @@ export const ProductCard = ({
                                                     <Pencil size={9} style={{ color: 'rgba(255,255,255,0.35)' }} />
                                                 </div>
                                                 <span
-                                                    className={`font-black italic leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
+                                                    className={`font-black italic leading-none ${isTv ? 'text-[22px]' : 'text-[22px] md:text-[26px]'}`}
                                                     style={{ color: finText }}
                                                 >
                                                     ₹{formatRoundedPrice(downpayment || 0)}
@@ -1190,7 +1192,7 @@ export const ProductCard = ({
                                                     Lowest EMI
                                                 </p>
                                                 <span
-                                                    className={`font-black italic leading-none ${isTv ? 'text-[18px]' : 'text-[22px] md:text-[26px]'}`}
+                                                    className={`font-black italic leading-none ${isTv ? 'text-[22px]' : 'text-[22px] md:text-[26px]'}`}
                                                     style={{ color: finText }}
                                                 >
                                                     {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}

@@ -19,6 +19,23 @@ Work paused by request. Below is the exact resume checklist.
 
 ## Pending Tasks (Priority)
 
+### P0 - Marketplace supplier pricing engine (deferred)
+1. Implement buyer-specific supplier SKU delta override model.
+   - Supplier network rule change:
+     - Do not use manual `supplier_dealer_map` onboarding.
+     - In AUMS, treat all dealerships as potential suppliers to each other by default.
+     - Supplier eligibility must be derived dynamically from mutual serviceable-area compatibility.
+     - Remove supplier-add UI/flow from AUMS.
+   - Need behavior:
+     - Same supplier can keep different SKU delta for different buyer dealerships.
+     - Precedence: `supplier_buyer_sku_delta` overrides `supplier_default_sku_delta`.
+     - Dealer self delta is applied after winner supplier price is computed.
+   - Calculation target:
+     - `final_price = base_onroad + effective_supplier_delta + dealer_self_delta`
+   - Availability target:
+     - If dealer has local live stock for SKU (`inv_stock` available), show `IN_STOCK` (override supplier ETA).
+     - Else show winner supplier ETA (`available_in_days`).
+
 ### P0 - Validate stability
 1. Restart dev server and verify Studio V2 HMR error is gone.
    - Page: `/app/[slug]/dashboard/catalog/products/studio-v2`

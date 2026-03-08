@@ -133,6 +133,7 @@ interface RawProductRow {
     booking_count: number;
     visitor_view_count: number;
     visitor_dwell_ms: number;
+    catalog_click_count: number;
     dealer_offer: number; // from cat_price_dealer: negative = discount, positive = surge
 }
 
@@ -289,13 +290,57 @@ async function fetchSkuVisitorSignals(days: number = 30): Promise<VisitorSignalM
 }
 
 /**
+ * Fetch model-level catalog click counts (cached for 24 hours to avoid DB load).
+ * Reads `catalog_vehicle_click` events and aggregates by model_slug.
+ */
+async function fetchCatalogClickCounts(days: number = 30): Promise<Map<string, number>> {
+    return withCache(
+        async () => {
+            const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+            const { data, error } = await adminClient
+                .from('analytics_events')
+                .select('metadata')
+                .eq('event_type', 'INTENT_SIGNAL')
+                .eq('event_name', 'catalog_vehicle_click')
+                .gte('created_at', since)
+                .limit(50000);
+
+            if (error || !data) {
+                if (error) {
+                    console.warn('[CatalogV2Fetch] Catalog click count fetch failed:', error.message);
+                }
+                return new Map();
+            }
+
+            const counts = new Map<string, number>();
+            for (const row of data as Array<any>) {
+                const metadata = row?.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+                const modelSlug = String(metadata.model_slug || '')
+                    .trim()
+                    .toLowerCase();
+                if (!modelSlug) continue;
+                counts.set(modelSlug, (counts.get(modelSlug) || 0) + 1);
+            }
+
+            return counts;
+        },
+        ['catalog-click-counts'],
+        {
+            revalidate: 86400, // 24 hours — click popularity refreshes daily
+            tags: [CACHE_TAGS.catalog],
+        }
+    );
+}
+
+/**
  * Fetch full catalog from shared Store SOT snapshot and enrich with booking + visitor signals.
  */
 async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRow[]> {
-    const [snapshotRows, bookingCounts, visitorSignals] = await Promise.all([
+    const [snapshotRows, bookingCounts, visitorSignals, catalogClickCounts] = await Promise.all([
         getCatalogSnapshot(stateCode),
         fetchSkuBookingCounts(180),
         fetchSkuVisitorSignals(30),
+        fetchCatalogClickCounts(30),
     ]);
 
     if (!snapshotRows || snapshotRows.length === 0) {
@@ -309,7 +354,11 @@ async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRo
             .trim()
             .toLowerCase();
         const variantKey = normalizeVariantKey(row.model_slug, row.variant_slug);
+        const modelSlug = String(row.model_slug || '')
+            .trim()
+            .toLowerCase();
         const bookingCount = skuId ? bookingCounts.get(skuId) || 0 : 0;
+        const catalogClicks = modelSlug ? catalogClickCounts.get(modelSlug) || 0 : 0;
 
         const skuVisitorViews = skuId ? visitorSignals.skuViews.get(skuId) || 0 : 0;
         const variantVisitorViews = variantKey ? visitorSignals.variantViews.get(variantKey) || 0 : 0;
@@ -323,6 +372,7 @@ async function fetchCatalogV2Raw(stateCode: string = 'MH'): Promise<RawProductRo
             booking_count: bookingCount,
             visitor_view_count: visitorViews,
             visitor_dwell_ms: visitorDwellMs,
+            catalog_click_count: catalogClicks,
             dealer_offer: 0,
         } as RawProductRow;
     });
@@ -494,11 +544,17 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
         const bookingCount = skus.reduce((sum, s) => sum + (Number(s.booking_count) || 0), 0);
         const visitorViews = skus.reduce((sum, s) => sum + (Number(s.visitor_view_count) || 0), 0);
         const visitorDwellMs = skus.reduce((sum, s) => sum + (Number(s.visitor_dwell_ms) || 0), 0);
+        const catalogClicks = Math.max(...skus.map(s => Number(s.catalog_click_count) || 0), 0);
         const dwellMinutes = visitorDwellMs / 60000;
         const bookingPriorityBoost = bookingCount > 0 ? 1_000_000_000 : 0;
         const popularBoost = skus.some(s => s.is_popular) ? 25 : 0;
         const popularityScore =
-            bookingPriorityBoost + bookingCount * 1_000_000 + visitorViews * 100 + dwellMinutes + popularBoost;
+            bookingPriorityBoost +
+            bookingCount * 1_000_000 +
+            catalogClicks * 500 +
+            visitorViews * 100 +
+            dwellMinutes +
+            popularBoost;
 
         const variant: ProductVariant = {
             id: primarySku.sku_id,

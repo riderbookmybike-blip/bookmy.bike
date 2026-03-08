@@ -25,6 +25,7 @@ interface DiscoveryBarProps {
     hasActiveFilters?: boolean;
     className?: string;
     disableSticky?: boolean;
+    reduceEffects?: boolean;
 }
 
 export function DiscoveryBar({
@@ -47,6 +48,7 @@ export function DiscoveryBar({
     hasActiveFilters = false,
     className = '',
     disableSticky = false,
+    reduceEffects = false,
 }: DiscoveryBarProps) {
     /* shared styles for pill buttons */
     const pillBase =
@@ -74,10 +76,10 @@ export function DiscoveryBar({
                 <div
                     className="h-14 pr-2 pl-4 flex items-center rounded-[2rem] transition-all duration-500"
                     style={{
-                        background: 'rgba(255,255,255,0.55)',
-                        backdropFilter: 'blur(32px) saturate(160%)',
-                        WebkitBackdropFilter: 'blur(32px) saturate(160%)',
-                        border: '1px solid rgba(255,255,255,0.7)',
+                        background: reduceEffects ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.55)',
+                        backdropFilter: reduceEffects ? 'none' : 'blur(32px) saturate(160%)',
+                        WebkitBackdropFilter: reduceEffects ? 'none' : 'blur(32px) saturate(160%)',
+                        border: reduceEffects ? '1px solid rgba(226,232,240,1)' : '1px solid rgba(255,255,255,0.7)',
                         boxShadow: [
                             '0 8px 32px rgba(0,0,0,0.08)',
                             '0 1px 0 rgba(255,255,255,0.9) inset',
@@ -97,9 +99,9 @@ export function DiscoveryBar({
                                 }}
                                 className="h-10 rounded-2xl transition-all duration-300 border border-black/10"
                                 style={{
-                                    background: 'rgba(255,255,255,0.45)',
-                                    backdropFilter: 'blur(8px)',
-                                    WebkitBackdropFilter: 'blur(8px)',
+                                    background: reduceEffects ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.45)',
+                                    backdropFilter: reduceEffects ? 'none' : 'blur(8px)',
+                                    WebkitBackdropFilter: reduceEffects ? 'none' : 'blur(8px)',
                                 }}
                             >
                                 <StoreSearchBar

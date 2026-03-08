@@ -118,6 +118,7 @@ interface DesktopPDPProps {
     };
     initialLocation?: any;
     bestOffer?: any;
+    otherOffers?: any[];
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
     isGated?: boolean;
@@ -158,6 +159,7 @@ export function DesktopPDP({
     basePath = '/store',
     initialLocation,
     bestOffer,
+    otherOffers = [],
     walletCoins = null,
     showOClubPrompt = false,
     isGated = false,
@@ -166,6 +168,7 @@ export function DesktopPDP({
 }: DesktopPDPProps) {
     const params = useSearchParams();
     const { language } = useI18n();
+    const visibleOtherOffers = useMemo(() => (otherOffers || []).slice(0, 5), [otherOffers]);
 
     // Configuration Constants
     const REFERRAL_BONUS = 5000; // Member referral discount amount
@@ -366,21 +369,22 @@ export function DesktopPDP({
         { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
         { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
-        ...(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)
+        ...(totalSavings > 0
             ? [
                   {
                       label: "O' Circle Privileged",
-                      value: totalSavings + (coinPricing?.discount || 0),
+                      value: totalSavings,
                       isDeduction: true,
-                      helpText: [
-                          ...savingsHelpLines.slice(0, -1),
-                          ...(coinPricing
-                              ? [
-                                    `Coins: ₹${coinPricing.discount.toLocaleString('en-IN')} (${coinPricing.coinsUsed} coins)`,
-                                ]
-                              : []),
-                          `Total: ₹${(totalSavings + (coinPricing?.discount || 0)).toLocaleString('en-IN')}`,
-                      ],
+                      helpText: savingsHelpLines,
+                  },
+              ]
+            : []),
+        ...(coinPricing && coinPricing.discount > 0
+            ? [
+                  {
+                      label: `Bcoin Used - ${coinPricing.coinsUsed}`,
+                      value: coinPricing.discount,
+                      isDeduction: true,
                   },
               ]
             : []),
@@ -580,6 +584,38 @@ export function DesktopPDP({
                 />
             </div>
             <div className="store-page-shell tv-pdp-shell pb-32 md:pb-36 space-y-12 relative z-10">
+                {visibleOtherOffers.length > 0 && (
+                    <div className="rounded-3xl border border-slate-200 bg-white/90 backdrop-blur-xl p-4 md:p-5">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3">
+                            Other Offers
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {visibleOtherOffers.map((offer: any, idx: number) => (
+                                <div
+                                    key={`${offer.dealer_id || 'dealer'}-${idx}`}
+                                    className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2"
+                                >
+                                    <p className="text-[11px] font-black text-slate-900">
+                                        {offer.dealer_name || 'Dealer'} {offer.studio_id ? `(${offer.studio_id})` : ''}
+                                    </p>
+                                    <p className="text-[10px] text-slate-600">
+                                        Offer: ₹{Number(offer.best_offer || 0).toLocaleString('en-IN')} | Delivery: ₹
+                                        {Number(offer.delivery_charge || 0).toLocaleString('en-IN')}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500">
+                                        {Number.isFinite(Number(offer.distance_km))
+                                            ? `${Number(offer.distance_km).toFixed(1)} km`
+                                            : 'Distance —'}{' '}
+                                        |{' '}
+                                        {Number.isFinite(Number(offer.delivery_tat_days))
+                                            ? `${Number(offer.delivery_tat_days)} days`
+                                            : 'TAT —'}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 {/* 1. Hero Row: Image / Pricing / Finance — Horizontal Accordion (Desktop) */}
                 <div
                     className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-5 h-[calc(100vh-240px)] min-h-[640px] max-h-[760px] py-2 overflow-visible`}

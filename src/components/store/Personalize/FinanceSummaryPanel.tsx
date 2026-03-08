@@ -100,10 +100,17 @@ export default function FinanceSummaryPanel({
             {/* CONTENT: Calculation Flow */}
             <div className="flex-1 flex flex-col justify-evenly py-3 gap-1">
                 <Row label="Asset Cost (Net SOT)" value={`₹${(totalOnRoad + totalSavings).toLocaleString()}`} />
-                {(totalSavings > 0 || (coinPricing && coinPricing.discount > 0)) && (
+                {totalSavings > 0 && (
                     <Row
                         label="O' Circle Privileged"
-                        value={`-₹${(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}`}
+                        value={`-₹${totalSavings.toLocaleString()}`}
+                        accent="text-emerald-500"
+                    />
+                )}
+                {coinPricing && coinPricing.discount > 0 && (
+                    <Row
+                        label={`Bcoin Used - ${coinPricing.coinsUsed}`}
+                        value={`-₹${coinPricing.discount.toLocaleString()}`}
                         accent="text-emerald-500"
                     />
                 )}

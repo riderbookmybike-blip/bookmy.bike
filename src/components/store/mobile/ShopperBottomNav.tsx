@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, Heart, Globe, CreditCard, Banknote, X, Pencil } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Home, Heart, Globe, CreditCard, Banknote, X, Pencil, Bike, SlidersHorizontal } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -18,7 +18,7 @@ const TENURE_OPTIONS = [12, 18, 24, 36, 48, 60];
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 const STATIC_TABS = [
     { key: 'home', label: 'Home', icon: Home, href: '/' },
-    { key: 'ride', label: 'Ride', icon: MotorcycleIcon, href: '/store/catalog' },
+    { key: 'ride', label: 'Ride', icon: MotorcycleIcon, href: null },
     { key: 'pricing', label: 'EMI', icon: CreditCard, href: null },
     { key: 'wishlist', label: 'Favorites', icon: Heart, href: '/store/compare/favorites' },
     { key: 'ocircle', label: "O' Circle", icon: Globe, href: '/store/ocircle' },
@@ -42,8 +42,16 @@ function writePricing(payload: unknown) {
     }
 }
 
+const BODY_TYPE_OPTIONS = [
+    { key: 'ALL', label: 'All', svg: null, flip: false },
+    { key: 'MOTORCYCLE', label: 'Motorcycle', svg: '/media/motorcycle.svg', flip: true },
+    { key: 'SCOOTER', label: 'Scooter', svg: '/media/scooter.svg', flip: true },
+    { key: 'MOPED', label: 'Moped', svg: '/media/moped.svg', flip: false },
+] as const;
+
 export function ShopperBottomNav() {
     const pathname = usePathname();
+    const router = useRouter();
     const { favorites } = useFavorites();
     const { userRole, memberships } = useTenant();
     const hasActiveTeamMembership = (memberships || []).some(m => {
@@ -53,20 +61,42 @@ export function ShopperBottomNav() {
     });
     const isTeamRole = Boolean(userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
     const isTeamUser = hasActiveTeamMembership || isTeamRole;
+
+    // Pages where the last tab should show "Filter" instead of Lead/O'Circle
+    const isFilterPage = Boolean(
+        pathname?.startsWith('/store/catalog') ||
+        pathname?.startsWith('/store/compare') ||
+        pathname?.startsWith('/store/favorites')
+    );
+
     const tabs = useMemo(
         () =>
-            STATIC_TABS.map(tab =>
-                tab.key === 'ocircle'
-                    ? {
-                          ...tab,
-                          key: 'lead' as const,
-                          label: 'Lead',
-                          icon: Banknote,
-                          href: null,
-                      }
-                    : tab
-            ),
-        []
+            STATIC_TABS.map(tab => {
+                if (tab.key !== 'ocircle') return tab;
+                // On filter-relevant pages → show Filter tab
+                if (isFilterPage) {
+                    return {
+                        ...tab,
+                        key: 'filter' as const,
+                        label: 'Filter',
+                        icon: SlidersHorizontal,
+                        href: null,
+                    };
+                }
+                // Team user on other pages → show Lead tab
+                if (isTeamUser) {
+                    return {
+                        ...tab,
+                        key: 'lead' as const,
+                        label: 'Lead',
+                        icon: Banknote,
+                        href: null,
+                    };
+                }
+                // End user on other pages → keep O' Circle
+                return tab;
+            }),
+        [isFilterPage, isTeamUser]
     );
 
     // ── Pricing state ─────────────────────────────────────────────────────────
@@ -75,10 +105,21 @@ export function ShopperBottomNav() {
     const [tenure, setTenure] = useState(36);
     const [sheetOpen, setSheetOpen] = useState(false);
     const [isQuickLeadOpen, setIsQuickLeadOpen] = useState(false);
+    const [rideSheetOpen, setRideSheetOpen] = useState(false);
     const sheetRef = useRef<HTMLDivElement>(null);
+    const rideSheetRef = useRef<HTMLDivElement>(null);
     const [editingDp, setEditingDp] = useState(false);
     const [dpRaw, setDpRaw] = useState('');
     const dpInputRef = useRef<HTMLInputElement>(null);
+
+    const handleBodyTypeSelect = (type: string) => {
+        setRideSheetOpen(false);
+        const bodyTypes = type === 'ALL' ? [] : [type];
+        window.dispatchEvent(new CustomEvent('catalogBodyTypeChanged', { detail: { bodyTypes } }));
+        if (!pathname?.startsWith('/store/catalog')) {
+            router.push('/store/catalog');
+        }
+    };
 
     useEffect(() => {
         const saved = readPricing();
@@ -94,13 +135,27 @@ export function ShopperBottomNav() {
     };
 
     const handlePricingTabClick = () => {
-        if (pricingMode === 'finance') {
-            setSheetOpen(prev => !prev);
-        } else {
+        if (pricingMode === 'cash') {
+            // Switch to finance mode
             setPricingMode('finance');
             dispatchPricing('finance', downpayment, tenure);
-            setSheetOpen(true);
+        } else if (sheetOpen) {
+            // Already finance + sheet open → close sheet
+            setSheetOpen(false);
+        } else {
+            // Finance mode, sheet closed → toggle to cash
+            setPricingMode('cash');
+            dispatchPricing('cash', downpayment, tenure);
         }
+    };
+
+    const handlePricingTabLongPress = () => {
+        // Long press or double-tap opens the config sheet (for DP/tenure tuning)
+        if (pricingMode === 'cash') {
+            setPricingMode('finance');
+            dispatchPricing('finance', downpayment, tenure);
+        }
+        setSheetOpen(true);
     };
 
     const handleDpChange = (val: number) => {
@@ -112,17 +167,20 @@ export function ShopperBottomNav() {
         dispatchPricing(pricingMode, downpayment, val);
     };
 
-    // Close sheet on outside tap
+    // Close sheets on outside tap
     useEffect(() => {
-        if (!sheetOpen) return;
+        if (!sheetOpen && !rideSheetOpen) return;
         const handler = (e: MouseEvent) => {
-            if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
+            if (sheetOpen && sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
                 setSheetOpen(false);
+            }
+            if (rideSheetOpen && rideSheetRef.current && !rideSheetRef.current.contains(e.target as Node)) {
+                setRideSheetOpen(false);
             }
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
-    }, [sheetOpen]);
+    }, [sheetOpen, rideSheetOpen]);
 
     const isTabActive = (href: string) => {
         if (!pathname) return false;
@@ -132,6 +190,62 @@ export function ShopperBottomNav() {
 
     return (
         <>
+            {/* ── Ride Body Type Sheet ── */}
+            {rideSheetOpen && (
+                <div
+                    className="fixed inset-x-0 bottom-[60px] z-[60]"
+                    style={{ paddingBottom: 'env(safe-area-inset-bottom,0px)' }}
+                >
+                    <div
+                        ref={rideSheetRef}
+                        className="mx-3 mb-3 rounded-3xl overflow-hidden ring-1 ring-slate-200/50"
+                        style={{
+                            background: 'rgba(255,255,255,0.92)',
+                            backdropFilter: 'blur(48px) saturate(180%)',
+                            boxShadow: '0 -4px 40px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.10)',
+                        }}
+                    >
+                        <div className="h-[3px] w-full bg-gradient-to-r from-slate-300 via-slate-500 to-slate-300" />
+                        <div className="px-5 pt-4 pb-5">
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                                    Choose Type
+                                </span>
+                                <button
+                                    onClick={() => setRideSheetOpen(false)}
+                                    className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 active:bg-slate-200 transition-colors"
+                                >
+                                    <X size={13} strokeWidth={2.5} />
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                                {BODY_TYPE_OPTIONS.map(opt => {
+                                    return (
+                                        <button
+                                            key={opt.key}
+                                            onClick={() => handleBodyTypeSelect(opt.key)}
+                                            className="flex flex-col items-center gap-2 py-3 px-2 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-300 active:bg-slate-100 transition-all"
+                                        >
+                                            {opt.svg ? (
+                                                <img
+                                                    src={opt.svg}
+                                                    alt={opt.label}
+                                                    className={`w-7 h-7 object-contain ${opt.flip ? 'scale-x-[-1]' : ''}`}
+                                                />
+                                            ) : (
+                                                <MotorcycleIcon size={22} className="text-slate-600" />
+                                            )}
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">
+                                                {opt.label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* ── EMI Pricing Sheet — Light Glassmorphism ── */}
             {sheetOpen && pricingMode === 'finance' && (
                 <div
@@ -286,20 +400,74 @@ export function ShopperBottomNav() {
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             >
                 <div className="flex items-stretch justify-around h-[60px]">
-                    {(isTeamUser ? tabs : STATIC_TABS).map(tab => {
+                    {tabs.map(tab => {
                         const isPricing = tab.key === 'pricing';
                         const isWishlist = tab.key === 'wishlist';
-                        const active = isPricing ? sheetOpen : tab.href ? isTabActive(tab.href) : false;
+                        const isRide = tab.key === 'ride';
+                        const active = isPricing
+                            ? sheetOpen
+                            : isRide
+                              ? rideSheetOpen
+                              : tab.href
+                                ? isTabActive(tab.href)
+                                : false;
 
                         const Icon = tab.icon;
                         const cls = `flex flex-col items-center justify-center flex-1 gap-1 transition-all duration-300 min-h-[44px] relative ${
                             active ? 'text-[#D6A900]' : 'text-slate-500 active:text-slate-700'
                         }`;
 
+                        if (isRide) {
+                            return (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => {
+                                        setSheetOpen(false);
+                                        setRideSheetOpen(prev => !prev);
+                                    }}
+                                    className={cls}
+                                >
+                                    <div className="relative">
+                                        <Icon size={20} strokeWidth={rideSheetOpen ? 2.5 : 1.5} />
+                                    </div>
+                                    <span
+                                        className={`text-[9px] tracking-[0.15em] uppercase ${rideSheetOpen ? 'font-black' : 'font-semibold'}`}
+                                    >
+                                        {tab.label}
+                                    </span>
+                                    {rideSheetOpen && (
+                                        <div className="absolute top-1 w-1 h-1 rounded-full bg-[#FFD700] shadow-[0_0_6px_#FFD700]" />
+                                    )}
+                                </button>
+                            );
+                        }
+
                         if (isPricing) {
                             const PricingIcon = pricingMode === 'finance' ? CreditCard : Banknote;
+                            let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+                            let didLongPress = false;
                             return (
-                                <button key={tab.key} onClick={handlePricingTabClick} className={cls}>
+                                <button
+                                    key={tab.key}
+                                    onClick={() => {
+                                        if (didLongPress) {
+                                            didLongPress = false;
+                                            return;
+                                        }
+                                        handlePricingTabClick();
+                                    }}
+                                    onTouchStart={() => {
+                                        didLongPress = false;
+                                        longPressTimer = setTimeout(() => {
+                                            didLongPress = true;
+                                            handlePricingTabLongPress();
+                                        }, 500);
+                                    }}
+                                    onTouchEnd={() => {
+                                        if (longPressTimer) clearTimeout(longPressTimer);
+                                    }}
+                                    className={cls}
+                                >
                                     <div className="relative">
                                         <PricingIcon size={20} strokeWidth={sheetOpen ? 2.5 : 1.5} />
                                         {active && (
@@ -309,7 +477,7 @@ export function ShopperBottomNav() {
                                     <span
                                         className={`text-[9px] tracking-[0.15em] uppercase ${sheetOpen ? 'font-black' : 'font-semibold'}`}
                                     >
-                                        {pricingMode === 'finance' ? 'EMI' : 'Cash'}
+                                        {pricingMode === 'finance' ? 'Cash' : 'EMI'}
                                     </span>
                                     {sheetOpen && (
                                         <div className="absolute top-1 w-1 h-1 rounded-full bg-[#FFD700] shadow-[0_0_6px_#FFD700]" />
@@ -324,6 +492,28 @@ export function ShopperBottomNav() {
                                     key={tab.key}
                                     type="button"
                                     onClick={() => setIsQuickLeadOpen(true)}
+                                    className={cls}
+                                >
+                                    <div className="relative">
+                                        <Icon size={20} strokeWidth={1.5} />
+                                    </div>
+                                    <span className="text-[9px] font-semibold uppercase tracking-[0.15em]">
+                                        {tab.label}
+                                    </span>
+                                </button>
+                            );
+                        }
+
+                        if (tab.key === 'filter') {
+                            return (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    onClick={() => {
+                                        setSheetOpen(false);
+                                        setRideSheetOpen(false);
+                                        window.dispatchEvent(new CustomEvent('openMobileFilter'));
+                                    }}
                                     className={cls}
                                 >
                                     <div className="relative">

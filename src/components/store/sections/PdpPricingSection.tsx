@@ -115,7 +115,7 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
         ...(totalSavings > 0
             ? [
                   {
-                      label: 'Special Offer',
+                      label: "O' Circle Privileged",
                       value: totalSavings,
                       isDeduction: true,
                       helpText: [...savingsHelpLines],
@@ -125,12 +125,9 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
         ...(coinPricing && coinPricing.discount > 0
             ? [
                   {
-                      label: "O' Circle Privileged",
+                      label: `Bcoin Used - ${coinPricing.coinsUsed}`,
                       value: coinPricing.discount,
                       isDeduction: true,
-                      helpText: [
-                          `Coins: ₹ ${coinPricing.discount.toLocaleString('en-IN')} (${coinPricing.coinsUsed} coins)`,
-                      ],
                   },
               ]
             : []),

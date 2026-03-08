@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
 import { IDV_DEPRECIATION_RATE } from '@/lib/constants/pricingConstants';
+import { getDeliveryChargeByDistance } from '@/lib/pricing/deliveryCharge';
 
 interface UseDealerContextProps {
     product: any;
@@ -35,6 +36,62 @@ const normalizeClientStateCode = (value?: string | null) => {
     if (CLIENT_STATE_MAP[key]) return CLIENT_STATE_MAP[key];
     if (/^[A-Z]{2}$/.test(key)) return key;
     return 'MH';
+};
+
+type RankedOffer = {
+    vehicle_color_id?: string | null;
+    dealer_id: string;
+    dealer_name: string;
+    studio_id?: string | null;
+    best_offer: number;
+    bundle_ids?: string[];
+    distance_km?: number | null;
+    delivery_charge?: number;
+    delivery_tat_days?: number | null;
+    updated_at?: string | null;
+};
+
+type OtherOffer = {
+    dealer_id: string;
+    dealer_name: string;
+    studio_id?: string | null;
+    best_offer: number;
+    distance_km?: number | null;
+    delivery_tat_days?: number | null;
+    delivery_charge: number;
+};
+
+const rankOffers = (offers: RankedOffer[]) => {
+    return [...offers].sort((a, b) => {
+        const aOffer = Number(a.best_offer || 0);
+        const bOffer = Number(b.best_offer || 0);
+        const aDelivery = Number(a.delivery_charge || 0);
+        const bDelivery = Number(b.delivery_charge || 0);
+
+        // Primary: lower final effective add-on wins
+        const aFinalEffective = aOffer + aDelivery;
+        const bFinalEffective = bOffer + bDelivery;
+        if (aFinalEffective !== bFinalEffective) return aFinalEffective - bFinalEffective;
+
+        // Tie-break 1: nearest dealer wins
+        const aDistance = Number.isFinite(Number(a.distance_km)) ? Number(a.distance_km) : Number.MAX_SAFE_INTEGER;
+        const bDistance = Number.isFinite(Number(b.distance_km)) ? Number(b.distance_km) : Number.MAX_SAFE_INTEGER;
+        if (aDistance !== bDistance) return aDistance - bDistance;
+
+        // Tie-break 2: lower TAT wins
+        const aTat = Number.isFinite(Number(a.delivery_tat_days))
+            ? Number(a.delivery_tat_days)
+            : Number.MAX_SAFE_INTEGER;
+        const bTat = Number.isFinite(Number(b.delivery_tat_days))
+            ? Number(b.delivery_tat_days)
+            : Number.MAX_SAFE_INTEGER;
+        if (aTat !== bTat) return aTat - bTat;
+
+        // Tie-break 3: latest update wins
+        const aUpdated = a.updated_at ? Date.parse(a.updated_at) : 0;
+        const bUpdated = b.updated_at ? Date.parse(b.updated_at) : 0;
+        return bUpdated - aUpdated;
+    });
 };
 
 // SSPP v2: Server-side calculated pricing structure (SOT JSON)
@@ -122,6 +179,7 @@ export function useSystemDealerContext({
     });
 
     const [resolvedLocation, setResolvedLocation] = useState<any>(prefetchedLocation || initialLocation);
+    const [otherOffers, setOtherOffers] = useState<OtherOffer[]>([]);
 
     // SSPP v1: Server-Side Calculated Pricing (Single Source of Truth!)
     const [serverPricing, setServerPricing] = useState<ServerPricing | null>(prefetchedPricing || null);
@@ -193,6 +251,7 @@ export function useSystemDealerContext({
 
                 const applyPricing = (pricingData: any) => {
                     setServerPricing(pricingData as ServerPricing);
+                    setOtherOffers([]);
 
                     const dealerOffer = Number(pricingData?.dealer?.offer || 0);
                     setBestOffer({
@@ -364,6 +423,8 @@ export function useSystemDealerContext({
                                 dealer_name: dealerInfo?.name || 'Assigned Dealer',
                                 studio_id: dealerInfo?.studio_id || null,
                                 best_offer: Number(r.offer_amount),
+                                distance_km: 0,
+                                delivery_charge: getDeliveryChargeByDistance(0),
                                 bundle_ids: [],
                             }));
                         } else {
@@ -375,6 +436,8 @@ export function useSystemDealerContext({
                                     dealer_name: dealerInfo?.name || 'Assigned Dealer',
                                     studio_id: dealerInfo?.studio_id || null,
                                     best_offer: 0,
+                                    distance_km: 0,
+                                    delivery_charge: getDeliveryChargeByDistance(0),
                                     bundle_ids: [],
                                 },
                             ];
@@ -389,6 +452,8 @@ export function useSystemDealerContext({
                                 dealer_name: dealerInfo?.name || 'Assigned Dealer',
                                 studio_id: dealerInfo?.studio_id || null,
                                 best_offer: 0,
+                                distance_km: 0,
+                                delivery_charge: getDeliveryChargeByDistance(0),
                                 bundle_ids: [],
                             },
                         ];
@@ -402,7 +467,18 @@ export function useSystemDealerContext({
 
                     if (offers && offers.length > 0) {
                         const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
-                        relevantOffers = offers.filter((o: any) => skuIds.includes(o.vehicle_color_id));
+                        relevantOffers = offers
+                            .filter((o: any) => skuIds.includes(o.vehicle_color_id))
+                            .map((o: any) => {
+                                const distanceKm = Number.isFinite(Number(o?.distance_km))
+                                    ? Number(o.distance_km)
+                                    : null;
+                                return {
+                                    ...o,
+                                    distance_km: distanceKm,
+                                    delivery_charge: getDeliveryChargeByDistance(distanceKm),
+                                };
+                            });
                     }
                 }
 
@@ -411,13 +487,13 @@ export function useSystemDealerContext({
                     return;
                 }
 
-                // 5. Identify Winning Dealer
-                // If overrideDealerId is set, it forces the winner.
-                // Otherwise we take the first one from relevantOffers (Standard logic)
-                const winningDealerId = relevantOffers[0].dealer_id;
-                const bundleIds = new Set(relevantOffers[0].bundle_ids || []);
-                const winningDealerName = relevantOffers[0].dealer_name;
-                const winningOfferAmount = Number(relevantOffers[0].best_offer || 0);
+                // 5. Identify Winning Dealer (final_effective -> distance -> tat -> updated_at)
+                const rankedOffers = rankOffers(relevantOffers as RankedOffer[]);
+                const winningOffer = rankedOffers[0];
+                const winningDealerId = winningOffer.dealer_id;
+                const bundleIds = new Set(winningOffer.bundle_ids || []);
+                const winningDealerName = winningOffer.dealer_name;
+                const winningOfferAmount = Number(winningOffer.best_offer || 0);
 
                 // SSPP v1.6: Merge Winner Details back into SSPP state
                 setServerPricing(prev =>
@@ -427,7 +503,7 @@ export function useSystemDealerContext({
                               dealer: {
                                   id: winningDealerId,
                                   name: winningDealerName,
-                                  studio_id: relevantOffers[0].studio_id,
+                                  studio_id: winningOffer.studio_id,
                                   offer: winningOfferAmount,
                                   is_serviceable: true,
                               },
@@ -441,10 +517,24 @@ export function useSystemDealerContext({
                     dealerId: winningDealerId,
                     isServiceable: true,
                     dealerLocation: serverPricing?.location?.district || undefined,
-                    studio_id: relevantOffers[0].studio_id || undefined,
+                    studio_id: winningOffer.studio_id || undefined,
                     bundleValue: 0,
                     bundlePrice: 0,
                 });
+
+                setOtherOffers(
+                    rankedOffers.slice(1).map((offer: RankedOffer) => ({
+                        dealer_id: offer.dealer_id,
+                        dealer_name: offer.dealer_name,
+                        studio_id: offer.studio_id || null,
+                        best_offer: Number(offer.best_offer || 0),
+                        distance_km: Number.isFinite(Number(offer.distance_km)) ? Number(offer.distance_km) : null,
+                        delivery_tat_days: Number.isFinite(Number(offer.delivery_tat_days))
+                            ? Number(offer.delivery_tat_days)
+                            : null,
+                        delivery_charge: Number(offer.delivery_charge || 0),
+                    }))
+                );
 
                 setDealerColors(prev =>
                     prev.map((c: any) => {
@@ -508,6 +598,7 @@ export function useSystemDealerContext({
         dealerColors,
         dealerAccessories,
         bestOffer,
+        otherOffers,
         isHydrating,
         resolvedLocation,
         serverPricing, // SSPP v1: Single Source of Truth pricing breakdown

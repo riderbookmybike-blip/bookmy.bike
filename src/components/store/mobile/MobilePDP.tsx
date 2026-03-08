@@ -51,6 +51,7 @@ export interface MobilePDPProps {
     };
     initialLocation?: any;
     bestOffer?: any;
+    otherOffers?: any[];
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
     isGated?: boolean;
@@ -75,6 +76,7 @@ export const MobilePDP = ({
     handlers,
     leadContext,
     initialLocation,
+    otherOffers = [],
     walletCoins = null,
     showOClubPrompt = false,
     isGated = false,
@@ -246,6 +248,41 @@ export const MobilePDP = ({
                 </h1>
                 <p className="text-[12px] font-bold text-[#F4B000] uppercase tracking-wider mb-2">{displayVariant}</p>
             </div>
+
+            {otherOffers.length > 0 && (
+                <div className="px-5 mb-6">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">
+                            Other Offers
+                        </p>
+                        <div className="space-y-2">
+                            {otherOffers.slice(0, 3).map((offer: any, idx: number) => (
+                                <div
+                                    key={`${offer.dealer_id || 'dealer'}-${idx}`}
+                                    className="rounded-xl border border-slate-100 bg-slate-50 px-2.5 py-2"
+                                >
+                                    <p className="text-[10px] font-black text-slate-900">
+                                        {offer.dealer_name || 'Dealer'} {offer.studio_id ? `(${offer.studio_id})` : ''}
+                                    </p>
+                                    <p className="text-[9px] text-slate-600">
+                                        Offer ₹{Number(offer.best_offer || 0).toLocaleString('en-IN')} | Delivery ₹
+                                        {Number(offer.delivery_charge || 0).toLocaleString('en-IN')}
+                                    </p>
+                                    <p className="text-[9px] text-slate-500">
+                                        {Number.isFinite(Number(offer.distance_km))
+                                            ? `${Number(offer.distance_km).toFixed(1)} km`
+                                            : 'Distance —'}{' '}
+                                        |{' '}
+                                        {Number.isFinite(Number(offer.delivery_tat_days))
+                                            ? `${Number(offer.delivery_tat_days)} days`
+                                            : 'TAT —'}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 4. Color Selection */}
             {colors && colors.length > 0 && (
