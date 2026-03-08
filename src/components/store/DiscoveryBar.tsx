@@ -56,6 +56,7 @@ export function DiscoveryBar({
 
     const canToggleView =
         onViewModeChange && viewMode && allowedViewModes.includes(viewMode) && allowedViewModes.length > 1;
+    const nextPricingMode: 'cash' | 'finance' = pricingMode === 'finance' ? 'cash' : 'finance';
     const nextViewMode: 'grid' | 'list' =
         viewMode === 'grid' && allowedViewModes.includes('list')
             ? 'list'
@@ -118,16 +119,18 @@ export function DiscoveryBar({
 
                         {/* ── Right: All controls as separate pill buttons ── */}
                         <div className="flex-none flex items-center gap-1.5">
-                            {/* ── PRICING MODE toggle button (shows opposite mode) ── */}
+                            {/* ── PRICING MODE button (shows alternate mode) ── */}
                             <button
-                                onClick={() => onPricingModeChange(pricingMode === 'finance' ? 'cash' : 'finance')}
+                                onClick={() => onPricingModeChange(nextPricingMode)}
                                 className={`${pillBase} ${pillInactive}`}
                                 aria-label={
-                                    pricingMode === 'finance' ? 'Switch to cash pricing' : 'Switch to finance pricing'
+                                    nextPricingMode === 'finance'
+                                        ? 'Switch to finance and open finance settings'
+                                        : 'Switch to cash pricing'
                                 }
                             >
-                                {pricingMode === 'finance' ? <Banknote size={12} /> : <Zap size={12} />}
-                                {pricingMode === 'finance' ? 'Cash' : 'Finance'}
+                                {nextPricingMode === 'finance' ? <Zap size={12} /> : <Banknote size={12} />}
+                                {nextPricingMode === 'finance' ? 'Finance' : 'Cash'}
                             </button>
 
                             {/* ── COMPARE button ── */}

@@ -256,6 +256,12 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
     const { pricingMode, setPricingMode } = useDiscovery();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.compare.defaultView);
 
+    useEffect(() => {
+        const handler = () => openDpEdit();
+        window.addEventListener('openFinancePanel', handler);
+        return () => window.removeEventListener('openFinancePanel', handler);
+    }, [downpayment]);
+
     const [isPricingExpanded, setIsPricingExpanded] = useState(true);
     const [isDiffExpanded, setIsDiffExpanded] = useState(true);
     const [isAllSpecsExpanded, setIsAllSpecsExpanded] = useState(true);
@@ -529,7 +535,10 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                         shareLabel=""
                                         shareActive={shareTooltip}
                                         pricingMode={pricingMode}
-                                        onPricingModeChange={setPricingMode}
+                                        onPricingModeChange={mode => {
+                                            setPricingMode(mode);
+                                            if (mode === 'finance') openDpEdit();
+                                        }}
                                         viewMode={viewMode}
                                         allowedViewModes={VEHICLE_MODE_CONFIG.compare.allowedViews}
                                         onViewModeChange={mode => setViewMode(getSafeViewMode('compare', mode))}
@@ -735,7 +744,11 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                 onEditDownpayment={openDpEdit}
                                                 pricingMode={pricingMode}
                                                 onTogglePricingMode={() =>
-                                                    setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))
+                                                    setPricingMode(m => {
+                                                        const next = m === 'cash' ? 'finance' : 'cash';
+                                                        if (next === 'finance') openDpEdit();
+                                                        return next;
+                                                    })
                                                 }
                                                 isInCompare={!removedVariantIds.has(v.id)}
                                                 onCompare={() => removeVariant(v.id)}

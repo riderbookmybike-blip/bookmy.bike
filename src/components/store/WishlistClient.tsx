@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Heart, ArrowRight, Plus, Search, X, ChevronDown, ChevronRight, Menu } from 'lucide-react';
+import { Heart, ArrowRight, Plus, Search, X, ChevronDown, ChevronRight, Menu, Pencil } from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { FavoritesCardAdapter } from '@/components/store/cards/VehicleCardAdapters';
@@ -116,8 +116,10 @@ export const WishlistClient = () => {
     const router = useRouter();
 
     // UI Local State for Cards
-    const [downpayment] = useState(5000);
-    const [tenure] = useState(36);
+    const [downpayment, setDownpayment] = useState(5000);
+    const [tenure, setTenure] = useState(36);
+    const [isDpEditOpen, setIsDpEditOpen] = useState(false);
+    const [dpDraft, setDpDraft] = useState(5000);
     const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
 
     // Local State for Filters
@@ -167,7 +169,22 @@ export const WishlistClient = () => {
         };
     }, []);
 
+    useEffect(() => {
+        const handler = () => setIsDpEditOpen(true);
+        window.addEventListener('openFinancePanel', handler);
+        return () => window.removeEventListener('openFinancePanel', handler);
+    }, []);
+
     const lightMotion = isMobileViewport || isReducedMotion;
+    const maxDp = useMemo(() => {
+        const prices = wishlistItems.map(v => v.price?.offerPrice ?? v.price?.exShowroom ?? 0).filter(p => p > 0);
+        if (!prices.length) return 200000;
+        return Math.max(Math.max(...prices) - 25000, 0);
+    }, [wishlistItems]);
+
+    useEffect(() => {
+        setDpDraft(downpayment);
+    }, [downpayment]);
 
     // Advanced Filter Helpers
     const toggleFilter = (setter: any, value: string) => {
@@ -307,7 +324,12 @@ export const WishlistClient = () => {
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 pricingMode={pricingMode}
-                onPricingModeChange={mode => setPricingMode(mode as any)}
+                onPricingModeChange={mode => {
+                    const next = mode as 'cash' | 'finance';
+                    setPricingMode(next);
+                    if (next === 'finance') setIsDpEditOpen(true);
+                    else setIsDpEditOpen(false);
+                }}
                 viewMode={viewMode}
                 allowedViewModes={VEHICLE_MODE_CONFIG.favorites.allowedViews}
                 onViewModeChange={mode => setViewMode(getSafeViewMode('favorites', mode))}
@@ -428,8 +450,13 @@ export const WishlistClient = () => {
                                     tenure={tenure}
                                     pricingMode={pricingMode}
                                     onTogglePricingMode={() =>
-                                        setPricingMode(prev => (prev === 'cash' ? 'finance' : 'cash'))
+                                        setPricingMode(prev => {
+                                            const next = prev === 'cash' ? 'finance' : 'cash';
+                                            if (next === 'finance') setIsDpEditOpen(true);
+                                            return next;
+                                        })
                                     }
+                                    onEditDownpayment={() => setIsDpEditOpen(true)}
                                     variantCount={2}
                                     onExplore={() => {
                                         const url = buildVariantExplorerUrl(v.make || '', v.model || '');
@@ -472,6 +499,104 @@ export const WishlistClient = () => {
                     </p>
                 </div>
             )}
+
+            <AnimatePresence>
+                {isDpEditOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[120] bg-black/40 backdrop-blur-sm flex items-end md:items-center justify-center"
+                        onClick={() => setIsDpEditOpen(false)}
+                    >
+                        <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 20, opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="w-full md:w-[480px] bg-white rounded-t-3xl md:rounded-3xl p-6 md:p-7 shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between mb-5">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">
+                                    Finance Settings
+                                </h3>
+                                <button
+                                    onClick={() => setIsDpEditOpen(false)}
+                                    className="text-slate-400 hover:text-slate-900"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Downpayment
+                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] text-slate-400">₹</span>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={maxDp}
+                                            step={5000}
+                                            value={Math.min(dpDraft, maxDp)}
+                                            onChange={e => {
+                                                const v = Math.min(maxDp, Math.max(0, Number(e.target.value)));
+                                                setDpDraft(v);
+                                                setDownpayment(v);
+                                            }}
+                                            className="w-24 text-right text-lg font-black text-emerald-600 bg-transparent border-b-2 border-emerald-200 focus:border-emerald-500 focus:outline-none"
+                                        />
+                                        <Pencil size={12} className="text-slate-300" />
+                                    </div>
+                                </div>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={maxDp}
+                                    step={5000}
+                                    value={Math.min(dpDraft, maxDp)}
+                                    onChange={e => {
+                                        const v = Number(e.target.value);
+                                        setDpDraft(v);
+                                        setDownpayment(v);
+                                    }}
+                                    className="w-full accent-[#F4B000] h-2 rounded-full"
+                                />
+                            </div>
+
+                            <div className="space-y-3 pt-4 border-t border-slate-100 mt-5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Tenure
+                                    </span>
+                                    <span className="text-lg font-black text-emerald-600">{tenure} months</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[3, 6, 9, 12, 18, 24, 36, 48, 60].map(val => (
+                                        <button
+                                            key={val}
+                                            onClick={() => setTenure(val)}
+                                            className={`py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                        >
+                                            {val}mo
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setIsDpEditOpen(false)}
+                                className="w-full mt-5 py-3 rounded-xl bg-[#F4B000] hover:bg-[#FFD700] text-black text-[11px] font-black uppercase tracking-widest"
+                            >
+                                Done
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Mega Filter Overlay */}
             {isFilterOpen && (

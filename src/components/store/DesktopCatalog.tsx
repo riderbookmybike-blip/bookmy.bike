@@ -292,11 +292,6 @@ export const DesktopCatalog = ({
         setDpDraft(downpayment);
         setIsDpEditOpen(true);
     };
-    const applyDp = (val: number) => {
-        setDownpayment(val);
-        setIsDpEditOpen(false);
-        toast.success(`Downpayment updated to ₹${val.toLocaleString('en-IN')}`);
-    };
 
     const bodyOptions = ['MOTORCYCLE', 'SCOOTER', 'MOPED'] as const;
     const fuelOptions = ['Petrol', 'Electric', 'CNG'] as const;
@@ -1594,7 +1589,11 @@ export const DesktopCatalog = ({
                                         }}
                                         pricingMode={pricingMode}
                                         onTogglePricingMode={() =>
-                                            setPricingMode(prev => (prev === 'cash' ? 'finance' : 'cash'))
+                                            setPricingMode(prev => {
+                                                const next = prev === 'cash' ? 'finance' : 'cash';
+                                                if (next === 'finance') openDpEdit();
+                                                return next;
+                                            })
                                         }
                                     />
                                 );
@@ -1855,6 +1854,7 @@ export const DesktopCatalog = ({
                                             onChange={e => {
                                                 const v = Math.min(maxDp, Math.max(0, Number(e.target.value)));
                                                 setDpDraft(v);
+                                                setDownpayment(v);
                                             }}
                                             className="w-24 text-right text-lg font-black text-emerald-600 bg-transparent border-b-2 border-emerald-200 focus:border-emerald-500 focus:outline-none transition-colors"
                                         />
@@ -1867,7 +1867,11 @@ export const DesktopCatalog = ({
                                     max={maxDp}
                                     step={5000}
                                     value={Math.min(dpDraft, maxDp)}
-                                    onChange={e => setDpDraft(Number(e.target.value))}
+                                    onChange={e => {
+                                        const v = Number(e.target.value);
+                                        setDpDraft(v);
+                                        setDownpayment(v);
+                                    }}
                                     className="w-full accent-[#F4B000] h-2 rounded-full"
                                 />
                                 <div className="flex justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest">
@@ -1886,7 +1890,10 @@ export const DesktopCatalog = ({
                                         .map(val => (
                                             <button
                                                 key={val}
-                                                onClick={() => setDpDraft(val)}
+                                                onClick={() => {
+                                                    setDpDraft(val);
+                                                    setDownpayment(val);
+                                                }}
                                                 className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
                                             >
                                                 {val === 0
@@ -1921,10 +1928,10 @@ export const DesktopCatalog = ({
                             </div>
 
                             <button
-                                onClick={() => applyDp(dpDraft)}
+                                onClick={() => setIsDpEditOpen(false)}
                                 className="w-full py-3 rounded-xl bg-[#F4B000] hover:bg-[#FFD700] text-black text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[#F4B000]/20 transition-all hover:-translate-y-0.5"
                             >
-                                Apply to All Cards
+                                Done
                             </button>
                         </motion.div>
                     </motion.div>
