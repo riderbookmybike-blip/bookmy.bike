@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { SlidersHorizontal, LayoutGrid, List, Zap, Banknote } from 'lucide-react';
+import { SlidersHorizontal, LayoutGrid, List, Zap, Banknote, GitCompareArrows, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 
@@ -18,8 +18,10 @@ interface DiscoveryBarProps {
     centerContent?: React.ReactNode;
     onCompareClick?: () => void;
     compareCount?: number;
+    compareCap?: number;
     viewMode?: 'grid' | 'list';
     onViewModeChange?: (mode: 'grid' | 'list') => void;
+    allowedViewModes?: Array<'grid' | 'list'>;
     hasActiveFilters?: boolean;
     className?: string;
     disableSticky?: boolean;
@@ -38,8 +40,10 @@ export function DiscoveryBar({
     centerContent,
     onCompareClick,
     compareCount = 0,
+    compareCap,
     viewMode,
     onViewModeChange,
+    allowedViewModes = ['grid', 'list'],
     hasActiveFilters = false,
     className = '',
     disableSticky = false,
@@ -49,6 +53,16 @@ export function DiscoveryBar({
         'inline-flex items-center gap-1.5 px-4 h-10 rounded-2xl border transition-all duration-300 text-[9px] font-black uppercase tracking-[0.1em]';
     const pillInactive =
         'bg-white/70 text-slate-500 border-black/10 hover:bg-white hover:text-slate-900 hover:border-black/20';
+
+    const canToggleView =
+        onViewModeChange && viewMode && allowedViewModes.includes(viewMode) && allowedViewModes.length > 1;
+    const nextViewMode: 'grid' | 'list' =
+        viewMode === 'grid' && allowedViewModes.includes('list')
+            ? 'list'
+            : viewMode === 'list' && allowedViewModes.includes('grid')
+              ? 'grid'
+              : allowedViewModes[0];
+    const displayCompareCount = typeof compareCap === 'number' ? Math.min(compareCount, compareCap) : compareCount;
 
     return (
         <header
@@ -104,18 +118,6 @@ export function DiscoveryBar({
 
                         {/* ── Right: All controls as separate pill buttons ── */}
                         <div className="flex-none flex items-center gap-1.5">
-                            {/* ── VIEW MODE toggle button (shows opposite mode) ── */}
-                            {onViewModeChange && viewMode && (
-                                <button
-                                    onClick={() => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid')}
-                                    className={`${pillBase} ${pillInactive}`}
-                                    aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-                                >
-                                    {viewMode === 'grid' ? <List size={13} /> : <LayoutGrid size={13} />}
-                                    <span>{viewMode === 'grid' ? 'List View' : 'Grid View'}</span>
-                                </button>
-                            )}
-
                             {/* ── PRICING MODE toggle button (shows opposite mode) ── */}
                             <button
                                 onClick={() => onPricingModeChange(pricingMode === 'finance' ? 'cash' : 'finance')}
@@ -127,6 +129,45 @@ export function DiscoveryBar({
                                 {pricingMode === 'finance' ? <Banknote size={12} /> : <Zap size={12} />}
                                 {pricingMode === 'finance' ? 'Cash' : 'Finance'}
                             </button>
+
+                            {/* ── COMPARE button ── */}
+                            {onCompareClick && (
+                                <button
+                                    onClick={onCompareClick}
+                                    className={`${pillBase} ${
+                                        displayCompareCount > 0
+                                            ? 'bg-[#F4B000] text-black border-black/10 shadow-lg shadow-black/20'
+                                            : pillInactive
+                                    } group active:scale-[0.98]`}
+                                >
+                                    <GitCompareArrows
+                                        size={12}
+                                        className="group-hover:rotate-180 transition-transform duration-500"
+                                    />
+                                    <span>Compare</span>
+                                    {displayCompareCount > 0 && (
+                                        <motion.span
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[8px] font-black rounded-full"
+                                        >
+                                            {displayCompareCount}
+                                        </motion.span>
+                                    )}
+                                </button>
+                            )}
+
+                            {/* ── VIEW MODE toggle button (shows opposite mode) ── */}
+                            {canToggleView && viewMode && (
+                                <button
+                                    onClick={() => onViewModeChange(nextViewMode)}
+                                    className={`${pillBase} ${pillInactive}`}
+                                    aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+                                >
+                                    {viewMode === 'grid' ? <List size={13} /> : <LayoutGrid size={13} />}
+                                    <span>{viewMode === 'grid' ? 'List View' : 'Grid View'}</span>
+                                </button>
+                            )}
 
                             {/* ── FILTER button ── */}
                             {onFilterClick && (
@@ -147,44 +188,17 @@ export function DiscoveryBar({
                                 </button>
                             )}
 
-                            {/* ── COMPARE button ── */}
-                            {onCompareClick && (
+                            {/* ── SHARE button ── */}
+                            {onShareClick && (
                                 <button
-                                    onClick={onCompareClick}
+                                    onClick={onShareClick}
                                     className={`${pillBase} ${
-                                        compareCount > 0
-                                            ? 'bg-[#F4B000] text-black border-black/10 shadow-lg shadow-black/20'
-                                            : pillInactive
-                                    } group active:scale-[0.98]`}
+                                        shareActive ? 'bg-slate-900 text-white border-slate-900' : pillInactive
+                                    }`}
+                                    aria-label={shareLabel}
                                 >
-                                    <svg
-                                        width="11"
-                                        height="11"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="3.5"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        className="group-hover:rotate-180 transition-transform duration-500"
-                                    >
-                                        <path d="M16 3h5v5" />
-                                        <path d="M8 3H3v5" />
-                                        <path d="M16 21h5v-5" />
-                                        <path d="M8 21H3v-5" />
-                                        <path d="M10 10l4 4" />
-                                        <path d="M14 10l-4 4" />
-                                    </svg>
-                                    <span>Compare</span>
-                                    {compareCount > 0 && (
-                                        <motion.span
-                                            initial={{ scale: 0 }}
-                                            animate={{ scale: 1 }}
-                                            className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[8px] font-black rounded-full"
-                                        >
-                                            {compareCount}
-                                        </motion.span>
-                                    )}
+                                    <Share2 size={12} />
+                                    <span>{shareLabel}</span>
                                 </button>
                             )}
                         </div>

@@ -381,6 +381,13 @@ export default function SKUMediaManager({
 
             const { removeBackground } = await import('@imgly/background-removal');
             const imageResponse = await fetch(getProxiedUrl(primaryImage));
+            if (!imageResponse.ok) {
+                throw new Error(`Image fetch failed: ${imageResponse.status} ${imageResponse.statusText}`);
+            }
+            const contentType = imageResponse.headers.get('content-type') || '';
+            if (!contentType.startsWith('image/')) {
+                throw new Error(`Expected image response, got "${contentType || 'unknown'}"`);
+            }
             const imageBlob = await imageResponse.blob();
 
             const optimizedBlob = await normalizeImageBlob(imageBlob);

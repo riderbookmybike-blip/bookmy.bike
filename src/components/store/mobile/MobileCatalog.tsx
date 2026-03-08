@@ -34,6 +34,7 @@ import { getSelfMemberLocation, updateSelfMemberLocation } from '@/actions/membe
 import { resolveIpLocation } from '@/actions/resolveIpLocation';
 import { CompareTray, type CompareItem } from '../CompareTray';
 import { CatalogGridSkeleton } from '../CatalogSkeleton';
+import { VEHICLE_MODE_CONFIG, compareLimitMessage } from '../cards/vehicleModeConfig';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
@@ -124,8 +125,8 @@ export const MobileCatalog = ({
         setCompareItems(prev => {
             const exists = prev.find(c => c.modelSlug === item.modelSlug);
             if (exists) return prev.filter(c => c.modelSlug !== item.modelSlug);
-            if (prev.length >= 3) {
-                toast.error('Max 3 models to compare');
+            if (prev.length >= VEHICLE_MODE_CONFIG.catalog.compareCap) {
+                toast.error(compareLimitMessage(VEHICLE_MODE_CONFIG.catalog.compareCap));
                 return prev;
             }
             toast.success(`${item.model} added to compare`);

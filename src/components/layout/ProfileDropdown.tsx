@@ -599,9 +599,9 @@ export function ProfileDropdown({
                     bg: 'bg-blue-500/10',
                 },
                 {
-                    label: 'Wishlist',
+                    label: 'Favorites',
                     icon: Heart,
-                    href: '/store/compare?tab=wishlist',
+                    href: '/store/compare/favorites',
                     color: 'text-rose-500',
                     bg: 'bg-rose-500/10',
                 },
@@ -972,9 +972,9 @@ export function ProfileDropdown({
                                                                             href: '/catalog',
                                                                         },
                                                                         {
-                                                                            label: 'Wishlist',
+                                                                            label: 'Favorites',
                                                                             icon: HeartIcon,
-                                                                            href: '/store/compare?tab=wishlist',
+                                                                            href: '/store/compare/favorites',
                                                                         },
                                                                         {
                                                                             label: 'Compare',

@@ -53,7 +53,7 @@ import {
     type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ProductCard } from '@/components/store/desktop/ProductCard';
+import { CompareCardAdapter, VariantCompareCardAdapter } from '@/components/store/cards/VehicleCardAdapters';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { DiscoveryBar } from '@/components/store/DiscoveryBar';
@@ -73,6 +73,7 @@ import {
     type SpecCategory,
 } from '@/hooks/compareUtils';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
+import { VEHICLE_MODE_CONFIG, getSafeViewMode } from '@/components/store/cards/vehicleModeConfig';
 
 // --- Spec Icon Mapping ---
 const SPEC_ICON_MAP: Record<string, LucideIcon> = {
@@ -243,9 +244,17 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
     const TENURE_OPTIONS = [12, 24, 36, 48, 60];
 
     // Scroll-morph state
+    const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+    const [isXScrolled, setIsXScrolled] = useState(false);
+    const listScrollRef = useRef<HTMLDivElement>(null);
+
+    const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        setIsXScrolled(e.currentTarget.scrollLeft > 20);
+    };
+
     const [compactMode, setCompactMode] = useState(false);
     const { pricingMode, setPricingMode } = useDiscovery();
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.compare.defaultView);
 
     const [isPricingExpanded, setIsPricingExpanded] = useState(true);
     const [isDiffExpanded, setIsDiffExpanded] = useState(true);
@@ -422,9 +431,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                         <Navigation size={24} className="text-[#F4B000]" />
                     </div>
                     <div className="space-y-2">
-                        <p className="text-[13px] font-black uppercase tracking-widest text-slate-800">
-                            Set Your Location
-                        </p>
+                        <p className="text-[14px] font-black text-slate-800">Set Your Location</p>
                         <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
                             We need your city/district to show accurate on-road prices for {makeSlug} {modelSlug}{' '}
                             variants.
@@ -460,7 +467,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-center space-y-4">
-                    <p className="text-lg font-black uppercase tracking-widest text-slate-400">Model not found</p>
+                    <p className="text-lg font-black text-slate-400">Model not found</p>
                     <button
                         onClick={() => router.push('/store/catalog')}
                         className="px-6 py-3 bg-[#F4B000] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em]"
@@ -476,8 +483,8 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-center space-y-4">
-                    <p className="text-lg font-black uppercase tracking-widest text-slate-400">
-                        {isWishlist ? 'Your Wishlist is Empty' : 'Nothing to compare'}
+                    <p className="text-lg font-black text-slate-400">
+                        {isWishlist ? 'Your Favorites are Empty' : 'Nothing to compare'}
                     </p>
                     <button
                         onClick={() => router.push('/store/catalog')}
@@ -524,7 +531,8 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                         pricingMode={pricingMode}
                                         onPricingModeChange={setPricingMode}
                                         viewMode={viewMode}
-                                        onViewModeChange={setViewMode}
+                                        allowedViewModes={VEHICLE_MODE_CONFIG.compare.allowedViews}
+                                        onViewModeChange={mode => setViewMode(getSafeViewMode('compare', mode))}
                                     />
                                 </div>
 
@@ -715,30 +723,37 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                     ref={scrollAnchorRef}
                                     className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pb-4"
                                 >
-                                    {activeVariants.map(v => (
-                                        <ProductCard
-                                            key={v.id}
-                                            v={v}
-                                            viewMode="grid"
-                                            downpayment={downpayment}
-                                            tenure={tenure}
-                                            onEditDownpayment={openDpEdit}
-                                            pricingMode={pricingMode}
-                                            onTogglePricingMode={() =>
-                                                setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))
-                                            }
-                                            isInCompare={!removedVariantIds.has(v.id)}
-                                            onCompare={() => removeVariant(v.id)}
-                                        />
-                                    ))}
+                                    {activeVariants.map(v => {
+                                        const CardAdapter = isWishlist ? CompareCardAdapter : VariantCompareCardAdapter;
+                                        return (
+                                            <CardAdapter
+                                                key={v.id}
+                                                variant={v}
+                                                viewMode="grid"
+                                                downpayment={downpayment}
+                                                tenure={tenure}
+                                                onEditDownpayment={openDpEdit}
+                                                pricingMode={pricingMode}
+                                                onTogglePricingMode={() =>
+                                                    setPricingMode(m => (m === 'cash' ? 'finance' : 'cash'))
+                                                }
+                                                isInCompare={!removedVariantIds.has(v.id)}
+                                                onCompare={() => removeVariant(v.id)}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
 
                         {/* ────── Comparison Specifications Section (list mode only) ────── */}
                         {viewMode === 'list' && allSpecs.length > 0 && (
-                            <div className="pb-6 w-full overflow-hidden">
-                                <div className="overflow-visible w-full">
+                            <div
+                                ref={listScrollRef}
+                                onScroll={handleListScroll}
+                                className="pb-12 w-full overflow-visible relative group/list"
+                            >
+                                <div className="w-full pb-4">
                                     {/* ── Sticky List Header: Preview, Model, Variant, Colours, Offer ── */}
                                     <div className="sticky z-[80] bg-white/95 backdrop-blur-md" style={{ top: '56px' }}>
                                         <div className="px-2 py-1 space-y-2">
@@ -749,9 +764,11 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                     gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
                                                 }}
                                             >
-                                                <div className="sticky left-0 z-30 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[72px]">
+                                                <div
+                                                    className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 min-h-[72px] ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                >
                                                     <ImageIcon size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[9px] font-semibold tracking-tight text-slate-500 leading-none">
+                                                    <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
                                                         Preview
                                                     </span>
                                                 </div>
@@ -786,8 +803,9 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                                     : 'white',
                                                             }}
                                                         >
-                                                            <span className="absolute inset-0 flex items-center justify-center text-[28px] font-black uppercase tracking-tighter italic text-black/[0.02] whitespace-nowrap leading-none pointer-events-none select-none">
-                                                                {v.make}
+                                                            <span className="absolute inset-0 flex items-center justify-center text-[72px] font-black tracking-tighter italic text-black/[0.06] whitespace-nowrap leading-none pointer-events-none select-none">
+                                                                {v.make.charAt(0).toUpperCase() +
+                                                                    v.make.slice(1).toLowerCase()}
                                                             </span>
                                                             <img
                                                                 src={currentImage}
@@ -801,14 +819,18 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
 
                                             {/* Row 2: Model */}
                                             <div
-                                                className="grid gap-x-6"
+                                                onMouseEnter={() => setHoveredRow('model-row')}
+                                                onMouseLeave={() => setHoveredRow(null)}
+                                                className={`grid gap-x-6 transition-colors duration-200 ${hoveredRow === 'model-row' ? 'bg-slate-50' : ''}`}
                                                 style={{
                                                     gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
                                                 }}
                                             >
-                                                <div className="sticky left-0 z-30 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                                                <div
+                                                    className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                >
                                                     <Bike size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[9px] font-semibold tracking-tight text-slate-500 leading-none">
+                                                    <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
                                                         Model
                                                     </span>
                                                 </div>
@@ -817,8 +839,8 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                         key={vIdx}
                                                         className="px-3 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
                                                     >
-                                                        <span className="text-[9px] font-black tracking-tight text-slate-700 uppercase leading-tight">
-                                                            {v.model}
+                                                        <span className="text-[10px] font-black tracking-tight text-slate-700 capitalize leading-tight">
+                                                            {v.model.toLowerCase()}
                                                         </span>
                                                     </div>
                                                 ))}
@@ -826,17 +848,21 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
 
                                             {/* Row 3: Variant */}
                                             <div
-                                                className="grid gap-x-6"
+                                                onMouseEnter={() => setHoveredRow('variant-row')}
+                                                onMouseLeave={() => setHoveredRow(null)}
+                                                className={`grid gap-x-6 transition-colors duration-200 ${hoveredRow === 'variant-row' ? 'bg-slate-50' : ''}`}
                                                 style={{
                                                     gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
                                                 }}
                                             >
-                                                <div className="sticky left-0 z-30 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                                                <div
+                                                    className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                >
                                                     <GitCompareArrows
                                                         size={12}
                                                         className="text-[#F4B000]/70 shrink-0"
                                                     />
-                                                    <span className="text-[9px] font-semibold tracking-tight text-slate-500 leading-none">
+                                                    <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
                                                         Variant
                                                     </span>
                                                 </div>
@@ -854,14 +880,18 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
 
                                             {/* Row 4: Colours */}
                                             <div
-                                                className="grid gap-x-6"
+                                                onMouseEnter={() => setHoveredRow('colours-row')}
+                                                onMouseLeave={() => setHoveredRow(null)}
+                                                className={`grid gap-x-6 transition-colors duration-200 ${hoveredRow === 'colours-row' ? 'bg-slate-50' : ''}`}
                                                 style={{
                                                     gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
                                                 }}
                                             >
-                                                <div className="sticky left-0 z-30 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                                                <div
+                                                    className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                >
                                                     <Circle size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[9px] font-semibold tracking-tight text-slate-500 leading-none">
+                                                    <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
                                                         Colours
                                                     </span>
                                                 </div>
@@ -899,20 +929,65 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                 })}
                                             </div>
 
-                                            {/* Row 5: Offer Price (Sticky) */}
+                                            {/* EMI / Cash Offer Row */}
                                             <div
-                                                className="grid gap-x-6"
+                                                onMouseEnter={() => setHoveredRow('primary-price')}
+                                                onMouseLeave={() => setHoveredRow(null)}
+                                                className={`grid gap-x-6 transition-colors duration-200 ${hoveredRow === 'primary-price' ? 'bg-[#F4B000]/5' : ''}`}
                                                 style={{
                                                     gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
                                                 }}
                                             >
-                                                <div className="sticky left-0 z-30 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                                                <div
+                                                    className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                >
                                                     <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[9px] font-semibold tracking-tight text-slate-500 leading-none">
-                                                        {pricingMode === 'finance' ? 'Finance' : 'Cash'} Offer
+                                                    <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
+                                                        {pricingMode === 'finance' ? 'Monthly EMI' : 'Cash Offer'}
                                                     </span>
-                                                    {pricingMode === 'finance' && (
-                                                        <div className="flex items-center gap-1 ml-auto">
+                                                </div>
+                                                {activeVariants.map((v, vIdx) => {
+                                                    const cashPrice = v.price?.onRoad || v.price?.exShowroom || 0;
+                                                    const emi = getEmi(v, downpayment, tenure);
+                                                    return (
+                                                        <div
+                                                            key={vIdx}
+                                                            className="px-2 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
+                                                        >
+                                                            <span className="text-[10px] font-black text-[#F4B000]">
+                                                                ₹
+                                                                {pricingMode === 'cash'
+                                                                    ? (v.price?.offerPrice || cashPrice).toLocaleString(
+                                                                          'en-IN'
+                                                                      )
+                                                                    : emi.toLocaleString('en-IN')}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {pricingMode === 'finance' && (
+                                                <>
+                                                    {/* Downpayment Row */}
+                                                    <div
+                                                        onMouseEnter={() => setHoveredRow('dp-row')}
+                                                        onMouseLeave={() => setHoveredRow(null)}
+                                                        className={`grid gap-x-6 transition-colors duration-200 mt-1 ${hoveredRow === 'dp-row' ? 'bg-emerald-50/30' : ''}`}
+                                                        style={{
+                                                            gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
+                                                        }}
+                                                    >
+                                                        <div
+                                                            className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                        >
+                                                            <CreditCard
+                                                                size={12}
+                                                                className="text-[#F4B000]/70 shrink-0"
+                                                            />
+                                                            <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
+                                                                Downpayment
+                                                            </span>
                                                             <button
                                                                 onClick={e => {
                                                                     e.stopPropagation();
@@ -921,61 +996,66 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                                         setDpInputValue(String(downpayment));
                                                                     setEditingTenure(false);
                                                                 }}
-                                                                className={`p-1 rounded-md transition-colors ${editingDownpayment ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-white border border-slate-200 text-slate-400 hover:text-[#F4B000]'}`}
+                                                                className={`p-1 rounded-md transition-colors ml-auto ${editingDownpayment ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-white border border-slate-200 text-slate-400 hover:text-[#F4B000]'}`}
                                                             >
                                                                 <Pencil size={10} />
                                                             </button>
+                                                        </div>
+                                                        {activeVariants.map((v, vIdx) => (
+                                                            <div
+                                                                key={vIdx}
+                                                                className="px-2 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
+                                                            >
+                                                                <span className="text-[9px] font-black text-slate-400">
+                                                                    ₹{downpayment.toLocaleString('en-IN')}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Tenure Row */}
+                                                    <div
+                                                        onMouseEnter={() => setHoveredRow('tenure-row')}
+                                                        onMouseLeave={() => setHoveredRow(null)}
+                                                        className={`grid gap-x-6 transition-colors duration-200 mt-1 ${hoveredRow === 'tenure-row' ? 'bg-blue-50/30' : ''}`}
+                                                        style={{
+                                                            gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
+                                                        }}
+                                                    >
+                                                        <div
+                                                            className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                        >
+                                                            <Calendar
+                                                                size={12}
+                                                                className="text-[#F4B000]/70 shrink-0"
+                                                            />
+                                                            <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
+                                                                Tenure
+                                                            </span>
                                                             <button
                                                                 onClick={e => {
                                                                     e.stopPropagation();
                                                                     setEditingTenure(!editingTenure);
                                                                     setEditingDownpayment(false);
                                                                 }}
-                                                                className={`p-1 rounded-md transition-colors ${editingTenure ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-white border border-slate-200 text-slate-400 hover:text-[#F4B000]'}`}
+                                                                className={`p-1 rounded-md transition-colors ml-auto ${editingTenure ? 'bg-[#F4B000]/20 text-[#F4B000]' : 'bg-white border border-slate-200 text-slate-400 hover:text-[#F4B000]'}`}
                                                             >
                                                                 <Calendar size={10} />
                                                             </button>
                                                         </div>
-                                                    )}
-                                                </div>
-                                                {activeVariants.map((v, vIdx) => {
-                                                    const cashPrice = v.price?.onRoad || v.price?.exShowroom || 0;
-                                                    const bCoin = coinsNeededForPrice(cashPrice);
-                                                    const emi = getEmi(v, downpayment, tenure);
-                                                    return (
-                                                        <div
-                                                            key={vIdx}
-                                                            className="px-2 py-1 flex flex-col items-center justify-center gap-0.5 text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
-                                                        >
-                                                            {pricingMode === 'cash' ? (
-                                                                <>
-                                                                    <span className="text-[10px] font-black text-slate-900 leading-none mt-0.5">
-                                                                        ₹
-                                                                        {(
-                                                                            v.price?.offerPrice || cashPrice
-                                                                        ).toLocaleString('en-IN')}
-                                                                    </span>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <Logo variant="icon" size={10} />
-                                                                        <span className="text-[9px] font-black text-[#F4B000] italic">
-                                                                            {bCoin.toLocaleString('en-IN')}
-                                                                        </span>
-                                                                    </div>
-                                                                </>
-                                                            ) : (
-                                                                <div className="flex flex-col items-center leading-none">
-                                                                    <span className="text-[10px] font-black text-[#F4B000]">
-                                                                        ₹{emi.toLocaleString('en-IN')}
-                                                                    </span>
-                                                                    <span className="text-[7px] font-bold text-slate-400 uppercase">
-                                                                        {tenure}mo
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
+                                                        {activeVariants.map((v, vIdx) => (
+                                                            <div
+                                                                key={vIdx}
+                                                                className="px-2 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
+                                                            >
+                                                                <span className="text-[9px] font-black text-slate-400 uppercase">
+                                                                    {tenure} Months
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
@@ -993,17 +1073,21 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                 >
                                                     {/* On-Road Row */}
                                                     <div
-                                                        className="grid gap-x-6"
+                                                        onMouseEnter={() => setHoveredRow('on-road')}
+                                                        onMouseLeave={() => setHoveredRow(null)}
+                                                        className={`grid gap-x-6 transition-colors duration-200 ${hoveredRow === 'on-road' ? 'bg-emerald-50/30' : ''}`}
                                                         style={{
                                                             gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
                                                         }}
                                                     >
-                                                        <div className="sticky left-0 z-30 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                                                        <div
+                                                            className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                        >
                                                             <IndianRupee
                                                                 size={12}
                                                                 className="text-[#F4B000]/70 shrink-0"
                                                             />
-                                                            <span className="text-[9px] font-semibold tracking-tight text-slate-500 leading-none">
+                                                            <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
                                                                 On-Road Price
                                                             </span>
                                                         </div>
@@ -1026,17 +1110,21 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
 
                                                     {/* Price Gap Row */}
                                                     <div
-                                                        className="grid gap-x-6"
+                                                        onMouseEnter={() => setHoveredRow('price-gap')}
+                                                        onMouseLeave={() => setHoveredRow(null)}
+                                                        className={`grid gap-x-6 transition-colors duration-200 ${hoveredRow === 'price-gap' ? 'bg-orange-50/30' : ''}`}
                                                         style={{
                                                             gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
                                                         }}
                                                     >
-                                                        <div className="sticky left-0 z-30 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                                                        <div
+                                                            className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                        >
                                                             <GitCompareArrows
                                                                 size={12}
                                                                 className="text-[#F4B000]/70 shrink-0"
                                                             />
-                                                            <span className="text-[9px] font-semibold tracking-tight text-slate-500 leading-none">
+                                                            <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
                                                                 Price Gap
                                                             </span>
                                                         </div>
@@ -1050,8 +1138,8 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                                         key={vIdx}
                                                                         className="flex items-center justify-center bg-slate-50/50 border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
                                                                     >
-                                                                        <span className="text-[8px] font-black tracking-widest text-slate-400 uppercase">
-                                                                            Base
+                                                                        <span className="text-[8px] font-black tracking-widest text-slate-400 italic">
+                                                                            base
                                                                         </span>
                                                                     </div>
                                                                 );
@@ -1087,15 +1175,20 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                     >
                                                         {smartSpecs.diffRows.map((row: SpecRow, rIdx: number) => {
                                                             const bestIdx = findBestValueIndex(row);
+                                                            const rowKey = `diff-${rIdx}`;
                                                             return (
                                                                 <div
-                                                                    key={`diff-row-${rIdx}`}
-                                                                    className="grid gap-x-6"
+                                                                    key={rowKey}
+                                                                    onMouseEnter={() => setHoveredRow(rowKey)}
+                                                                    onMouseLeave={() => setHoveredRow(null)}
+                                                                    className={`grid gap-x-6 transition-colors duration-200 ${hoveredRow === rowKey ? 'bg-[#F4B000]/5' : ''}`}
                                                                     style={{
                                                                         gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
                                                                     }}
                                                                 >
-                                                                    <div className="sticky left-0 z-30 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                                                                    <div
+                                                                        className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
+                                                                    >
                                                                         {(() => {
                                                                             const SpecIcon = getSpecIcon(row.label);
                                                                             return (
@@ -1105,8 +1198,8 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                                                 />
                                                                             );
                                                                         })()}
-                                                                        <span className="text-[9px] font-semibold tracking-tight text-slate-500 leading-none">
-                                                                            {row.label}
+                                                                        <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none capitalize">
+                                                                            {row.label?.toLowerCase()}
                                                                         </span>
                                                                     </div>
                                                                     {row.values.map(
@@ -1115,8 +1208,14 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                                             return (
                                                                                 <div
                                                                                     key={vIdx}
-                                                                                    className={`px-3 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px] ${isBest ? 'ring-1 ring-emerald-500/20' : ''}`}
+                                                                                    className={`px-3 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px] relative transition-all duration-300 ${isBest ? 'ring-1 ring-emerald-500/30 bg-emerald-50/30' : ''}`}
                                                                                 >
+                                                                                    {isBest && (
+                                                                                        <Trophy
+                                                                                            size={10}
+                                                                                            className="absolute top-1 right-1 text-emerald-500 opacity-60"
+                                                                                        />
+                                                                                    )}
                                                                                     <span
                                                                                         className={`text-[9px] font-black leading-tight text-center ${!val ? 'text-slate-300 italic' : isBest ? 'text-emerald-600' : 'text-slate-700'}`}
                                                                                     >
@@ -1147,42 +1246,51 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                                                         className="space-y-2 overflow-hidden"
                                                     >
-                                                        {smartSpecs.restRows.map((row: SpecRow, rIdx: number) => (
-                                                            <div
-                                                                key={`rest-row-${rIdx}`}
-                                                                className="grid gap-x-6"
-                                                                style={{
-                                                                    gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
-                                                                }}
-                                                            >
-                                                                <div className="sticky left-0 z-30 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-                                                                    {(() => {
-                                                                        const SpecIcon = getSpecIcon(row.label);
-                                                                        return (
-                                                                            <SpecIcon
-                                                                                size={12}
-                                                                                className="text-[#F4B000]/70 shrink-0"
-                                                                            />
-                                                                        );
-                                                                    })()}
-                                                                    <span className="text-[9px] font-semibold tracking-tight text-slate-500 leading-none">
-                                                                        {row.label}
-                                                                    </span>
-                                                                </div>
-                                                                {row.values.map((val: string | null, vIdx: number) => (
+                                                        {smartSpecs.restRows.map((row: SpecRow, rIdx: number) => {
+                                                            const rowKey = `rest-${rIdx}`;
+                                                            return (
+                                                                <div
+                                                                    key={rowKey}
+                                                                    onMouseEnter={() => setHoveredRow(rowKey)}
+                                                                    onMouseLeave={() => setHoveredRow(null)}
+                                                                    className={`grid gap-x-6 transition-colors duration-200 ${hoveredRow === rowKey ? 'bg-slate-50' : ''}`}
+                                                                    style={{
+                                                                        gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
+                                                                    }}
+                                                                >
                                                                     <div
-                                                                        key={vIdx}
-                                                                        className="px-3 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
+                                                                        className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
                                                                     >
-                                                                        <span
-                                                                            className={`text-[9px] font-black leading-tight text-center ${!val ? 'text-slate-300 italic' : 'text-slate-700'}`}
-                                                                        >
-                                                                            {formatSpecValue(val, row.label)}
+                                                                        {(() => {
+                                                                            const SpecIcon = getSpecIcon(row.label);
+                                                                            return (
+                                                                                <SpecIcon
+                                                                                    size={12}
+                                                                                    className="text-[#F4B000]/70 shrink-0"
+                                                                                />
+                                                                            );
+                                                                        })()}
+                                                                        <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none capitalize">
+                                                                            {row.label?.toLowerCase()}
                                                                         </span>
                                                                     </div>
-                                                                ))}
-                                                            </div>
-                                                        ))}
+                                                                    {row.values.map(
+                                                                        (val: string | null, vIdx: number) => (
+                                                                            <div
+                                                                                key={vIdx}
+                                                                                className="px-3 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
+                                                                            >
+                                                                                <span
+                                                                                    className={`text-[9px] font-black leading-tight text-center ${!val ? 'text-slate-300 italic' : 'text-slate-700'}`}
+                                                                                >
+                                                                                    {formatSpecValue(val, row.label)}
+                                                                                </span>
+                                                                            </div>
+                                                                        )
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </motion.div>
                                                 )}
                                             </AnimatePresence>
@@ -1205,9 +1313,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                 className="relative z-10 w-full max-w-2xl mx-auto rounded-t-3xl bg-white border-t border-x border-slate-200 shadow-2xl p-6 space-y-6 animate-in slide-in-from-bottom-4 duration-300"
                             >
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">
-                                        Finance Settings
-                                    </h3>
+                                    <h3 className="text-sm font-black text-slate-900">Finance Settings</h3>
                                     <button
                                         onClick={() => setIsDpEditOpen(false)}
                                         className="text-slate-400 hover:text-slate-900"
@@ -1219,9 +1325,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                 {/* Downpayment */}
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Downpayment
-                                        </span>
+                                        <span className="text-[10px] font-black text-slate-400">Downpayment</span>
                                         <span className="text-lg font-black text-emerald-600">
                                             ₹{dpDraft.toLocaleString('en-IN')}
                                         </span>
@@ -1235,7 +1339,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                         onChange={e => setDpDraft(Number(e.target.value))}
                                         className="w-full accent-[#F4B000] h-2 rounded-full"
                                     />
-                                    <div className="flex justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest">
+                                    <div className="flex justify-between text-[8px] font-bold text-slate-300 tracking-widest">
                                         <span>₹0</span>
                                         <span>₹25K</span>
                                         <span>₹50K</span>
@@ -1247,9 +1351,9 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                             <button
                                                 key={val}
                                                 onClick={() => setDpDraft(val)}
-                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black border transition-all ${dpDraft === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
                                             >
-                                                ₹{val / 1000}K
+                                                ₹{(val / 1000).toLocaleString('en-IN')}K
                                             </button>
                                         ))}
                                     </div>
@@ -1258,9 +1362,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                 {/* Tenure */}
                                 <div className="space-y-3 pt-2 border-t border-slate-100">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Tenure
-                                        </span>
+                                        <span className="text-[10px] font-black text-slate-400">Tenure</span>
                                         <span className="text-lg font-black text-emerald-600">{tenure} months</span>
                                     </div>
                                     <div className="flex items-center justify-center gap-2">
@@ -1268,7 +1370,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                             <button
                                                 key={val}
                                                 onClick={() => setTenure(val)}
-                                                className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
+                                                className={`flex-1 py-2 rounded-xl text-[11px] font-black border transition-all ${tenure === val ? 'bg-[#F4B000]/15 border-[#F4B000]/40 text-[#F4B000]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-[#F4B000]/30'}`}
                                             >
                                                 {val}mo
                                             </button>
@@ -1278,7 +1380,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
 
                                 <button
                                     onClick={() => applyDp(dpDraft)}
-                                    className="w-full py-3 rounded-xl bg-[#F4B000] hover:bg-[#FFD700] text-black text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[#F4B000]/20 transition-all hover:-translate-y-0.5"
+                                    className="w-full py-3 rounded-xl bg-[#F4B000] hover:bg-[#FFD700] text-black text-[11px] font-black shadow-lg shadow-[#F4B000]/20 transition-all hover:-translate-y-0.5"
                                 >
                                     Apply to All
                                 </button>

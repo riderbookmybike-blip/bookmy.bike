@@ -20,7 +20,7 @@ const STATIC_TABS = [
     { key: 'home', label: 'Home', icon: Home, href: '/' },
     { key: 'ride', label: 'Ride', icon: MotorcycleIcon, href: '/store/catalog' },
     { key: 'pricing', label: 'EMI', icon: CreditCard, href: null },
-    { key: 'wishlist', label: 'Wishlist', icon: Heart, href: '/store/compare?tab=wishlist' },
+    { key: 'wishlist', label: 'Favorites', icon: Heart, href: '/store/compare/favorites' },
     { key: 'ocircle', label: "O' Circle", icon: Globe, href: '/store/ocircle' },
 ] as const;
 

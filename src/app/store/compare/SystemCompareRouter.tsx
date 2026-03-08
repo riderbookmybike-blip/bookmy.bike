@@ -5,8 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
-
-type CompareTab = 'wishlist' | 'variants' | 'studio';
+import { resolveCompareTab, type CompareTab } from '@/components/store/cards/vehicleModeConfig';
 
 const DesktopCompare = dynamic(() => import('@/components/store/desktop/DesktopCompare'), {
     loading: () => (
@@ -42,21 +41,16 @@ const WishlistClient = dynamic(() =>
 
 const CompareStudio = dynamic(() => import('./ComparePageClient').then(m => ({ default: m.ComparePageClient })));
 
-export function SystemCompareRouter() {
+export function SystemCompareRouter({ forcedTab }: { forcedTab?: CompareTab } = {}) {
     const searchParams = useSearchParams();
     const { favorites } = useFavorites();
     const tabParam = searchParams.get('tab');
     const hasModelContext = Boolean(searchParams.get('make') && searchParams.get('model'));
-    const activeTab: CompareTab =
-        tabParam === 'wishlist' || tabParam === 'variants' || tabParam === 'studio'
-            ? tabParam
-            : favorites.length > 0
-              ? 'wishlist'
-              : 'studio';
+    const activeTab: CompareTab = forcedTab ?? resolveCompareTab(tabParam, favorites.length > 0);
 
     return (
         <div className="pb-6">
-            {activeTab === 'wishlist' && <DesktopCompare isWishlist={true} />}
+            {activeTab === 'favorites' && <DesktopCompare isWishlist={true} />}
 
             {activeTab === 'studio' && <CompareStudio />}
 

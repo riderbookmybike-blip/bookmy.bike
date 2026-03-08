@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
     robots: {
-        index: false,
+        index: true,
         follow: true,
     },
 };

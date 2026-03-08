@@ -39,7 +39,7 @@ import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { LocationPicker } from './LocationPicker';
 import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
 import { setLocationCookie } from '@/actions/locationCookie';
-import { ProductCard } from './desktop/ProductCard';
+import { CatalogCardAdapter } from './cards/VehicleCardAdapters';
 import { CompareTray, type CompareItem } from './CompareTray';
 import { CompactProductCard } from './mobile/CompactProductCard';
 import { MobileFilterDrawer } from './mobile/MobileFilterDrawer';
@@ -51,6 +51,12 @@ import { resolveIpLocation } from '@/actions/resolveIpLocation';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
+import {
+    VEHICLE_MODE_CONFIG,
+    compareLimitMessage,
+    compareMinSelectionMessage,
+    getSafeViewMode,
+} from './cards/vehicleModeConfig';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
@@ -247,7 +253,7 @@ export const DesktopCatalog = ({
     // Local State
     const isSmart = mode === 'smart';
     const [sortBy] = useState<'popular' | 'price' | 'emi'>('popular');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.catalog.defaultView);
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -257,8 +263,8 @@ export const DesktopCatalog = ({
         setCompareItems(prev => {
             const exists = prev.find(c => c.id === item.id);
             if (exists) return prev.filter(c => c.id !== item.id);
-            if (prev.length >= 3) {
-                toast.error('Max 3 models to compare');
+            if (prev.length >= VEHICLE_MODE_CONFIG.catalog.compareCap) {
+                toast.error(compareLimitMessage(VEHICLE_MODE_CONFIG.catalog.compareCap));
                 return prev;
             }
             toast.success(`${item.model} added to compare`);
@@ -267,20 +273,16 @@ export const DesktopCatalog = ({
     };
     const removeCompare = (id: string) => setCompareItems(prev => prev.filter(c => c.id !== id));
     const clearCompare = () => setCompareItems([]);
-    const handleCompareNow = () => {
-        if (compareItems.length === 0) return;
-
-        // If all items are from the same model, we can use the pretty URL,
-        // otherwise we must use the query param mode for mixed comparison.
-        const firstItem = compareItems[0];
-        const allSameModel = compareItems.every(i => i.modelSlug === firstItem.modelSlug);
-
-        if (allSameModel && compareItems.length === 1) {
-            router.push(`/store/compare/${firstItem.make.toLowerCase()}/${firstItem.modelSlug}`);
-        } else {
-            const ids = compareItems.map(i => i.id).join(',');
-            router.push(`/store/compare?skus=${ids}`);
+    const openCompareView = () => {
+        const minCompareSelection = VEHICLE_MODE_CONFIG.catalog.minCompareSelection;
+        if (compareItems.length < minCompareSelection) {
+            toast.error(compareMinSelectionMessage(minCompareSelection));
+            return;
         }
+        setViewMode('list');
+    };
+    const handleCompareNow = () => {
+        openCompareView();
     };
 
     // Downpayment edit popover
@@ -1110,6 +1112,19 @@ export const DesktopCatalog = ({
         return [...groupedDisplayResults.slice(offset), ...groupedDisplayResults.slice(0, offset)];
     }, [isTv, tvIdleMode, tvRotationOffset, groupedDisplayResults]);
 
+    const compareIds = useMemo(() => new Set(compareItems.map(item => item.id)), [compareItems]);
+    const visibleGroups = useMemo(() => {
+        if (viewMode !== 'list') return renderedGroups;
+        return renderedGroups.filter(group => compareIds.has(group.representative.id));
+    }, [viewMode, renderedGroups, compareIds]);
+
+    useEffect(() => {
+        const minCompareSelection = VEHICLE_MODE_CONFIG.catalog.minCompareSelection;
+        if (viewMode === 'list' && compareItems.length < minCompareSelection) {
+            setViewMode('grid');
+        }
+    }, [viewMode, compareItems.length]);
+
     // Sync stats to discovery context
     useEffect(() => {
         if (!isPhone) {
@@ -1177,8 +1192,15 @@ export const DesktopCatalog = ({
                         setPricingMode(mode as any);
                         if (mode === 'finance') openDpEdit();
                     }}
-                    viewMode={viewMode}
-                    onViewModeChange={setViewMode}
+                    onCompareClick={() => {
+                        if (viewMode === 'list') {
+                            setViewMode(getSafeViewMode('catalog', 'grid'));
+                            return;
+                        }
+                        openCompareView();
+                    }}
+                    compareCount={compareItems.length}
+                    compareCap={VEHICLE_MODE_CONFIG.catalog.compareCap}
                     centerContent={
                         <>
                             {/* Body type quick-filter pills — show when no search is typed */}
@@ -1527,14 +1549,14 @@ export const DesktopCatalog = ({
                             }`}
                         >
                             {/* Results Grid */}
-                            {renderedGroups.map((group, idx) => {
+                            {visibleGroups.map((group, idx) => {
                                 const v = group.representative;
                                 const key = `${v.id}-${(v as any).color || v.imageUrl || idx}`;
 
                                 return (
-                                    <ProductCard
+                                    <CatalogCardAdapter
                                         key={key}
-                                        v={v}
+                                        variant={v}
                                         viewMode={viewMode}
                                         downpayment={downpayment}
                                         tenure={tenure}
@@ -1556,7 +1578,7 @@ export const DesktopCatalog = ({
                                                 imageUrl: v.imageUrl || '/images/templates/t3_night.webp',
                                             })
                                         }
-                                        isInCompare={compareItems.some(c => c.id === v.id)}
+                                        isInCompare={compareIds.has(v.id)}
                                         onEditDownpayment={openDpEdit}
                                         onExplore={
                                             group.variantCount > 1

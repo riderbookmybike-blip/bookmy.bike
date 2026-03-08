@@ -39,7 +39,7 @@ import {
     ChevronLeft,
 } from 'lucide-react';
 import { useSystemCompareLogic } from '@/hooks/useSystemCompareLogic';
-import { ProductCard } from '@/components/store/desktop/ProductCard';
+import { VariantCompareCardAdapter } from '@/components/store/cards/VehicleCardAdapters';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
 import { flattenObject, formatSpecValue, computeSpecCategories } from '@/hooks/compareUtils';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
@@ -148,9 +148,9 @@ export function MobileCompare() {
                     <ChevronLeft size={20} />
                 </button>
                 <div className="flex-1">
-                    <h1 className="text-lg font-black uppercase tracking-widest text-[#F4B000]">Compare</h1>
-                    <p className="text-[10px] font-semibold text-slate-400 tracking-widest leading-none">
-                        {isMixedMode ? `COMPARING ${n} MODELS` : `${n} VARIANTS SELECTED`}
+                    <h1 className="text-lg font-black text-[#F4B000]">Compare</h1>
+                    <p className="text-[10px] font-semibold text-slate-400 tracking-wide leading-none">
+                        {isMixedMode ? `Comparing ${n} Models` : `${n} Variants Selected`}
                     </p>
                 </div>
             </div>
@@ -158,9 +158,9 @@ export function MobileCompare() {
             {/* ── SECTION 1: Full ProductCards (as-is, same as desktop) ── */}
             <div className="px-5 pt-4 space-y-4">
                 {activeVariants.map(v => (
-                    <ProductCard
+                    <VariantCompareCardAdapter
                         key={v.id}
-                        v={v}
+                        variant={v}
                         viewMode="grid"
                         downpayment={downpayment}
                         tenure={tenure}
@@ -174,7 +174,7 @@ export function MobileCompare() {
             {/* ── Divider ── */}
             <div className="mx-5 my-6 flex items-center gap-3">
                 <div className="flex-1 h-px bg-slate-200" />
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Side by Side</span>
+                <span className="text-[9px] font-black tracking-widest text-slate-400 capitalize">Side by side</span>
                 <div className="flex-1 h-px bg-slate-200" />
             </div>
 
@@ -223,7 +223,7 @@ export function MobileCompare() {
                         className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-3 flex flex-col items-center justify-center text-slate-400 hover:border-[#F4B000] hover:text-[#F4B000] transition-colors min-h-[140px]"
                     >
                         <span className="text-3xl font-light mb-1">+</span>
-                        <span className="text-[9px] font-black uppercase tracking-widest">Add</span>
+                        <span className="text-[9px] font-black">Add</span>
                     </button>
                 )}
             </div>
@@ -235,9 +235,7 @@ export function MobileCompare() {
                     <div>
                         <div className="flex items-center gap-2 mb-3">
                             <Zap size={14} className="text-[#F4B000] animate-pulse" />
-                            <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-[#F4B000]">
-                                Key Differences
-                            </h2>
+                            <h2 className="text-[12px] font-black tracking-widest text-[#F4B000]">Key Differences</h2>
                             <span className="bg-[#F4B000]/20 text-[#F4B000] px-2 py-0.5 rounded-full text-[9px] font-bold">
                                 {smartSpecs.diffCount}
                             </span>
@@ -254,8 +252,8 @@ export function MobileCompare() {
                                         onClick={() => toggleCat(`diff-${cat.name}`)}
                                         className="w-full flex items-center justify-between px-4 py-3 bg-slate-50"
                                     >
-                                        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900">
-                                            {cat.name}
+                                        <span className="text-[11px] font-bold tracking-widest text-slate-900 capitalize">
+                                            {cat.name.toLowerCase()}
                                         </span>
                                         {isOpen ? (
                                             <ChevronUp size={14} className="text-slate-400" />
@@ -268,8 +266,8 @@ export function MobileCompare() {
                                         <div className="divide-y divide-slate-100">
                                             {cat.specs.map(sp => (
                                                 <div key={sp.label} className="px-4 py-3">
-                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-                                                        {sp.label}
+                                                    <p className="text-[9px] font-bold tracking-widest text-slate-400 mb-2 capitalize">
+                                                        {sp.label.toLowerCase()}
                                                     </p>
                                                     <div
                                                         className={`grid gap-2 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}
@@ -314,7 +312,7 @@ export function MobileCompare() {
                 {smartSpecs.restSpecs.length > 0 && (
                     <div>
                         <div className="flex items-center gap-2 mb-3">
-                            <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-500">
+                            <h2 className="text-[12px] font-black tracking-widest text-slate-500">
                                 All Specifications
                             </h2>
                         </div>
@@ -330,8 +328,8 @@ export function MobileCompare() {
                                         onClick={() => toggleCat(`all-${cat.name}`)}
                                         className="w-full flex items-center justify-between px-4 py-3 bg-slate-50"
                                     >
-                                        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-700">
-                                            {cat.name}
+                                        <span className="text-[11px] font-bold tracking-widest text-slate-700 capitalize">
+                                            {cat.name.toLowerCase()}
                                         </span>
                                         {isOpen ? (
                                             <ChevronUp size={14} className="text-slate-400" />

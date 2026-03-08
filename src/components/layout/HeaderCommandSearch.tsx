@@ -55,8 +55,8 @@ export function HeaderCommandSearch({ className, iconSize = 18 }: HeaderCommandS
                 { key: 'catalog', label: 'Catalog', href: '/store/catalog', group: 'Marketplace' },
                 {
                     key: 'wishlist',
-                    label: 'Wishlist',
-                    href: '/store/compare?tab=wishlist',
+                    label: 'Favorites',
+                    href: '/store/compare/favorites',
                     group: 'Marketplace',
                 },
                 { key: 'profile', label: 'Profile', href: '/profile', group: 'Account' },

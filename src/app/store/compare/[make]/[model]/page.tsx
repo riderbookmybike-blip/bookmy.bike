@@ -7,9 +7,8 @@ interface CompareModelPageProps {
 export default async function CompareModelPage({ params }: CompareModelPageProps) {
     const resolved = await params;
     const search = new URLSearchParams({
-        tab: 'variants',
         make: resolved.make,
         model: resolved.model,
     });
-    redirect(`/store/compare?${search.toString()}`);
+    redirect(`/store/compare/variants?${search.toString()}`);
 }

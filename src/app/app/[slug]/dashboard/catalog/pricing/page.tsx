@@ -84,11 +84,13 @@ interface SKUPriceRow {
     updatedByName?: string;
 }
 
-const DELTA_MIN = -25000;
-const DELTA_MAX = 25000;
-const clampOfferDelta = (value: number) => {
-    const n = Number.isFinite(value) ? Math.trunc(value) : 0;
-    return Math.max(DELTA_MIN, Math.min(DELTA_MAX, n));
+const normalizeOfferDelta = (value: number) => (Number.isFinite(value) ? Math.trunc(value) : 0);
+
+const getRtoTotalForDefaultType = (row: any): number => {
+    const defaultType = String(row?.rto_default_type || 'STATE').toUpperCase();
+    if (defaultType === 'BH') return Number(row?.rto_total_bh) || 0;
+    if (defaultType === 'COMPANY') return Number(row?.rto_total_company) || 0;
+    return Number(row?.rto_total_state) || 0;
 };
 
 export default function PricingPage() {
@@ -361,11 +363,15 @@ export default function PricingPage() {
             (priceData || []).forEach((row: any) => {
                 const skuId = row.sku_id;
                 if (!skuId) return;
+                const selectedRtoTotal = getRtoTotalForDefaultType(row);
+                const insuranceTotal = Number(row.ins_total) || 0;
+                const exShowroomTotal = Number(row.ex_showroom) || 0;
+                const onRoadTotal = Number(row.on_road_price) || exShowroomTotal + selectedRtoTotal + insuranceTotal;
                 priceMap.set(skuId, {
-                    price: Number(row.ex_showroom) || 0,
+                    price: exShowroomTotal,
                     exFactory: Number(row.ex_showroom_basic) || 0,
                     exFactoryGst: Number(row.ex_showroom_gst_amount) || 0,
-                    rto: Number(row.rto_total_state) || 0,
+                    rto: selectedRtoTotal,
                     rto_data: {
                         STATE: {
                             total: Number(row.rto_total_state || 0),
@@ -402,7 +408,7 @@ export default function PricingPage() {
                         },
                         default: row.rto_default_type || 'STATE',
                     },
-                    insurance: Number(row.ins_total) || 0,
+                    insurance: insuranceTotal,
                     insurance_data: (() => {
                         const odBase = Number(row.ins_od_base || 0);
                         const odGst = Number(row.ins_od_total || 0) - odBase;
@@ -441,7 +447,7 @@ export default function PricingPage() {
                             addons,
                         };
                     })(),
-                    onRoad: Number(row.on_road_price) || 0,
+                    onRoad: onRoadTotal,
                     district: 'ALL',
                     publishedAt: row.published_at,
                     publishStage: row.publish_stage || 'DRAFT',
@@ -472,7 +478,7 @@ export default function PricingPage() {
                 const priceRecord = priceMap.get(sku.id);
                 const statePrice = priceRecord?.price;
                 const pricingRule = (offerData || []).find((o: any) => o.vehicle_color_id === sku.id);
-                const stateOffer = clampOfferDelta(Number(pricingRule?.offer_amount ?? offerMap.get(sku.id) ?? -1));
+                const stateOffer = normalizeOfferDelta(Number(pricingRule?.offer_amount ?? offerMap.get(sku.id) ?? -1));
                 const stateInclusion = pricingRule?.inclusion_type || 'OPTIONAL';
                 const localIsActive = activeMap.has(sku.id) ? activeMap.get(sku.id) : false;
 
@@ -622,6 +628,7 @@ export default function PricingPage() {
                 .select(
                     `
                     sku_id,
+                    ex_showroom,
                     on_road_price,
                     rto_default_type,
                     rto_total_state, rto_total_bh, rto_total_company,
@@ -645,6 +652,10 @@ export default function PricingPage() {
 
             if (!data) return;
             const d = data as any;
+            const selectedRtoTotal = getRtoTotalForDefaultType(d);
+            const insuranceTotal = Number(d.ins_total || 0);
+            const exShowroomTotal = Number(d.ex_showroom || 0);
+            const onRoadTotal = Number(d.on_road_price || 0) || exShowroomTotal + selectedRtoTotal + insuranceTotal;
             const ADDON_MAP_RT = [
                 { key: 'pa', label: 'Personal Accident (PA)' },
                 { key: 'zerodep', label: 'Zero Depreciation' },
@@ -677,9 +688,9 @@ export default function PricingPage() {
                     s.id === skuId
                         ? {
                               ...s,
-                              rto: Number(d.rto_total_state || 0),
-                              insurance: Number(d.ins_total || 0),
-                              onRoad: Number(d.on_road_price || s.exShowroom || 0),
+                              rto: selectedRtoTotal,
+                              insurance: insuranceTotal,
+                              onRoad: onRoadTotal,
                               rto_data: {
                                   STATE: {
                                       total: Number(d.rto_total_state || 0),
@@ -838,7 +849,7 @@ export default function PricingPage() {
 
     const handleUpdateOffer = (skuId: string, offer: number) => {
         if (tenantSlug === 'aums') return;
-        const normalized = clampOfferDelta(offer);
+        const normalized = normalizeOfferDelta(offer);
         setSkus(prev => prev.map(s => (s.id === skuId ? { ...s, offerAmount: normalized } : s)));
         setHasUnsavedChanges(true);
         setLastEditTime(Date.now());
@@ -1058,6 +1069,10 @@ export default function PricingPage() {
                     }
                 }
             } else {
+                if (!tenantId) {
+                    toast.error('Dealer context missing (tenant not resolved). Reload and try again.');
+                    return;
+                }
                 const changedDealerRows = skus.filter(
                     s =>
                         s.offerAmount !== s.originalOfferAmount ||
@@ -1070,16 +1085,30 @@ export default function PricingPage() {
                     tenant_id: tenantId,
                     vehicle_color_id: s.id,
                     state_code: activeStateCode,
-                    offer_amount: clampOfferDelta(s.offerAmount),
+                    offer_amount: normalizeOfferDelta(s.offerAmount),
                     inclusion_type: s.inclusionType,
                     is_active: s.localIsActive,
                     is_popular: s.isPopular || false,
                 }));
 
-                const { error } = await supabase.rpc('upsert_dealer_offers', { offers: offerPayload });
+                if (offerPayload.length === 0) {
+                    setHasUnsavedChanges(false);
+                    setLastSavedAt(Date.now());
+                    return;
+                }
 
-                if (error) {
-                    toast.error(`Failed to save changes: ${getErrorMessage(error)}`);
+                let saveError: unknown = null;
+                const { error: rpcError } = await supabase.rpc('upsert_dealer_offers', { offers: offerPayload });
+                if (rpcError) {
+                    // Fallback for environments where RPC is missing/denied or out-of-sync.
+                    const { error: upsertError } = await supabase
+                        .from('cat_price_dealer')
+                        .upsert(offerPayload, { onConflict: 'tenant_id,vehicle_color_id,state_code' });
+                    saveError = upsertError || rpcError;
+                }
+
+                if (saveError) {
+                    toast.error(`Failed to save changes: ${getErrorMessage(saveError)}`);
                 } else {
                     setHasUnsavedChanges(false);
                     setSkus(prev =>

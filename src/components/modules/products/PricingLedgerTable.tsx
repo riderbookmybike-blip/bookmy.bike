@@ -864,7 +864,7 @@ export default function PricingLedgerTable({
         return Number(sku.rto || 0) > 0 && Number(sku.insurance || 0) > 0;
     };
 
-    const applyPublishStage = (stage: 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED' | 'LIVE' | 'INACTIVE') => {
+    const applyPublishStage = (stage: 'DRAFT' | 'PUBLISHED' | 'LIVE' | 'INACTIVE') => {
         if (!onUpdatePublishStage) return;
         const ids = Array.from(selectedSkuIds);
         if (ids.length === 0) return;
@@ -1001,62 +1001,53 @@ export default function PricingLedgerTable({
                     )}
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0 mr-[18px]">
-                    {/* Permanent Action Icons with Tooltips */}
-                    <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-0.5 gap-0.5 shadow-sm">
-                        {/* Save Button */}
+                <div className="flex items-center gap-1.5 shrink-0 mr-[18px]">
+                    <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1 gap-1 shadow-sm">
                         <button
                             onClick={handleSave}
                             disabled={!hasUnsavedChanges || isSaving || isParentSaving}
-                            className={`p-1.5 rounded transition-all relative group/btn ${hasUnsavedChanges ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50 hover:bg-emerald-700' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}`}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                                hasUnsavedChanges
+                                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50 hover:bg-emerald-700'
+                                    : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                            }`}
                         >
                             {isSaving || isParentSaving ? (
                                 <Loader2 size={12} className="animate-spin" />
                             ) : (
                                 <Save size={12} />
                             )}
-                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                Save All Changes
-                            </div>
+                            <span>Save</span>
                         </button>
 
                         {isAums && (
                             <>
                                 <div className="w-px h-3 bg-slate-100 dark:bg-slate-800 mx-0.5" />
 
-                                {/* Select Model */}
-                                <button
-                                    onClick={selectAllForModel}
-                                    className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all relative group/btn"
-                                >
-                                    <Layers size={12} />
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                        Select All for Product
-                                    </div>
-                                </button>
-
-                                {/* Publish */}
                                 <button
                                     onClick={() => applyPublishStage('PUBLISHED')}
                                     disabled={selectedSkuIds.size === 0}
-                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                                        selectedSkuIds.size > 0
+                                            ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                                            : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                                    }`}
                                 >
                                     <Send size={12} />
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                        Mark Selected Published
-                                    </div>
+                                    <span>Publish</span>
                                 </button>
 
-                                {/* Activate */}
                                 <button
                                     onClick={() => applyPublishStage('LIVE')}
                                     disabled={selectedSkuIds.size === 0}
-                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                                        selectedSkuIds.size > 0
+                                            ? 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                                            : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                                    }`}
                                 >
                                     <Rocket size={12} />
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                        Activate Selected (Live)
-                                    </div>
+                                    <span>Mark Active</span>
                                 </button>
                             </>
                         )}
@@ -1065,22 +1056,14 @@ export default function PricingLedgerTable({
                             <>
                                 <div className="w-px h-3 bg-slate-100 dark:bg-slate-800 mx-0.5" />
 
-                                {/* Select Model */}
-                                <button
-                                    onClick={selectAllForModel}
-                                    className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all relative group/btn"
-                                >
-                                    <Layers size={12} />
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                        Select All for Product
-                                    </div>
-                                </button>
-
-                                {/* Bulk Activate */}
                                 <button
                                     onClick={() => applyLocalStatus(true)}
                                     disabled={selectedSkuIds.size === 0}
-                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                                        selectedSkuIds.size > 0
+                                            ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                                            : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                                    }`}
                                 >
                                     <CheckCircle2 size={12} />
                                     {selectedSkuIds.size > 0 && (
@@ -1088,21 +1071,20 @@ export default function PricingLedgerTable({
                                             {selectedSkuIds.size}
                                         </span>
                                     )}
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                        Activate Selected
-                                    </div>
+                                    <span>Activate</span>
                                 </button>
 
-                                {/* Bulk Deactivate */}
                                 <button
                                     onClick={() => applyLocalStatus(false)}
                                     disabled={selectedSkuIds.size === 0}
-                                    className={`p-1.5 rounded transition-all relative group/btn ${selectedSkuIds.size > 0 ? 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20' : 'text-slate-200 dark:text-slate-800 cursor-not-allowed'}`}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                                        selectedSkuIds.size > 0
+                                            ? 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20'
+                                            : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                                    }`}
                                 >
                                     <XCircle size={12} />
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                        Deactivate Selected
-                                    </div>
+                                    <span>Deactivate</span>
                                 </button>
                             </>
                         )}
@@ -1112,12 +1094,10 @@ export default function PricingLedgerTable({
                         <button
                             onClick={handleExportPDF}
                             disabled={isExporting}
-                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all relative group/btn"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md transition-all"
                         >
                             {isExporting ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
-                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[9px] font-bold rounded opacity-0 invisible group-hover/btn:opacity-100 group-hover/btn:visible transition-all whitespace-nowrap z-50">
-                                Export PDF
-                            </div>
+                            <span>Export PDF</span>
                         </button>
                     </div>
                 </div>
@@ -1151,10 +1131,10 @@ export default function PricingLedgerTable({
                                         const currentFilter = filters[dataKey];
                                         const isActive = activeFilterColumn === key; // Use visual key for UI state
                                         const statusLabels: Record<string, string> = {
-                                            ACTIVE: 'Live',
-                                            DRAFT: 'New',
+                                            ACTIVE: 'Active',
+                                            DRAFT: 'Draft',
                                             INACTIVE: 'Inactive',
-                                            RELAUNCH: 'Relaunch',
+                                            RELAUNCH: 'Active',
                                         };
 
                                         return (
@@ -1440,6 +1420,13 @@ export default function PricingLedgerTable({
                                         stateRtoData?.road_tax ||
                                         0;
                                     const tpAmount = sku.insurance_data?.tp?.total || 0;
+                                    const computedOnRoad = Math.round(
+                                        Number(sku.exShowroom || 0) + Number(sku.rto || 0) + Number(sku.insurance || 0)
+                                    );
+                                    const storedOnRoad = Math.round(Number(sku.onRoad || 0));
+                                    const onRoadDelta = storedOnRoad - computedOnRoad;
+                                    const hasOnRoadMismatch =
+                                        activeCategory === 'vehicles' && Math.abs(onRoadDelta) > 0;
 
                                     return (
                                         <tr
@@ -2032,12 +2019,58 @@ export default function PricingLedgerTable({
                                                         )}
                                                     </td>
                                                     {!isAums && (
-                                                        <td className="px-2 py-1 text-center">
-                                                            <span className="font-bold text-[11px] text-slate-400 dark:text-slate-500">
-                                                                {sku.onRoad
-                                                                    ? `₹${Math.round(sku.onRoad).toLocaleString()}`
-                                                                    : '—'}
-                                                            </span>
+                                                        <td className="px-2 py-1 text-center relative group/onroad">
+                                                            {(() => {
+                                                                const ex = Number(sku.exShowroom || 0);
+                                                                const rto = Number(sku.rto || 0);
+                                                                const insurance = Number(sku.insurance || 0);
+                                                                const computed = computedOnRoad;
+                                                                const stored = storedOnRoad;
+                                                                const delta = onRoadDelta;
+                                                                return (
+                                                                    <>
+                                                                        <span
+                                                                            className={`font-bold text-[11px] cursor-help border-b border-dotted ${
+                                                                                delta === 0
+                                                                                    ? 'text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700'
+                                                                                    : 'text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-700'
+                                                                            }`}
+                                                                            title={`On-Road = Ex-Showroom + RTO + Insurance\n₹${ex.toLocaleString('en-IN')} + ₹${rto.toLocaleString('en-IN')} + ₹${insurance.toLocaleString('en-IN')} = ₹${computed.toLocaleString('en-IN')}\nStored: ₹${stored.toLocaleString('en-IN')}\nDelta: ${delta >= 0 ? '+' : '-'}₹${Math.abs(delta).toLocaleString('en-IN')}`}
+                                                                        >
+                                                                            {sku.onRoad
+                                                                                ? `₹${stored.toLocaleString('en-IN')}`
+                                                                                : '—'}
+                                                                        </span>
+                                                                        <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[260px] p-2.5 rounded-xl bg-white border border-slate-200 shadow-[0_8px_32px_rgba(0,0,0,0.12)] opacity-0 invisible group-hover/onroad:opacity-100 group-hover/onroad:visible transition-all duration-200 pointer-events-none text-left">
+                                                                            <p className="text-[8px] font-black uppercase tracking-widest text-emerald-600 mb-1">
+                                                                                On-Road Formula
+                                                                            </p>
+                                                                            <p className="text-[9px] font-bold text-slate-700">
+                                                                                ₹{ex.toLocaleString('en-IN')} + ₹
+                                                                                {rto.toLocaleString('en-IN')} + ₹
+                                                                                {insurance.toLocaleString('en-IN')} = ₹
+                                                                                {computed.toLocaleString('en-IN')}
+                                                                            </p>
+                                                                            <p className="text-[8px] font-bold text-slate-500 mt-1">
+                                                                                Stored: ₹
+                                                                                {stored.toLocaleString('en-IN')}
+                                                                            </p>
+                                                                            <p
+                                                                                className={`text-[8px] font-black mt-0.5 ${
+                                                                                    delta === 0
+                                                                                        ? 'text-emerald-600'
+                                                                                        : 'text-rose-600'
+                                                                                }`}
+                                                                            >
+                                                                                Delta: {delta >= 0 ? '+' : '-'}₹
+                                                                                {Math.abs(delta).toLocaleString(
+                                                                                    'en-IN'
+                                                                                )}
+                                                                            </p>
+                                                                        </div>
+                                                                    </>
+                                                                );
+                                                            })()}
                                                         </td>
                                                     )}
                                                 </>
@@ -2127,28 +2160,36 @@ export default function PricingLedgerTable({
 
                                             <td className="px-3 py-1.5 text-center bg-emerald-50/20 dark:bg-emerald-900/10">
                                                 {isAums ? (
-                                                    <span className="font-bold text-[11px] text-emerald-700 dark:text-emerald-400 tracking-tight">
-                                                        {activeCategory === 'vehicles'
-                                                            ? sku.onRoad
-                                                                ? `₹${Math.round(sku.onRoad).toLocaleString()}`
-                                                                : '—'
-                                                            : `₹${Math.round(sku.exShowroom).toLocaleString()}`}
-                                                    </span>
+                                                    <div className="inline-flex items-center gap-1.5">
+                                                        <span
+                                                            className={`font-bold text-[11px] tracking-tight cursor-help ${
+                                                                hasOnRoadMismatch
+                                                                    ? 'text-rose-600 dark:text-rose-400'
+                                                                    : 'text-emerald-700 dark:text-emerald-400'
+                                                            }`}
+                                                            title={
+                                                                activeCategory === 'vehicles'
+                                                                    ? `On-Road = Ex-Showroom + RTO + Insurance\n₹${Number(sku.exShowroom || 0).toLocaleString('en-IN')} + ₹${Number(sku.rto || 0).toLocaleString('en-IN')} + ₹${Number(sku.insurance || 0).toLocaleString('en-IN')} = ₹${computedOnRoad.toLocaleString('en-IN')}\nStored: ₹${storedOnRoad.toLocaleString('en-IN')}\nDelta: ${onRoadDelta >= 0 ? '+' : '-'}₹${Math.abs(onRoadDelta).toLocaleString('en-IN')}`
+                                                                    : ''
+                                                            }
+                                                        >
+                                                            {activeCategory === 'vehicles'
+                                                                ? sku.onRoad
+                                                                    ? `₹${storedOnRoad.toLocaleString()}`
+                                                                    : '—'
+                                                                : `₹${Math.round(sku.exShowroom).toLocaleString()}`}
+                                                        </span>
+                                                        {hasOnRoadMismatch && (
+                                                            <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800">
+                                                                Mismatch
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <div className="flex items-center justify-center gap-1">
                                                         <input
                                                             type="number"
                                                             step={1}
-                                                            min={
-                                                                (activeCategory === 'vehicles'
-                                                                    ? sku.onRoad || 0
-                                                                    : sku.exShowroom) - 25000
-                                                            }
-                                                            max={
-                                                                (activeCategory === 'vehicles'
-                                                                    ? sku.onRoad || 0
-                                                                    : sku.exShowroom) + 25000
-                                                            }
                                                             value={
                                                                 editingOfferSkuId === sku.id
                                                                     ? editingOfferValue
@@ -2161,8 +2202,8 @@ export default function PricingLedgerTable({
                                                             readOnly={!canEdit}
                                                             title={
                                                                 activeCategory === 'vehicles'
-                                                                    ? "Dealer's Offer On Road price to customer. Delta range: -25000 to +25000."
-                                                                    : "Dealer's Final Price for this item. Delta range: -25000 to +25000."
+                                                                    ? "Dealer's Offer On Road price to customer."
+                                                                    : "Dealer's Final Price for this item."
                                                             }
                                                             onFocus={() => {
                                                                 const displayVal = Math.round(
@@ -2276,40 +2317,29 @@ export default function PricingLedgerTable({
 
                                             <td className="px-3 py-1.5 text-right w-[90px] relative">
                                                 {(() => {
-                                                    const state = isAums
+                                                    const rawState = isAums
                                                         ? sku.displayState || 'Draft'
                                                         : sku.localIsActive
-                                                          ? 'Live'
+                                                          ? 'Active'
                                                           : 'Inactive';
-                                                    const displayLabel = !isAums
-                                                        ? state === 'Live'
+                                                    const state =
+                                                        rawState === 'Live'
                                                             ? 'Active'
-                                                            : 'Inactive'
-                                                        : state;
+                                                            : rawState === 'In Review'
+                                                              ? 'Draft'
+                                                              : rawState;
+                                                    const displayLabel = state;
                                                     const styleMap: Record<string, string> = {
                                                         Published:
                                                             'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
-                                                        Live: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
-                                                        'In Review':
-                                                            'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+                                                        Active: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
                                                         Draft: 'bg-slate-50 text-slate-500 border-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
                                                         Inactive:
                                                             'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800',
                                                     };
                                                     const isOpen = openStatusDropdownId === sku.id;
-                                                    const baseOptions = [
-                                                        'Draft',
-                                                        'In Review',
-                                                        'Published',
-                                                        'Live',
-                                                        'Inactive',
-                                                    ];
                                                     const statusOptions = isAums
-                                                        ? state === 'In Review'
-                                                            ? ['Published']
-                                                            : state === 'Published'
-                                                              ? ['Live']
-                                                              : baseOptions
+                                                        ? ['Draft', 'Active', 'Published', 'Inactive']
                                                         : ['Active', 'Inactive'];
                                                     const selectedOpt = isAums ? state : displayLabel;
                                                     return (
@@ -2358,10 +2388,8 @@ export default function PricingLedgerTable({
                                                                                                 string
                                                                                             > = {
                                                                                                 Draft: 'DRAFT',
-                                                                                                'In Review':
-                                                                                                    'UNDER_REVIEW',
+                                                                                                Active: 'LIVE',
                                                                                                 Published: 'PUBLISHED',
-                                                                                                Live: 'LIVE',
                                                                                                 Inactive: 'INACTIVE',
                                                                                             };
                                                                                             if (
@@ -2414,9 +2442,7 @@ export default function PricingLedgerTable({
                                                                                             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                                                                                     }`}
                                                                                 >
-                                                                                    {isAums && opt === 'Live'
-                                                                                        ? 'Active'
-                                                                                        : opt}
+                                                                                    {opt}
                                                                                     {selectedOpt === opt && (
                                                                                         <CheckCircle2 size={12} />
                                                                                     )}
@@ -2503,10 +2529,10 @@ export default function PricingLedgerTable({
                         const currentFilter = filters[dataKey];
                         const values = getUniqueValues(dataKey);
                         const statusLabels: Record<string, string> = {
-                            ACTIVE: 'Live',
-                            DRAFT: 'New',
+                            ACTIVE: 'Active',
+                            DRAFT: 'Draft',
                             INACTIVE: 'Inactive',
-                            RELAUNCH: 'Relaunch',
+                            RELAUNCH: 'Active',
                         };
                         const displayLabel =
                             colKey === 'engineCc'

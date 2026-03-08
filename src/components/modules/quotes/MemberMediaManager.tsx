@@ -228,6 +228,13 @@ export default function MemberMediaManager({ memberId, quoteId, onUpdate, onDocC
         try {
             const { removeBackground } = await import('@imgly/background-removal');
             const imageResponse = await fetch(signedUrls[selectedDoc.id]);
+            if (!imageResponse.ok) {
+                throw new Error(`Image fetch failed: ${imageResponse.status} ${imageResponse.statusText}`);
+            }
+            const contentType = imageResponse.headers.get('content-type') || '';
+            if (!contentType.startsWith('image/')) {
+                throw new Error(`Expected image response, got "${contentType || 'unknown'}"`);
+            }
             const imageBlob = await imageResponse.blob();
 
             const resultBlob = await removeBackground(imageBlob);

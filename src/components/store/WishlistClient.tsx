@@ -7,13 +7,14 @@ import { useRouter } from 'next/navigation';
 import { Heart, ArrowRight, Plus, Search, X, ChevronDown, ChevronRight, Menu } from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
-import { ProductCard } from '@/components/store/desktop/ProductCard';
+import { FavoritesCardAdapter } from '@/components/store/cards/VehicleCardAdapters';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { DiscoveryBar } from '@/components/store/DiscoveryBar';
 import { CatalogGridSkeleton } from '@/components/store/CatalogSkeleton';
 import { buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 import { FilterChip } from '@/components/store/ui/FilterChip';
+import { VEHICLE_MODE_CONFIG, getSafeViewMode } from '@/components/store/cards/vehicleModeConfig';
 
 // Filter Group Component (Extracted)
 const FilterGroup = ({
@@ -123,7 +124,7 @@ export const WishlistClient = () => {
     const [activeCategory, setActiveCategory] = useState<'ALL' | 'MOTORCYCLE' | 'SCOOTER' | 'MOPED'>('ALL');
     const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
     const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>('finance');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.favorites.defaultView);
 
     // Map favorites to full ProductVariant data from catalog
     const wishlistItems = useMemo(() => {
@@ -252,11 +253,10 @@ export const WishlistClient = () => {
 
     // ── Comparison Logic: All/Top filtered ──
     const handleCompareAll = () => {
-        // Take first 5 items from filtered list as requested (safety limit)
-        const ids = filteredItems.slice(0, 5).map(v => v.id);
+        const ids = filteredItems.slice(0, VEHICLE_MODE_CONFIG.favorites.compareCap).map(v => v.id);
         if (ids.length === 0) return;
         startTransition(() => {
-            router.push(`/store/compare?tab=studio&items=${ids.join(',')}`);
+            router.push(`/store/compare/studio?items=${ids.join(',')}`);
         });
     };
 
@@ -283,7 +283,7 @@ export const WishlistClient = () => {
                 </div>
 
                 <h2 className="text-4xl font-black uppercase italic tracking-tighter text-slate-900 mb-4">
-                    Your Wishlist is Empty
+                    Your Favorites are Empty
                 </h2>
                 <p className="max-w-[40ch] text-slate-500 font-medium text-lg mb-10 leading-relaxed">
                     Bring home your dream ride. Start exploring our premium collection and save your favorites.
@@ -309,9 +309,11 @@ export const WishlistClient = () => {
                 pricingMode={pricingMode}
                 onPricingModeChange={mode => setPricingMode(mode as any)}
                 viewMode={viewMode}
-                onViewModeChange={setViewMode}
+                allowedViewModes={VEHICLE_MODE_CONFIG.favorites.allowedViews}
+                onViewModeChange={mode => setViewMode(getSafeViewMode('favorites', mode))}
                 onCompareClick={handleCompareAll}
-                compareCount={filteredItems.length > 5 ? 5 : filteredItems.length}
+                compareCap={VEHICLE_MODE_CONFIG.favorites.compareCap}
+                compareCount={Math.min(filteredItems.length, VEHICLE_MODE_CONFIG.favorites.compareCap)}
             />
 
             {/* 2. Mobile Search Bar (Sticky) */}
@@ -356,7 +358,7 @@ export const WishlistClient = () => {
                         <span className="text-[9px] font-black uppercase tracking-widest">Compare</span>
                         {filteredItems.length > 0 && (
                             <span className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[7px] font-black rounded-full px-0.5">
-                                {filteredItems.length > 5 ? 5 : filteredItems.length}
+                                {Math.min(filteredItems.length, VEHICLE_MODE_CONFIG.favorites.compareCap)}
                             </span>
                         )}
                     </button>
@@ -419,8 +421,8 @@ export const WishlistClient = () => {
                     {filteredItems.length > 0 ? (
                         filteredItems.map(v => (
                             <div key={v.id} className="transition-transform duration-200">
-                                <ProductCard
-                                    v={v}
+                                <FavoritesCardAdapter
+                                    variant={v}
                                     viewMode={viewMode}
                                     downpayment={downpayment}
                                     tenure={tenure}
@@ -479,7 +481,7 @@ export const WishlistClient = () => {
                         <div className="flex-shrink-0 py-8 border-b border-slate-100 flex items-center justify-between">
                             <div>
                                 <h3 className="text-3xl font-black text-slate-900 tracking-widest italic uppercase">
-                                    Filter Wishlist
+                                    Filter Favorites
                                 </h3>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">
                                     Refine your personal collection
