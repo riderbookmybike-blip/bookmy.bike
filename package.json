@@ -14,7 +14,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "typecheck:scripts": "tsc -p tsconfig.scripts.json --noEmit"
+    "typecheck:scripts": "tsc -p tsconfig.scripts.json --noEmit",
+    "spec:review:build": "tsx scripts/spec_review_queue_build.ts",
+    "spec:review:run": "tsx scripts/spec_review_queue_review.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

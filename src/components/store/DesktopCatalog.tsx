@@ -247,7 +247,7 @@ export const DesktopCatalog = ({
     // Local State
     const isSmart = mode === 'smart';
     const [sortBy] = useState<'popular' | 'price' | 'emi'>('popular');
-    const viewMode = 'grid' as 'grid' | 'list';
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -1160,9 +1160,7 @@ export const DesktopCatalog = ({
                     </div>
                 </div>
             )}
-            <div
-                className={`flex-1 store-page-shell pt-[var(--header-h)] ${isTv ? 'md:pt-6' : isPhone ? 'pt-2' : ''} ${showLocationGate ? 'pointer-events-none select-none' : ''}`}
-            >
+            <div className={`flex-1 store-page-shell ${showLocationGate ? 'pointer-events-none select-none' : ''}`}>
                 <DiscoveryBar
                     className={
                         isTv
@@ -1179,6 +1177,8 @@ export const DesktopCatalog = ({
                         setPricingMode(mode as any);
                         if (mode === 'finance') openDpEdit();
                     }}
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
                     centerContent={
                         <>
                             {/* Body type quick-filter pills — show when no search is typed */}

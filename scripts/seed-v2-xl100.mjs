@@ -3,6 +3,7 @@
  */
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { enforceVehicleSpecGate } from './specGate.mjs';
 const c = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const TVS = 'aff9a671-6e98-4d7e-8af1-b7823238a00e';
@@ -34,12 +35,8 @@ for (let vi = 0; vi < legacyVariants.length; vi++) {
     // Parse numeric values
     const parseNum = (v) => { const n = parseFloat(String(v)); return isNaN(n) ? null : n; };
 
-    const variantPayload = {
-        model_id: model.id,
-        name: lv.name,
-        slug: lv.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-        position: vi,
-        status: 'ACTIVE',
+    const gatedSpecs = enforceVehicleSpecGate(
+        {
         engine_type: sp.engine_type || 'Single Cylinder, 4 Stroke',
         displacement: parseNum(sp.displacement) || 99.7,
         max_power: sp.max_power || null,
@@ -67,6 +64,17 @@ for (let vi = 0; vi < legacyVariants.length; vi++) {
         front_tyre: sp.front_tyre || null,
         rear_tyre: sp.rear_tyre || null,
         tyre_type: sp.tyre_type === 'Tube Type' ? 'Tube Type' : 'Tubeless',
+        },
+        `seed-v2-xl100:${lv.name}`
+    );
+
+    const variantPayload = {
+        model_id: model.id,
+        name: lv.name,
+        slug: lv.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+        position: vi,
+        status: 'ACTIVE',
+        ...gatedSpecs,
     };
 
     const { data: variant, error: vErr } = await c.from('cat_variants_vehicle')

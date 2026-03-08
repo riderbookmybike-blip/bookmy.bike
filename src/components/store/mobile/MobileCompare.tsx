@@ -112,12 +112,8 @@ export function MobileCompare() {
             const dSpecs: any[] = [];
             const rSpecs: any[] = [];
             cat.specs.forEach(sp => {
-                const vals = new Set(
-                    activeVariants.map(v =>
-                        formatSpecValue(flattenObject(v.specifications || {})[sp.key] || 'N/A').toLowerCase()
-                    )
-                );
-                if (vals.size > 1 && !vals.has('n/a')) {
+                // Use the isDifferent flag pre-calculated in computeSpecRows
+                if (sp.isDifferent) {
                     dSpecs.push(sp);
                     diffCount++;
                 } else {
@@ -128,7 +124,7 @@ export function MobileCompare() {
             if (rSpecs.length) restSpecs.push({ name: cat.name, specs: rSpecs });
         });
         return { diffSpecs, restSpecs, diffCount };
-    }, [allSpecs, activeVariants]);
+    }, [allSpecs]);
 
     const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => {
         const init: any = {};
@@ -271,20 +267,19 @@ export function MobileCompare() {
                                     {isOpen && (
                                         <div className="divide-y divide-slate-100">
                                             {cat.specs.map(sp => (
-                                                <div key={sp.key} className="px-4 py-3">
+                                                <div key={sp.label} className="px-4 py-3">
                                                     <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
                                                         {sp.label}
                                                     </p>
                                                     <div
                                                         className={`grid gap-2 ${n <= 2 ? 'grid-cols-2' : n === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}
                                                     >
-                                                        {activeVariants.map(v => {
-                                                            const sMap = flattenObject(v.specifications || {});
-                                                            const val = formatSpecValue(sMap[sp.key] || 'N/A');
-                                                            const isMissing = val === 'N/A';
+                                                        {activeVariants.map((v, vIdx) => {
+                                                            const val = sp.values[vIdx] || '—';
+                                                            const isMissing = !val || val === '—';
                                                             return (
                                                                 <div
-                                                                    key={`${v.id}-${sp.key}`}
+                                                                    key={`${v.id}-${sp.label}`}
                                                                     className="bg-slate-50 rounded-xl px-3 py-2 flex flex-col items-center text-center"
                                                                 >
                                                                     <p className="text-[8px] font-bold text-slate-400 truncate w-full mb-1">
@@ -348,13 +343,10 @@ export function MobileCompare() {
                                     {isOpen && (
                                         <div className="divide-y divide-slate-100">
                                             {cat.specs.map(sp => {
-                                                const val = formatSpecValue(
-                                                    flattenObject(activeVariants[0].specifications || {})[sp.key] ||
-                                                        'N/A'
-                                                );
+                                                const val = sp.values[0] || '—';
                                                 return (
                                                     <div
-                                                        key={sp.key}
+                                                        key={sp.label}
                                                         className="px-4 py-3 flex items-center justify-between"
                                                     >
                                                         <p className="text-[10px] font-bold text-slate-500 capitalize">

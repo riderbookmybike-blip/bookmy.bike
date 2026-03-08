@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 import { createClient } from '@supabase/supabase-js';
 import { spawnSync } from 'node:child_process';
+import { enforceVehicleSpecGate } from './specGate.mjs';
 
 const c = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -135,8 +136,9 @@ console.log('\n=== Variants ===');
 const insertedVariants = [];
 
 for (const vDef of variantDefs) {
+    const gatedSpecs = enforceVehicleSpecGate(vDef.specs, `seed-v2-ronin:${vDef.name}`);
     const { data: variant, error: vErr } = await c.from('cat_variants_vehicle')
-        .insert({ model_id: model.id, name: vDef.name, slug: vDef.slug, position: vDef.position, status: 'ACTIVE', ...vDef.specs })
+        .insert({ model_id: model.id, name: vDef.name, slug: vDef.slug, position: vDef.position, status: 'ACTIVE', ...gatedSpecs })
         .select().single();
 
     if (vErr) { console.error(`  ❌ ${vDef.name}:`, vErr.message); continue; }

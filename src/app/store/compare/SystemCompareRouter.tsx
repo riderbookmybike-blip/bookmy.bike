@@ -56,7 +56,7 @@ export function SystemCompareRouter() {
 
     return (
         <div className="pb-6">
-            {activeTab === 'wishlist' && <WishlistClient />}
+            {activeTab === 'wishlist' && <DesktopCompare isWishlist={true} />}
 
             {activeTab === 'studio' && <CompareStudio />}
 

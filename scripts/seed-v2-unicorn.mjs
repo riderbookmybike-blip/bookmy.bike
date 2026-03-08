@@ -3,6 +3,7 @@
  */
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { enforceVehicleSpecGate } from './specGate.mjs';
 const c = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const HONDA = 'dc9d5b00-f90a-4fd5-ada8-304c765af91d';
@@ -19,15 +20,22 @@ if (mErr) { console.error('Model:', mErr.message); process.exit(1); }
 console.log('✅ Model:', model.name, model.id);
 
 // 2. Variant
-const { data: variant, error: vErr } = await c.from('cat_variants_vehicle')
-    .insert({
-        model_id: model.id, name: 'Standard', slug: 'standard', position: 0, status: 'ACTIVE',
+const standardSpecs = enforceVehicleSpecGate(
+    {
         engine_type: 'Single Cylinder, 4 Stroke, SI', displacement: 162.71,
         transmission: 'MANUAL', start_type: 'ELECTRIC',
         front_brake: 'Disc, 240mm', rear_brake: 'Drum, 130mm', braking_system: 'ABS',
         console_type: 'DIGITAL', led_headlamp: true, led_tail_lamp: true,
         usb_charging: false, bluetooth: false, navigation: false,
         front_tyre: '80/100-18', rear_tyre: '100/90-18', tyre_type: 'Tubeless',
+    },
+    'seed-v2-unicorn:Standard'
+);
+
+const { data: variant, error: vErr } = await c.from('cat_variants_vehicle')
+    .insert({
+        model_id: model.id, name: 'Standard', slug: 'standard', position: 0, status: 'ACTIVE',
+        ...standardSpecs,
     }).select().single();
 if (vErr) { console.error('Variant:', vErr.message); process.exit(1); }
 console.log('  ✅ Variant:', variant.name);

@@ -9,6 +9,7 @@
  */
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { enforceVehicleSpecGate } from './specGate.mjs';
 
 const c = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -101,13 +102,14 @@ console.log('\n=== STEP 2: Create Variants ===');
 const insertedVariants = [];
 
 for (const vDef of variantDefs) {
+    const gatedSpecs = enforceVehicleSpecGate(vDef.specs, `seed-v2-jupiter:${vDef.name}`);
     const variantPayload = {
         model_id: model.id,
         name: vDef.name,
         slug: vDef.slug,
         position: vDef.position,
         status: 'ACTIVE',
-        ...vDef.specs,
+        ...gatedSpecs,
     };
 
     const { data: variant, error: vErr } = await c.from('cat_variants_vehicle')

@@ -1,8 +1,16 @@
-/**
- * Shared spec comparison utilities for Desktop and Mobile Compare components.
- * Eliminates ~200 lines of duplicated code between DesktopCompare and MobileCompare.
- */
 import type { ProductVariant } from '@/types/productMaster';
+
+export interface SpecRow {
+    category: string;
+    label: string;
+    values: (string | null)[];
+    isDifferent: boolean;
+}
+
+export interface SpecCategory {
+    name: string;
+    specs: SpecRow[];
+}
 
 // ─── Spec Flattening ─────────────────────────────────────────────
 
@@ -61,13 +69,16 @@ export const LABEL_OVERRIDES: Record<string, string> = {
     abs: 'ABS / Braking',
     cooling: 'Cooling System',
     displacement: 'Displacement (cc)',
+    stroke: 'Engine Stroke',
+    valves: 'No. of Valves',
+    cylinders: 'Cylinders',
+    valvetrain: 'Valve Train',
+    induction: 'Fuel System',
+    type_detail: 'Engine Details',
     segment: 'Vehicle Segment',
     tripmeter: 'Tripmeter',
     killSwitch: 'Kill Switch',
     killswitch: 'Kill Switch',
-    // ⚠️  'type' is intentionally omitted as a short-key fallback
-    //     to avoid false matches (e.g., tyres.type → "Engine Type").
-    //     All 'type' labels are handled via full-path overrides below.
 
     // ── Brakes ──────────────────────────────────────────────────────
     'brakes.front': 'Front Brake',
@@ -79,7 +90,7 @@ export const LABEL_OVERRIDES: Record<string, string> = {
     // ── Tyres ────────────────────────────────────────────────────────
     'tyres.front': 'Front Tyre',
     'tyres.rear': 'Rear Tyre',
-    'tyres.type': 'Tyre Type', // ← was "Engine Type" bug — fixed
+    'tyres.type': 'Tyre Type',
     'tyres.frontWheelSize': 'Front Wheel Size',
     'tyres.rearWheelSize': 'Rear Wheel Size',
     'tyres.wheelType': 'Wheel Type',
@@ -127,8 +138,8 @@ export const LABEL_OVERRIDES: Record<string, string> = {
     'warranty.km': 'Warranty (km)',
     'warranty.period': 'Warranty Period',
     'warranty.type': 'Warranty Type',
-    years: 'Warranty (Years)', // top-level fallback
-    distance: 'Warranty (km)', // top-level fallback
+    years: 'Warranty (Years)',
+    distance: 'Warranty (km)',
 
     // ── Features ──────────────────────────────────────────────────────
     'features.bluetooth': 'Bluetooth',
@@ -147,105 +158,167 @@ export const LABEL_OVERRIDES: Record<string, string> = {
     'features.tripmeter': 'Tripmeter',
     'features.serviceInterval': 'Service Interval',
 
-    // ── Ambiguous short keys — kept only where truly unambiguous ──────
     front: 'Front',
     rear: 'Rear',
 };
 
 export function labelFromKey(key: string): string {
-    // 1. Check full dotted-path first (most specific, avoids 'Front' / 'Rear' ambiguity)
     if (LABEL_OVERRIDES[key]) return LABEL_OVERRIDES[key];
-    // 2. Check last segment
     const last = key.split('.').pop() || key;
     if (LABEL_OVERRIDES[last]) return LABEL_OVERRIDES[last];
-    // 3. Humanize camelCase
     return last.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, s => s.toUpperCase());
 }
 
 export function categoryFromKey(key: string): string {
     const first = key.split('.')[0] || key;
-    return first.replace(/^./, s => s.toUpperCase());
+    const cat = first.charAt(0).toUpperCase() + first.slice(1);
+    const valid = [
+        'Engine',
+        'Battery',
+        'Transmission',
+        'Brakes',
+        'Suspension',
+        'Tyres',
+        'Dimensions',
+        'Features',
+        'Other',
+    ];
+    return valid.includes(cat) ? cat : 'Other';
+}
+
+// ─── Value Validation & Placeholders ─────────────────────────────
+
+export function isValuableSpec(val: string | null | undefined): boolean {
+    if (val === null || val === undefined) return false;
+    const s = String(val).trim().toLowerCase();
+    if (!s || s === '' || s === '—') return false;
+
+    const PLACEHOLDERS = new Set([
+        'na',
+        'n/a',
+        '-',
+        'null',
+        'undefined',
+        'tbd',
+        'coming soon',
+        'none',
+        'false',
+        'no',
+        'not available',
+        'no available info',
+    ]);
+    return !PLACEHOLDERS.has(s);
+}
+
+// ─── Metric Normalization ──────────────────────────────────────────
+
+export function normalizePower(val: string): string {
+    const s = val.trim();
+    if (!s || s === '—') return s;
+    if (s.includes(' / ')) return s; // Protect
+
+    const valueMatch = s.match(/([\d,.]+)\s*(kW|PS|bhp)/i);
+    if (!valueMatch) return s;
+
+    const v = parseFloat(valueMatch[1].replace(/,/g, ''));
+    const unit = valueMatch[2].toLowerCase();
+
+    let rest = '';
+    const rpmMatch = s.match(/(@[\s\S]*)$/i);
+    if (rpmMatch) rest = rpmMatch[1].trim();
+
+    if (isNaN(v)) return s;
+
+    let kw: number;
+    if (unit === 'kw') kw = v;
+    else if (unit === 'ps') kw = v / 1.35962;
+    else kw = v / 1.34102;
+
+    const ps = kw * 1.35962;
+    const bhp = kw * 1.34102;
+
+    const f = (n: number) =>
+        n.toLocaleString('en-IN', {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 2,
+        });
+
+    return `${f(ps)} PS / ${f(kw)} kW / ${f(bhp)} bhp${rest ? ` ${rest}` : ''}`;
+}
+
+export function decomposeModes(val: string | null): { mode: string; value: string; originalIdx: number }[] {
+    if (!val) return [];
+    const s = val.trim();
+
+    if (s.includes(' / ') && !s.includes('PS /')) {
+        const parts = s.split(' / ');
+        return parts.map((part, idx) => {
+            const modeMatch = part.match(/\(([^)]+)\)/);
+            let mode = modeMatch ? modeMatch[1] : 'Standard';
+            return {
+                mode,
+                value: part.replace(/\([^)]+\)/, '').trim(),
+                originalIdx: idx,
+            };
+        });
+    }
+
+    return [{ mode: 'Standard', value: s, originalIdx: 0 }];
+}
+
+export function normalizeTorque(val: string): string {
+    const s = val.trim();
+    if (!s || s === '—') return s;
+    if (s.includes(' Nm') && s.includes('@')) return s;
+
+    if (s.includes(' / ')) {
+        return s
+            .split(' / ')
+            .map(part => normalizeTorque(part))
+            .join(' / ');
+    }
+    return s
+        .replace(/^([\d,.]+)\s*nm/i, '$1 Nm')
+        .replace(/@\s*([\d,.]+)/i, '@ $1')
+        .replace(/(\d+)\s*rpm/i, '$1 rpm');
 }
 
 // ─── Value Formatting ─────────────────────────────────────────────
 
-export function formatSpecValue(val: string | null): string {
+export function formatSpecValue(val: string | null, label?: string): string {
     if (!val) return '—';
+    const l = label?.toLowerCase() || '';
+    const isSplitRow = (l.includes('power') || l.includes('torque')) && l.includes('(');
+
+    if (l.includes('power') && !isSplitRow) return normalizePower(val);
+    if (l.includes('torque') && !isSplitRow) return normalizeTorque(val);
+
     const lower = val.trim().toLowerCase();
     if (lower === 'true' || lower === 'yes') return 'Yes';
     if (lower === 'false' || lower === 'no') return 'No';
 
     const VALUE_OVERRIDES: Record<string, string> = {
-        // ── Starting Method ───────────────────────────────────────────
         KICK_AND_ELECTRIC: 'Electric & Kick',
         ELECTRIC_AND_KICK: 'Electric & Kick',
         KICK: 'Kick Only',
         ELECTRIC: 'Electric Only',
-        SELF_START: 'Electric Only', // Self Start = Electric Only
-        'Self Start': 'Electric Only', // DB literal value
+        SELF_START: 'Electric Only',
+        'Self Start': 'Electric Only',
         'Electric Start': 'Electric Only',
         'Kick Start': 'Kick Only',
-        'Kick And Electric': 'Electric & Kick',
-        // ── Console ───────────────────────────────────────────────────
-        DIGITAL_TFT: 'Digital TFT',
-        DIGITAL_LCD: 'Digital LCD',
-        DIGITAL: 'Digital',
         ANALOG: 'Analog',
-        // ── Brakes ────────────────────────────────────────────────────
-        COMBI_BRAKE: 'Combi Brake',
-        SINGLE_CHANNEL_ABS: 'Single Channel ABS',
-        DUAL_CHANNEL_ABS: 'Dual Channel ABS',
-        DISC_DRUM: 'Disc + Drum',
-        DRUM_DRUM: 'Drum + Drum',
-        DISC_DISC: 'Disc + Disc',
-        SBT: 'Combi Brake',
-        CBS: 'Combi Brake',
-        ABS: 'ABS',
-        // ── Tyres ─────────────────────────────────────────────────────
-        TUBELESS: 'Tubeless',
-        TUBE_TYPE: 'Tube Type',
-        ALLOY: 'Alloy',
-        SPOKE: 'Spoke',
-        STEEL: 'Steel',
-        // ── Transmission ──────────────────────────────────────────────
-        CVT: 'CVT (Automatic)',
-        MANUAL: 'Manual',
-        // ── Cooling ───────────────────────────────────────────────────
-        AIR_COOLED: 'Air Cooled',
-        LIQUID_COOLED: 'Liquid Cooled',
-        OIL_COOLED: 'Oil Cooled',
-        // ── Suspension / Chassis ──────────────────────────────────────
+        DIGITAL: 'Digital',
+        DIGITAL_TFT: 'Digital TFT',
+        LCD_TFT: 'LCD TFT',
+        SEMI_DIGITAL: 'Semi-Digital',
+        SEMI_DIGITAL_ANALOG: 'Semi-Digital & Analog',
         TELESCOPIC: 'Telescopic',
-        UNDER_BONE: 'Under Bone',
-        DIAMOND: 'Diamond',
-        NONE: 'None',
     };
 
     let display = val.trim();
-
-    // ── Tyre size human-readable formatter ─────────────────────────
-    // Matches patterns like: 90/90-12 54J  |  90/90 - 10 - 50J  |  100/80-14
-    const tyreMatch = display.match(/^(\d+)\/(\d+)\s*[-–]\s*(\d+)\s*[-–]?\s*([0-9]*[A-Z]*)?$/);
-    if (tyreMatch) {
-        const width = tyreMatch[1]; // e.g. 90
-        const rim = tyreMatch[3]; // e.g. 12 or 10
-        const code = tyreMatch[4] ? ` (${tyreMatch[4]})` : '';
-        display = `${width}mm Wide · ${rim}" Rim${code}`;
-        return display;
-    }
-
-    if (VALUE_OVERRIDES[display]) {
-        display = VALUE_OVERRIDES[display];
-    } else if (/^[A-Z][A-Z_]+$/.test(display)) {
-        display = display
-            .split('_')
-            .map(w => w.charAt(0) + w.slice(1).toLowerCase())
-            .join(' ');
-    }
+    if (VALUE_OVERRIDES[display]) return VALUE_OVERRIDES[display];
     return display;
 }
-
-// ─── Synonyms & Normalization ─────────────────────────────────────
 
 export const SPEC_SYNONYMS: Record<string, string> = {
     'dimensions.curbWeight': 'dimensions.kerbWeight',
@@ -267,7 +340,37 @@ export function normalizeForCompare(val: string): string {
     return s;
 }
 
-// ─── Numeric Extraction ───────────────────────────────────────────
+export function extractRPM(val: string): { rpm: string; residue: string } {
+    const rpmMatch = val.match(/(@\s*[\d,.]+\s*(?:rpm)?)/i);
+    if (rpmMatch) {
+        let rpm = rpmMatch[1].trim();
+        if (!rpm.toLowerCase().includes('rpm')) rpm += ' rpm';
+        const residue = val.replace(rpmMatch[0], '').replace(/\s+/g, ' ').trim();
+        return { rpm, residue };
+    }
+    return { rpm: '', residue: val };
+}
+
+export function extractPowerUnitValue(val: string, requestedUnit: string): string {
+    if (!val || !val.includes('/')) return val;
+    const { rpm, residue } = extractRPM(val);
+    const parts = residue.split('/').map(p => p.trim());
+    const matchedPart = parts.find(p => p.toLowerCase().includes(requestedUnit.toLowerCase()));
+    if (!matchedPart) return val;
+    return `${matchedPart.trim()}${rpm ? ` ${rpm}` : ''}`;
+}
+
+export function explodeEngineType(raw: string): Record<string, string> {
+    const parts = raw.split(',').map(p => p.trim());
+    const result: Record<string, string> = {};
+    parts.forEach(p => {
+        const lp = p.toLowerCase();
+        if (lp.includes('stroke')) result['engine.stroke'] = p;
+        else if (lp.includes('cylinder')) result['engine.cylinders'] = p;
+        else if (lp.includes('cooled')) result['engine.cooling'] = p;
+    });
+    return result;
+}
 
 export function extractNumeric(val: string): number | null {
     const match = val.match(/[\d,.]+/);
@@ -276,35 +379,10 @@ export function extractNumeric(val: string): number | null {
     return isNaN(num) ? null : num;
 }
 
-// ─── Spec Row Types ───────────────────────────────────────────────
-
-export type SpecRow = {
-    category: string;
-    label: string;
-    values: (string | null)[];
-    isDifferent: boolean;
-};
-
-export type SpecCategory = {
-    name: string;
-    specs: { label: string; key: string }[];
-};
-
 // ─── Best Value Detection ─────────────────────────────────────────
 
-export const LOWER_IS_BETTER = new Set(['kerbweight', 'curbweight', 'weight', 'chargingtime']);
-
-export const HIGHER_IS_BETTER = new Set([
-    'mileage',
-    'range',
-    'rangekm',
-    'fuelcapacity',
-    'groundclearance',
-    'maxpower',
-    'maxtorque',
-    'displacement',
-    'topspeed',
-]);
+const LOWER_IS_BETTER = new Set(['kerbweight', 'weight', 'chargingtime']);
+const HIGHER_IS_BETTER = new Set(['mileage', 'range', 'maxpower', 'maxtorque']);
 
 export function findBestValueIndex(row: SpecRow): number | null {
     const labelLower = row.label.toLowerCase().replace(/\s+/g, '');
@@ -321,136 +399,160 @@ export function findBestValueIndex(row: SpecRow): number | null {
         if (isLowerBetter && current < best) bestIdx = idx;
         if (isHigherBetter && current > best) bestIdx = idx;
     }
-    const bestVal = numerics[bestIdx]!;
-    if (validIndices.every(i => i === bestIdx || numerics[i] === bestVal)) return null;
     return bestIdx;
 }
 
-// ─── Compute Spec Rows (DesktopCompare format) ────────────────────
+// ─── Categories & Ordering ─────────────────────────────────────────
+
+export const CATEGORY_ORDER = [
+    'Engine',
+    'Battery',
+    'Transmission',
+    'Brakes',
+    'Suspension',
+    'Tyres',
+    'Dimensions',
+    'Features',
+    'Other',
+];
+
+export const SPEC_PRIORITY: Record<string, number> = {
+    'max power': 1,
+    'max torque': 2,
+    displacement: 3,
+    mileage: 4,
+    range: 1,
+    'charging time': 2,
+    'seat height': 1,
+    'ground clearance': 2,
+    'kerb weight': 3,
+};
+
+// ─── Core Compute Functions ───────────────────────────────────────
 
 export function computeSpecRows(variants: ProductVariant[]): SpecRow[] {
     if (variants.length === 0) return [];
-    const flatSpecs = variants.map(v => {
-        const raw = flattenObject((v.specifications || {}) as Record<string, any>);
-        return normalizeFlatSpecs(raw);
-    });
-    const extraFields = ['displacement', 'fuelType', 'bodyType', 'segment'] as const;
-    for (let i = 0; i < variants.length; i++) {
-        for (const field of extraFields) {
-            const val = (variants[i] as any)[field];
-            if (val !== null && val !== undefined && val !== '') {
-                const canonical = SPEC_SYNONYMS[field] || field;
-                if (!flatSpecs[i][canonical]) flatSpecs[i][canonical] = String(val);
+    const flatSpecs = variants.map(v =>
+        normalizeFlatSpecs(flattenObject((v.specifications || {}) as Record<string, any>))
+    );
+    const allKeys = new Set<string>();
+    flatSpecs.forEach(fs =>
+        Object.keys(fs).forEach(k => {
+            if (isValuableSpec(fs[k])) allKeys.add(k);
+        })
+    );
+
+    const rows: SpecRow[] = [];
+    for (const key of allKeys) {
+        const label = labelFromKey(key);
+        const isPowerOrTorque = label.toLowerCase().includes('power') || label.toLowerCase().includes('torque');
+        const rawValues = flatSpecs.map(fs => fs[key] || null);
+        const decomposed = rawValues.map(v => decomposeModes(v));
+
+        if (isPowerOrTorque) {
+            const isPower = label.toLowerCase().includes('power');
+            const subRowsMap: Record<string, { label: string; values: (string | null)[] }> = {};
+            const maxModesAcrossVariants = Math.max(...decomposed.map(d => d.length));
+
+            decomposed.forEach((modes, variantIdx) => {
+                modes.forEach(m => {
+                    const isStandard = m.mode === 'Standard';
+                    // If we have multiple modes and it's standard naming, use "Mode X" for all (including Mode 1)
+                    let modePart = '';
+                    if (!isStandard) {
+                        modePart = ` (${m.mode})`;
+                    } else if (maxModesAcrossVariants > 1) {
+                        modePart = ` (Mode ${m.originalIdx + 1})`;
+                    }
+
+                    const normalizedFull = formatSpecValue(m.value, label);
+
+                    if (isPower && normalizedFull.includes(' / ')) {
+                        const unitMap = { PS: 'PS', Bhp: 'bhp', Kw: 'kW' };
+                        Object.entries(unitMap).forEach(([labelUnit, searchUnit]) => {
+                            const subLabel = `${label} (${labelUnit})${modePart}`;
+                            const unitValue = extractPowerUnitValue(normalizedFull, searchUnit);
+                            if (!subRowsMap[subLabel])
+                                subRowsMap[subLabel] = {
+                                    label: subLabel,
+                                    values: new Array(variants.length).fill(null),
+                                };
+                            subRowsMap[subLabel].values[variantIdx] = unitValue;
+                        });
+                    } else {
+                        const subLabel = `${label}${modePart}`;
+                        if (!subRowsMap[subLabel])
+                            subRowsMap[subLabel] = { label: subLabel, values: new Array(variants.length).fill(null) };
+                        subRowsMap[subLabel].values[variantIdx] = normalizedFull;
+                    }
+                });
+            });
+
+            for (const subRow of Object.values(subRowsMap)) {
+                const values = subRow.values;
+                const normalized = values.map(v => (v ? normalizeForCompare(v) : ''));
+                const isDifferent = !normalized.every(v => v === normalized[0]) || values.some(v => v === null);
+                rows.push({ category: categoryFromKey(key), label: subRow.label, values, isDifferent });
+            }
+        } else {
+            const allModelModes = Array.from(new Set(decomposed.flatMap(d => d.map(m => m.mode))));
+            if (allModelModes.length > 1 || (allModelModes.length === 1 && allModelModes[0] !== 'Standard')) {
+                for (const mode of allModelModes) {
+                    const modeValues = decomposed.map(d => {
+                        const match = d.find(m => m.mode === mode) || d[0];
+                        return match ? match.value : null;
+                    });
+                    const normalized = modeValues.map(v => (v ? normalizeForCompare(v) : ''));
+                    const isDifferent = !normalized.every(v => v === normalized[0]) || modeValues.some(v => v === null);
+                    rows.push({
+                        category: categoryFromKey(key),
+                        label: `${label} (${mode})`,
+                        values: modeValues.map(v => (v ? formatSpecValue(v, label) : null)),
+                        isDifferent,
+                    });
+                }
+            } else {
+                const values = rawValues;
+                const normalized = values.map(v => (v ? normalizeForCompare(v) : ''));
+                const isDifferent = !normalized.every(v => v === normalized[0]) || values.some(v => v === null);
+                rows.push({
+                    category: categoryFromKey(key),
+                    label,
+                    values: values.map(v => (v ? formatSpecValue(v, label) : null)),
+                    isDifferent,
+                });
             }
         }
     }
-    const allKeys = new Set<string>();
-    flatSpecs.forEach(fs => Object.keys(fs).forEach(k => allKeys.add(k)));
-    const rows: SpecRow[] = [];
-    for (const key of allKeys) {
-        const values = flatSpecs.map(fs => fs[key] || null);
-        const nonNull = values.filter((v): v is string => v !== null && v !== '');
-        if (nonNull.length === 0) continue;
-        const normalized = nonNull.map(normalizeForCompare);
-        const allSame = normalized.every(v => v === normalized[0]);
-        const isDifferent = !allSame || nonNull.length < variants.length;
-        rows.push({ category: categoryFromKey(key), label: labelFromKey(key), values, isDifferent });
-    }
-    rows.sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
     return rows;
 }
 
-// ─── Compute Spec Categories (MobileCompare format) ───────────────
-
 export function computeSpecCategories(variants: ProductVariant[]): SpecCategory[] {
-    const allKeys = new Set<string>();
-    const vSpecs = variants.map(v => flattenObject(v.specifications || {}));
-    vSpecs.forEach(sp => Object.keys(sp).forEach(k => allKeys.add(k)));
-
-    const categories: Record<string, { label: string; key: string }[]> = {
-        Engine: [],
-        Transmission: [],
-        Brakes: [],
-        Suspension: [],
-        Battery: [],
-        Dimensions: [],
-        Tyres: [],
-        Features: [],
-        Other: [],
-    };
-
-    Array.from(allKeys).forEach(key => {
-        const p = key.toLowerCase();
-        let cat = 'Other';
-        if (
-            p.includes('engine') ||
-            p.includes('power') ||
-            p.includes('torque') ||
-            p.includes('cylinders') ||
-            p.includes('valves') ||
-            p.includes('stroke') ||
-            p.includes('compression') ||
-            p.includes('cooling') ||
-            p.includes('mileage') ||
-            p.includes('speed') ||
-            p.includes('fuel system')
-        )
-            cat = 'Engine';
-        else if (p.includes('gear') || p.includes('clutch') || p.includes('transmission')) cat = 'Transmission';
-        else if (p.includes('brake') || p.includes('abs') || p.includes('front') || p.includes('rear')) cat = 'Brakes';
-        else if (p.includes('suspension') || p.includes('fork') || p.includes('shock')) cat = 'Suspension';
-        else if (p.includes('battery') || p.includes('range') || p.includes('charging') || p.includes('motor'))
-            cat = 'Battery';
-        else if (
-            p.includes('weight') ||
-            p.includes('height') ||
-            p.includes('clearance') ||
-            p.includes('wheelbase') ||
-            p.includes('length') ||
-            p.includes('width') ||
-            p.includes('capacity') ||
-            p.includes('chassis')
-        )
-            cat = 'Dimensions';
-        else if (p.includes('tyre') || p.includes('wheel')) cat = 'Tyres';
-        else if (
-            p.includes('headlamp') ||
-            p.includes('tail') ||
-            p.includes('indicator') ||
-            p.includes('console') ||
-            p.includes('bluetooth') ||
-            p.includes('usb') ||
-            p.includes('navigation') ||
-            p.includes('seat') ||
-            p.includes('stand')
-        )
-            cat = 'Features';
-
-        categories[cat].push({ label: labelFromKey(key), key });
+    const rows = computeSpecRows(variants);
+    const categories: Record<string, SpecRow[]> = {};
+    CATEGORY_ORDER.forEach(name => {
+        categories[name] = [];
+    });
+    rows.forEach(row => {
+        const cat = CATEGORY_ORDER.includes(row.category) ? row.category : 'Other';
+        categories[cat].push(row);
     });
 
-    const orderedCats = [
-        'Engine',
-        'Battery',
-        'Transmission',
-        'Brakes',
-        'Suspension',
-        'Tyres',
-        'Dimensions',
-        'Features',
-        'Other',
-    ];
-    return orderedCats
-        .map(name => ({
-            name,
-            specs: categories[name].sort((a, b) => a.label.localeCompare(b.label)),
-        }))
-        .filter(c => c.specs.length > 0);
+    return CATEGORY_ORDER.map(name => ({
+        name,
+        specs: categories[name].sort((a, b) => {
+            const al = a.label.toLowerCase();
+            const bl = b.label.toLowerCase();
+            const pa = SPEC_PRIORITY[al] || 999;
+            const pb = SPEC_PRIORITY[bl] || 999;
+            if (pa !== pb) return pa - pb;
+            return al.localeCompare(bl);
+        }),
+    })).filter(c => c.specs.length > 0);
 }
 
-// ─── Pricing Helpers ─────────────────────────────────────────────
+// ─── Pricing & Unit Maps ─────────────────────────────────────────
 
-// Re-export from centralized source
 export { EMI_FACTORS, getEmiFactor } from '@/lib/constants/pricingConstants';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 
@@ -463,46 +565,24 @@ export function getEmi(v: ProductVariant, downpayment = 15000, tenure = 36): num
     return Math.max(0, Math.round(loan * getEmiFactor(tenure)));
 }
 
-// ─── Unit Maps ───────────────────────────────────────────────────
-
 export const UNIT_MAP: Record<string, string> = {
-    'arai mileage': 'km/l',
     mileage: 'km/l',
     'seat height': 'mm',
     'ground clearance': 'mm',
     wheelbase: 'mm',
     'kerb weight': 'kg',
     'fuel capacity': 'L',
-    'overall length': 'mm',
-    'overall width': 'mm',
-    'overall height': 'mm',
 };
 
-export const NUMERIC_BAR_SPECS = new Set([
-    'arai mileage',
-    'mileage',
-    'seat height',
-    'ground clearance',
-    'kerb weight',
-    'fuel capacity',
-    'top speed',
-    'max power',
-    'max torque',
-    'displacement',
-    'overall length',
-    'overall width',
-    'overall height',
-    'wheelbase',
-]);
+export const NUMERIC_BAR_SPECS = ['max power', 'max torque', 'displacement', 'mileage', 'top speed', 'kerb weight'];
 
-export function getBarPercent(val: string | null, allValues: (string | null)[]): number | null {
-    if (!val) return null;
-    const num = extractNumeric(val);
-    if (num === null) return null;
-    const nums = allValues.map(v => (v ? extractNumeric(v) : null)).filter((n): n is number => n !== null);
-    if (nums.length < 2) return null;
-    const max = Math.max(...nums);
-    const min = Math.min(...nums);
-    if (max === min) return 100;
-    return Math.round(((num - min) / (max - min)) * 60 + 40);
+export function getBarPercent(label: string, value: string): number {
+    const num = extractNumeric(value);
+    if (!num) return 0;
+    const l = label.toLowerCase();
+    if (l.includes('power')) return Math.min(100, (num / 100) * 100);
+    if (l.includes('torque')) return Math.min(100, (num / 100) * 100);
+    if (l.includes('displacement')) return Math.min(100, (num / 1000) * 100);
+    if (l.includes('mileage')) return Math.min(100, (num / 100) * 100);
+    return 50;
 }

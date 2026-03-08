@@ -32,6 +32,10 @@ const SPEC_LABELS: Record<string, string> = {
     fuel_type: 'Fuel Type',
     max_power: 'Max Power',
     max_torque: 'Max Torque',
+    max_power_sport: 'Max Power (Sport)',
+    max_power_urban_rain: 'Max Power (Urban/Rain)',
+    max_torque_sport: 'Max Torque (Sport)',
+    max_torque_urban_rain: 'Max Torque (Urban/Rain)',
     engine_type: 'Engine Type',
     cooling_system: 'Cooling',
     compression_ratio: 'Compression Ratio',
@@ -56,6 +60,10 @@ const SPEC_LABELS: Record<string, string> = {
     num_valves: 'Valves',
     // Aliases for cat_variants_vehicle column names
     cylinders: 'Cylinders',
+    engine_stroke: 'Engine Stroke',
+    cam_type: 'Valve Train',
+    fuel_system: 'Fuel System',
+    valves: 'Valves',
 
     // Dimensions & Chassis
     kerb_weight: 'Kerb Weight',
@@ -196,7 +204,10 @@ const CATEGORY_CONFIG: {
             'max_power',
             'max_torque',
             'engine_type',
+            'engine_stroke',
+            'cam_type',
             'cooling_system',
+            'fuel_system',
             'compression_ratio',
             'bore',
             'stroke',
@@ -217,6 +228,7 @@ const CATEGORY_CONFIG: {
             'final_drive',
             'air_filter',
             'num_valves',
+            'valves',
             'cylinders',
             'fuel_type',
             'emission_standard',
@@ -392,6 +404,93 @@ function formatValue(key: string, value: any): string {
     return str;
 }
 
+function extractEngineTypeParts(engineType: string): Record<string, string> {
+    const derived: Record<string, string> = {};
+    const normalized = engineType.trim();
+    if (!normalized) return derived;
+
+    const parts = normalized
+        .split(',')
+        .map(p => p.trim())
+        .filter(Boolean);
+
+    for (const part of parts) {
+        const lower = part.toLowerCase();
+
+        if (lower.includes('stroke') && !derived.engine_stroke) {
+            derived.engine_stroke = part;
+            continue;
+        }
+
+        if (lower.includes('cylinder') && !derived.cylinders) {
+            const compact = lower.replace(/\s+/g, ' ');
+            if (compact.includes('single')) derived.cylinders = '1';
+            else if (compact.includes('twin') || compact.includes('double')) derived.cylinders = '2';
+            else {
+                const m = compact.match(/\d+/);
+                derived.cylinders = m ? m[0] : part;
+            }
+            continue;
+        }
+
+        if (lower.includes('cooled') && !derived.cooling_system) {
+            derived.cooling_system = part;
+            continue;
+        }
+
+        if ((lower === 'sohc' || lower === 'dohc' || lower.includes('cam')) && !derived.cam_type) {
+            derived.cam_type = part;
+            continue;
+        }
+
+        if ((lower.includes('fi') || lower.includes('injection')) && !derived.fuel_system) {
+            derived.fuel_system = part;
+            continue;
+        }
+
+        if (/\b\d+\s*v\b/i.test(part) && !derived.valves) {
+            derived.valves = part;
+        }
+    }
+
+    return derived;
+}
+
+function normalizeModeKey(mode: string): string {
+    return mode
+        .trim()
+        .toLowerCase()
+        .replace(/&/g, 'and')
+        .replace(/\//g, '_')
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function splitModeWiseMetric(value: string, baseKey: 'max_power' | 'max_torque'): Record<string, string> {
+    const out: Record<string, string> = {};
+    const parts = value
+        .split('/')
+        .map(p => p.trim())
+        .filter(Boolean);
+
+    if (parts.length < 2) return out;
+
+    for (const part of parts) {
+        const modeMatch = part.match(/\(([^)]+)\)\s*$/);
+        if (!modeMatch) continue;
+        const mode = modeMatch[1].trim();
+        const metric = part.replace(/\s*\([^)]+\)\s*$/, '').trim();
+        if (!metric) continue;
+        const modeKey = normalizeModeKey(mode);
+        if (!modeKey) continue;
+        out[`${baseKey}_${modeKey}`] = metric;
+    }
+
+    return out;
+}
+
 export default function TechSpecsSection({ specs, modelName, variantName }: TechSpecsSectionProps) {
     const [activeCategory, setActiveCategory] = useState<string | null>('engine');
 
@@ -405,45 +504,58 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
         }
     }
 
+    // Split composite engine_type into structured rows where dedicated keys are missing.
+    if (typeof displaySpecs.engine_type === 'string') {
+        const derived = extractEngineTypeParts(displaySpecs.engine_type);
+        for (const [key, value] of Object.entries(derived)) {
+            if (
+                !(key in displaySpecs) ||
+                displaySpecs[key] === null ||
+                displaySpecs[key] === undefined ||
+                displaySpecs[key] === ''
+            ) {
+                displaySpecs[key] = value;
+            }
+        }
+    }
+
+    // Split mode-wise performance strings:
+    // e.g. "17.55 PS @ 9250 rpm (Sport) / 15.64 PS @ 8650 rpm (Urban/Rain)"
+    for (const baseKey of ['max_power', 'max_torque'] as const) {
+        const raw = displaySpecs[baseKey];
+        if (typeof raw !== 'string') continue;
+        const modeWise = splitModeWiseMetric(raw, baseKey);
+        if (Object.keys(modeWise).length === 0) continue;
+        Object.assign(displaySpecs, modeWise);
+        delete displaySpecs[baseKey];
+    }
+
     if (Object.keys(displaySpecs).length === 0) return null;
 
     // Build grouped categories with actual spec data
-    // Deduplicate by label — e.g., engine_cc & displacement both map to "Displacement"
+    // One row = one key = one value (no label-based merge)
     const groupedCategories = CATEGORY_CONFIG.map(cat => {
-        const seenLabels = new Set<string>();
         const items = cat.keys
             .filter(key => key in displaySpecs)
             .map(key => ({
                 key,
                 label: SPEC_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
                 value: formatValue(key, displaySpecs[key]),
-            }))
-            .filter(item => {
-                const labelKey = item.label.toLowerCase();
-                if (seenLabels.has(labelKey)) return false;
-                seenLabels.add(labelKey);
-                return true;
-            });
+            }));
         return { ...cat, items };
     }).filter(cat => cat.items.length > 0);
 
     // Collect uncategorized specs into "General"
-    // Also collect all labels already used in categorized cards for cross-category dedup
+    // Avoid duplicate keys across categories.
     const categorizedKeys = new Set(CATEGORY_CONFIG.flatMap(c => c.keys));
-    const allUsedLabels = new Set(groupedCategories.flatMap(c => c.items.map(i => i.label.toLowerCase())));
+    const allUsedKeys = new Set(groupedCategories.flatMap(c => c.items.map(i => i.key)));
     const uncategorized = Object.entries(displaySpecs)
-        .filter(([key]) => !categorizedKeys.has(key))
+        .filter(([key]) => !categorizedKeys.has(key) && !allUsedKeys.has(key))
         .map(([key, value]) => ({
             key,
             label: SPEC_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
             value: formatValue(key, value),
-        }))
-        .filter(item => {
-            const labelKey = item.label.toLowerCase();
-            if (allUsedLabels.has(labelKey)) return false;
-            allUsedLabels.add(labelKey);
-            return true;
-        });
+        }));
 
     if (uncategorized.length > 0) {
         groupedCategories.push({

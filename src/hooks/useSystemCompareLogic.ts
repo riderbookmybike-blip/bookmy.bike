@@ -10,11 +10,13 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { groupProductsByModel, type ModelGroup } from '@/utils/variantGrouping';
 import { slugify } from '@/utils/slugs';
+import { useFavorites } from '@/lib/favorites/favoritesContext';
 import type { ProductVariant } from '@/types/productMaster';
 
-export function useSystemCompareLogic() {
+export function useSystemCompareLogic(isWishlist = false) {
     const params = useParams();
     const searchParams = useSearchParams();
+    const { favorites, removeFavorite } = useFavorites();
     const makeSlug = ((params.make as string) || searchParams.get('make') || '').toLowerCase();
     const modelSlug = ((params.model as string) || searchParams.get('model') || '').toLowerCase();
     const skuIdsParam = searchParams.get('skus');
@@ -65,6 +67,13 @@ export function useSystemCompareLogic() {
 
     // ── Sorted variants (cheapest first) ──
     const sortedVariants = useMemo(() => {
+        if (isWishlist) {
+            // Map favorites to full catalog details
+            return favorites
+                .map(fav => items.find(v => v.id === fav.id))
+                .filter((v): v is ProductVariant => !!v)
+                .slice(0, 10); // Limit to 10 as discussed
+        }
         if (skuIdsParam) {
             const ids = skuIdsParam.split(',').filter(Boolean);
             // Return exactly the items requested in the order they were requested if possible
@@ -72,7 +81,7 @@ export function useSystemCompareLogic() {
         }
         if (!modelGroup) return [];
         return [...modelGroup.variants].sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
-    }, [items, skuIdsParam, modelGroup]);
+    }, [items, skuIdsParam, modelGroup, isWishlist, favorites]);
 
     // ── Active variants (excluding removed) ──
     const activeVariants = useMemo(
@@ -87,14 +96,18 @@ export function useSystemCompareLogic() {
     // ── Variant management ──
     const removeVariant = useCallback(
         (id: string) => {
-            if (activeVariants.length <= 1) return; // Allow down to 1 in mixed mode?
-            setRemovedVariantIds(prev => {
-                const next = new Set(prev);
-                next.add(id);
-                return next;
-            });
+            if (activeVariants.length <= 1 && !isWishlist) return; // Allow down to 0 in wishlist?
+            if (isWishlist) {
+                removeFavorite(id);
+            } else {
+                setRemovedVariantIds(prev => {
+                    const next = new Set(prev);
+                    next.add(id);
+                    return next;
+                });
+            }
         },
-        [activeVariants.length]
+        [activeVariants.length, isWishlist, removeFavorite]
     );
 
     const removeVariantBySlug = useCallback(
