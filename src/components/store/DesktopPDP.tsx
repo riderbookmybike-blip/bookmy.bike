@@ -531,7 +531,7 @@ export function DesktopPDP({
     };
 
     return (
-        <div className="relative min-h-screen bg-slate-50 transition-colors duration-500 font-sans pt-0 pb-20">
+        <div className="relative min-h-screen bg-white transition-colors duration-500 font-sans pt-[calc(var(--header-h)+120px)] pb-20">
             {/* Parity Snapshot — hidden DOM element for Playwright parity tests */}
             <ParitySnapshot data={data} product={product} />
             {/* Always-mounted parity markers — these must exist regardless of active hero tab */}
@@ -579,10 +579,10 @@ export function DesktopPDP({
                     className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-brand-primary/[0.02] rounded-full blur-[120px]"
                 />
             </div>
-            <div className="store-page-shell tv-pdp-shell pb-32 md:pb-36 space-y-6 relative z-10">
+            <div className="store-page-shell tv-pdp-shell pb-32 md:pb-36 space-y-12 relative z-10">
                 {/* 1. Hero Row: Image / Pricing / Finance — Horizontal Accordion (Desktop) */}
                 <div
-                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-4 h-[calc(100vh-220px)] min-h-[620px] max-h-[720px] py-2 overflow-visible`}
+                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-5 h-[calc(100vh-240px)] min-h-[640px] max-h-[760px] py-2 overflow-visible`}
                 >
                     {heroCards.map((card, idx) => {
                         const Icon = card.icon;
@@ -883,7 +883,7 @@ export function DesktopPDP({
                 </div>
 
                 {/* 1b. Hero Row: Mobile (Vertical Stack) */}
-                <div className={`${forceMobileLayout ? '' : 'md:hidden'} space-y-4`}>
+                <div className={`${forceMobileLayout ? '' : 'md:hidden'} space-y-6 pb-2`}>
                     <VisualsRow
                         colors={colors}
                         selectedColor={selectedColor}
@@ -897,7 +897,7 @@ export function DesktopPDP({
                 </div>
 
                 {/* 3. Mobile Configuration Accordions */}
-                <div className={`${forceMobileLayout ? '' : 'md:hidden'} space-y-4`}>
+                <div className={`${forceMobileLayout ? '' : 'md:hidden'} space-y-6 pb-20`}>
                     {configCards.map(category => {
                         const Icon = category.icon;
                         const isOpen = mobileConfigOpen === category.id;
@@ -941,7 +941,7 @@ export function DesktopPDP({
                 {/* 4. Modular 5-Pillar Configuration Grid (Horizontal Accordion Design) */}
                 <div
                     data-parity-section="config"
-                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-4 h-[720px] overflow-visible`}
+                    className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} tv-pdp-rail flex-row gap-5 h-[760px] overflow-visible`}
                 >
                     {configCards.map((category, idx) => {
                         const Icon = category.icon;

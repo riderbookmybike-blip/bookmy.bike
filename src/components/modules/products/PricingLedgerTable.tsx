@@ -163,6 +163,30 @@ const BrandAvatar = ({ name, logo }: { name: string; logo?: string }) => {
     );
 };
 
+const CopyButton = ({ text, title }: { text: string; title?: string }) => {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
+
+    return (
+        <button
+            onClick={handleCopy}
+            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700/50 rounded transition-colors shrink-0"
+            title={title || 'Copy'}
+        >
+            {copied ? (
+                <CheckCircle2 size={10} className="text-emerald-500" />
+            ) : (
+                <Copy size={10} className="text-slate-400/70" />
+            )}
+        </button>
+    );
+};
+
 export default function PricingLedgerTable({
     initialSkus,
     processedSkus,
@@ -942,298 +966,6 @@ export default function PricingLedgerTable({
                             </>
                         )}
                     </div>
-                    {/* Category Filter */}
-                    <div className="relative group w-[150px]">
-                        <button
-                            onClick={() =>
-                                setActiveToolbarFilter(activeToolbarFilter === 'category' ? null : 'category')
-                            }
-                            className={`w-full flex items-center justify-between pl-6 pr-2 py-1 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'category' ? 'border-emerald-500 ring-1 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[9px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
-                        >
-                            <Activity
-                                size={10}
-                                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
-                            />
-                            <span className="truncate">
-                                {selectedCategory === 'ALL' ? 'All Categories' : selectedCategory}
-                            </span>
-                            <Filter
-                                size={8}
-                                className={`opacity-50 ${selectedCategory !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
-                            />
-                        </button>
-
-                        {activeToolbarFilter === 'category' && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
-                                <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                            Sort & Filter Category
-                                        </span>
-                                    </div>
-                                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
-                                        <div className="grid grid-cols-2 gap-1">
-                                            <button
-                                                onClick={() => {
-                                                    setSortConfig({ key: 'category', direction: 'asc' });
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'category' && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
-                                            >
-                                                <ArrowUp size={12} /> ASC
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setSortConfig({ key: 'category', direction: 'desc' });
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'category' && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
-                                            >
-                                                <ArrowDown size={12} /> DESC
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
-                                        <button
-                                            onClick={() => {
-                                                onCategoryChange('ALL');
-                                                setActiveToolbarFilter(null);
-                                            }}
-                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedCategory === 'ALL' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                        >
-                                            All Categories
-                                            {selectedCategory === 'ALL' && <CheckCircle2 size={12} />}
-                                        </button>
-                                        {categories.map(c => (
-                                            <button
-                                                key={c}
-                                                onClick={() => {
-                                                    onCategoryChange(c);
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedCategory === c ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                            >
-                                                {c}
-                                                {selectedCategory === c && <CheckCircle2 size={12} />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Brand Filter */}
-                    <div className="relative group w-[160px]">
-                        <button
-                            onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'brand' ? null : 'brand')}
-                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'brand' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
-                        >
-                            <Car size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10" />
-                            <span className="truncate">{selectedBrand === 'ALL' ? 'All Brands' : selectedBrand}</span>
-                            <Filter
-                                size={10}
-                                className={`opacity-50 ${selectedBrand !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
-                            />
-                        </button>
-
-                        {activeToolbarFilter === 'brand' && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
-                                <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                            Sort & Filter Brand
-                                        </span>
-                                    </div>
-                                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
-                                        <div className="grid grid-cols-2 gap-1">
-                                            <button
-                                                onClick={() => {
-                                                    setSortConfig({ key: 'brand', direction: 'asc' });
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'brand' && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
-                                            >
-                                                <ArrowUp size={12} /> ASC
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setSortConfig({ key: 'brand', direction: 'desc' });
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'brand' && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
-                                            >
-                                                <ArrowDown size={12} /> DESC
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
-                                        <button
-                                            onClick={() => {
-                                                onBrandChange('ALL');
-                                                setActiveToolbarFilter(null);
-                                            }}
-                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedBrand === 'ALL' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                        >
-                                            All Brands
-                                            {selectedBrand === 'ALL' && <CheckCircle2 size={12} />}
-                                        </button>
-                                        {brands.map(b => (
-                                            <button
-                                                key={b}
-                                                onClick={() => {
-                                                    onBrandChange(b);
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedBrand === b ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                            >
-                                                {b}
-                                                {selectedBrand === b && <CheckCircle2 size={12} />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Model Filter (moved to lower filter list row) */}
-                    <div className="hidden relative group w-[160px]">
-                        <button
-                            onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'model' ? null : 'model')}
-                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'model' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
-                        >
-                            <Package
-                                size={12}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 z-10"
-                            />
-                            <span className="truncate">{selectedModel === 'ALL' ? 'All Products' : selectedModel}</span>
-                            <Filter
-                                size={10}
-                                className={`opacity-50 ${selectedModel !== 'ALL' ? 'text-emerald-600 opacity-100' : ''}`}
-                            />
-                        </button>
-
-                        {activeToolbarFilter === 'model' && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
-                                <div className="absolute top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                            Sort & Filter Product
-                                        </span>
-                                    </div>
-                                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
-                                        <div className="grid grid-cols-2 gap-1">
-                                            <button
-                                                onClick={() => {
-                                                    setSortConfig({ key: 'model', direction: 'asc' });
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'model' && sortConfig?.direction === 'asc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
-                                            >
-                                                <ArrowUp size={12} /> ASC
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setSortConfig({ key: 'model', direction: 'desc' });
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sortConfig?.key === 'model' && sortConfig?.direction === 'desc' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100'}`}
-                                            >
-                                                <ArrowDown size={12} /> DESC
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
-                                        <button
-                                            onClick={() => {
-                                                onModelChange('ALL');
-                                                setActiveToolbarFilter(null);
-                                            }}
-                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedModel === 'ALL' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                        >
-                                            All Products
-                                            {selectedModel === 'ALL' && <CheckCircle2 size={12} />}
-                                        </button>
-                                        {models.map(m => (
-                                            <button
-                                                key={m}
-                                                onClick={() => {
-                                                    onModelChange(m);
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedModel === m ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                            >
-                                                {m}
-                                                {selectedModel === m && <CheckCircle2 size={12} />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Variant Filter (moved to lower filter list row) */}
-                    <div className="hidden relative group w-[140px]">
-                        <button
-                            onClick={() => setActiveToolbarFilter(activeToolbarFilter === 'variant' ? null : 'variant')}
-                            className={`w-full flex items-center justify-between pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border ${activeToolbarFilter === 'variant' ? 'border-indigo-500 ring-2 ring-indigo-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400'} rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide transition-all`}
-                        >
-                            <Layers
-                                size={12}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-600 z-10"
-                            />
-                            <span className="truncate">
-                                {selectedVariant === 'ALL' ? 'All Variants' : selectedVariant}
-                            </span>
-                            <Filter
-                                size={10}
-                                className={`opacity-50 ${selectedVariant !== 'ALL' ? 'text-indigo-600 opacity-100' : ''}`}
-                            />
-                        </button>
-
-                        {activeToolbarFilter === 'variant' && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setActiveToolbarFilter(null)} />
-                                <div className="absolute top-full mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-                                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                            Filter Variant
-                                        </span>
-                                    </div>
-                                    <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin">
-                                        <button
-                                            onClick={() => {
-                                                onVariantChange('ALL');
-                                                setActiveToolbarFilter(null);
-                                            }}
-                                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedVariant === 'ALL' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                        >
-                                            All Variants
-                                            {selectedVariant === 'ALL' && <CheckCircle2 size={12} />}
-                                        </button>
-                                        {variants.map(v => (
-                                            <button
-                                                key={v}
-                                                onClick={() => {
-                                                    onVariantChange(v);
-                                                    setActiveToolbarFilter(null);
-                                                }}
-                                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all mb-1 flex items-center justify-between ${selectedVariant === v ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                                            >
-                                                {v}
-                                                {selectedVariant === v && <CheckCircle2 size={12} />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
 
                     {/* Individual active filters with reset icons */}
                     {Object.entries(filters).map(([key, value]) => {
@@ -1255,99 +987,12 @@ export default function PricingLedgerTable({
                         );
                     })}
 
-                    {selectedBrand !== 'ALL' && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 group animate-in fade-in zoom-in duration-200">
-                            <span className="opacity-50">Brand:</span>
-                            <span>{selectedBrand}</span>
-                            <button
-                                onClick={() => onBrandChange('ALL')}
-                                className="ml-1 hover:text-rose-500 transition-colors"
-                            >
-                                <X size={12} />
-                            </button>
-                        </div>
-                    )}
-
-                    {selectedCategory !== 'ALL' && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 group animate-in fade-in zoom-in duration-200">
-                            <span className="opacity-50">Category:</span>
-                            <span>{selectedCategory}</span>
-                            <button
-                                onClick={() => onCategoryChange('ALL')}
-                                className="ml-1 hover:text-rose-500 transition-colors"
-                            >
-                                <X size={12} />
-                            </button>
-                        </div>
-                    )}
-
                     {selectedSubCategory !== 'ALL' && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 group animate-in fade-in zoom-in duration-200">
                             <span className="opacity-50">Sub:</span>
                             <span>{selectedSubCategory}</span>
                             <button
                                 onClick={() => onSubCategoryChange('ALL')}
-                                className="ml-1 hover:text-rose-500 transition-colors"
-                            >
-                                <X size={12} />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Product / Variant selectors shifted to list filter row */}
-                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <Package size={12} className="text-emerald-600" />
-                        <select
-                            value={selectedModel}
-                            onChange={e => onModelChange(e.target.value)}
-                            className="bg-transparent text-[9px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 outline-none"
-                            title="Filter Product"
-                        >
-                            <option value="ALL">All Products</option>
-                            {models.map(m => (
-                                <option key={m} value={m}>
-                                    {m}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <Layers size={12} className="text-indigo-600" />
-                        <select
-                            value={selectedVariant}
-                            onChange={e => onVariantChange(e.target.value)}
-                            className="bg-transparent text-[9px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 outline-none"
-                            title="Filter Variant"
-                        >
-                            <option value="ALL">All Variants</option>
-                            {variants.map(v => (
-                                <option key={v} value={v}>
-                                    {v}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {selectedModel !== 'ALL' && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 group animate-in fade-in zoom-in duration-200">
-                            <span className="opacity-50">Product:</span>
-                            <span>{selectedModel}</span>
-                            <button
-                                onClick={() => onModelChange('ALL')}
-                                className="ml-1 hover:text-rose-500 transition-colors"
-                            >
-                                <X size={12} />
-                            </button>
-                        </div>
-                    )}
-
-                    {selectedVariant !== 'ALL' && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-lg text-[9px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 group animate-in fade-in zoom-in duration-200">
-                            <span className="opacity-50">Variant:</span>
-                            <span>{selectedVariant}</span>
-                            <button
-                                onClick={() => onVariantChange('ALL')}
                                 className="ml-1 hover:text-rose-500 transition-colors"
                             >
                                 <X size={12} />
@@ -1499,7 +1144,7 @@ export default function PricingLedgerTable({
                                         />
                                     </th>
                                     {/* DYAMIC COLUMNS based on Category */}
-                                    {(activeCategory === 'vehicles' ? ['color'] : ['product', 'color']).map(key => {
+                                    {['brand', 'product', 'variant', 'color'].map(key => {
                                         // MAPPING: 'product' maps to 'model' for data operations
                                         const dataKey = key === 'product' ? 'model' : (key as keyof SKUPriceRow);
                                         const values = getUniqueValues(dataKey);
@@ -1717,9 +1362,6 @@ export default function PricingLedgerTable({
                                             />
                                         </div>
                                     </th>
-                                    <th className="px-2 py-1.5 text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap">
-                                        By
-                                    </th>
 
                                     <th className="relative px-2 py-1.5 text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right group/header w-[100px] whitespace-nowrap">
                                         <div className="flex items-center justify-end gap-1">
@@ -1762,20 +1404,6 @@ export default function PricingLedgerTable({
 
                                         {/* Status filter dropdown rendered via portal outside overflow container */}
                                     </th>
-
-                                    {/* Popular Header */}
-                                    <th
-                                        className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 text-[8px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider border-r border-emerald-100 dark:border-white/10 w-14 cursor-pointer hover:text-emerald-600 transition-colors"
-                                        onClick={() => handleSort('isPopular')}
-                                    >
-                                        <div className="flex items-center justify-center gap-1">
-                                            Popular
-                                            <ArrowUpDown
-                                                size={10}
-                                                className={`opacity-30 ${sortConfig?.key === 'isPopular' ? 'text-emerald-600 opacity-100' : ''}`}
-                                            />
-                                        </div>
-                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1803,6 +1431,15 @@ export default function PricingLedgerTable({
                                         return `${day} ${mon}, ${time}`;
                                     })();
                                     const updatedByName = sku.updatedByName || '—';
+                                    const stateRtoData = sku.rto_data?.STATE;
+                                    const roadTaxRate =
+                                        stateRtoData?.tax?.roadTaxRate || stateRtoData?.roadTaxRate || 0;
+                                    const roadTaxAmount =
+                                        stateRtoData?.tax?.roadTax ||
+                                        stateRtoData?.roadTax ||
+                                        stateRtoData?.road_tax ||
+                                        0;
+                                    const tpAmount = sku.insurance_data?.tp?.total || 0;
 
                                     return (
                                         <tr
@@ -1818,18 +1455,33 @@ export default function PricingLedgerTable({
                                                 />
                                             </td>
 
-                                            {/* VEHICLE COLUMNS — no more Product/Variant columns */}
+                                            {/* Brand */}
+                                            <td className="px-3 py-1.5">
+                                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight">
+                                                    {sku.brand}
+                                                </span>
+                                            </td>
 
-                                            {/* ACCESSORY COLUMNS - Composite Product */}
-                                            {activeCategory !== 'vehicles' && (
-                                                <td className="px-3 py-1.5">
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                                                            {sku.brand} / {sku.model} / {sku.variant}
+                                            {/* Product (Model) */}
+                                            <td className="px-3 py-1.5">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                                        {sku.model}
+                                                    </span>
+                                                    {activeCategory === 'vehicles' && sku.engineCc ? (
+                                                        <span className="text-[9px] font-bold text-indigo-500 dark:text-indigo-400 tracking-tight">
+                                                            {formatEngineCC(Number(sku.engineCc))}
                                                         </span>
-                                                    </div>
-                                                </td>
-                                            )}
+                                                    ) : null}
+                                                </div>
+                                            </td>
+
+                                            {/* Variant */}
+                                            <td className="px-3 py-1.5">
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">
+                                                    {sku.variant}
+                                                </span>
+                                            </td>
 
                                             <td className="px-3 py-1.5 min-w-[120px]">
                                                 <div className="flex items-center gap-2">
@@ -1854,15 +1506,15 @@ export default function PricingLedgerTable({
                                                                     {sku.finish}
                                                                 </span>
                                                             )}
-                                                            <span className="text-[8px] font-mono font-bold text-slate-400/60 dark:text-slate-500/60 uppercase tracking-tighter leading-none border-l border-slate-200 dark:border-white/10 pl-1.5">
-                                                                {sku.id.split('-')[0]}...
-                                                            </span>
+                                                            <div className="flex items-center gap-1 border-l border-slate-200 dark:border-white/10 pl-1.5 group/id">
+                                                                <span className="text-[8px] font-mono font-bold text-slate-400/60 dark:text-slate-500/60 uppercase tracking-tighter leading-none shrink-0">
+                                                                    {sku.id.split('-')[0]}...
+                                                                </span>
+                                                                <div className="opacity-0 group-hover/id:opacity-100 transition-opacity flex items-center">
+                                                                    <CopyButton text={sku.id} title="Copy Full ID" />
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        {activeCategory === 'vehicles' && sku.engineCc ? (
-                                                            <span className="text-[9px] font-bold text-indigo-500 dark:text-indigo-400 tracking-tight mt-0.5">
-                                                                {formatEngineCC(Number(sku.engineCc))}
-                                                            </span>
-                                                        ) : null}
                                                     </div>
                                                 </div>
                                             </td>
@@ -1891,7 +1543,7 @@ export default function PricingLedgerTable({
                                             )}
 
                                             <td className="px-2 py-1 text-center">
-                                                <div className="flex justify-center items-center gap-2">
+                                                <div className="flex flex-col items-center gap-1">
                                                     <input
                                                         type="number"
                                                         value={sku.exShowroom}
@@ -1908,16 +1560,46 @@ export default function PricingLedgerTable({
                                                             ${isDirty ? 'text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-900/20' : ''}
                                                         `}
                                                     />
+                                                    <div className="flex flex-col items-center gap-0.5">
+                                                        <div className="flex items-center gap-1.5 font-bold text-[7px] uppercase tracking-tighter">
+                                                            <span className="text-slate-400">GST {gstRate}%</span>
+                                                            <span className="text-emerald-600">
+                                                                ₹{Math.round(totalGst).toLocaleString('en-IN')}
+                                                            </span>
+                                                        </div>
+                                                        {sku.hsnCode && (
+                                                            <span
+                                                                className="text-[7px] font-mono text-indigo-500/70 font-bold uppercase tracking-tighter decoration-dotted underline decoration-indigo-200 cursor-help"
+                                                                title={`HSN: ${sku.hsnCode}`}
+                                                            >
+                                                                #{sku.hsnCode}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                             {activeCategory === 'vehicles' ? (
                                                 <>
                                                     <td className="px-3 py-1.5 text-center relative group/rto">
-                                                        <span
-                                                            className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.rto_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
-                                                        >
-                                                            {sku.rto ? `₹${Math.round(sku.rto).toLocaleString()}` : '—'}
-                                                        </span>
+                                                        <div className="flex flex-col items-center">
+                                                            <span
+                                                                className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.rto_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
+                                                            >
+                                                                {sku.rto
+                                                                    ? `₹${Math.round(sku.rto).toLocaleString()}`
+                                                                    : '—'}
+                                                            </span>
+                                                            {roadTaxAmount > 0 && (
+                                                                <div className="flex items-center gap-1 font-bold text-[7px] uppercase tracking-tighter">
+                                                                    <span className="text-slate-400">
+                                                                        Tax {roadTaxRate}%
+                                                                    </span>
+                                                                    <span className="text-indigo-600">
+                                                                        ₹{Math.round(roadTaxAmount).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         {sku.rto_data && (
                                                             <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[260px] p-3.5 rounded-xl bg-white border border-slate-200 shadow-[0_8px_32px_rgba(0,0,0,0.12)] opacity-0 invisible group-hover/rto:opacity-100 group-hover/rto:visible transition-all duration-200 pointer-events-none text-left">
                                                                 <div className="space-y-2.5">
@@ -2013,13 +1695,23 @@ export default function PricingLedgerTable({
                                                         )}
                                                     </td>
                                                     <td className="px-3 py-1.5 text-center relative group/ins">
-                                                        <span
-                                                            className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.insurance_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
-                                                        >
-                                                            {sku.insurance
-                                                                ? `₹${Math.round(sku.insurance).toLocaleString()}`
-                                                                : '—'}
-                                                        </span>
+                                                        <div className="flex flex-col items-center">
+                                                            <span
+                                                                className={`font-bold text-[11px] text-slate-600 dark:text-slate-400 ${sku.insurance_data ? 'cursor-help border-b border-dotted border-slate-300 dark:border-slate-700' : ''}`}
+                                                            >
+                                                                {sku.insurance
+                                                                    ? `₹${Math.round(sku.insurance).toLocaleString()}`
+                                                                    : '—'}
+                                                            </span>
+                                                            {tpAmount > 0 && (
+                                                                <div className="flex items-center gap-1 font-bold text-[7px] uppercase tracking-tighter">
+                                                                    <span className="text-slate-400">TP</span>
+                                                                    <span className="text-blue-600">
+                                                                        ₹{Math.round(tpAmount).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         {sku.insurance_data && (
                                                             <div className="absolute right-0 top-full mt-1 z-[60] w-max min-w-[300px] max-w-[340px] rounded-xl bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.12)] ring-1 ring-black/5 opacity-0 invisible group-hover/ins:opacity-100 group-hover/ins:visible transition-all duration-200 pointer-events-none text-left overflow-hidden">
                                                                 {/* Header */}
@@ -2569,14 +2261,17 @@ export default function PricingLedgerTable({
                                             )}
 
                                             <td className="px-2 py-1 text-right border-l border-l-slate-50 dark:border-l-slate-800/50">
-                                                <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                                    {updatedLabel}
-                                                </span>
-                                            </td>
-                                            <td className="px-2 py-1 text-right">
-                                                <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                                                    {updatedByName}
-                                                </span>
+                                                <div className="flex items-center justify-end gap-1.5 group/update">
+                                                    <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                        {updatedLabel}
+                                                    </span>
+                                                    <div
+                                                        className="text-slate-300 dark:text-slate-600 hover:text-emerald-500 transition-colors cursor-help"
+                                                        title={`Edited by: ${updatedByName}`}
+                                                    >
+                                                        <Info size={10} />
+                                                    </div>
+                                                </div>
                                             </td>
 
                                             <td className="px-3 py-1.5 text-right w-[90px] relative">
@@ -2734,31 +2429,6 @@ export default function PricingLedgerTable({
                                                         </>
                                                     );
                                                 })()}
-                                            </td>
-
-                                            <td className="px-6 py-5 border-r border-slate-100 dark:border-slate-800">
-                                                <div className="flex justify-center">
-                                                    <button
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            if (onUpdatePopular)
-                                                                onUpdatePopular(sku.id, !sku.isPopular);
-                                                        }}
-                                                        className={`p-2 rounded-xl transition-all ${
-                                                            sku.isPopular
-                                                                ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 scale-110 shadow-lg shadow-amber-500/10'
-                                                                : 'bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500 hover:bg-slate-100'
-                                                        }`}
-                                                        title={
-                                                            sku.isPopular ? 'Remove Popular Badge' : 'Mark as Popular'
-                                                        }
-                                                    >
-                                                        <Rocket
-                                                            size={14}
-                                                            className={sku.isPopular ? 'fill-current' : ''}
-                                                        />
-                                                    </button>
-                                                </div>
                                             </td>
                                         </tr>
                                     );

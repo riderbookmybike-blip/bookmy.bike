@@ -342,7 +342,11 @@ export const ProductCard = ({
 
     const onRoad = v.price?.onRoad || 0;
     const offerPrice = v.price?.offerPrice || basePrice;
-    const offerDeltaForParity = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
+    const discountBasedDelta = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
+    const mappedOfferDelta =
+        typeof v.price?.offerPrice === 'number' && typeof v.price?.onRoad === 'number'
+            ? Number(v.price.offerPrice) - Number(v.price.onRoad)
+            : discountBasedDelta;
     const formatRoundedPrice = (value: number | null | undefined) =>
         Math.ceil(Number(value) || 0).toLocaleString('en-IN');
 
@@ -368,16 +372,15 @@ export const ProductCard = ({
     const isConfirmedPrice = !!bestOffer;
     // Savings calculation
 
-    const offerDelta = bestOffer?.price ?? 0;
+    const offerDelta = typeof bestOffer?.price === 'number' ? bestOffer.price : mappedOfferDelta;
+    const offerDeltaForParity = offerDelta;
     // Calculate savings based on source (Live Best Offer vs Server/Mapped Data)
     const bundleSavings = bestOffer
         ? Math.max(0, (bestOffer.bundleValue || 0) - (bestOffer.bundlePrice || 0))
         : v.price?.bundleSavings || 0;
-    const savings = bestOffer
-        ? (offerDelta < 0 ? Math.abs(offerDelta) : 0) + bundleSavings
-        : v.price?.totalSavings || onRoad - offerPrice;
-    const surge = bestOffer && offerDelta > 0 ? offerDelta : 0;
-    const netImpact = bestOffer ? savings - surge : savings;
+    const savings = (offerDelta < 0 ? Math.abs(offerDelta) : 0) + bundleSavings;
+    const surge = offerDelta > 0 ? offerDelta : 0;
+    const netImpact = savings - surge;
 
     // EMI Flip Logic: if loan < ₹25k, force cash side of the flipcard
     const MIN_LOAN_AMOUNT = 25000;
@@ -812,26 +815,28 @@ export const ProductCard = ({
                 >
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 z-0" />
 
-                    <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-                        {/* Primary Discount Pill (from catalog data) - SAVE for positive, SURGE for negative */}
-                        {(v.price?.discount || 0) > 0 && !bestOffer && (
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] border border-emerald-400/30 transition-all hover:scale-105">
-                                <Sparkles size={10} className="fill-white text-white" />
-                                <span className="text-[10px] font-black uppercase tracking-wider">
-                                    Save ₹{formatRoundedPrice(v.price.discount)}
+                    {/* SAVE pill for non-bestOffer cards */}
+                    {mappedOfferDelta < 0 && !bestOffer && (
+                        <div className="absolute top-4 left-4 z-20">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500 text-white rounded-lg shadow-[0_3px_10px_rgba(16,185,129,0.25)] border border-emerald-300/35 transition-all">
+                                <Sparkles size={9} className="fill-white text-white" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.12em]">
+                                    Save ₹{formatRoundedPrice(Math.abs(mappedOfferDelta))}
                                 </span>
                             </div>
-                        )}
-                        {/* SURGE Pill for negative discount (price increase) */}
-                        {(v.price?.discount || 0) < 0 && !bestOffer && (
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 text-white rounded-xl shadow-[0_4px_12px_rgba(244,63,94,0.3)] border border-rose-400/30 transition-all hover:scale-105">
-                                <Zap size={10} className="fill-white text-white" />
-                                <span className="text-[10px] font-black uppercase tracking-wider">
-                                    Surge ₹{formatRoundedPrice(Math.abs(v.price.discount || 0))}
+                        </div>
+                    )}
+                    {/* SURGE pill (keep as pill) for non-bestOffer cards */}
+                    {mappedOfferDelta > 0 && !bestOffer && (
+                        <div className="absolute top-4 left-4 z-20">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-rose-500 text-white rounded-lg shadow-[0_3px_10px_rgba(244,63,94,0.25)] border border-rose-300/35 transition-all">
+                                <Zap size={9} className="fill-white text-white" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.12em]">
+                                    Surge ₹{formatRoundedPrice(mappedOfferDelta)}
                                 </span>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
                         {onCompare && (
@@ -893,37 +898,33 @@ export const ProductCard = ({
                         </button>
                     </div>
 
-                    {bestOffer && bestOffer.price !== 0 && (
+                    {bestOffer && bestOffer.price < 0 && (
+                        <div className="absolute top-4 left-4 z-30">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500 text-white rounded-lg border border-emerald-400/30 shadow-[0_3px_10px_rgba(16,185,129,0.25)]">
+                                <Sparkles size={9} className="fill-white text-white" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.12em]">
+                                    SAVE ₹{formatRoundedPrice(Math.abs(bestOffer.price))}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    {bestOffer && bestOffer.price > 0 && (
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ duration: 0.3 }}
-                            className={`absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-lg ${
-                                bestOffer.price < 0
-                                    ? 'bg-emerald-500 text-white border-emerald-400/30'
-                                    : 'bg-rose-500 text-white border-rose-400/30'
-                            }`}
+                            className="absolute top-4 left-4 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shadow-[0_3px_10px_rgba(0,0,0,0.18)] bg-rose-500 text-white border-rose-400/30"
                         >
                             <motion.div
                                 animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
                                 transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
                                 className="flex items-center justify-center"
                             >
-                                {bestOffer.price < 0 ? (
-                                    <Sparkles
-                                        size={12}
-                                        className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"
-                                    />
-                                ) : (
-                                    <Zap
-                                        size={12}
-                                        className="fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]"
-                                    />
-                                )}
+                                <Zap size={9} className="fill-white text-white" />
                             </motion.div>
-                            <span className="text-[10px] font-black uppercase tracking-wider relative z-10">
-                                {bestOffer.price < 0 ? 'SAVE' : 'SURGE'} ₹
-                                {formatRoundedPrice(Math.abs(bestOffer.price))}
+                            <span className="text-[9px] font-black uppercase tracking-[0.12em] relative z-10">
+                                SURGE ₹{formatRoundedPrice(Math.abs(bestOffer.price))}
                             </span>
                             {/* Shimmer Effect */}
                             <div className="absolute inset-0 w-full h-full overflow-hidden rounded-xl pointer-events-none">

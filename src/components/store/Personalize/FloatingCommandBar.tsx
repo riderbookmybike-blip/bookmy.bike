@@ -172,7 +172,7 @@ export default function FloatingCommandBar({
 
     return (
         <div className="fixed inset-x-0 top-[var(--header-h)] z-[95]">
-            <div className="page-container mt-2 md:mt-4">
+            <div className="page-container mt-4 md:mt-6">
                 <div className="relative overflow-hidden rounded-2xl md:rounded-full border border-white/60 bg-white/70 backdrop-blur-2xl shadow-[0_4px_40px_rgba(15,23,42,0.10),0_8px_30px_rgba(15,23,42,0.08)]">
                     {/* Subtle gradient overlay */}
                     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.8),rgba(255,255,255,0.2)_50%,rgba(255,215,0,0.03))]" />

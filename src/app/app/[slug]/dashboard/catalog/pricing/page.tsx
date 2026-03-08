@@ -27,7 +27,10 @@ import {
     TrendingUp,
     Sparkles,
     RefreshCw,
+    Wrench,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
 import { KpiCard } from '@/components/dashboard/DashboardWidgets';
 import { KPIItem } from '@/components/layout/KPIBar';
 import { calculatePricingBySkuIds } from '@/actions/pricingLedger';
@@ -113,6 +116,8 @@ export default function PricingPage() {
     const [lastEditTime, setLastEditTime] = useState<number | null>(null);
     const [tableSummary, setTableSummary] = useState<{ count: number; value: number }>({ count: 0, value: 0 });
     const [quickFilter, setQuickFilter] = useState<'inventory' | 'market_ready' | 'pipeline' | 'critical' | null>(null);
+    const [isGateVisible, setIsGateVisible] = useState(!searchParams.get('category')); // Show gate if no category in URL
+
     const toggleQuickFilter = (value: 'inventory' | 'market_ready' | 'pipeline' | 'critical') => {
         const next = quickFilter === value ? null : value;
         setQuickFilter(next);
@@ -248,7 +253,7 @@ export default function PricingPage() {
                 .from('cat_skus')
                 .select(
                     `
-                    id, name, slug, position, status,
+                    id, name, slug, position, status, sku_type,
                     hex_primary, hex_secondary, color_name, finish,
                     model:cat_models!model_id (
                         id, name, slug, position, status, product_type,
@@ -462,7 +467,7 @@ export default function PricingPage() {
                 const model = sku.model;
                 const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
                 const brand = model?.brand;
-                const productType = model?.product_type || 'VEHICLE';
+                const productType = sku.sku_type || model?.product_type || 'VEHICLE';
 
                 const priceRecord = priceMap.get(sku.id);
                 const statePrice = priceRecord?.price;
@@ -495,6 +500,47 @@ export default function PricingPage() {
                 if (productType === 'ACCESSORY') itemType = 'accessories';
                 else if (productType === 'SERVICE') itemType = 'service';
 
+                // --- SMART METADATA RESOLUTION ---
+                const rawName = sku.name || '';
+                let resolvedColor = sku.color_name;
+                let resolvedFinish = sku.finish || '';
+                let resolvedHex = sku.hex_primary;
+
+                // 1. Resolve Color Name if missing
+                if (!resolvedColor) {
+                    const parts = rawName.split(' - ');
+                    resolvedColor = parts.length > 1 ? parts[parts.length - 1] : rawName;
+                    // Clean up: Remove model/brand prefixes if they leaked into the last part
+                    if (model?.name && resolvedColor.toLowerCase().includes(model.name.toLowerCase())) {
+                        resolvedColor = resolvedColor.replace(new RegExp(`${model.name}\\s?`, 'i'), '').trim();
+                        if (resolvedColor.startsWith('-')) resolvedColor = resolvedColor.substring(1).trim();
+                    }
+                }
+
+                // 2. Resolve Finish if missing
+                if (!resolvedFinish) {
+                    const upper = rawName.toUpperCase();
+                    if (upper.includes('MATTE') || upper.includes('MAT ')) resolvedFinish = 'MATTE';
+                    else if (upper.includes('METALLIC')) resolvedFinish = 'METALLIC';
+                    else if (upper.includes('PEARL')) resolvedFinish = 'PEARL';
+                    else if (upper.includes('GLOSS')) resolvedFinish = 'GLOSS';
+                }
+
+                // 3. Resolve Hex if missing (High-Fidelity Mappings)
+                if (!resolvedHex) {
+                    const lower = (resolvedColor || '').toLowerCase();
+                    if (lower.includes('red')) resolvedHex = '#B22234';
+                    else if (lower.includes('blue')) resolvedHex = '#1E40AF';
+                    else if (lower.includes('black')) resolvedHex = '#1C1C1C';
+                    else if (lower.includes('white')) resolvedHex = '#F5F5F0';
+                    else if (lower.includes('gray') || lower.includes('grey')) resolvedHex = '#4B5563';
+                    else if (lower.includes('silver')) resolvedHex = '#94A3B8';
+                    else if (lower.includes('yellow')) resolvedHex = '#FBBF24';
+                    else if (lower.includes('green')) resolvedHex = '#15803D';
+                    else if (lower.includes('titanium')) resolvedHex = '#64748B';
+                    else if (lower.includes('gold')) resolvedHex = '#D4AF37';
+                }
+
                 return {
                     id: sku.id,
                     brand: brand?.name || (itemType === 'vehicles' ? 'UNKNOWN' : 'GENERAL'),
@@ -505,9 +551,9 @@ export default function PricingPage() {
                     model: model?.name || 'UNKNOWN',
                     modelId: model?.id,
                     variant: variant?.name || '',
-                    color: sku.color_name || sku.name,
-                    finish: sku.finish || '',
-                    hex_primary: sku.hex_primary,
+                    color: resolvedColor || rawName,
+                    finish: resolvedFinish,
+                    hex_primary: resolvedHex,
                     hex_secondary: sku.hex_secondary,
                     engineCc: variant?.displacement || 0,
                     suitableFor: '',
@@ -1183,286 +1229,58 @@ export default function PricingPage() {
 
     const activeRule = states.find(s => s.id === selectedStateId) || null;
 
-    const renderHeader = () => {
-        const missingPrices = skus.filter(s => s.exShowroom === 0).length;
-        const isMarketReadySku = (s: SKUPriceRow) =>
-            tenantSlug === 'aums'
-                ? s.displayState === 'Live' || s.displayState === 'Published'
-                : s.localIsActive === true;
-        const isPipelineSku = (s: SKUPriceRow) => !isMarketReadySku(s);
-        const liveSkus = skus.filter(isMarketReadySku).length;
-        const draftSkus = skus.filter(isPipelineSku).length;
-        const pendingSaves = hasUnsavedChanges
-            ? skus.filter(s =>
-                  tenantSlug === 'aums'
-                      ? s.exShowroom !== s.originalExShowroom ||
-                        s.isPopular !== s.originalIsPopular ||
-                        s.publishStage !== s.originalPublishStage ||
-                        s.status !== s.originalStatus
-                      : s.offerAmount !== s.originalOfferAmount ||
-                        s.inclusionType !== s.originalInclusionType ||
-                        s.localIsActive !== s.originalLocalIsActive ||
-                        s.isPopular !== s.originalIsPopular
-              ).length
-            : 0;
-        const activeRuleObj = states.find(s => s.id === selectedStateId);
-
-        // Dynamic sum from Table's current view
-        const totalValue = tableSummary.value;
-        const formattedValue =
-            totalValue >= 1000 ? formatCurrencyCompact(totalValue) : `₹${totalValue.toLocaleString()}`;
-
-        return (
-            <div className="max-w-full mx-auto space-y-4 mb-4">
-                {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-left">
-                    <div className="space-y-1 text-left">
-                        <div className="flex items-center gap-3">
-                            <span className="px-2 py-0.5 bg-emerald-100 text-[8px] font-black text-emerald-600 uppercase tracking-widest rounded-full">
-                                {selectedCategory === 'ACCESSORY' ? 'Product Catalog' : 'Regulatory Ledger'}
-                            </span>
-                        </div>
-                        <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
-                            {selectedCategory === 'ACCESSORY' ? (
-                                <>
-                                    Accessory <span className="text-emerald-600">Pricing</span>
-                                </>
-                            ) : (
-                                <>
-                                    On-Road <span className="text-emerald-600">Pricing</span>
-                                </>
-                            )}
-                        </h1>
-                    </div>
-
-                    <div className="flex items-center gap-4 relative z-10">
-                        {loadError && (
-                            <button
-                                onClick={fetchSKUsAndPrices}
-                                className="group flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-xl transition-all duration-300 shadow-xl active:scale-95"
-                                title={loadError}
-                            >
-                                <RefreshCw size={14} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Retry Load</span>
-                            </button>
-                        )}
-                        {tenantSlug === 'aums' && (
-                            <button
-                                onClick={handleBackfill}
-                                className="group relative flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl hover:scale-105 transition-all duration-300 shadow-xl overflow-hidden active:scale-95"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <Activity size={16} className="text-emerald-400 dark:text-emerald-600" />
-                                <span className="text-[10px] font-black uppercase tracking-widest relative z-10">
-                                    Backfill Missing
-                                </span>
-                            </button>
-                        )}
-                        <div
-                            className={`flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-lg transition-all duration-300 border ${hasUnsavedChanges ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200 scale-100' : 'opacity-0 scale-95 border-transparent'}`}
-                        >
-                            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                            <span className="uppercase tracking-widest font-black text-xs text-left">
-                                Unsaved Changes
-                            </span>
-                        </div>
-                        {isSaving && (
-                            <div className="flex items-center gap-2 text-[10px] font-bold px-3 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
-                                <Loader2 size={12} className="animate-spin" />
-                                <span className="uppercase tracking-widest">Saving...</span>
-                            </div>
-                        )}
-                        {!isSaving && saveQueued && (
-                            <div className="flex items-center gap-2 text-[10px] font-bold px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
-                                <Save size={12} />
-                                <span className="uppercase tracking-widest">Save Queued</span>
-                            </div>
-                        )}
-                        {!isSaving && !hasUnsavedChanges && lastSavedAt && (
-                            <div className="flex items-center gap-2 text-[10px] font-bold px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <span className="uppercase tracking-widest">Saved</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* KPI Grid - Compacted */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3">
-                    {/* Brands/SKUs (Indigo) */}
-                    <div
-                        onClick={() => toggleQuickFilter('inventory')}
-                        className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
-                            quickFilter === 'inventory'
-                                ? 'border-indigo-400 ring-1 ring-indigo-300/50'
-                                : 'border-slate-200 dark:border-white/10'
-                        }`}
-                    >
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Package size={32} className="text-indigo-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-1 text-left">
-                            <div className="p-1 px-1.5 rounded-lg bg-indigo-50 text-indigo-600">
-                                <Package size={14} className="fill-current" />
-                            </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                Inventory
-                            </span>
-                        </div>
-                        <div className="text-left">
-                            <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {loading ? '-' : tableSummary.count}
-                            </div>
-                            <div className="text-[8px] font-bold text-indigo-600 uppercase tracking-widest mt-0.5">
-                                Filtered SKUs
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Live SKUs (Emerald) */}
-                    <div
-                        onClick={() => toggleQuickFilter('market_ready')}
-                        className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
-                            quickFilter === 'market_ready'
-                                ? 'border-emerald-400 ring-1 ring-emerald-300/50'
-                                : 'border-slate-200 dark:border-white/10'
-                        }`}
-                    >
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <TrendingUp size={32} className="text-emerald-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-1 text-left">
-                            <div className="p-1 px-1.5 rounded-lg bg-emerald-50 text-emerald-600">
-                                <TrendingUp size={14} className="fill-current" />
-                            </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                Market Ready
-                            </span>
-                        </div>
-                        <div className="text-left">
-                            <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {loading ? '-' : liveSkus}
-                            </div>
-                            <div className="text-[8px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">
-                                Active Status
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Draft/New (Amber) */}
-                    <div
-                        onClick={() => toggleQuickFilter('pipeline')}
-                        className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
-                            quickFilter === 'pipeline'
-                                ? 'border-amber-400 ring-1 ring-amber-300/50'
-                                : 'border-slate-200 dark:border-white/10'
-                        }`}
-                    >
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Zap size={32} className="text-amber-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-1 text-left">
-                            <div className="p-1 px-1.5 rounded-lg bg-amber-50 text-amber-600">
-                                <Zap size={14} className="fill-current" />
-                            </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                Pipeline
-                            </span>
-                        </div>
-                        <div className="text-left">
-                            <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {loading ? '-' : draftSkus}
-                            </div>
-                            <div className="text-[8px] font-bold text-amber-600 uppercase tracking-widest mt-0.5">
-                                Pending Sync
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Missing Price (Rose) */}
-                    <div
-                        onClick={() => toggleQuickFilter('critical')}
-                        className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
-                            quickFilter === 'critical'
-                                ? 'border-rose-400 ring-1 ring-rose-300/50'
-                                : 'border-slate-200 dark:border-white/10'
-                        }`}
-                    >
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Target size={32} className="text-rose-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-1 text-left">
-                            <div className="p-1 px-1.5 rounded-lg bg-rose-50 text-rose-600">
-                                <Target size={14} />
-                            </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                Critical Fix
-                            </span>
-                        </div>
-                        <div className="text-left">
-                            <div
-                                className={`text-2xl font-black uppercase italic tracking-tighter ${missingPrices > 0 ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}
-                            >
-                                {loading ? '-' : missingPrices}
-                            </div>
-                            <div className="text-[8px] font-bold text-rose-600 uppercase tracking-widest mt-0.5">
-                                Zero Price SKU
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Inventory Value (Blue) */}
-                    <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left">
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Sparkles size={32} className="text-blue-600" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-1 text-left">
-                            <div className="p-1 px-1.5 rounded-lg bg-blue-50 text-blue-600">
-                                <Sparkles size={14} />
-                            </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                Inventory Value
-                            </span>
-                        </div>
-                        <div className="text-left">
-                            <div className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter overflow-hidden text-ellipsis whitespace-nowrap">
-                                {loading ? '-' : formattedValue}
-                            </div>
-                            <div className="text-[8px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">
-                                Sum Ex-Showroom
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Market (Slate) */}
-                    <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left">
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Landmark size={32} className="text-slate-400" />
-                        </div>
-                        <div className="flex items-center gap-2 mb-1 text-left">
-                            <div className="p-1 px-1.5 rounded-lg bg-slate-100 text-slate-500">
-                                <Landmark size={14} />
-                            </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                Current Market
-                            </span>
-                        </div>
-                        <div className="text-left">
-                            <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
-                                {loading ? '-' : activeRuleObj?.stateCode || '--'}
-                            </div>
-                            <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
-                                {activeRuleObj?.ruleName || 'Unknown Region'}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 lg:p-6 overflow-auto transition-colors duration-500">
-            {renderHeader()}
+            {/* Category Gate */}
+            <AnimatePresence mode="wait">
+                {isHydrated && isGateVisible && (
+                    <CategoryGate
+                        onSelect={id => {
+                            setSelectedCategory(id || 'ALL');
+                            setIsGateVisible(false);
+                            // Also update URL manually to trigger sync
+                            const params = new URLSearchParams(window.location.search);
+                            if (id) params.set('category', id);
+                            else params.delete('category');
+                            window.history.replaceState({}, '', `?${params.toString()}`);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+
+            <PricingHeader
+                selectedCategory={selectedCategory}
+                onOpenGate={() => setIsGateVisible(true)}
+                skus={skus}
+                tenantSlug={tenantSlug}
+                hasUnsavedChanges={hasUnsavedChanges}
+                fetchSKUsAndPrices={fetchSKUsAndPrices}
+                isSaving={isSaving}
+                saveQueued={saveQueued}
+                lastSavedAt={lastSavedAt}
+                tableSummary={tableSummary}
+                liveSkus={
+                    skus.filter(s =>
+                        tenantSlug === 'aums'
+                            ? s.displayState === 'Live' || s.displayState === 'Published'
+                            : s.localIsActive === true
+                    ).length
+                }
+                draftSkus={
+                    skus.filter(
+                        s =>
+                            !(tenantSlug === 'aums'
+                                ? s.displayState === 'Live' || s.displayState === 'Published'
+                                : s.localIsActive === true)
+                    ).length
+                }
+                missingPrices={skus.filter(s => s.exShowroom === 0).length}
+                quickFilter={quickFilter}
+                onToggleQuickFilter={toggleQuickFilter}
+                activeRuleObj={states.find(s => s.id === selectedStateId)}
+                loadError={loadError}
+                handleBackfill={handleBackfill}
+            />
 
             <div className="w-full">
                 <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/5 shadow-xl overflow-hidden min-h-[600px] relative">
@@ -1516,5 +1334,388 @@ export default function PricingPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+function CategoryGate({ onSelect }: { onSelect: (id: string) => void }) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6"
+        >
+            <div className="max-w-6xl w-full space-y-12">
+                <div className="text-center space-y-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="flex justify-center"
+                    >
+                        <div className="px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">
+                                Commercial Pricing Portal
+                            </span>
+                        </div>
+                    </motion.div>
+                    <motion.h2
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-5xl md:text-7xl font-black text-white uppercase tracking-tighter italic"
+                    >
+                        Select <span className="text-emerald-500">Domain</span>
+                    </motion.h2>
+                    <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-slate-400 text-sm font-bold uppercase tracking-widest"
+                    >
+                        Choose a ledger category to manage regional pricing and taxes
+                    </motion.p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {[
+                        {
+                            id: 'VEHICLE',
+                            label: 'Vehicles',
+                            icon: Car,
+                            desc: 'On-Road Pricing, RTO & Insurance',
+                            color: 'text-blue-500',
+                            bg: 'bg-blue-500/10',
+                            border: 'hover:border-blue-500/50',
+                        },
+                        {
+                            id: 'ACCESSORY',
+                            label: 'Accessories',
+                            icon: Package,
+                            desc: 'MRP & Global Catalog Pricing',
+                            color: 'text-emerald-500',
+                            bg: 'bg-emerald-500/10',
+                            border: 'hover:border-emerald-500/50',
+                        },
+                        {
+                            id: 'SERVICE',
+                            label: 'Services',
+                            icon: Wrench,
+                            desc: 'Labor Charges & Maintenance Plans',
+                            color: 'text-amber-500',
+                            bg: 'bg-amber-500/10',
+                            border: 'hover:border-amber-500/50',
+                        },
+                    ].map((cat, idx) => (
+                        <motion.div
+                            key={cat.id}
+                            initial={{ opacity: 0, x: -30 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.4 + idx * 0.1 }}
+                            onClick={() => onSelect(cat.id)}
+                            className={`group relative p-8 rounded-[2.5rem] bg-white/5 border border-white/10 ${cat.border} cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:bg-white/10 flex flex-col items-center text-center gap-6`}
+                        >
+                            <div
+                                className={`w-20 h-20 rounded-3xl ${cat.bg} flex items-center justify-center transition-transform duration-500 group-hover:rotate-12`}
+                            >
+                                <cat.icon size={40} className={cat.color} />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-3xl font-black text-white uppercase tracking-tighter italic">
+                                    {cat.label}
+                                </h3>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
+                                    {cat.desc}
+                                </p>
+                            </div>
+                            <div className="mt-4 flex items-center gap-2 px-6 py-2 rounded-full bg-white text-slate-900 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+                                <span className="text-[10px] font-black uppercase tracking-widest">Enter Ledger</span>
+                                <ExternalLink size={12} />
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+        </motion.div>
+    );
+}
+
+function PricingHeader({
+    selectedCategory,
+    onOpenGate,
+    skus,
+    tenantSlug,
+    hasUnsavedChanges,
+    fetchSKUsAndPrices,
+    isSaving,
+    saveQueued,
+    lastSavedAt,
+    tableSummary,
+    liveSkus,
+    draftSkus,
+    missingPrices,
+    quickFilter,
+    onToggleQuickFilter,
+    activeRuleObj,
+    loadError,
+    handleBackfill,
+}: any) {
+    const totalValue = tableSummary.value;
+    const formattedValue = totalValue >= 1000 ? formatCurrencyCompact(totalValue) : `₹${totalValue.toLocaleString()}`;
+
+    return (
+        <>
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-left relative z-10 mb-4">
+                <div className="space-y-1 text-left">
+                    <div className="flex items-center gap-3">
+                        <span
+                            onClick={onOpenGate}
+                            className="px-2 py-0.5 bg-emerald-100 text-[8px] font-black text-emerald-600 uppercase tracking-widest rounded-full cursor-pointer hover:bg-emerald-200 transition-colors flex items-center gap-1"
+                        >
+                            <Layers size={8} />
+                            {selectedCategory === 'ACCESSORY'
+                                ? 'Product Catalog'
+                                : selectedCategory === 'SERVICE'
+                                  ? 'Service Registry'
+                                  : 'Regulatory Ledger'}
+                            <span className="opacity-40 ml-1 italic">(Change)</span>
+                        </span>
+                    </div>
+                    <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                        {selectedCategory === 'ACCESSORY' ? (
+                            <>
+                                Accessory <span className="text-emerald-600">Pricing</span>
+                            </>
+                        ) : selectedCategory === 'SERVICE' ? (
+                            <>
+                                Service <span className="text-amber-500">Registry</span>
+                            </>
+                        ) : (
+                            <>
+                                On-Road <span className="text-emerald-600">Pricing</span>
+                            </>
+                        )}
+                    </h1>
+                </div>
+
+                <div className="flex items-center gap-4 relative z-10">
+                    {loadError && (
+                        <button
+                            onClick={fetchSKUsAndPrices}
+                            className="group flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-xl transition-all duration-300 shadow-xl active:scale-95"
+                            title={loadError}
+                        >
+                            <RefreshCw size={14} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Retry Load</span>
+                        </button>
+                    )}
+                    {tenantSlug === 'aums' && (
+                        <button
+                            onClick={handleBackfill}
+                            className="group relative flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl hover:scale-105 transition-all duration-300 shadow-xl overflow-hidden active:scale-95"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Activity size={16} className="text-emerald-400 dark:text-emerald-600" />
+                            <span className="text-[10px] font-black uppercase tracking-widest relative z-10">
+                                Backfill Missing
+                            </span>
+                        </button>
+                    )}
+                    <div
+                        className={`flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-lg transition-all duration-300 border ${hasUnsavedChanges ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200 scale-100' : 'opacity-0 scale-95 border-transparent'}`}
+                    >
+                        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        <span className="uppercase tracking-widest font-black text-xs text-left">Unsaved Changes</span>
+                    </div>
+                    {isSaving && (
+                        <div className="flex items-center gap-2 text-[10px] font-bold px-3 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                            <Loader2 size={12} className="animate-spin" />
+                            <span className="uppercase tracking-widest">Saving...</span>
+                        </div>
+                    )}
+                    {!isSaving && saveQueued && (
+                        <div className="flex items-center gap-2 text-[10px] font-bold px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                            <Save size={12} />
+                            <span className="uppercase tracking-widest">Save Queued</span>
+                        </div>
+                    )}
+                    {!isSaving && !hasUnsavedChanges && lastSavedAt && (
+                        <div className="flex items-center gap-2 text-[10px] font-bold px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="uppercase tracking-widest">Saved</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* KPI Grid - Compacted */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3 mb-4">
+                {/* Brands/SKUs (Indigo) */}
+                <div
+                    onClick={() => onToggleQuickFilter('inventory')}
+                    className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                        quickFilter === 'inventory'
+                            ? 'border-indigo-400 ring-1 ring-indigo-300/50'
+                            : 'border-slate-200 dark:border-white/10'
+                    }`}
+                >
+                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Package size={32} className="text-indigo-600" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-1 text-left">
+                        <div className="p-1 px-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                            <Package size={14} className="fill-current" />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                            Inventory
+                        </span>
+                    </div>
+                    <div className="text-left">
+                        <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            {tableSummary.count}
+                        </div>
+                        <div className="text-[8px] font-bold text-indigo-600 uppercase tracking-widest mt-0.5">
+                            Filtered SKUs
+                        </div>
+                    </div>
+                </div>
+
+                {/* Live SKUs (Emerald) */}
+                <div
+                    onClick={() => onToggleQuickFilter('market_ready')}
+                    className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                        quickFilter === 'market_ready'
+                            ? 'border-emerald-400 ring-1 ring-emerald-300/50'
+                            : 'border-slate-200 dark:border-white/10'
+                    }`}
+                >
+                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <TrendingUp size={32} className="text-emerald-600" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-1 text-left">
+                        <div className="p-1 px-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                            <TrendingUp size={14} className="fill-current" />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                            Market Ready
+                        </span>
+                    </div>
+                    <div className="text-left">
+                        <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            {liveSkus}
+                        </div>
+                        <div className="text-[8px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">
+                            Active Status
+                        </div>
+                    </div>
+                </div>
+
+                {/* Draft/New (Amber) */}
+                <div
+                    onClick={() => onToggleQuickFilter('pipeline')}
+                    className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                        quickFilter === 'pipeline'
+                            ? 'border-amber-400 ring-1 ring-amber-300/50'
+                            : 'border-slate-200 dark:border-white/10'
+                    }`}
+                >
+                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Zap size={32} className="text-amber-600" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-1 text-left">
+                        <div className="p-1 px-1.5 rounded-lg bg-amber-50 text-amber-600">
+                            <Zap size={14} className="fill-current" />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Pipeline</span>
+                    </div>
+                    <div className="text-left">
+                        <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            {draftSkus}
+                        </div>
+                        <div className="text-[8px] font-bold text-amber-600 uppercase tracking-widest mt-0.5">
+                            Pending Sync
+                        </div>
+                    </div>
+                </div>
+
+                {/* Missing Price (Rose) */}
+                <div
+                    onClick={() => onToggleQuickFilter('critical')}
+                    className={`p-3 rounded-2xl bg-white dark:bg-slate-900 border shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left cursor-pointer ${
+                        quickFilter === 'critical'
+                            ? 'border-rose-400 ring-1 ring-rose-300/50'
+                            : 'border-slate-200 dark:border-white/10'
+                    }`}
+                >
+                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Target size={32} className="text-rose-600" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-1 text-left">
+                        <div className="p-1 px-1.5 rounded-lg bg-rose-50 text-rose-600">
+                            <Target size={14} />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                            Critical Fix
+                        </span>
+                    </div>
+                    <div className="text-left">
+                        <div
+                            className={`text-2xl font-black uppercase italic tracking-tighter ${missingPrices > 0 ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}
+                        >
+                            {missingPrices}
+                        </div>
+                        <div className="text-[8px] font-bold text-rose-600 uppercase tracking-widest mt-0.5">
+                            Zero Price SKU
+                        </div>
+                    </div>
+                </div>
+
+                {/* Inventory Value (Blue) */}
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Sparkles size={32} className="text-blue-600" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-1 text-left">
+                        <div className="p-1 px-1.5 rounded-lg bg-blue-50 text-blue-600">
+                            <Sparkles size={14} />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                            Inventory Value
+                        </span>
+                    </div>
+                    <div className="text-left">
+                        <div className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter overflow-hidden text-ellipsis whitespace-nowrap">
+                            {formattedValue}
+                        </div>
+                        <div className="text-[8px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">
+                            Sum Ex-Showroom
+                        </div>
+                    </div>
+                </div>
+
+                {/* Market (Slate) */}
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-md flex flex-col justify-between h-24 group hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden text-left">
+                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Landmark size={32} className="text-slate-400" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-1 text-left">
+                        <div className="p-1 px-1.5 rounded-lg bg-slate-100 text-slate-500">
+                            <Landmark size={14} />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                            Current Market
+                        </span>
+                    </div>
+                    <div className="text-left">
+                        <div className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
+                            {activeRuleObj?.stateCode || '--'}
+                        </div>
+                        <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
+                            {activeRuleObj?.ruleName || 'Unknown Region'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </>
     );
 }

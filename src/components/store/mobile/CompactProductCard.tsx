@@ -108,7 +108,11 @@ export function CompactProductCard({
     };
 
     const navigableDistrict = normalizeDistrictForUrl(v.dealerLocation || v.price?.pricingSource);
-    const offerDeltaForParity = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
+    const discountBasedDelta = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
+    const offerDeltaForParity =
+        typeof v.price?.offerPrice === 'number' && typeof v.price?.onRoad === 'number'
+            ? Number(v.price.offerPrice) - Number(v.price.onRoad)
+            : discountBasedDelta;
 
     const href = buildProductUrl({
         make: v.make,

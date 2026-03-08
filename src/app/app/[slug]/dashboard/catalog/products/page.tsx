@@ -158,7 +158,11 @@ export default function UnifiedCatalogPage() {
         // 1. Filter Families strictly based on Brand + Category selection
         const filteredFamilies = items.filter((f: any) => {
             const matchesBrand = selectedBrand === 'ALL' || f.brand_id === selectedBrand;
-            const matchesCategory = selectedCategory === 'ALL' || f.category === selectedCategory;
+            // A family matches a category if the model itself is of that category OR it contains any SKUs of that category
+            const hasMatchingSku = (f.variants || []).some((v: any) =>
+                (v.skus || []).some((s: any) => (s.sku_type || f.category) === selectedCategory)
+            );
+            const matchesCategory = selectedCategory === 'ALL' || f.category === selectedCategory || hasMatchingSku;
             return matchesBrand && matchesCategory;
         });
 
@@ -218,9 +222,45 @@ export default function UnifiedCatalogPage() {
                     const skuName = sku.name || '';
                     const variantName = variant.name || '';
 
-                    // V2: Color comes directly from SKU fields
-                    const colorName = sku.color_name || skuName;
-                    const colorHex = sku.hex_primary || '';
+                    // --- SMART METADATA RESOLUTION ---
+                    let resolvedColor = sku.color_name;
+                    let resolvedFinish = sku.finish || '';
+                    let colorHex = sku.hex_primary;
+
+                    // 1. Resolve Color Name if missing
+                    if (!resolvedColor) {
+                        const parts = skuName.split(' - ');
+                        resolvedColor = parts.length > 1 ? parts[parts.length - 1] : skuName;
+                        // Clean up model name from color if it exists
+                        if (familyName && resolvedColor.toLowerCase().includes(familyName.toLowerCase())) {
+                            resolvedColor = resolvedColor.replace(new RegExp(`${familyName}\\s?`, 'i'), '').trim();
+                            if (resolvedColor.startsWith('-')) resolvedColor = resolvedColor.substring(1).trim();
+                        }
+                    }
+
+                    // 2. Resolve Finish if missing
+                    if (!resolvedFinish) {
+                        const upper = skuName.toUpperCase();
+                        if (upper.includes('MATTE') || upper.includes('MAT ')) resolvedFinish = 'MATTE';
+                        else if (upper.includes('METALLIC')) resolvedFinish = 'METALLIC';
+                        else if (upper.includes('PEARL')) resolvedFinish = 'PEARL';
+                        else if (upper.includes('GLOSS')) resolvedFinish = 'GLOSS';
+                    }
+
+                    // 3. Resolve Hex if missing
+                    if (!colorHex) {
+                        const lower = (resolvedColor || '').toLowerCase();
+                        if (lower.includes('red')) colorHex = '#B22234';
+                        else if (lower.includes('blue')) colorHex = '#1E40AF';
+                        else if (lower.includes('black')) colorHex = '#1C1C1C';
+                        else if (lower.includes('white')) colorHex = '#F5F5F0';
+                        else if (lower.includes('gray') || lower.includes('grey')) colorHex = '#4B5563';
+                        else if (lower.includes('silver')) colorHex = '#94A3B8';
+                        else if (lower.includes('yellow')) colorHex = '#FBBF24';
+                        else if (lower.includes('green')) colorHex = '#15803D';
+                    }
+
+                    const colorName = resolvedColor || skuName;
                     const colorPosition = sku.position || 999;
 
                     // V2: Assets — primary_image is the only image field for now
@@ -232,7 +272,7 @@ export default function UnifiedCatalogPage() {
                         variant,
                         sku,
                         brandName,
-                        category: (family as any).category || 'VEHICLE',
+                        category: sku.sku_type || (family as any).category || 'VEHICLE',
                         familyName,
                         familyPosition: (family as any).position || 999,
                         variantName,
@@ -240,6 +280,7 @@ export default function UnifiedCatalogPage() {
                         colorName,
                         colorPosition,
                         colorHex,
+                        finish: resolvedFinish,
                         skuName,
                         skuSlug: sku.slug || '',
                         status: sku.status,
@@ -256,7 +297,7 @@ export default function UnifiedCatalogPage() {
         });
 
         const lowerTerm = searchTerm.toLowerCase();
-        skus = skus.filter(
+        let filteredSkus = skus.filter(
             item =>
                 (item.brandName || '').toLowerCase().includes(lowerTerm) ||
                 (item.familyName || '').toLowerCase().includes(lowerTerm) ||
@@ -266,15 +307,15 @@ export default function UnifiedCatalogPage() {
         );
 
         if (selectedCategory !== 'ALL') {
-            skus = skus.filter(item => item.category === selectedCategory);
+            filteredSkus = filteredSkus.filter(item => item.category === selectedCategory);
         }
 
         if (selectedBrand !== 'ALL') {
-            skus = skus.filter(item => (item.family as any).brand?.id === selectedBrand);
+            filteredSkus = filteredSkus.filter(item => (item.family as any).brand?.id === selectedBrand);
         }
 
         // Apply Sorting
-        skus.sort((a: any, b: any) => {
+        filteredSkus.sort((a: any, b: any) => {
             if (sortConfig) {
                 // User defined sort
                 const aValue = String(a[sortConfig.key] || '').toLowerCase();
@@ -310,22 +351,7 @@ export default function UnifiedCatalogPage() {
             }
         });
 
-        // Additional explicit check for sorting by variantName or colorName if selected via header
-        if (sortConfig?.key === 'variantName') {
-            skus.sort((a: any, b: any) => {
-                // Sort by Variant Position as primary, Name as secondary
-                // But if key is strictly 'variantName', use name.
-                // Actually user asked for sorting headers.
-                // Let's rely on the generic sort block above if it wasn't position-aware,
-                // but since we want to respect position for default, let's keep it simple.
-                // If the user *clicks* the header, it sets sortConfig.key = 'variantName'.
-                // The code block above `if (sortConfig)` handles this generically by string comparison.
-                // That's fine for simple alphabetical sort on click.
-                return 0; // Already handled by generic block
-            });
-        }
-
-        return skus; // Return ALL sorted/filtered items
+        return filteredSkus;
     }, [items, searchTerm, sortConfig, selectedBrand, selectedCategory]);
 
     // Pagination Logic

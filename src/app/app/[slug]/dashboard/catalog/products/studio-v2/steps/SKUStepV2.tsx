@@ -193,6 +193,68 @@ export default function SKUStepV2({
         return { url: null, inherited: false, source: '' };
     };
 
+    const getSkuMediaStatus = (
+        sku: CatalogSku
+    ): { kind: 'uploaded' | 'shared'; source?: 'C' | 'V' | 'M' | 'S'; hasMedia: boolean } => {
+        const img = resolveSkuImage(sku);
+        const ownPrimary = sku.primary_image || sku.gallery_img_1 || null;
+        const hasMedia = Boolean(img.url || ownPrimary);
+        if (!hasMedia) return { kind: 'uploaded', hasMedia: false };
+
+        // Inherited from colour/variant/model hierarchy.
+        if (img.inherited) {
+            const source = (img.source || 'C') as 'C' | 'V' | 'M';
+            return { kind: 'shared', source, hasMedia: true };
+        }
+
+        // Heuristic: same-colour SKUs with identical media and newer updated_at are treated as shared-from-sibling.
+        const mediaKey = [
+            sku.primary_image || '',
+            sku.gallery_img_1 || '',
+            sku.gallery_img_2 || '',
+            sku.gallery_img_3 || '',
+            sku.gallery_img_4 || '',
+            sku.gallery_img_5 || '',
+            sku.gallery_img_6 || '',
+            sku.video_url_1 || '',
+            sku.video_url_2 || '',
+            sku.pdf_url_1 || '',
+        ].join('|');
+
+        if (sku.media_shared !== false && mediaKey.replace(/\|/g, '') !== '') {
+            const sameMediaSiblings = skus.filter(s => {
+                if (s.id === sku.id) return false;
+                if (s.colour_id !== sku.colour_id) return false;
+                const siblingKey = [
+                    s.primary_image || '',
+                    s.gallery_img_1 || '',
+                    s.gallery_img_2 || '',
+                    s.gallery_img_3 || '',
+                    s.gallery_img_4 || '',
+                    s.gallery_img_5 || '',
+                    s.gallery_img_6 || '',
+                    s.video_url_1 || '',
+                    s.video_url_2 || '',
+                    s.pdf_url_1 || '',
+                ].join('|');
+                return siblingKey === mediaKey;
+            });
+
+            if (sameMediaSiblings.length > 0) {
+                const cluster = [sku, ...sameMediaSiblings].sort((a, b) => {
+                    const ta = new Date(a.updated_at || a.created_at || 0).getTime();
+                    const tb = new Date(b.updated_at || b.created_at || 0).getTime();
+                    return ta - tb;
+                });
+                if (cluster[0]?.id !== sku.id) {
+                    return { kind: 'shared', source: 'S', hasMedia: true };
+                }
+            }
+        }
+
+        return { kind: 'uploaded', hasMedia: true };
+    };
+
     // Toggle SKU existence (create/delete)
     const handleToggleSku = async (variantId: string, colour: CatalogColour) => {
         if (productType !== 'ACCESSORY') {
@@ -876,63 +938,112 @@ export default function SKUStepV2({
                                                                       )}
                                                                   </div>
                                                                   {sku && (
-                                                                      <div className="flex items-center gap-0.5">
-                                                                          <button
-                                                                              onClick={() => setActiveMediaSku(sku)}
-                                                                              className="p-1 rounded-lg bg-slate-50 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
-                                                                              title="Manage media"
-                                                                          >
-                                                                              {(() => {
-                                                                                  const img = resolveSkuImage(sku);
-                                                                                  return img.url ? (
-                                                                                      <div className="relative">
-                                                                                          <img
-                                                                                              src={getProxiedUrl(
-                                                                                                  img.url
+                                                                      <div className="flex flex-col items-center gap-1">
+                                                                          <div className="flex items-center gap-0.5">
+                                                                              <button
+                                                                                  onClick={() => setActiveMediaSku(sku)}
+                                                                                  className="p-1 rounded-lg bg-slate-50 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                                                                  title={
+                                                                                      resolveSkuImage(sku).inherited
+                                                                                          ? 'Shared media shown. Click to upload unique media for this SKU.'
+                                                                                          : 'Manage media'
+                                                                                  }
+                                                                              >
+                                                                                  {(() => {
+                                                                                      const img = resolveSkuImage(sku);
+                                                                                      return img.url ? (
+                                                                                          <div className="relative">
+                                                                                              <img
+                                                                                                  src={getProxiedUrl(
+                                                                                                      img.url
+                                                                                                  )}
+                                                                                                  alt=""
+                                                                                                  className={`w-5 h-5 rounded object-cover ${img.inherited ? 'opacity-70' : ''}`}
+                                                                                              />
+                                                                                              {img.inherited && (
+                                                                                                  <span
+                                                                                                      className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-indigo-500 text-white text-[6px] font-black flex items-center justify-center"
+                                                                                                      title={`From ${img.source === 'C' ? 'Colour' : img.source === 'V' ? 'Variant' : 'Model'}`}
+                                                                                                  >
+                                                                                                      {img.source}
+                                                                                                  </span>
                                                                                               )}
-                                                                                              alt=""
-                                                                                              className={`w-5 h-5 rounded object-cover ${img.inherited ? 'opacity-70' : ''}`}
+                                                                                          </div>
+                                                                                      ) : (
+                                                                                          <ImageIcon
+                                                                                              size={12}
+                                                                                              className="text-slate-300"
                                                                                           />
-                                                                                          {img.inherited && (
-                                                                                              <span
-                                                                                                  className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-indigo-500 text-white text-[6px] font-black flex items-center justify-center"
-                                                                                                  title={`From ${img.source === 'C' ? 'Colour' : img.source === 'V' ? 'Variant' : 'Model'}`}
-                                                                                              >
-                                                                                                  {img.source}
-                                                                                              </span>
-                                                                                          )}
-                                                                                      </div>
-                                                                                  ) : (
-                                                                                      <ImageIcon
-                                                                                          size={12}
-                                                                                          className="text-slate-300"
-                                                                                      />
-                                                                                  );
-                                                                              })()}
-                                                                          </button>
-                                                                          {!sku.primary_image &&
-                                                                              skus.some(
-                                                                                  s =>
-                                                                                      s.colour_id === sku.colour_id &&
-                                                                                      s.id !== sku.id &&
-                                                                                      s.primary_image
-                                                                              ) && (
-                                                                                  <button
-                                                                                      onClick={e => {
-                                                                                          e.stopPropagation();
-                                                                                          handleCopyMediaFromSibling(
-                                                                                              sku
-                                                                                          );
-                                                                                      }}
-                                                                                      className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
-                                                                                      title="Copy image from sibling"
-                                                                                  >
-                                                                                      <Copy
-                                                                                          size={10}
-                                                                                          className="text-indigo-500"
-                                                                                      />
-                                                                                  </button>
-                                                                              )}
+                                                                                      );
+                                                                                  })()}
+                                                                              </button>
+                                                                              {!sku.primary_image &&
+                                                                                  skus.some(
+                                                                                      s =>
+                                                                                          s.colour_id ===
+                                                                                              sku.colour_id &&
+                                                                                          s.id !== sku.id &&
+                                                                                          s.primary_image
+                                                                                  ) && (
+                                                                                      <button
+                                                                                          onClick={e => {
+                                                                                              e.stopPropagation();
+                                                                                              handleCopyMediaFromSibling(
+                                                                                                  sku
+                                                                                              );
+                                                                                          }}
+                                                                                          className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                                                                                          title="Copy image from sibling"
+                                                                                      >
+                                                                                          <Copy
+                                                                                              size={10}
+                                                                                              className="text-indigo-500"
+                                                                                          />
+                                                                                      </button>
+                                                                                  )}
+                                                                          </div>
+                                                                          {(() => {
+                                                                              const mediaStatus =
+                                                                                  getSkuMediaStatus(sku);
+                                                                              return (
+                                                                                  <div className="flex items-center gap-1">
+                                                                                      <span
+                                                                                          className={`px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider ${
+                                                                                              mediaStatus.kind ===
+                                                                                              'shared'
+                                                                                                  ? 'bg-indigo-100 text-indigo-700'
+                                                                                                  : 'bg-emerald-100 text-emerald-700'
+                                                                                          }`}
+                                                                                          title={
+                                                                                              mediaStatus.kind ===
+                                                                                              'shared'
+                                                                                                  ? `Shared from ${
+                                                                                                        mediaStatus.source ===
+                                                                                                        'C'
+                                                                                                            ? 'Colour'
+                                                                                                            : mediaStatus.source ===
+                                                                                                                'V'
+                                                                                                              ? 'Variant'
+                                                                                                              : mediaStatus.source ===
+                                                                                                                  'M'
+                                                                                                                ? 'Model'
+                                                                                                                : 'Sibling SKU'
+                                                                                                    }`
+                                                                                                  : 'Uploaded directly on this SKU'
+                                                                                          }
+                                                                                      >
+                                                                                          {mediaStatus.kind === 'shared'
+                                                                                              ? `Shared-${mediaStatus.source || 'S'}`
+                                                                                              : 'Uploaded'}
+                                                                                      </span>
+                                                                                      {sku.is_primary && (
+                                                                                          <span className="px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-amber-100 text-amber-700">
+                                                                                              Primary
+                                                                                          </span>
+                                                                                      )}
+                                                                                  </div>
+                                                                              );
+                                                                          })()}
                                                                       </div>
                                                                   )}
                                                               </div>
@@ -1127,47 +1238,97 @@ export default function SKUStepV2({
 
                                                                   {/* Row 2: Media thumbnail — only visible if SKU exists */}
                                                                   {sku && (
-                                                                      <button
-                                                                          onClick={() => setActiveMediaSku(sku)}
-                                                                          className={`w-10 h-10 rounded-lg border transition-all overflow-hidden flex items-center justify-center group/media relative ${
-                                                                              resolveSkuImage(sku).url
-                                                                                  ? 'border-indigo-500/30 hover:border-indigo-500'
-                                                                                  : 'bg-slate-50 dark:bg-black/40 border-dashed border-slate-200 dark:border-white/10 text-slate-300 hover:text-indigo-500 hover:border-indigo-400'
-                                                                          }`}
-                                                                          title="Manage Media"
-                                                                      >
-                                                                          {(() => {
-                                                                              const img = resolveSkuImage(sku);
-                                                                              return img.url ? (
-                                                                                  <>
-                                                                                      <img
-                                                                                          src={getProxiedUrl(img.url)}
-                                                                                          className={`w-full h-full object-contain p-0.5 group-hover/media:scale-110 transition-transform duration-300 ${img.inherited ? 'opacity-70' : ''}`}
-                                                                                          alt={sku.name}
-                                                                                      />
-                                                                                      <div className="absolute inset-0 bg-indigo-600/60 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                                                                          <Upload
-                                                                                              size={14}
-                                                                                              strokeWidth={3}
+                                                                      <div className="flex flex-col items-center gap-1">
+                                                                          <button
+                                                                              onClick={() => setActiveMediaSku(sku)}
+                                                                              className={`w-10 h-10 rounded-lg border transition-all overflow-hidden flex items-center justify-center group/media relative ${
+                                                                                  resolveSkuImage(sku).url
+                                                                                      ? 'border-indigo-500/30 hover:border-indigo-500'
+                                                                                      : 'bg-slate-50 dark:bg-black/40 border-dashed border-slate-200 dark:border-white/10 text-slate-300 hover:text-indigo-500 hover:border-indigo-400'
+                                                                              }`}
+                                                                              title={
+                                                                                  resolveSkuImage(sku).inherited
+                                                                                      ? 'Shared media shown. Click to upload unique media for this SKU.'
+                                                                                      : 'Manage Media'
+                                                                              }
+                                                                          >
+                                                                              {(() => {
+                                                                                  const img = resolveSkuImage(sku);
+                                                                                  return img.url ? (
+                                                                                      <>
+                                                                                          <img
+                                                                                              src={getProxiedUrl(
+                                                                                                  img.url
+                                                                                              )}
+                                                                                              className={`w-full h-full object-contain p-0.5 group-hover/media:scale-110 transition-transform duration-300 ${img.inherited ? 'opacity-70' : ''}`}
+                                                                                              alt={sku.name}
                                                                                           />
-                                                                                      </div>
-                                                                                      {img.inherited && (
-                                                                                          <span
-                                                                                              className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-indigo-500 text-white text-[6px] font-black flex items-center justify-center shadow"
-                                                                                              title={`From ${img.source === 'C' ? 'Colour' : img.source === 'V' ? 'Variant' : 'Model'}`}
-                                                                                          >
-                                                                                              {img.source}
+                                                                                          <div className="absolute inset-0 bg-indigo-600/60 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                                                                              <Upload
+                                                                                                  size={14}
+                                                                                                  strokeWidth={3}
+                                                                                              />
+                                                                                          </div>
+                                                                                          {img.inherited && (
+                                                                                              <span
+                                                                                                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-indigo-500 text-white text-[6px] font-black flex items-center justify-center shadow"
+                                                                                                  title={`From ${img.source === 'C' ? 'Colour' : img.source === 'V' ? 'Variant' : 'Model'}`}
+                                                                                              >
+                                                                                                  {img.source}
+                                                                                              </span>
+                                                                                          )}
+                                                                                      </>
+                                                                                  ) : (
+                                                                                      <ImageIcon
+                                                                                          size={14}
+                                                                                          strokeWidth={1.5}
+                                                                                      />
+                                                                                  );
+                                                                              })()}
+                                                                          </button>
+                                                                          {(() => {
+                                                                              const mediaStatus =
+                                                                                  getSkuMediaStatus(sku);
+                                                                              return (
+                                                                                  <div className="flex items-center gap-1">
+                                                                                      <span
+                                                                                          className={`px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider ${
+                                                                                              mediaStatus.kind ===
+                                                                                              'shared'
+                                                                                                  ? 'bg-indigo-100 text-indigo-700'
+                                                                                                  : 'bg-emerald-100 text-emerald-700'
+                                                                                          }`}
+                                                                                          title={
+                                                                                              mediaStatus.kind ===
+                                                                                              'shared'
+                                                                                                  ? `Shared from ${
+                                                                                                        mediaStatus.source ===
+                                                                                                        'C'
+                                                                                                            ? 'Colour'
+                                                                                                            : mediaStatus.source ===
+                                                                                                                'V'
+                                                                                                              ? 'Variant'
+                                                                                                              : mediaStatus.source ===
+                                                                                                                  'M'
+                                                                                                                ? 'Model'
+                                                                                                                : 'Sibling SKU'
+                                                                                                    }`
+                                                                                                  : 'Uploaded directly on this SKU'
+                                                                                          }
+                                                                                      >
+                                                                                          {mediaStatus.kind === 'shared'
+                                                                                              ? `Shared-${mediaStatus.source || 'S'}`
+                                                                                              : 'Uploaded'}
+                                                                                      </span>
+                                                                                      {sku.is_primary && (
+                                                                                          <span className="px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-amber-100 text-amber-700">
+                                                                                              Primary
                                                                                           </span>
                                                                                       )}
-                                                                                  </>
-                                                                              ) : (
-                                                                                  <ImageIcon
-                                                                                      size={14}
-                                                                                      strokeWidth={1.5}
-                                                                                  />
+                                                                                  </div>
                                                                               );
                                                                           })()}
-                                                                      </button>
+                                                                      </div>
                                                                   )}
 
                                                                   {/* Row 3: SKU Code + OEM SKU */}

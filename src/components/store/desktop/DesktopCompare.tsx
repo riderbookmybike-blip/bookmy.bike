@@ -479,9 +479,9 @@ export default function DesktopCompare() {
 
     return (
         <>
-            <div className="min-h-screen bg-slate-50 transition-colors duration-500">
+            <div className="min-h-screen bg-white transition-colors duration-500">
                 {/* Main content with header + cards — same structure as Catalog */}
-                <div className="flex-1 store-page-shell">
+                <div className="flex-1 store-page-shell pt-[var(--header-h)]">
                     {/* ────── 3D Flip Sticky Header ────── */}
                     <div
                         className="sticky z-[90] w-full transition-all duration-500 ease-in-out"
