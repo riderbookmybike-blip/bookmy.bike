@@ -2,7 +2,7 @@
 
 // Refined Modern Footer - Optimized SSR
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
     Facebook,
@@ -40,27 +40,10 @@ import {
 } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
-import { useTenant } from '@/lib/tenant/tenantContext';
-import { QuickLeadMiniModal } from '@/components/leads/QuickLeadMiniModal';
 
 export const ModernFooter = () => {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [openNested, setOpenNested] = useState<string | null>(null);
-    const [isQuickLeadOpen, setIsQuickLeadOpen] = useState(false);
-    const [mounted, setMounted] = useState(false);
-    const { userRole, memberships } = useTenant();
-    const hasActiveTeamMembership = (memberships || []).some(m => {
-        if (String(m?.status || '').toUpperCase() !== 'ACTIVE') return false;
-        const type = String(m?.tenants?.type || '').toUpperCase();
-        return type === 'DEALER' || type === 'DEALERSHIP' || type === 'BANK' || type === 'SUPER_ADMIN';
-    });
-    const isTeamRole = Boolean(userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
-    const isTeamUser = hasActiveTeamMembership || isTeamRole;
-    const showQuickLeadSupportAction = mounted && isTeamUser;
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
 
     const toggleSection = (title: string) => setOpenSection(openSection === title ? null : title);
     const toggleNested = (brand: string) => setOpenNested(openNested === brand ? null : brand);
@@ -170,15 +153,6 @@ export const ModernFooter = () => {
                     href: '/welcome',
                     icon: <UserPlus size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
-                ...(showQuickLeadSupportAction
-                    ? [
-                          {
-                              label: 'Create Quick Lead',
-                              onClick: () => setIsQuickLeadOpen(true),
-                              icon: <UserPlus size={14} className="text-white/40 group-hover:text-brand-primary" />,
-                          },
-                      ]
-                    : []),
             ],
         },
 
@@ -564,7 +538,6 @@ export const ModernFooter = () => {
                     </div>
                 </div>
             </div>
-            <QuickLeadMiniModal isOpen={isQuickLeadOpen} onClose={() => setIsQuickLeadOpen(false)} />
         </footer>
     );
 };
