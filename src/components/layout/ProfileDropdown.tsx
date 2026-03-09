@@ -446,6 +446,33 @@ export function ProfileDropdown({
     const effectiveActiveFinanceId = financeId || primaryFinanceMembership?.tenant_id || null;
     const isFinanceTeamOnly = financeMemberships.length > 0 && dealerMemberships.length === 0;
     const hasFinanceMembership = financeMemberships.length > 0;
+    const availableFinanceOptions = useMemo(() => {
+        const byId = new Map<string, { id: string; name: string; slug: string | null }>();
+
+        for (const m of financeMemberships) {
+            const id = String(m.tenant_id || '');
+            if (!id) continue;
+            byId.set(id, {
+                id,
+                name: m.tenants?.name || 'Financer',
+                slug: m.tenants?.slug || null,
+            });
+        }
+
+        for (const f of dealerLinkedFinancers) {
+            const id = String(f.id || '');
+            if (!id) continue;
+            if (!byId.has(id)) {
+                byId.set(id, {
+                    id,
+                    name: f.name || 'Financer',
+                    slug: f.slug || null,
+                });
+            }
+        }
+
+        return Array.from(byId.values());
+    }, [financeMemberships, dealerLinkedFinancers]);
 
     useEffect(() => {
         if (isFinanceTeamOnly && primaryFinanceMembership?.tenant_id && !financeId) {
@@ -1043,6 +1070,25 @@ export function ProfileDropdown({
                                                     {businessMode && sortedMemberships.length > 0 && (
                                                         <div className="space-y-3">
                                                             <div className="space-y-1.5">
+                                                                {accountMenuItems.map(item => (
+                                                                    <a
+                                                                        key={item.label}
+                                                                        href={item.href}
+                                                                        onClick={() => setIsOpen(false)}
+                                                                        className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
+                                                                    >
+                                                                        <div
+                                                                            className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
+                                                                        >
+                                                                            <item.icon size={16} />
+                                                                        </div>
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                            {item.label}
+                                                                        </span>
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                            <div className="space-y-1.5">
                                                                 {adminMemberships.length > 0 && (
                                                                     <div className="space-y-1.5">
                                                                         <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20">
@@ -1231,8 +1277,7 @@ export function ProfileDropdown({
                                                                 )}
 
                                                                 {!isFinanceTeamOnly &&
-                                                                    !hasFinanceMembership &&
-                                                                    dealerLinkedFinancers
+                                                                    availableFinanceOptions
                                                                         .filter(f => f.id !== effectiveActiveFinanceId)
                                                                         .map(f => (
                                                                             <div
