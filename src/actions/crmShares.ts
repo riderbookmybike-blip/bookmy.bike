@@ -8,7 +8,9 @@ type ShareStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVOKED';
 // ── Valid share_type values (matches DB CHECK constraint) ──
 type ShareType = 'AUTO_PRIMARY' | 'AUTO_REFERRAL' | 'MANUAL_REQUEST';
 
-async function resolveActorContext(actorTenantId?: string | null) {
+async function resolveActorContext(
+    actorTenantId?: string | null
+): Promise<{ actorUserId: string | null; actorTenantId: string | null; error?: string }> {
     const supabase = await createClient();
     const {
         data: { user },
@@ -17,7 +19,24 @@ async function resolveActorContext(actorTenantId?: string | null) {
     const actorUserId = user?.id || null;
     let finalActorTenantId = actorTenantId || null;
 
-    if (!finalActorTenantId && actorUserId) {
+    if (!actorUserId) {
+        return { actorUserId: null, actorTenantId: null };
+    }
+
+    if (finalActorTenantId) {
+        // Verify provided tenant ID belongs to the authenticated user
+        const { data: teamMembership } = await adminClient
+            .from('id_team')
+            .select('tenant_id')
+            .eq('user_id', actorUserId)
+            .eq('tenant_id', finalActorTenantId)
+            .eq('status', 'ACTIVE')
+            .maybeSingle();
+
+        if (!teamMembership) {
+            return { actorUserId, actorTenantId: null, error: 'Tenant spoofing detected' };
+        }
+    } else {
         const { data: teamMembership } = await adminClient
             .from('id_team')
             .select('tenant_id')
@@ -102,10 +121,17 @@ export async function requestLeadShareAction(input: {
     shareType?: ShareType;
     actorTenantId?: string;
 }) {
-    const { actorUserId, actorTenantId } = await resolveActorContext(input.actorTenantId);
+    const { actorUserId, actorTenantId, error: contextError } = await resolveActorContext(input.actorTenantId);
 
     if (!actorUserId) {
         return { success: false, message: 'Authentication required' };
+    }
+
+    if (contextError) {
+        await logSecurityViolation(input.leadId, actorUserId, input.actorTenantId || null, 'requestLeadShareAction', {
+            error: contextError,
+        });
+        return { success: false, message: 'Forbidden: Invalid tenant context provided.' };
     }
 
     const hasAccess = await verifyLeadAccess(input.leadId, actorTenantId);
@@ -153,10 +179,17 @@ export async function requestLeadShareAction(input: {
 }
 
 export async function approveLeadShareAction(input: { shareId: string; leadId: string; actorTenantId?: string }) {
-    const { actorUserId, actorTenantId } = await resolveActorContext(input.actorTenantId);
+    const { actorUserId, actorTenantId, error: contextError } = await resolveActorContext(input.actorTenantId);
 
     if (!actorUserId) {
         return { success: false, message: 'Authentication required' };
+    }
+
+    if (contextError) {
+        await logSecurityViolation(input.leadId, actorUserId, input.actorTenantId || null, 'approveLeadShareAction', {
+            error: contextError,
+        });
+        return { success: false, message: 'Forbidden: Invalid tenant context provided.' };
     }
 
     const hasAccess = await verifyShareTransitionAccess(input.shareId, actorTenantId);
@@ -202,10 +235,17 @@ export async function revokeLeadShareAction(input: {
     reason?: string;
     actorTenantId?: string;
 }) {
-    const { actorUserId, actorTenantId } = await resolveActorContext(input.actorTenantId);
+    const { actorUserId, actorTenantId, error: contextError } = await resolveActorContext(input.actorTenantId);
 
     if (!actorUserId) {
         return { success: false, message: 'Authentication required' };
+    }
+
+    if (contextError) {
+        await logSecurityViolation(input.leadId, actorUserId, input.actorTenantId || null, 'revokeLeadShareAction', {
+            error: contextError,
+        });
+        return { success: false, message: 'Forbidden: Invalid tenant context provided.' };
     }
 
     const hasAccess = await verifyShareTransitionAccess(input.shareId, actorTenantId);
@@ -252,10 +292,17 @@ export async function rejectLeadShareAction(input: {
     reason?: string;
     actorTenantId?: string;
 }) {
-    const { actorUserId, actorTenantId } = await resolveActorContext(input.actorTenantId);
+    const { actorUserId, actorTenantId, error: contextError } = await resolveActorContext(input.actorTenantId);
 
     if (!actorUserId) {
         return { success: false, message: 'Authentication required' };
+    }
+
+    if (contextError) {
+        await logSecurityViolation(input.leadId, actorUserId, input.actorTenantId || null, 'rejectLeadShareAction', {
+            error: contextError,
+        });
+        return { success: false, message: 'Forbidden: Invalid tenant context provided.' };
     }
 
     const hasAccess = await verifyShareTransitionAccess(input.shareId, actorTenantId);
