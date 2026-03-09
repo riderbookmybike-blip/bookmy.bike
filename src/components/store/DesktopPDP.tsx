@@ -284,6 +284,34 @@ export function DesktopPDP({
             }
         } catch {}
     }, []);
+    // Smooth DP slider animation (replicating animateDP)
+    const dpAnimRef = useRef<number | null>(null);
+    const animateDP = useCallback(
+        (fromVal: number, targetVal: number) => {
+            if (dpAnimRef.current) cancelAnimationFrame(dpAnimRef.current);
+            const diff = targetVal - fromVal;
+            if (diff === 0) return;
+            const fullRange = (maxDownPayment || 0) - (minDownPayment || 0);
+            const duration = fullRange > 0 ? (Math.abs(diff) / fullRange) * 10000 : 500;
+            const startTime = performance.now();
+            const step = (now: number) => {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / Math.max(duration, 1), 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = Math.round((fromVal + diff * eased) / 500) * 500;
+                setUserDownPayment(current);
+                if (progress < 1) {
+                    dpAnimRef.current = requestAnimationFrame(step);
+                } else {
+                    setUserDownPayment(targetVal);
+                    dpAnimRef.current = null;
+                }
+            };
+            dpAnimRef.current = requestAnimationFrame(step);
+        },
+        [maxDownPayment, minDownPayment, setUserDownPayment]
+    );
+
     const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>('finance');
     const [isFlipping, setIsFlipping] = useState(false);
 
@@ -887,6 +915,17 @@ export function DesktopPDP({
                                             </div>
                                         </div>
                                     </div>
+                                )}
+                                {/* Section 3: Footer — Down Payment Slider (FINANCE only, shrink-0) */}
+                                {isActive && card.id === 'FINANCE' && (
+                                    <DownPaymentSlider
+                                        userDownPayment={userDownPayment || downPayment || 0}
+                                        minDownPayment={minDownPayment || 0}
+                                        maxDownPayment={maxDownPayment || 0}
+                                        displayOnRoad={displayOnRoad}
+                                        setUserDownPayment={setUserDownPayment}
+                                        animateDP={animateDP}
+                                    />
                                 )}
                                 {/* Section 3: Footer — EMI (FINANCE_SUMMARY only, shrink-0) */}
                                 {isActive && card.id === 'FINANCE_SUMMARY' && (

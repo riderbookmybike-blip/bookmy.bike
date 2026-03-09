@@ -27,6 +27,8 @@ interface LeadFormProps {
     showDealerSelect?: boolean;
     dealerOptions?: Array<{ id: string; name: string }>;
     initialSelectedDealerId?: string;
+    ownerTenantId?: string;
+    requesterTenantId?: string;
 }
 
 export default function LeadForm({
@@ -36,6 +38,8 @@ export default function LeadForm({
     showDealerSelect = false,
     dealerOptions = [],
     initialSelectedDealerId = '',
+    ownerTenantId,
+    requesterTenantId,
 }: LeadFormProps) {
     const documentPurposes = [
         'Aadhaar Card',
@@ -60,8 +64,23 @@ export default function LeadForm({
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+    const [isCheckingLeadOwnership, setIsCheckingLeadOwnership] = useState(false);
     const [isExistingCustomer, setIsExistingCustomer] = useState(false);
     const [hasActiveDelivery, setHasActiveDelivery] = useState(false);
+    const [existingLeadContext, setExistingLeadContext] = useState<{
+        id: string;
+        displayId: string;
+        status: string;
+        dealershipName?: string | null;
+        createdByName?: string | null;
+        createdAt?: string | null;
+        lastEditedByName?: string | null;
+        lastEditedAt?: string | null;
+        canWrite?: boolean;
+        canRequestShare?: boolean;
+        pendingShareRequest?: boolean;
+    } | null>(null);
+    const [isRequestingShare, setIsRequestingShare] = useState(false);
     const [selectedDealerId, setSelectedDealerId] = useState(initialSelectedDealerId);
     const [isResolvingPincode, setIsResolvingPincode] = useState(false);
     const [pincodeLocation, setPincodeLocation] = useState<{
@@ -88,31 +107,45 @@ export default function LeadForm({
 
     const [docCount, setDocCount] = useState(0);
 
+    const activeDealershipContextId = selectedDealerId || (!showDealerSelect ? ownerTenantId || '' : '');
+
+    const parseResponse = async (response: Response) => {
+        const text = await response.text();
+        let data: any = null;
+        try {
+            data = text ? JSON.parse(text) : null;
+        } catch {
+            data = null;
+        }
+        if (!response.ok) {
+            const message = String(data?.message || '').trim() || `Request failed (${response.status})`;
+            throw new Error(message);
+        }
+        return data;
+    };
+
     // Phone Discovery Logic
     React.useEffect(() => {
         const checkPhone = async () => {
             if (phone.length === 10) {
                 setIsCheckingPhone(true);
                 try {
-                    const { checkExistingCustomer, getMemberDocuments } = await import('@/actions/crm');
-                    // 1. Check Profile
-                    const {
-                        data: profile,
-                        memberId,
-                        hasActiveDelivery: activeDeliveryFlag,
-                    } = await checkExistingCustomer(phone);
+                    const response = await fetch('/api/leads/form-phone-check', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phone }),
+                    });
+                    const result = await parseResponse(response);
+                    const profile = result?.data || null;
+                    const activeDeliveryFlag = Boolean(result?.hasActiveDelivery);
+                    const docCountFromApi = Number(result?.docCount || 0);
                     if (profile) {
                         setCustomerName(profile.name || '');
                         setPincode(profile.pincode || '');
                         setDob(parseDateToISO(profile.dob || '') || '');
                         setIsExistingCustomer(true);
                         setHasActiveDelivery(!!activeDeliveryFlag);
-
-                        // 2. Check for Reusable Assets
-                        if (memberId) {
-                            const docs = await getMemberDocuments(memberId);
-                            setDocCount(docs.length);
-                        }
+                        setDocCount(docCountFromApi);
                     } else {
                         setIsExistingCustomer(false);
                         setDocCount(0);
@@ -133,6 +166,60 @@ export default function LeadForm({
     }, [phone]);
 
     React.useEffect(() => {
+        const checkLeadOwnership = async () => {
+            if (phone.length !== 10) {
+                setExistingLeadContext(null);
+                return;
+            }
+            if (!activeDealershipContextId) {
+                setExistingLeadContext(null);
+                return;
+            }
+
+            setIsCheckingLeadOwnership(true);
+            try {
+                const response = await fetch('/api/leads/quick-check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone,
+                        ownerTenantId: activeDealershipContextId,
+                        selectedDealerId: activeDealershipContextId,
+                    }),
+                });
+                const result = await parseResponse(response);
+                if (!result?.success) {
+                    setExistingLeadContext(null);
+                    return;
+                }
+                const existing = result?.existingLead || null;
+                setExistingLeadContext(
+                    existing
+                        ? {
+                              id: existing.id,
+                              displayId: existing.displayId,
+                              status: existing.status,
+                              dealershipName: existing.dealershipName || null,
+                              createdByName: existing.createdByName || null,
+                              createdAt: existing.createdAt || null,
+                              lastEditedByName: existing.lastEditedByName || null,
+                              lastEditedAt: existing.lastEditedAt || null,
+                              canWrite: existing.canWrite !== false,
+                              canRequestShare: existing.canRequestShare === true,
+                              pendingShareRequest: existing.pendingShareRequest === true,
+                          }
+                        : null
+                );
+            } catch {
+                setExistingLeadContext(null);
+            } finally {
+                setIsCheckingLeadOwnership(false);
+            }
+        };
+        checkLeadOwnership();
+    }, [phone, activeDealershipContextId]);
+
+    React.useEffect(() => {
         let active = true;
         const resolvePincode = async () => {
             const normalized = pincode.replace(/\D/g, '');
@@ -143,8 +230,12 @@ export default function LeadForm({
             }
             setIsResolvingPincode(true);
             try {
-                const { resolveLeadPincodeLocationAction } = await import('@/actions/crm');
-                const result = await resolveLeadPincodeLocationAction(normalized);
+                const response = await fetch('/api/leads/resolve-pincode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pincode: normalized }),
+                });
+                const result = await parseResponse(response);
                 if (!active) return;
                 if (result.success && result.location) {
                     setPincodeLocation({
@@ -189,11 +280,15 @@ export default function LeadForm({
         setIsResolvingReferrer(true);
         const timer = setTimeout(async () => {
             try {
-                const { resolveLeadReferrerAction } = await import('@/actions/crm');
-                const result = await resolveLeadReferrerAction({
-                    referralCode: code || undefined,
-                    referralPhone: phone || undefined,
+                const response = await fetch('/api/leads/resolve-referrer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        referralCode: code || undefined,
+                        referralPhone: phone || undefined,
+                    }),
                 });
+                const result = await parseResponse(response);
                 if (!active) return;
                 const matchedReferrer = result.match;
                 if (result.success && matchedReferrer) {
@@ -225,6 +320,10 @@ export default function LeadForm({
         }
         if (!interestText.trim()) {
             alert('Please capture customer interest');
+            return;
+        }
+        if (existingLeadContext?.canWrite === false) {
+            alert('Existing lead is owned by another user. Request share first.');
             return;
         }
         const normalizedReferrerPhone = normalizeIndianPhone(referredByPhone);
@@ -298,6 +397,46 @@ export default function LeadForm({
         }
     };
 
+    const requestShareAccess = async () => {
+        if (!existingLeadContext?.id) return;
+        const requester = requesterTenantId || ownerTenantId || undefined;
+        if (!requester) {
+            alert('Tenant context missing. Please refresh and retry.');
+            return;
+        }
+        setIsRequestingShare(true);
+        try {
+            const response = await fetch('/api/leads/request-share', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    leadId: existingLeadContext.id,
+                    note: interestText.trim() || undefined,
+                    requesterTenantId: requester,
+                }),
+            });
+            const result = await parseResponse(response);
+            if (result?.success) {
+                setExistingLeadContext(prev =>
+                    prev
+                        ? {
+                              ...prev,
+                              pendingShareRequest: true,
+                          }
+                        : prev
+                );
+                alert(result.message || 'Share request sent.');
+                return;
+            }
+            alert(result?.message || 'Failed to request share.');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to request share.';
+            alert(message);
+        } finally {
+            setIsRequestingShare(false);
+        }
+    };
+
     const handleAttachmentSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFiles = Array.from(event.target.files || []);
         const validFiles = selectedFiles.filter(file => file.size <= 10 * 1024 * 1024);
@@ -343,6 +482,47 @@ export default function LeadForm({
                                 </div>
                             )}
                         </div>
+                        {isCheckingLeadOwnership ? (
+                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500 ml-1">
+                                Checking existing lead ownership...
+                            </p>
+                        ) : existingLeadContext ? (
+                            <div
+                                className={`rounded-xl border px-3 py-2 ml-1 ${
+                                    existingLeadContext.canWrite === false
+                                        ? 'border-amber-300 bg-amber-50/80'
+                                        : 'border-emerald-300 bg-emerald-50/80'
+                                }`}
+                            >
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                                    Existing Lead: {existingLeadContext.displayId}
+                                </p>
+                                <p className="text-[10px] font-bold text-slate-600 mt-1">
+                                    Owner: {existingLeadContext.createdByName || 'Team'} ·{' '}
+                                    {existingLeadContext.dealershipName || 'Dealership'}
+                                </p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                    Last edit: {existingLeadContext.lastEditedByName || 'Team'}{' '}
+                                    {existingLeadContext.lastEditedAt ? `(${existingLeadContext.lastEditedAt})` : ''}
+                                </p>
+                                {existingLeadContext.canWrite === false && existingLeadContext.canRequestShare && (
+                                    <div className="mt-2">
+                                        <button
+                                            type="button"
+                                            onClick={requestShareAccess}
+                                            disabled={isRequestingShare || existingLeadContext.pendingShareRequest}
+                                            className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+                                        >
+                                            {existingLeadContext.pendingShareRequest
+                                                ? 'Share Request Pending'
+                                                : isRequestingShare
+                                                  ? 'Requesting...'
+                                                  : 'Request Share'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : null}
                     </div>
 
                     {/* Customer Name */}

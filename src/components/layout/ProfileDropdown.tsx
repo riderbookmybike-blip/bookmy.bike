@@ -603,7 +603,6 @@ export function ProfileDropdown({
     const createLeadHref = workspaceBasePath.includes('/dashboard')
         ? `${workspaceBasePath.replace('/dashboard', '')}/leads?action=create`
         : '/leads?action=create';
-
     useEffect(() => {
         // If user has no business workspaces, force O'Circle mode to avoid empty middle panel.
         if (!hasWorkspaceAccess && businessMode) {
@@ -1050,9 +1049,12 @@ export function ProfileDropdown({
                                                     {businessMode && sortedMemberships.length > 0 && (
                                                         <div className="space-y-3">
                                                             <div className="space-y-1.5">
-                                                                <a
-                                                                    href={createLeadHref}
-                                                                    onClick={() => setIsOpen(false)}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        router.push(createLeadHref);
+                                                                        setIsOpen(false);
+                                                                    }}
                                                                     className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
                                                                 >
                                                                     <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform shadow-sm shrink-0">
@@ -1061,24 +1063,7 @@ export function ProfileDropdown({
                                                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
                                                                         Create Lead
                                                                     </span>
-                                                                </a>
-                                                                {accountMenuItems.map(item => (
-                                                                    <a
-                                                                        key={item.label}
-                                                                        href={item.href}
-                                                                        onClick={() => setIsOpen(false)}
-                                                                        className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
-                                                                    >
-                                                                        <div
-                                                                            className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform shadow-sm shrink-0`}
-                                                                        >
-                                                                            <item.icon size={16} />
-                                                                        </div>
-                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-                                                                            {item.label}
-                                                                        </span>
-                                                                    </a>
-                                                                ))}
+                                                                </button>
                                                             </div>
                                                             <div className="space-y-1.5">
                                                                 {adminMemberships.length > 0 && (

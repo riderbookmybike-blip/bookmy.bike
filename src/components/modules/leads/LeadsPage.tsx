@@ -194,8 +194,12 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
     const [actingRequestId, setActingRequestId] = useState<string | null>(null);
     const [dealerOptions, setDealerOptions] = useState<Array<{ id: string; name: string }>>([]);
     const [initialSelectedDealerId, setInitialSelectedDealerId] = useState('');
-    const isMultiTenantMember = (memberships || []).length > 1;
-    const requiresDealerSelection = tenantType === 'BANK' || isMultiTenantMember;
+    const dealerMemberships = useMemo(
+        () =>
+            (memberships || []).filter((m: any) => m?.tenants?.type === 'DEALER' || m?.tenants?.type === 'DEALERSHIP'),
+        [memberships]
+    );
+    const requiresDealerSelection = tenantType === 'BANK' ? dealerOptions.length > 1 : dealerMemberships.length > 1;
 
     useEffect(() => {
         const action = searchParams.get('action');
@@ -208,7 +212,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
 
     useEffect(() => {
         const fromMemberships = (memberships || [])
-            .filter((m: any) => m?.tenants?.type === 'DEALER')
+            .filter((m: any) => m?.tenants?.type === 'DEALER' || m?.tenants?.type === 'DEALERSHIP')
             .map((m: any) => ({ id: m.tenant_id, name: m.tenants?.name || 'Dealer' }));
 
         if (fromMemberships.length > 0) {
@@ -242,6 +246,13 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
             })();
         }
     }, [memberships, requiresDealerSelection, tenantType, tenantId]);
+
+    useEffect(() => {
+        if (initialSelectedDealerId) return;
+        if (dealerOptions.length === 1) {
+            setInitialSelectedDealerId(dealerOptions[0].id);
+        }
+    }, [dealerOptions, initialSelectedDealerId]);
 
     useEffect(() => {
         const timeout = window.setTimeout(() => {
@@ -950,6 +961,8 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                     showDealerSelect={requiresDealerSelection}
                     dealerOptions={dealerOptions}
                     initialSelectedDealerId={initialSelectedDealerId}
+                    ownerTenantId={tenantId || undefined}
+                    requesterTenantId={tenantId || undefined}
                 />
             </div>
         );

@@ -93,6 +93,14 @@ export function PdpFinanceSection({
                     bank={initialFinance?.bank}
                     scheme={initialFinance?.scheme}
                 />
+                <DownPaymentSlider
+                    userDownPayment={userDownPayment || downPayment || 0}
+                    minDownPayment={minDownPayment || 0}
+                    maxDownPayment={maxDownPayment || 0}
+                    displayOnRoad={displayOnRoad}
+                    setUserDownPayment={setUserDownPayment}
+                    animateDP={animateDP}
+                />
             </div>
         );
     }
