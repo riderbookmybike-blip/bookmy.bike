@@ -51,3 +51,6 @@ gen-lang-client-*.json
 public/media/hero/splendor-plus/images/primary.png
 public/media/hero/splendor-plus-xtec/images/primary.png
 public/media/honda/activa-125/h-smart/rebel-red-metallic/download.png
+
+# MCP config (contains PAT secrets)
+.mcp.json
