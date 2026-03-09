@@ -600,7 +600,6 @@ export function ProfileDropdown({
         ? `/app/${activeMembership.tenants.slug}/dashboard`
         : '/dashboard';
     const isAdminWorkspaceRole = ADMIN_ROLES.has(activeWorkspaceRole);
-    const hasLeadCreateAccess = dealerMemberships.length > 0 || financeMemberships.length > 0;
     const createLeadHref = workspaceBasePath.includes('/dashboard')
         ? `${workspaceBasePath.replace('/dashboard', '')}/leads?action=create`
         : '/leads?action=create';
@@ -689,17 +688,6 @@ export function ProfileDropdown({
 
         // Business mode
         const workspaceItems = [
-            ...(hasLeadCreateAccess
-                ? [
-                      {
-                          label: 'Create Lead',
-                          icon: MessageSquare,
-                          href: createLeadHref,
-                          color: 'text-amber-500',
-                          bg: 'bg-amber-500/10',
-                      },
-                  ]
-                : []),
             {
                 label: 'Dashboard',
                 icon: LayoutDashboard,
@@ -731,15 +719,7 @@ export function ProfileDropdown({
         ];
 
         return workspaceItems;
-    }, [
-        user,
-        hasWorkspaceAccess,
-        workspaceBasePath,
-        isAdminWorkspaceRole,
-        businessMode,
-        hasLeadCreateAccess,
-        createLeadHref,
-    ]);
+    }, [user, hasWorkspaceAccess, workspaceBasePath, isAdminWorkspaceRole, businessMode, createLeadHref]);
 
     const isLight = tone === 'light' || (tone !== 'dark' && (mounted ? theme !== 'dark' : true));
     const isDarkSurface = !isLight;
@@ -1070,6 +1050,18 @@ export function ProfileDropdown({
                                                     {businessMode && sortedMemberships.length > 0 && (
                                                         <div className="space-y-3">
                                                             <div className="space-y-1.5">
+                                                                <a
+                                                                    href={createLeadHref}
+                                                                    onClick={() => setIsOpen(false)}
+                                                                    className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
+                                                                >
+                                                                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform shadow-sm shrink-0">
+                                                                        <MessageSquare size={16} />
+                                                                    </div>
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                        Create Lead
+                                                                    </span>
+                                                                </a>
                                                                 {accountMenuItems.map(item => (
                                                                     <a
                                                                         key={item.label}
