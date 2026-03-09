@@ -61,6 +61,26 @@ export function ShopperBottomNav() {
     });
     const isTeamRole = Boolean(userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
     const isTeamUser = hasActiveTeamMembership || isTeamRole;
+    const [isBusinessMode, setIsBusinessMode] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const syncBusinessMode = () => {
+            setIsBusinessMode(localStorage.getItem('bkmb_sidebar_mode') === 'business');
+        };
+
+        syncBusinessMode();
+        window.addEventListener('storage', syncBusinessMode);
+        window.addEventListener('focus', syncBusinessMode);
+
+        return () => {
+            window.removeEventListener('storage', syncBusinessMode);
+            window.removeEventListener('focus', syncBusinessMode);
+        };
+    }, []);
+
+    const isTeamContext = isTeamUser || isBusinessMode;
 
     // Pages where the last tab should show "Filter" instead of Lead/O'Circle
     const isFilterPage = Boolean(
@@ -73,7 +93,17 @@ export function ShopperBottomNav() {
         () =>
             STATIC_TABS.map(tab => {
                 if (tab.key !== 'ocircle') return tab;
-                // On filter-relevant pages → show Filter tab
+                // Team mode/user → always show Lead next to Favorites
+                if (isTeamContext) {
+                    return {
+                        ...tab,
+                        key: 'lead' as const,
+                        label: 'Lead',
+                        icon: Banknote,
+                        href: null,
+                    };
+                }
+                // Non-team users on filter-relevant pages → show Filter tab
                 if (isFilterPage) {
                     return {
                         ...tab,
@@ -83,20 +113,10 @@ export function ShopperBottomNav() {
                         href: null,
                     };
                 }
-                // Team user on other pages → show Lead tab
-                if (isTeamUser) {
-                    return {
-                        ...tab,
-                        key: 'lead' as const,
-                        label: 'Lead',
-                        icon: Banknote,
-                        href: null,
-                    };
-                }
                 // End user on other pages → keep O' Circle
                 return tab;
             }),
-        [isFilterPage, isTeamUser]
+        [isFilterPage, isTeamContext]
     );
 
     // ── Pricing state ─────────────────────────────────────────────────────────
