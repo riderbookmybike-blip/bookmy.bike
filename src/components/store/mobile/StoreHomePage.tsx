@@ -318,7 +318,7 @@ export function StoreHomePage({
                         {['Scooter', 'Motorcycle', 'Moped'].map(type => (
                             <Link
                                 key={type}
-                                href={withLead(`/store/catalog?bodyType=${type.toUpperCase()}`)}
+                                href={withLead(`/store/catalog?category=${type.toUpperCase()}`)}
                                 className="flex-1 md:flex-none py-2.5 md:py-3 md:px-8 rounded-xl border border-white/10 bg-white shadow-xl hover:bg-slate-50 transition-all text-center text-[10px] md:text-xs font-black uppercase tracking-wider text-slate-900"
                             >
                                 {type}

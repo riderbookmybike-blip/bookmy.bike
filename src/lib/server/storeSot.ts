@@ -67,6 +67,10 @@ export const SKU_SELECT = `
     finish,
     colour_id,
     vehicle_variant_id,
+    zoom_factor,
+    is_flipped,
+    offset_x,
+    offset_y,
     colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish, primary_image, media_shared),
     vehicle_variant:cat_variants_vehicle!vehicle_variant_id(
         id, name, slug, status,

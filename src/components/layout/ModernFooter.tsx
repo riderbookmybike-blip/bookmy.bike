@@ -165,6 +165,11 @@ export const ModernFooter = () => {
                     href: 'https://vahan.parivahan.gov.in/vahanservice/vahan/ui/usermgmt/login.xhtml',
                     icon: <Info size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
+                {
+                    label: 'Team Onboarding',
+                    href: '/welcome',
+                    icon: <UserPlus size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
                 ...(showQuickLeadSupportAction
                     ? [
                           {

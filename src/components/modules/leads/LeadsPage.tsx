@@ -23,8 +23,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
-import { createLeadAction, getLeadIndexAction, uploadMemberDocumentAction } from '@/actions/crm';
+import {
+    approveLeadShareRequestAction,
+    createLeadAction,
+    getLeadIndexAction,
+    getLeadShareRequestsInboxAction,
+    rejectLeadShareRequestAction,
+    uploadMemberDocumentAction,
+} from '@/actions/crm';
 import type { LeadIndexKpis, LeadIndexRow, LeadSlaBucket } from '@/actions/crm';
+import { getFinanceUserDealerOptions } from '@/actions/finance-partners';
 
 const STATUS_FILTERS = ['ALL', 'NEW', 'CONTACTED', 'QUALIFIED', 'HOT', 'QUOTE', 'BOOKING', 'JUNK'];
 const INTENT_FILTERS = ['ALL', 'HOT', 'WARM', 'COLD'];
@@ -44,6 +52,21 @@ const formatDateLabel = (value?: string | null) => {
     if (!value) return '—';
     try {
         return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+        return value;
+    }
+};
+
+const formatDateTime = (value?: string | null) => {
+    if (!value) return '—';
+    try {
+        return new Date(value).toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
     } catch {
         return value;
     }
@@ -154,6 +177,21 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
     const [totalPages, setTotalPages] = useState(0);
     const [kpis, setKpis] = useState<LeadIndexKpis>(DEFAULT_KPIS);
     const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
+    const [shareRequests, setShareRequests] = useState<
+        Array<{
+            requestId: string;
+            leadId: string;
+            leadDisplayId: string;
+            customerName: string | null;
+            requesterTenantName: string | null;
+            requesterTenantType: string | null;
+            requesterName: string | null;
+            requestedAt: string;
+            note: string | null;
+        }>
+    >([]);
+    const [loadingShareRequests, setLoadingShareRequests] = useState(false);
+    const [actingRequestId, setActingRequestId] = useState<string | null>(null);
     const [dealerOptions, setDealerOptions] = useState<Array<{ id: string; name: string }>>([]);
     const [initialSelectedDealerId, setInitialSelectedDealerId] = useState('');
     const isMultiTenantMember = (memberships || []).length > 1;
@@ -185,6 +223,14 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
 
         if (requiresDealerSelection) {
             (async () => {
+                if (tenantType === 'BANK' && tenantId) {
+                    const result = await getFinanceUserDealerOptions(tenantId);
+                    if (result?.success) {
+                        setDealerOptions((result.dealers as any[]) || []);
+                        return;
+                    }
+                }
+
                 const supabase = createClient();
                 const { data } = await supabase
                     .from('id_tenants')
@@ -195,7 +241,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                 setDealerOptions((data as any[]) || []);
             })();
         }
-    }, [memberships, requiresDealerSelection]);
+    }, [memberships, requiresDealerSelection, tenantType, tenantId]);
 
     useEffect(() => {
         const timeout = window.setTimeout(() => {
@@ -249,6 +295,71 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
     useEffect(() => {
         fetchLeadIndex();
     }, [fetchLeadIndex]);
+
+    const loadShareRequests = useCallback(async () => {
+        if (!tenantId) return;
+        setLoadingShareRequests(true);
+        try {
+            const result = await getLeadShareRequestsInboxAction({ tenantId });
+            if (!result?.success) {
+                setShareRequests([]);
+                return;
+            }
+            setShareRequests((result.rows || []) as any[]);
+        } finally {
+            setLoadingShareRequests(false);
+        }
+    }, [tenantId]);
+
+    useEffect(() => {
+        loadShareRequests();
+    }, [loadShareRequests]);
+
+    const handleApproveShareRequest = useCallback(
+        async (request: { requestId: string; leadId: string; requesterTenantName: string | null }) => {
+            setActingRequestId(request.requestId);
+            try {
+                const result = await approveLeadShareRequestAction({
+                    leadId: request.leadId,
+                    requestId: request.requestId,
+                });
+                if (!result?.success) {
+                    toast.error(result?.message || 'Failed to approve share request');
+                    return;
+                }
+                toast.success(
+                    `Request approved${request.requesterTenantName ? ` for ${request.requesterTenantName}` : ''}`
+                );
+                await Promise.all([fetchLeadIndex(), loadShareRequests()]);
+            } finally {
+                setActingRequestId(null);
+            }
+        },
+        [fetchLeadIndex, loadShareRequests]
+    );
+
+    const handleRejectShareRequest = useCallback(
+        async (request: { requestId: string; leadId: string; requesterTenantName: string | null }) => {
+            setActingRequestId(request.requestId);
+            try {
+                const result = await rejectLeadShareRequestAction({
+                    leadId: request.leadId,
+                    requestId: request.requestId,
+                });
+                if (!result?.success) {
+                    toast.error(result?.message || 'Failed to reject share request');
+                    return;
+                }
+                toast.success(
+                    `Request rejected${request.requesterTenantName ? ` for ${request.requesterTenantName}` : ''}`
+                );
+                await Promise.all([fetchLeadIndex(), loadShareRequests()]);
+            } finally {
+                setActingRequestId(null);
+            }
+        },
+        [fetchLeadIndex, loadShareRequests]
+    );
 
     useEffect(() => {
         const supabase = createClient();
@@ -539,6 +650,72 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                     device={device}
                     hideActions={isReadOnly}
                 >
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                                Share Requests
+                            </p>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                                {loadingShareRequests ? 'Loading...' : `${shareRequests.length} pending`}
+                            </span>
+                        </div>
+                        {shareRequests.length > 0 ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                                {shareRequests.map(request => (
+                                    <div
+                                        key={request.requestId}
+                                        className="rounded-2xl border border-amber-200 bg-amber-50/70 px-3 py-2"
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                                                    {formatDisplayId(request.leadDisplayId)} ·{' '}
+                                                    {request.customerName || 'Lead'}
+                                                </p>
+                                                <p className="text-[11px] font-bold text-slate-700 mt-0.5">
+                                                    Requested by: {request.requesterName || 'Team Member'}
+                                                </p>
+                                                <p className="text-[10px] font-bold text-slate-600 mt-0.5">
+                                                    Requester tenant: {request.requesterTenantName || 'Team'}{' '}
+                                                    {request.requesterTenantType
+                                                        ? `(${request.requesterTenantType === 'BANK' ? 'FINANCER' : request.requesterTenantType === 'DEALER' || request.requesterTenantType === 'DEALERSHIP' ? 'DEALERSHIP' : request.requesterTenantType})`
+                                                        : ''}
+                                                </p>
+                                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                                    Requested: {formatDateTime(request.requestedAt)}
+                                                </p>
+                                                {request.note ? (
+                                                    <p className="text-[10px] text-slate-600 mt-1 line-clamp-2">
+                                                        Note: {request.note}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <button
+                                                    onClick={() => handleApproveShareRequest(request)}
+                                                    disabled={actingRequestId === request.requestId}
+                                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRejectShareRequest(request)}
+                                                    disabled={actingRequestId === request.requestId}
+                                                    className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+                                                >
+                                                    Reject
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-500">
+                                No pending share requests.
+                            </div>
+                        )}
+                    </div>
                     {filterControls}
                     {isLoading ? (
                         <div className="py-16 text-center text-sm font-bold uppercase tracking-widest text-slate-400">
@@ -667,6 +844,21 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                             Phone
                                         </th>
                                         <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Created By
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            For Financer
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            For Dealership
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Shared To
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Shared By
+                                        </th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
                                             Status
                                         </th>
                                         <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -697,6 +889,31 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                             <td className="p-6">
                                                 <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase">
                                                     {lead.phone}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">
+                                                    {lead.createdByName || '—'}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">
+                                                    {lead.forFinancerName || '—'}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">
+                                                    {lead.forDealershipName || '—'}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">
+                                                    {lead.sharedToLabel || '—'}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">
+                                                    {lead.sharedByName || '—'}
                                                 </div>
                                             </td>
                                             <td className="p-6">

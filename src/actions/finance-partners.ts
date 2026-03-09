@@ -3,6 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { getAuthUser } from '@/lib/auth/resolver';
 
 /**
  * Fetches all financer IDs linked to a specific dealer
@@ -58,7 +59,7 @@ export async function toggleDealerFinancer(dealerId: string, financeId: string, 
  */
 export async function getFinancerTeamAccess(dealerId: string, financeId: string) {
     try {
-        // 1. Get the finance team members first from id_team
+        // 1. Get finance team members from id_team (primary source)
         const { data: teamMembers, error: teamError } = await adminClient
             .from('id_team')
             .select(
@@ -73,11 +74,60 @@ export async function getFinancerTeamAccess(dealerId: string, financeId: string)
                 )
             `
             )
-            .eq('tenant_id', financeId);
+            .eq('tenant_id', financeId)
+            .eq('status', 'ACTIVE');
 
         if (teamError) throw teamError;
 
-        // 2. Get existing access from dealer_finance_user_access
+        // 2. Fallback/augment from finance tenant config.team (AUMS-managed roster)
+        const { data: financeTenant, error: financeTenantError } = await adminClient
+            .from('id_tenants')
+            .select('config')
+            .eq('id', financeId)
+            .maybeSingle();
+        if (financeTenantError) throw financeTenantError;
+
+        const configTeam = Array.isArray((financeTenant as any)?.config?.team)
+            ? (financeTenant as any).config.team
+            : [];
+        const configTeamUserIds = Array.from(
+            new Set(configTeam.map((member: any) => String(member?.id || '').trim()).filter((id: string) => !!id))
+        );
+
+        const idTeamUserIdSet = new Set((teamMembers || []).map((m: any) => String(m.user_id || '')));
+        const missingUserIds = configTeamUserIds.filter(id => !idTeamUserIdSet.has(id));
+
+        let missingMembers: any[] = [];
+        if (missingUserIds.length > 0) {
+            const { data: missingMemberRows, error: missingMemberError } = await adminClient
+                .from('id_members')
+                .select('id, full_name, primary_phone, primary_email')
+                .in('id', missingUserIds);
+            if (missingMemberError) throw missingMemberError;
+
+            const missingMap = new Map((missingMemberRows || []).map((row: any) => [String(row.id), row]));
+            missingMembers = missingUserIds
+                .map((id: string) => {
+                    const profile = missingMap.get(id);
+                    const configProfile = configTeam.find((m: any) => String(m?.id || '') === id);
+                    if (!profile && !configProfile) return null;
+                    return {
+                        user_id: id,
+                        role: configProfile?.designation || configProfile?.role || 'FINANCER_EXEC',
+                        id_members: {
+                            id,
+                            full_name: profile?.full_name || configProfile?.name || null,
+                            primary_phone: profile?.primary_phone || configProfile?.phone || null,
+                            primary_email: profile?.primary_email || configProfile?.email || null,
+                        },
+                    };
+                })
+                .filter(Boolean);
+        }
+
+        const mergedTeamMembers = [...(teamMembers || []), ...missingMembers];
+
+        // 3. Get existing access from dealer_finance_user_access
         const { data: accessList, error: accessError } = await adminClient
             .from('dealer_finance_user_access')
             .select('*')
@@ -86,8 +136,8 @@ export async function getFinancerTeamAccess(dealerId: string, financeId: string)
 
         if (accessError) throw accessError;
 
-        // 3. Merge data
-        const members = teamMembers.map((m: any) => {
+        // 4. Merge data
+        const members = mergedTeamMembers.map((m: any) => {
             const access = accessList?.find(a => a.user_id === m.user_id);
             return {
                 userId: m.user_id,
@@ -100,7 +150,11 @@ export async function getFinancerTeamAccess(dealerId: string, financeId: string)
             };
         });
 
-        return { success: true, members };
+        const dedupedMembers = Array.from(
+            new Map(members.filter((m: any) => m?.userId).map((m: any) => [String(m.userId), m])).values()
+        );
+
+        return { success: true, members: dedupedMembers };
     } catch (error: unknown) {
         console.error('[getFinancerTeamAccess] Error:', error);
         return { success: false, error: getErrorMessage(error) };
@@ -142,5 +196,48 @@ export async function updateFinancerUserAccess(
     } catch (error: unknown) {
         console.error('[updateFinancerUserAccess] Error:', error);
         return { success: false, error: getErrorMessage(error) };
+    }
+}
+
+/**
+ * Returns dealership options a logged-in finance user can operate on.
+ * Source of truth: dealer_finance_user_access (granted by dealership).
+ */
+export async function getFinanceUserDealerOptions(financeId: string) {
+    try {
+        const user = await getAuthUser();
+        if (!user?.id) return { success: false, error: 'Authentication required', dealers: [] as any[] };
+        if (!financeId) return { success: true, dealers: [] as any[] };
+
+        const { data: links, error: linkError } = await adminClient
+            .from('dealer_finance_user_access')
+            .select('dealer_tenant_id')
+            .eq('finance_tenant_id', financeId)
+            .eq('user_id', user.id)
+            .eq('crm_access', true);
+
+        if (linkError) throw linkError;
+
+        const dealerIds = Array.from(
+            new Set((links || []).map((row: any) => String(row.dealer_tenant_id || '')).filter(Boolean))
+        );
+        if (dealerIds.length === 0) {
+            return { success: true, dealers: [] as any[] };
+        }
+
+        const { data: dealers, error: dealerError } = await adminClient
+            .from('id_tenants')
+            .select('id, name')
+            .in('id', dealerIds)
+            .eq('type', 'DEALER')
+            .eq('status', 'ACTIVE')
+            .order('name', { ascending: true });
+
+        if (dealerError) throw dealerError;
+
+        return { success: true, dealers: (dealers || []) as Array<{ id: string; name: string }> };
+    } catch (error: unknown) {
+        console.error('[getFinanceUserDealerOptions] Error:', error);
+        return { success: false, error: getErrorMessage(error), dealers: [] as any[] };
     }
 }

@@ -16,7 +16,11 @@ export async function POST(req: NextRequest) {
         const isLocalhost = hostName === 'localhost' || hostName === '127.0.0.1' || hostName === '0.0.0.0';
         if (!authKey || !templateId) {
             if (!isProduction && isLocalhost) {
-                return NextResponse.json({ success: true, message: 'Local dev mode: OTP not required' });
+                return NextResponse.json({
+                    success: true,
+                    message: 'Local dev mode: OTP SMS not sent. You can use any OTP for verification.',
+                    bypassOtp: true,
+                });
             }
             console.error('MSG91 Configuration Missing.');
             return NextResponse.json({ success: false, message: 'OTP service unavailable' }, { status: 500 });

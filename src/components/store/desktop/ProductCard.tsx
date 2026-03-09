@@ -115,7 +115,7 @@ export const ProductCard = ({
     showOClubPrompt?: boolean;
     showBcoinBadge?: boolean;
     variantCount?: number;
-    onExplore?: () => void;
+    onExplore?: () => void | Promise<void>;
     onCompare?: () => void;
     isInCompare?: boolean;
     onEditDownpayment?: () => void;
@@ -457,6 +457,25 @@ export const ProductCard = ({
         });
         startTransition(() => {
             router.push(variantUrl);
+        });
+    };
+    const handleExploreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        if (isNavigating || isPending || !onExplore) return;
+
+        setIsNavigating(true);
+
+        // If navigation does not change route (or errors), avoid getting stuck in "Opening..."
+        window.setTimeout(() => setIsNavigating(false), 15000);
+        startTransition(() => {
+            try {
+                const maybePromise = onExplore();
+                if (maybePromise && typeof (maybePromise as Promise<void>).catch === 'function') {
+                    (maybePromise as Promise<void>).catch(() => setIsNavigating(false));
+                }
+            } catch {
+                setIsNavigating(false);
+            }
         });
     };
 
@@ -1434,12 +1453,7 @@ export const ProductCard = ({
                                 </button>
                             ) : variantCount && variantCount > 1 && onExplore ? (
                                 <button
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        if (isNavigating || isPending) return;
-                                        setIsNavigating(true);
-                                        onExplore();
-                                    }}
+                                    onClick={handleExploreClick}
                                     disabled={isNavigating || isPending}
                                     className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all disabled:opacity-70 disabled:pointer-events-none`}
                                 >

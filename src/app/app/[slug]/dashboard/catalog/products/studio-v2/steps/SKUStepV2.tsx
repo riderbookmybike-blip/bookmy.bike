@@ -12,6 +12,7 @@ import {
     X,
     Trash2,
     Copy,
+    Share2,
     RefreshCcw,
     Trash2 as TrashIcon,
 } from 'lucide-react';
@@ -73,6 +74,9 @@ export default function SKUStepV2({
     const [oemDraft, setOemDraft] = useState<string>('');
     const [focusedColourId, setFocusedColourId] = useState<string | null>(null);
     const [focusedVariantId, setFocusedVariantId] = useState<string | null>(null);
+    const [shareSourceSku, setShareSourceSku] = useState<CatalogSku | null>(null);
+    const [shareVariantIds, setShareVariantIds] = useState<Set<string>>(new Set());
+    const [isSharingMedia, setIsSharingMedia] = useState(false);
 
     // Get variant FK field name
     const variantFkField =
@@ -111,6 +115,118 @@ export default function SKUStepV2({
 
     const getSkuForCell = (variantId: string, colourId: string) =>
         skus.find(s => (s as any)[variantFkField] === variantId && s.colour_id === colourId);
+
+    const getSkuVariantId = (sku: CatalogSku): string | null =>
+        ((sku as any)[variantFkField] as string | undefined) || null;
+
+    const hasOwnSkuMedia = (sku: CatalogSku): boolean =>
+        Boolean(
+            sku.primary_image ||
+            sku.gallery_img_1 ||
+            sku.gallery_img_2 ||
+            sku.gallery_img_3 ||
+            sku.gallery_img_4 ||
+            sku.gallery_img_5 ||
+            sku.gallery_img_6 ||
+            sku.video_url_1 ||
+            sku.video_url_2 ||
+            sku.pdf_url_1
+        );
+
+    const getSkuMediaUpdatePayload = (sku: CatalogSku): Partial<CatalogSku> => ({
+        primary_image: sku.primary_image || null,
+        gallery_img_1: sku.gallery_img_1 || null,
+        gallery_img_2: sku.gallery_img_2 || null,
+        gallery_img_3: sku.gallery_img_3 || null,
+        gallery_img_4: sku.gallery_img_4 || null,
+        gallery_img_5: sku.gallery_img_5 || null,
+        gallery_img_6: sku.gallery_img_6 || null,
+        video_url_1: sku.video_url_1 || null,
+        video_url_2: sku.video_url_2 || null,
+        pdf_url_1: sku.pdf_url_1 || null,
+        zoom_factor: sku.zoom_factor ?? 1.0,
+        is_flipped: sku.is_flipped ?? false,
+        offset_x: sku.offset_x ?? 0,
+        offset_y: sku.offset_y ?? 0,
+        media_shared: true,
+    });
+
+    const closeShareModal = () => {
+        setShareSourceSku(null);
+        setShareVariantIds(new Set());
+        setIsSharingMedia(false);
+    };
+
+    const openShareModal = (sourceSku: CatalogSku) => {
+        if (!hasOwnSkuMedia(sourceSku)) {
+            toast.error('Upload media on this SKU first, then share manually.');
+            return;
+        }
+        setShareSourceSku(sourceSku);
+        setShareVariantIds(new Set());
+    };
+
+    const shareTargetOptions = useMemo(() => {
+        if (!shareSourceSku) return [];
+        const sourceVariantId = getSkuVariantId(shareSourceSku);
+        const sourceColourId = shareSourceSku.colour_id;
+        if (!sourceColourId) return [];
+
+        return variants.map((variant: any) => {
+            const targetSku = getSkuForCell(variant.id, sourceColourId);
+            const isSource = sourceVariantId === variant.id;
+            const selectable = Boolean(targetSku) && !isSource;
+            return {
+                variantId: variant.id as string,
+                variantName: variant.name as string,
+                targetSku,
+                isSource,
+                selectable,
+            };
+        });
+    }, [shareSourceSku, variants, skus, variantFkField]);
+
+    const handleToggleShareVariant = (variantId: string) => {
+        setShareVariantIds(prev => {
+            const next = new Set(prev);
+            if (next.has(variantId)) {
+                next.delete(variantId);
+            } else {
+                next.add(variantId);
+            }
+            return next;
+        });
+    };
+
+    const handleConfirmManualShare = async () => {
+        if (!shareSourceSku) return;
+        const selectedTargets = shareTargetOptions.filter(
+            option => option.selectable && shareVariantIds.has(option.variantId) && option.targetSku
+        );
+        if (selectedTargets.length === 0) {
+            toast.error('Select at least one variant to share with.');
+            return;
+        }
+
+        setIsSharingMedia(true);
+        try {
+            const payload = getSkuMediaUpdatePayload(shareSourceSku);
+            const updatedTargets = await Promise.all(
+                selectedTargets.map(async option => {
+                    const updated = await updateSku(option.targetSku!.id, payload);
+                    return updated || ({ ...option.targetSku, ...payload } as CatalogSku);
+                })
+            );
+
+            const updatedTargetMap = new Map(updatedTargets.map(sku => [sku.id, sku]));
+            onUpdate(skus.map(sku => updatedTargetMap.get(sku.id) || sku));
+            toast.success(`Media shared with ${updatedTargets.length} variant${updatedTargets.length > 1 ? 's' : ''}`);
+            closeShareModal();
+        } catch (err: unknown) {
+            toast.error('Failed to share media: ' + getErrorMessage(err));
+            setIsSharingMedia(false);
+        }
+    };
 
     // For non-accessory matrix: dynamically order columns by focus + density.
     const orderedVariants = useMemo(() => {
@@ -411,37 +527,7 @@ export default function SKUStepV2({
 
             const updated = await updateSku(activeMediaSku.id, mediaUpdate);
             if (updated) {
-                // Default behavior: keep same-colour SKUs in sync across variants unless a peer is explicitly unique.
-                const sameColourPeers = skus.filter(
-                    s => s.colour_id === activeMediaSku.colour_id && s.id !== activeMediaSku.id
-                );
-                const syncedPeers = await Promise.all(
-                    sameColourPeers.map(async peer => {
-                        const peerOwnImage =
-                            peer.primary_image ||
-                            peer.gallery_img_1 ||
-                            peer.image_url ||
-                            peer.specs?.primary_image ||
-                            peer.specs?.gallery?.[0] ||
-                            null;
-                        const isUniqueLocked = peer.media_shared === false && !!peerOwnImage;
-                        if (isUniqueLocked) return peer;
-                        try {
-                            const synced = await updateSku(peer.id, mediaUpdate);
-                            return synced || ({ ...peer, ...mediaUpdate } as CatalogSku);
-                        } catch {
-                            return peer;
-                        }
-                    })
-                );
-
-                const peerMap = new Map(syncedPeers.map(s => [s.id, s]));
-                onUpdate(
-                    skus.map(s => {
-                        if (s.id === activeMediaSku.id) return updated;
-                        return peerMap.get(s.id) || s;
-                    })
-                );
+                onUpdate(skus.map(s => (s.id === activeMediaSku.id ? updated : s)));
                 toast.success('Media saved');
             }
         } catch (err: unknown) {
@@ -617,11 +703,11 @@ export default function SKUStepV2({
             {/* Matrix Table */}
             {sortedColours.length > 0 && variants.length > 0 ? (
                 <div className="bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 overflow-hidden">
-                    <div className="overflow-x-auto">
+                    <div className="overflow-auto max-h-[calc(100vh-280px)]">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b border-slate-100 dark:border-white/5">
-                                    <th className="text-left px-5 py-4 bg-slate-50/50 dark:bg-white/[0.02] sticky left-0 z-10">
+                                <tr className="border-b border-slate-100 dark:border-white/5 sticky top-0 z-30 bg-white dark:bg-slate-900">
+                                    <th className="text-left px-5 py-4 bg-slate-50 dark:bg-slate-900 sticky left-0 z-40">
                                         <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-white/10 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                                             {productType === 'ACCESSORY'
                                                 ? `${labels.variant} ↓ / ${labels.sku} →`
@@ -638,7 +724,7 @@ export default function SKUStepV2({
                                               return (
                                                   <th
                                                       key={colour.id}
-                                                      className="px-3 py-4 text-center whitespace-nowrap"
+                                                      className="px-3 py-4 text-center whitespace-nowrap bg-white dark:bg-slate-900"
                                                   >
                                                       <div className="flex flex-col items-center gap-1.5">
                                                           <span
@@ -688,7 +774,7 @@ export default function SKUStepV2({
                                               return (
                                                   <th
                                                       key={variant.id}
-                                                      className="px-3 py-4 text-center whitespace-nowrap"
+                                                      className="px-3 py-4 text-center whitespace-nowrap bg-white dark:bg-slate-900"
                                                   >
                                                       <div className="flex flex-col items-center gap-1.5">
                                                           <span
@@ -726,8 +812,8 @@ export default function SKUStepV2({
                                           })}
                                 </tr>
                                 {/* Sub-header: Brand / Model / Variant context row */}
-                                <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
-                                    <th className="px-5 py-2 text-left sticky left-0 top-0 bg-slate-50/95 dark:bg-slate-900/95 z-30">
+                                <tr className="border-b border-slate-100 dark:border-white/5 sticky top-[57px] z-30 bg-slate-50 dark:bg-slate-900">
+                                    <th className="px-5 py-2 text-left sticky left-0 bg-slate-50 dark:bg-slate-900 z-40">
                                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">
                                             Brand · Model · {labels.variant}
                                         </span>
@@ -736,7 +822,7 @@ export default function SKUStepV2({
                                         ? sortedColours.map(colour => (
                                               <th
                                                   key={colour.id}
-                                                  className="px-3 py-2 text-center sticky top-0 z-20 bg-slate-50/95 dark:bg-slate-900/95"
+                                                  className="px-3 py-2 text-center bg-slate-50 dark:bg-slate-900"
                                               >
                                                   <div className="flex flex-col items-center gap-0.5">
                                                       {brandName && (
@@ -756,7 +842,7 @@ export default function SKUStepV2({
                                         : orderedVariants.map((variant: any) => (
                                               <th
                                                   key={variant.id}
-                                                  className="px-3 py-2 text-center sticky top-0 z-20 bg-slate-50/95 dark:bg-slate-900/95"
+                                                  className="px-3 py-2 text-center bg-slate-50 dark:bg-slate-900"
                                               >
                                                   <div className="flex flex-col items-center gap-0.5">
                                                       {brandName && (
@@ -1044,6 +1130,19 @@ export default function SKUStepV2({
                                                                                   </div>
                                                                               );
                                                                           })()}
+                                                                          {hasOwnSkuMedia(sku) && (
+                                                                              <button
+                                                                                  onClick={e => {
+                                                                                      e.stopPropagation();
+                                                                                      openShareModal(sku);
+                                                                                  }}
+                                                                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-indigo-200 text-[7px] font-black uppercase tracking-wider text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                                                                  title="Manual share to variants"
+                                                                              >
+                                                                                  <Share2 size={8} />
+                                                                                  Share
+                                                                              </button>
+                                                                          )}
                                                                       </div>
                                                                   )}
                                                               </div>
@@ -1328,6 +1427,19 @@ export default function SKUStepV2({
                                                                                   </div>
                                                                               );
                                                                           })()}
+                                                                          {hasOwnSkuMedia(sku) && (
+                                                                              <button
+                                                                                  onClick={e => {
+                                                                                      e.stopPropagation();
+                                                                                      openShareModal(sku);
+                                                                                  }}
+                                                                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-indigo-200 text-[7px] font-black uppercase tracking-wider text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                                                                  title="Manual share to variants"
+                                                                              >
+                                                                                  <Share2 size={8} />
+                                                                                  Share
+                                                                              </button>
+                                                                          )}
                                                                       </div>
                                                                   )}
 
@@ -1518,6 +1630,93 @@ export default function SKUStepV2({
                     onSave={handleMediaSave}
                     onClose={() => setActiveMediaSku(null)}
                 />
+            )}
+
+            {/* ─── Manual Share Modal ─── */}
+            {shareSourceSku && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                    <button
+                        type="button"
+                        onClick={closeShareModal}
+                        className="absolute inset-0 bg-slate-900/45 backdrop-blur-[1px]"
+                        aria-label="Close share modal"
+                    />
+                    <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                        <div className="flex items-start justify-between gap-3 p-4 border-b border-slate-100">
+                            <div>
+                                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                                    Share Media
+                                </h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                    Select variants to share this {labels.sku.toLowerCase()} media
+                                </p>
+                            </div>
+                            <button
+                                onClick={closeShareModal}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                aria-label="Close"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+
+                        <div className="p-4 space-y-3 max-h-[50vh] overflow-y-auto">
+                            {shareTargetOptions.length === 0 && (
+                                <p className="text-xs text-slate-500">No variants available for sharing.</p>
+                            )}
+                            {shareTargetOptions.map(option => (
+                                <label
+                                    key={option.variantId}
+                                    className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${
+                                        option.isSource
+                                            ? 'border-indigo-200 bg-indigo-50'
+                                            : option.selectable
+                                              ? 'border-slate-200 bg-white hover:border-indigo-300'
+                                              : 'border-slate-100 bg-slate-50 opacity-70'
+                                    }`}
+                                >
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-700 truncate">
+                                            {option.variantName}
+                                        </p>
+                                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                            {option.isSource
+                                                ? 'Current variant'
+                                                : option.selectable
+                                                  ? 'Available'
+                                                  : 'No SKU in this variant'}
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 accent-indigo-600"
+                                        checked={shareVariantIds.has(option.variantId)}
+                                        onChange={() => handleToggleShareVariant(option.variantId)}
+                                        disabled={!option.selectable || isSharingMedia}
+                                    />
+                                </label>
+                            ))}
+                        </div>
+
+                        <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                            <button
+                                onClick={closeShareModal}
+                                className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-50"
+                                disabled={isSharingMedia}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmManualShare}
+                                className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-black uppercase tracking-wider hover:bg-indigo-700 disabled:opacity-60 inline-flex items-center gap-1.5"
+                                disabled={isSharingMedia}
+                            >
+                                {isSharingMedia ? <Loader2 size={12} className="animate-spin" /> : <Share2 size={12} />}
+                                Share Media
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

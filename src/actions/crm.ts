@@ -9,6 +9,7 @@ import {
     validateBookingDealerContext,
     validateDealerAuthorization,
 } from '@/lib/crm/contextHardening';
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
 import { createOrLinkMember } from './members';
@@ -94,6 +95,24 @@ type ActorContext = {
     actorTenantId: string | null;
 };
 
+async function getActiveTenantIdFromDealerSessionCookie(): Promise<string | null> {
+    try {
+        const cookieStore = await cookies();
+        const raw = cookieStore.get('bmb_dealer_session')?.value;
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as {
+            activeFinanceTenantId?: string | null;
+            activeDealerTenantId?: string | null;
+        };
+        const activeFinance = String(parsed?.activeFinanceTenantId || '').trim();
+        if (activeFinance) return activeFinance;
+        const activeDealer = String(parsed?.activeDealerTenantId || '').trim();
+        return activeDealer || null;
+    } catch {
+        return null;
+    }
+}
+
 async function resolveActorContext(preferredTenantId?: string | null): Promise<ActorContext> {
     const supabase = await createClient();
     const {
@@ -101,7 +120,7 @@ async function resolveActorContext(preferredTenantId?: string | null): Promise<A
     } = await supabase.auth.getUser();
 
     const actorUserId = user?.id || null;
-    let actorTenantId = preferredTenantId || null;
+    let actorTenantId = preferredTenantId || (await getActiveTenantIdFromDealerSessionCookie()) || null;
 
     if (!actorTenantId && actorUserId) {
         const { data: teamMembership } = await adminClient
@@ -117,6 +136,47 @@ async function resolveActorContext(preferredTenantId?: string | null): Promise<A
     }
 
     return { actorUserId, actorTenantId };
+}
+
+async function resolveActorDisplayNames(actorIds: string[]): Promise<Map<string, string>> {
+    const uniqueActorIds = Array.from(new Set((actorIds || []).map(id => String(id || '').trim()).filter(Boolean)));
+    const actorNameMap = new Map<string, string>();
+    if (uniqueActorIds.length === 0) return actorNameMap;
+
+    const { data: memberRows } = await adminClient.from('id_members').select('id, full_name').in('id', uniqueActorIds);
+    (memberRows || []).forEach((row: any) => {
+        const id = String(row?.id || '').trim();
+        if (!id) return;
+        const fullName = String(row?.full_name || '').trim();
+        if (fullName) actorNameMap.set(id, fullName);
+    });
+
+    const missingActorIds = uniqueActorIds.filter(id => !actorNameMap.has(id));
+    if (missingActorIds.length === 0) return actorNameMap;
+
+    const authUsers = await Promise.all(
+        missingActorIds.map(async id => {
+            try {
+                const { data, error } = await adminClient.auth.admin.getUserById(id);
+                if (error || !data?.user) return { id, name: null as string | null };
+                const user = data.user as any;
+                const metadataName =
+                    String(user?.user_metadata?.full_name || '').trim() ||
+                    String(user?.user_metadata?.name || '').trim() ||
+                    String(user?.email || '').trim() ||
+                    null;
+                return { id, name: metadataName };
+            } catch {
+                return { id, name: null as string | null };
+            }
+        })
+    );
+
+    authUsers.forEach(({ id, name }) => {
+        actorNameMap.set(id, name || `User ${id.slice(0, 6).toUpperCase()}`);
+    });
+
+    return actorNameMap;
 }
 
 function normalizeEventChangedValue(changedValue?: unknown): string | null {
@@ -513,6 +573,17 @@ const LEAD_SEARCH_MAX_LENGTH = 60;
 
 export type LeadSlaBucket = 'OVERDUE' | 'DUE_TODAY' | 'UPCOMING' | 'UNSCHEDULED' | 'CLEAR';
 
+type LeadModuleShare = {
+    id: string;
+    target_tenant_id: string;
+    target_tenant_type?: string | null;
+    shared_by_user_id: string | null;
+    shared_by_name?: string | null;
+    shared_at: string;
+    active?: boolean;
+    note?: string | null;
+};
+
 export type LeadIndexRow = {
     id: string;
     displayId: string;
@@ -531,6 +602,15 @@ export type LeadIndexRow = {
     created_at?: string | null;
     updated_at?: string | null;
     intentScore?: string;
+    createdByUserId?: string | null;
+    createdByName?: string | null;
+    ownerTenantId?: string | null;
+    selectedTenantId?: string | null;
+    forDealershipName?: string | null;
+    forFinancerName?: string | null;
+    sharedByName?: string | null;
+    sharedToLabel?: string | null;
+    leadShares?: LeadModuleShare[];
     referralSource?: string | null;
     events_log?: any[];
     openTaskCount: number;
@@ -649,6 +729,19 @@ function deriveLeadSla(utmData: any): {
 
 function mapCrmLeadToIndexRow(lead: any): LeadIndexRow {
     const utmData = (lead.utm_data as any) || {};
+    const moduleData = utmData && typeof utmData === 'object' ? ((utmData as any).module_data as any) || {} : {};
+    const leadShares = (Array.isArray(moduleData.shares) ? moduleData.shares : [])
+        .map((share: any) => ({
+            id: String(share?.id || ''),
+            target_tenant_id: String(share?.target_tenant_id || ''),
+            target_tenant_type: share?.target_tenant_type ? String(share.target_tenant_type) : null,
+            shared_by_user_id: share?.shared_by_user_id ? String(share.shared_by_user_id) : null,
+            shared_by_name: share?.shared_by_name ? String(share.shared_by_name) : null,
+            shared_at: String(share?.shared_at || ''),
+            active: share?.active !== false,
+            note: share?.note ? String(share.note) : null,
+        }))
+        .filter((share: LeadModuleShare) => share.id && share.target_tenant_id && share.active !== false);
     const referralData = (lead.referral_data as any) || {};
     const locationProfile = extractLeadLocationProfile(utmData);
     const sla = deriveLeadSla(utmData);
@@ -675,6 +768,15 @@ function mapCrmLeadToIndexRow(lead: any): LeadIndexRow {
         created_at: createdAt,
         updated_at: updatedAt,
         intentScore: lead.intent_score || 'COLD',
+        createdByUserId: lead.created_by || null,
+        createdByName: null,
+        ownerTenantId: lead.owner_tenant_id || null,
+        selectedTenantId: lead.selected_dealer_tenant_id || null,
+        forDealershipName: null,
+        forFinancerName: null,
+        sharedByName: null,
+        sharedToLabel: null,
+        leadShares,
         referralSource:
             lead.referred_by_name ||
             referralData.resolved_referrer_name ||
@@ -688,6 +790,166 @@ function mapCrmLeadToIndexRow(lead: any): LeadIndexRow {
         slaBucket: sla.slaBucket,
         lastActivityAt,
     };
+}
+
+async function enrichLeadIndexRows(rows: LeadIndexRow[]): Promise<LeadIndexRow[]> {
+    if (!rows.length) return rows;
+
+    const creatorIds = Array.from(
+        new Set(
+            rows
+                .flatMap(row => [
+                    String(row.createdByUserId || '').trim(),
+                    ...((row.leadShares || []).map(share => String(share.shared_by_user_id || '').trim()) as string[]),
+                ])
+                .filter(Boolean)
+        )
+    );
+    const leadIds = Array.from(new Set(rows.map(row => String(row.id || '').trim()).filter(Boolean)));
+    const tenantIds = Array.from(
+        new Set(
+            rows
+                .flatMap(row => [
+                    row.ownerTenantId,
+                    row.selectedTenantId,
+                    ...((row.leadShares || []).map(s => s.target_tenant_id) as string[]),
+                ])
+                .map(id => String(id || '').trim())
+                .filter(Boolean)
+        )
+    );
+
+    const [creatorResult, dealerResult, leadEventsResult] = await Promise.all([
+        creatorIds.length > 0
+            ? adminClient.from('id_members').select('id, full_name').in('id', creatorIds)
+            : Promise.resolve({ data: [], error: null } as any),
+        tenantIds.length > 0
+            ? adminClient.from('id_tenants').select('id, name, type').in('id', tenantIds)
+            : Promise.resolve({ data: [], error: null } as any),
+        leadIds.length > 0
+            ? adminClient
+                  .from('crm_lead_events')
+                  .select('lead_id, actor_tenant_id')
+                  .in('lead_id', leadIds)
+                  .not('actor_tenant_id', 'is', null)
+            : Promise.resolve({ data: [], error: null } as any),
+    ]);
+
+    if (creatorResult.error) {
+        console.error('enrichLeadIndexRows creator query error:', creatorResult.error);
+    }
+    if (dealerResult.error) {
+        console.error('enrichLeadIndexRows dealer query error:', dealerResult.error);
+    }
+    if (leadEventsResult.error) {
+        console.error('enrichLeadIndexRows lead events query error:', leadEventsResult.error);
+    }
+
+    const creatorNameMap = new Map<string, string>();
+    (creatorResult.data || []).forEach((row: any) => {
+        const id = String(row?.id || '').trim();
+        if (!id) return;
+        creatorNameMap.set(id, String(row?.full_name || '').trim() || `User ${id.slice(0, 6).toUpperCase()}`);
+    });
+
+    const tenantMap = new Map<string, { name: string; type: string }>();
+    (dealerResult.data || []).forEach((row: any) => {
+        const id = String(row?.id || '').trim();
+        if (!id) return;
+        tenantMap.set(id, {
+            name: String(row?.name || '').trim() || `Tenant ${id.slice(0, 6).toUpperCase()}`,
+            type: String(row?.type || '')
+                .trim()
+                .toUpperCase(),
+        });
+    });
+
+    const financeTenantIdsFromEvents = Array.from(
+        new Set(
+            (leadEventsResult.data || []).map((row: any) => String(row?.actor_tenant_id || '').trim()).filter(Boolean)
+        )
+    );
+    if (financeTenantIdsFromEvents.length > 0) {
+        const { data: eventTenants, error: eventTenantErr } = await adminClient
+            .from('id_tenants')
+            .select('id, name, type')
+            .in('id', financeTenantIdsFromEvents);
+        if (eventTenantErr) {
+            console.error('enrichLeadIndexRows event tenant query error:', eventTenantErr);
+        } else {
+            (eventTenants || []).forEach((row: any) => {
+                const id = String(row?.id || '').trim();
+                if (!id) return;
+                tenantMap.set(id, {
+                    name: String(row?.name || '').trim() || `Tenant ${id.slice(0, 6).toUpperCase()}`,
+                    type: String(row?.type || '')
+                        .trim()
+                        .toUpperCase(),
+                });
+            });
+        }
+    }
+
+    const leadFinanceTenantMap = new Map<string, Set<string>>();
+    (leadEventsResult.data || []).forEach((row: any) => {
+        const leadId = String(row?.lead_id || '').trim();
+        const actorTenantId = String(row?.actor_tenant_id || '').trim();
+        if (!leadId || !actorTenantId) return;
+        const tenantMeta = tenantMap.get(actorTenantId);
+        if (!tenantMeta || tenantMeta.type !== 'BANK') return;
+        if (!leadFinanceTenantMap.has(leadId)) leadFinanceTenantMap.set(leadId, new Set<string>());
+        leadFinanceTenantMap.get(leadId)!.add(tenantMeta.name);
+    });
+
+    return rows.map(row => ({
+        ...row,
+        createdByName: row.createdByUserId ? creatorNameMap.get(String(row.createdByUserId)) || null : null,
+        forDealershipName: (() => {
+            const candidates = [row.selectedTenantId, row.ownerTenantId].filter(Boolean) as string[];
+            for (const id of candidates) {
+                const tenant = tenantMap.get(String(id));
+                if (tenant?.type === 'DEALER' || tenant?.type === 'DEALERSHIP') return tenant.name;
+            }
+            return null;
+        })(),
+        forFinancerName: (() => {
+            const names = new Set<string>();
+            const candidates = [row.selectedTenantId, row.ownerTenantId].filter(Boolean) as string[];
+            for (const id of candidates) {
+                const tenant = tenantMap.get(String(id));
+                if (tenant?.type === 'BANK') names.add(tenant.name);
+            }
+            const interacted = leadFinanceTenantMap.get(String(row.id));
+            if (interacted) {
+                interacted.forEach(name => names.add(name));
+            }
+            (row.leadShares || []).forEach(share => {
+                const tenant = tenantMap.get(String(share.target_tenant_id || ''));
+                if (tenant?.type === 'BANK') names.add(tenant.name);
+            });
+            return names.size > 0 ? Array.from(names).join(', ') : null;
+        })(),
+        sharedByName: (() => {
+            const activeShares = (row.leadShares || []).filter(share => share.active !== false);
+            if (!activeShares.length) return null;
+            const latest = activeShares
+                .slice()
+                .sort((a, b) => new Date(b.shared_at || 0).getTime() - new Date(a.shared_at || 0).getTime())[0];
+            if (!latest) return null;
+            if (latest.shared_by_name) return latest.shared_by_name;
+            const sharedById = String(latest.shared_by_user_id || '').trim();
+            return sharedById ? creatorNameMap.get(sharedById) || `User ${sharedById.slice(0, 6).toUpperCase()}` : null;
+        })(),
+        sharedToLabel: (() => {
+            const labels = new Set<string>();
+            (row.leadShares || []).forEach(share => {
+                if (share.active === false) return;
+                const tenant = tenantMap.get(String(share.target_tenant_id || ''));
+                if (tenant?.name) labels.add(tenant.name);
+            });
+            return labels.size > 0 ? Array.from(labels).join(', ') : null;
+        })(),
+    }));
 }
 
 function matchesSlaFilter(row: LeadIndexRow, filter?: LeadSlaBucket | 'ALL') {
@@ -751,6 +1013,183 @@ function applyTaskTenantScope(query: any, tenantId?: string) {
     return query;
 }
 
+function isFinancePrivilegedRole(role?: string | null) {
+    const normalized = String(role || '')
+        .trim()
+        .toUpperCase();
+    if (!normalized) return false;
+    return (
+        normalized === 'OWNER' ||
+        normalized === 'ADMIN' ||
+        normalized === 'FINANCE_ADMIN' ||
+        normalized === 'FINANCER_ADMIN' ||
+        normalized === 'SUPER_ADMIN' ||
+        normalized === 'SUPERADMIN' ||
+        normalized.endsWith('_ADMIN')
+    );
+}
+
+async function resolveFinanceLeadSelfScope(tenantId?: string): Promise<Set<string> | null> {
+    if (!tenantId || tenantId === 'undefined') return null;
+    const user = await getAuthUser();
+    if (!user?.id) return null;
+
+    const { data: tenant } = await adminClient.from('id_tenants').select('type').eq('id', tenantId).maybeSingle();
+    if (String(tenant?.type || '').toUpperCase() !== 'BANK') return null;
+
+    const { data: teamMembership } = await adminClient
+        .from('id_team')
+        .select('role')
+        .eq('tenant_id', tenantId)
+        .eq('user_id', user.id)
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
+
+    if (!teamMembership) return new Set<string>();
+    if (isFinancePrivilegedRole((teamMembership as any)?.role)) return null;
+
+    const createdLeadIds = new Set<string>();
+    const assignedLeadIds = new Set<string>();
+
+    const { data: leadEvents } = await adminClient
+        .from('crm_lead_events')
+        .select('lead_id')
+        .eq('event_type', 'LEAD_CREATED')
+        .eq('actor_user_id', user.id)
+        .limit(5000);
+    (leadEvents || []).forEach((row: any) => {
+        const id = String(row?.lead_id || '');
+        if (id) createdLeadIds.add(id);
+    });
+
+    const { data: primaryTasks } = await adminClient
+        .from('crm_tasks')
+        .select('linked_id')
+        .eq('linked_type', 'LEAD')
+        .eq('primary_assignee_id', user.id)
+        .limit(5000);
+    (primaryTasks || []).forEach((row: any) => {
+        const id = String(row?.linked_id || '');
+        if (id) assignedLeadIds.add(id);
+    });
+
+    const { data: sharedTasks } = await adminClient
+        .from('crm_tasks')
+        .select('linked_id')
+        .eq('linked_type', 'LEAD')
+        .contains('assignee_ids', [user.id])
+        .limit(5000);
+    (sharedTasks || []).forEach((row: any) => {
+        const id = String(row?.linked_id || '');
+        if (id) assignedLeadIds.add(id);
+    });
+
+    return new Set<string>([...createdLeadIds, ...assignedLeadIds]);
+}
+
+async function resolveFinanceInteractedLeadIds(tenantId?: string): Promise<Set<string>> {
+    if (!tenantId || tenantId === 'undefined') return new Set<string>();
+
+    const ids = new Set<string>();
+    let from = 0;
+    const pageSize = 1000;
+
+    while (true) {
+        const { data, error } = await adminClient
+            .from('crm_lead_events')
+            .select('lead_id')
+            .eq('actor_tenant_id', tenantId)
+            .not('lead_id', 'is', null)
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1);
+
+        if (error) {
+            console.error('resolveFinanceInteractedLeadIds error:', error);
+            break;
+        }
+
+        const rows = data || [];
+        if (rows.length === 0) break;
+
+        rows.forEach((row: any) => {
+            const leadId = String(row?.lead_id || '').trim();
+            if (leadId) ids.add(leadId);
+        });
+
+        if (rows.length < pageSize) break;
+        from += pageSize;
+    }
+
+    return ids;
+}
+
+async function validateFinanceLeadWriteAccess(
+    userId: string,
+    leadId: string
+): Promise<{ success: boolean; message?: string }> {
+    const { data: lead } = await adminClient
+        .from('crm_leads')
+        .select('id, selected_dealer_tenant_id')
+        .eq('id', leadId)
+        .maybeSingle();
+    if (!lead) return { success: false, message: 'Lead not found' };
+
+    const financeTenantId = String((lead as any)?.selected_dealer_tenant_id || '').trim();
+    if (!financeTenantId) return { success: true };
+
+    const { data: tenant } = await adminClient
+        .from('id_tenants')
+        .select('type')
+        .eq('id', financeTenantId)
+        .maybeSingle();
+    if (String((tenant as any)?.type || '').toUpperCase() !== 'BANK') return { success: true };
+
+    const { data: membership } = await adminClient
+        .from('id_team')
+        .select('role')
+        .eq('tenant_id', financeTenantId)
+        .eq('user_id', userId)
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
+    if (!membership) return { success: false, message: 'Finance team membership required for this lead.' };
+    if (isFinancePrivilegedRole((membership as any)?.role)) return { success: true };
+
+    const { data: createdEvent } = await adminClient
+        .from('crm_lead_events')
+        .select('id')
+        .eq('lead_id', leadId)
+        .eq('event_type', 'LEAD_CREATED')
+        .eq('actor_user_id', userId)
+        .limit(1)
+        .maybeSingle();
+    if (createdEvent) return { success: true };
+
+    const { data: primaryTask } = await adminClient
+        .from('crm_tasks')
+        .select('id')
+        .eq('linked_type', 'LEAD')
+        .eq('linked_id', leadId)
+        .eq('primary_assignee_id', userId)
+        .limit(1)
+        .maybeSingle();
+    if (primaryTask) return { success: true };
+
+    const { data: sharedTask } = await adminClient
+        .from('crm_tasks')
+        .select('id')
+        .eq('linked_type', 'LEAD')
+        .eq('linked_id', leadId)
+        .contains('assignee_ids', [userId])
+        .limit(1)
+        .maybeSingle();
+    if (sharedTask) return { success: true };
+
+    return {
+        success: false,
+        message: 'You can update only leads created by you or assigned to you for this financer context.',
+    };
+}
+
 function defaultLeadIndexResponse(page = 1, pageSize = LEAD_INDEX_DEFAULT_PAGE_SIZE): LeadIndexResponse {
     return {
         success: false,
@@ -792,11 +1231,180 @@ export async function getLeadIndexAction(input: {
     const supabase = await createClient();
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
+    const { data: scopeTenant } =
+        input.tenantId && input.tenantId !== 'undefined'
+            ? await adminClient.from('id_tenants').select('type').eq('id', input.tenantId).maybeSingle()
+            : ({ data: null } as any);
+    const isFinanceTenant = String((scopeTenant as any)?.type || '').toUpperCase() === 'BANK';
+
+    const financeSelfScopeLeadIds = await resolveFinanceLeadSelfScope(input.tenantId);
+    const financeInteractedLeadIds = isFinanceTenant
+        ? await resolveFinanceInteractedLeadIds(input.tenantId)
+        : new Set<string>();
+    const scopedTenantId = String(input.tenantId || '').trim();
+
+    if (scopedTenantId) {
+        const baseQuery = applyLeadBaseFilters(
+            supabase.from('crm_leads').select('*').order('created_at', { ascending: false }),
+            {
+                status,
+                intent,
+                search,
+            }
+        );
+        const { data, error } = await baseQuery;
+        if (error) {
+            console.error('getLeadIndexAction scoped query error:', error);
+            return {
+                ...defaultLeadIndexResponse(page, pageSize),
+                message: getErrorMessage(error),
+            };
+        }
+
+        const visibleRows = ((data || []) as any[])
+            .map(mapCrmLeadToIndexRow)
+            .filter(row => {
+                const mappedToTenant =
+                    String(row.ownerTenantId || '') === scopedTenantId ||
+                    String(row.selectedTenantId || '') === scopedTenantId;
+                const sharedToTenant = (row.leadShares || []).some(
+                    share => share.active !== false && String(share.target_tenant_id || '').trim() === scopedTenantId
+                );
+
+                if (isFinanceTenant) {
+                    if (financeSelfScopeLeadIds) {
+                        return financeSelfScopeLeadIds.has(row.id) || sharedToTenant;
+                    }
+                    const interactedByFinancer = financeInteractedLeadIds.has(row.id);
+                    return mappedToTenant || interactedByFinancer || sharedToTenant;
+                }
+
+                return mappedToTenant || sharedToTenant;
+            })
+            .filter(row => matchesSlaFilter(row, slaFilter));
+
+        const totalRows = visibleRows.length;
+        const pagedRows = visibleRows.slice(from, to + 1);
+        const enrichedRows = await enrichLeadIndexRows(pagedRows);
+
+        const kpiQuery = applyLeadBaseFilters(
+            supabase.from('crm_leads').select('*').order('created_at', { ascending: false }),
+            {
+                status: 'ALL',
+                intent: 'ALL',
+                search: '',
+            }
+        );
+        const { data: kpiData, error: kpiError } = await kpiQuery;
+        if (kpiError) {
+            console.error('getLeadIndexAction scoped KPI query error:', kpiError);
+        }
+
+        const scopedKpiRows = ((kpiData || []) as any[]).map(mapCrmLeadToIndexRow).filter(row => {
+            const mappedToTenant =
+                String(row.ownerTenantId || '') === scopedTenantId ||
+                String(row.selectedTenantId || '') === scopedTenantId;
+            const sharedToTenant = (row.leadShares || []).some(
+                share => share.active !== false && String(share.target_tenant_id || '').trim() === scopedTenantId
+            );
+
+            if (isFinanceTenant) {
+                if (financeSelfScopeLeadIds) {
+                    return financeSelfScopeLeadIds.has(row.id) || sharedToTenant;
+                }
+                const interactedByFinancer = financeInteractedLeadIds.has(row.id);
+                return mappedToTenant || interactedByFinancer || sharedToTenant;
+            }
+
+            return mappedToTenant || sharedToTenant;
+        });
+
+        const totalPages = totalRows === 0 ? 0 : Math.ceil(totalRows / pageSize);
+        return {
+            success: true,
+            rows: enrichedRows,
+            pagination: {
+                page,
+                pageSize,
+                totalRows,
+                totalPages,
+                hasPrev: page > 1,
+                hasNext: page < totalPages,
+            },
+            kpis: {
+                totalLeads: scopedKpiRows.length,
+                hotLeads: scopedKpiRows.filter(row => (row.intentScore || '').toUpperCase() === 'HOT').length,
+                qualifiedLeads: scopedKpiRows.filter(row => row.status !== 'NEW' && row.status !== 'JUNK').length,
+                inPipeline: scopedKpiRows.filter(row => row.status === 'QUOTE' || row.status === 'BOOKING').length,
+                overdueFollowUps: scopedKpiRows.filter(row => row.slaBucket === 'OVERDUE').length,
+                dueTodayFollowUps: scopedKpiRows.filter(row => row.slaBucket === 'DUE_TODAY').length,
+            },
+        };
+    }
 
     let rows: LeadIndexRow[] = [];
     let totalRows = 0;
 
-    if (slaFilter === 'ALL') {
+    if (isFinanceTenant) {
+        const baseQuery = applyLeadBaseFilters(
+            supabase.from('crm_leads').select('*').order('created_at', { ascending: false }),
+            {
+                status,
+                intent,
+                search,
+            }
+        );
+        const { data, error } = await baseQuery;
+        if (error) {
+            console.error('getLeadIndexAction finance-tenant query error:', error);
+            return {
+                ...defaultLeadIndexResponse(page, pageSize),
+                message: getErrorMessage(error),
+            };
+        }
+
+        const scoped = ((data || []) as any[]).map(mapCrmLeadToIndexRow).filter(row => {
+            const tenantId = String(input.tenantId || '');
+            const mappedToFinancer =
+                String(row.ownerTenantId || '') === tenantId || String(row.selectedTenantId || '') === tenantId;
+            const interactedByFinancer = financeInteractedLeadIds.has(row.id);
+            const visibleByTenant = mappedToFinancer || interactedByFinancer;
+            if (financeSelfScopeLeadIds) {
+                return visibleByTenant && financeSelfScopeLeadIds.has(row.id);
+            }
+            return visibleByTenant;
+        });
+
+        const filtered = scoped.filter(row => matchesSlaFilter(row, slaFilter));
+        totalRows = filtered.length;
+        rows = filtered.slice(from, to + 1);
+    } else if (financeSelfScopeLeadIds) {
+        const baseQuery = applyLeadBaseFilters(
+            supabase.from('crm_leads').select('*').order('created_at', { ascending: false }),
+            {
+                tenantId: input.tenantId,
+                status,
+                intent,
+                search,
+            }
+        );
+        const { data, error } = await baseQuery;
+        if (error) {
+            console.error('getLeadIndexAction self-scope query error:', error);
+            return {
+                ...defaultLeadIndexResponse(page, pageSize),
+                message: getErrorMessage(error),
+            };
+        }
+
+        const scoped = ((data || []) as any[])
+            .map(mapCrmLeadToIndexRow)
+            .filter(row => financeSelfScopeLeadIds.has(row.id));
+
+        const filtered = scoped.filter(row => matchesSlaFilter(row, slaFilter));
+        totalRows = filtered.length;
+        rows = filtered.slice(from, to + 1);
+    } else if (slaFilter === 'ALL') {
         const baseQuery = applyLeadBaseFilters(
             supabase.from('crm_leads').select('*', { count: 'exact' }).order('created_at', { ascending: false }),
             {
@@ -845,8 +1453,62 @@ export async function getLeadIndexAction(input: {
         rows = filtered.slice(from, to + 1);
     }
 
+    rows = await enrichLeadIndexRows(rows);
+
     const todayStart = startOfDay(new Date()).toISOString();
     const todayEnd = endOfDay(new Date()).toISOString();
+
+    if (isFinanceTenant || financeSelfScopeLeadIds) {
+        const kpiBaseQuery = applyLeadBaseFilters(
+            supabase.from('crm_leads').select('*').order('created_at', { ascending: false }),
+            {
+                tenantId: isFinanceTenant ? undefined : input.tenantId,
+                status: 'ALL',
+                intent: 'ALL',
+            }
+        );
+        const { data: kpiData, error: kpiError } = await kpiBaseQuery;
+        if (kpiError) {
+            console.error('getLeadIndexAction self-scope KPI query error:', kpiError);
+        }
+        const scopedKpiRows = ((kpiData || []) as any[]).map(mapCrmLeadToIndexRow).filter(row => {
+            if (isFinanceTenant) {
+                const tenantId = String(input.tenantId || '');
+                const mappedToFinancer =
+                    String(row.ownerTenantId || '') === tenantId || String(row.selectedTenantId || '') === tenantId;
+                const interactedByFinancer = financeInteractedLeadIds.has(row.id);
+                const visibleByTenant = mappedToFinancer || interactedByFinancer;
+                if (financeSelfScopeLeadIds) {
+                    return visibleByTenant && financeSelfScopeLeadIds.has(row.id);
+                }
+                return visibleByTenant;
+            }
+            return financeSelfScopeLeadIds ? financeSelfScopeLeadIds.has(row.id) : true;
+        });
+
+        const totalPages = totalRows === 0 ? 0 : Math.ceil(totalRows / pageSize);
+
+        return {
+            success: true,
+            rows,
+            pagination: {
+                page,
+                pageSize,
+                totalRows,
+                totalPages,
+                hasPrev: page > 1,
+                hasNext: page < totalPages,
+            },
+            kpis: {
+                totalLeads: scopedKpiRows.length,
+                hotLeads: scopedKpiRows.filter(row => (row.intentScore || '').toUpperCase() === 'HOT').length,
+                qualifiedLeads: scopedKpiRows.filter(row => row.status !== 'NEW' && row.status !== 'JUNK').length,
+                inPipeline: scopedKpiRows.filter(row => row.status === 'QUOTE' || row.status === 'BOOKING').length,
+                overdueFollowUps: scopedKpiRows.filter(row => row.slaBucket === 'OVERDUE').length,
+                dueTodayFollowUps: scopedKpiRows.filter(row => row.slaBucket === 'DUE_TODAY').length,
+            },
+        };
+    }
 
     const totalKpiQuery = applyLeadBaseFilters(
         supabase.from('crm_leads').select('id', { count: 'exact', head: true }),
@@ -1094,16 +1756,55 @@ type LeadModuleTask = {
     assigned_to_name?: string | null;
 };
 
-function readLeadModuleData(utmData: any): { notes: LeadModuleNote[]; tasks: LeadModuleTask[] } {
+type LeadShareRequest = {
+    id: string;
+    requester_user_id: string | null;
+    requester_name?: string | null;
+    requester_tenant_id: string;
+    requester_tenant_name?: string | null;
+    requested_at: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    note?: string | null;
+};
+
+export type LeadShareRequestInboxItem = {
+    requestId: string;
+    leadId: string;
+    leadDisplayId: string;
+    customerName: string | null;
+    requesterTenantId: string;
+    requesterTenantName: string | null;
+    requesterTenantType: string | null;
+    requesterName: string | null;
+    requestedAt: string;
+    note: string | null;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+};
+
+function readLeadModuleData(utmData: any): {
+    notes: LeadModuleNote[];
+    tasks: LeadModuleTask[];
+    shares: LeadModuleShare[];
+    share_requests: LeadShareRequest[];
+} {
     const moduleData = utmData && typeof utmData === 'object' ? (utmData.module_data as any) || {} : {};
     const notes = Array.isArray(moduleData.notes) ? (moduleData.notes as LeadModuleNote[]) : [];
     const tasks = Array.isArray(moduleData.tasks) ? (moduleData.tasks as LeadModuleTask[]) : [];
-    return { notes, tasks };
+    const shares = Array.isArray(moduleData.shares) ? (moduleData.shares as LeadModuleShare[]) : [];
+    const share_requests = Array.isArray(moduleData.share_requests)
+        ? (moduleData.share_requests as LeadShareRequest[])
+        : [];
+    return { notes, tasks, shares, share_requests };
 }
 
 function mergeLeadModuleData(
     utmData: any,
-    updates: Partial<{ notes: LeadModuleNote[]; tasks: LeadModuleTask[] }>
+    updates: Partial<{
+        notes: LeadModuleNote[];
+        tasks: LeadModuleTask[];
+        shares: LeadModuleShare[];
+        share_requests: LeadShareRequest[];
+    }>
 ): Record<string, any> {
     const safeUtmData = utmData && typeof utmData === 'object' ? { ...utmData } : {};
     const moduleData =
@@ -1112,6 +1813,8 @@ function mergeLeadModuleData(
         ...moduleData,
         ...(updates.notes ? { notes: updates.notes } : {}),
         ...(updates.tasks ? { tasks: updates.tasks } : {}),
+        ...(updates.shares ? { shares: updates.shares } : {}),
+        ...(updates.share_requests ? { share_requests: updates.share_requests } : {}),
     };
     return safeUtmData;
 }
@@ -1184,6 +1887,7 @@ async function updateCrmLeadCompat(
 
 export async function updateLeadAction(input: {
     leadId: string;
+    actorTenantId?: string;
     customer_name?: string;
     customer_phone?: string;
     customer_pincode?: string;
@@ -1196,8 +1900,10 @@ export async function updateLeadAction(input: {
     if (!user?.id) {
         return { success: false, message: 'Authentication required' };
     }
+    const financeAccess = await validateFinanceLeadWriteAccess(user.id, input.leadId);
+    if (!financeAccess.success) return financeAccess;
 
-    const { leadId, ...fields } = input;
+    const { leadId, actorTenantId, ...fields } = input;
     // Remove undefined fields
     const payload: Record<string, any> = {};
     for (const [k, v] of Object.entries(fields)) {
@@ -1248,12 +1954,14 @@ export async function updateLeadAction(input: {
         return { success: false, message: updateResult.message || 'Failed to update lead' };
     }
 
+    const actorContext = await resolveActorContext(actorTenantId || null);
     await logLeadEvent({
         leadId,
         eventType: 'LEAD_EDITED',
         notes: `Updated: ${Object.keys(payload).join(', ')}`,
         changedValue: JSON.stringify(payload),
         actorUserId: user.id,
+        actorTenantId: actorContext.actorTenantId,
     });
 
     return { success: true };
@@ -1261,12 +1969,15 @@ export async function updateLeadAction(input: {
 
 export async function updateLeadIntentScoreAction(input: {
     leadId: string;
+    actorTenantId?: string;
     intentScore: 'HOT' | 'WARM' | 'COLD' | 'JUNK';
 }) {
     const user = await getAuthUser();
     if (!user?.id) {
         return { success: false, message: 'Authentication required' };
     }
+    const financeAccess = await validateFinanceLeadWriteAccess(user.id, input.leadId);
+    if (!financeAccess.success) return financeAccess;
 
     const validScores = ['HOT', 'WARM', 'COLD', 'JUNK'];
     if (!validScores.includes(input.intentScore)) {
@@ -1311,6 +2022,16 @@ export async function updateLeadIntentScoreAction(input: {
         return { success: false, message: updateResult.message || 'Failed to update score' };
     }
 
+    const actorContext = await resolveActorContext(input.actorTenantId || null);
+    await logLeadEvent({
+        leadId: input.leadId,
+        eventType: 'INTENT_SCORE_CHANGED',
+        notes: `Intent score changed from ${previousScore} to ${input.intentScore}`,
+        changedValue: { previous: previousScore, current: input.intentScore },
+        actorUserId: user.id,
+        actorTenantId: actorContext.actorTenantId,
+    });
+
     revalidatePath('/app/[slug]/leads');
     return { success: true };
 }
@@ -1322,6 +2043,10 @@ export async function getLeadModuleStateAction(
     if (!user?.id) {
         return { success: false, notes: [], tasks: [], message: 'Authentication required' };
     }
+    const financeAccess = await validateFinanceLeadWriteAccess(user.id, leadId);
+    if (!financeAccess.success) {
+        return { success: false, notes: [], tasks: [], message: financeAccess.message || 'Access denied' };
+    }
 
     const { data, error } = await adminClient.from('crm_leads').select('utm_data').eq('id', leadId).maybeSingle();
     if (error || !data) {
@@ -1332,11 +2057,18 @@ export async function getLeadModuleStateAction(
     return { success: true, notes, tasks };
 }
 
-export async function addLeadNoteAction(input: { leadId: string; body: string; attachments?: LeadNoteAttachment[] }) {
+export async function addLeadNoteAction(input: {
+    leadId: string;
+    body: string;
+    attachments?: LeadNoteAttachment[];
+    actorTenantId?: string;
+}) {
     const user = await getAuthUser();
     if (!user?.id) {
         return { success: false, message: 'Authentication required' };
     }
+    const financeAccess = await validateFinanceLeadWriteAccess(user.id, input.leadId);
+    if (!financeAccess.success) return financeAccess;
 
     const body = input.body.trim();
     if (!body) {
@@ -1405,6 +2137,19 @@ export async function addLeadNoteAction(input: { leadId: string; body: string; a
         return { success: false, message: updateResult.message || 'Lead update failed' };
     }
 
+    const actorContext = await resolveActorContext(input.actorTenantId || null);
+    await logLeadEvent({
+        leadId: input.leadId,
+        eventType: 'NOTE_ADDED',
+        notes: body,
+        changedValue: {
+            note_id: note.id,
+            attachment_count: normalizedAttachments.length,
+        },
+        actorUserId: user.id,
+        actorTenantId: actorContext.actorTenantId,
+    });
+
     if (normalizedAttachments.length > 0 && (data as any)?.customer_id) {
         const memberId = (data as any).customer_id as string;
         const ownerTenantId = (data as any).owner_tenant_id as string | null;
@@ -1446,6 +2191,8 @@ export async function addLeadTaskAction(input: {
     if (!user?.id) {
         return { success: false, message: 'Authentication required' };
     }
+    const financeAccess = await validateFinanceLeadWriteAccess(user.id, input.leadId);
+    if (!financeAccess.success) return financeAccess;
 
     const title = input.title.trim();
     if (!title) {
@@ -1667,6 +2414,604 @@ export async function getCatalogModels() {
     return (data as any[]).map(i => i.name);
 }
 
+export async function checkQuickLeadContextAction(input: {
+    phone: string;
+    ownerTenantId?: string;
+    selectedDealerId?: string;
+}) {
+    try {
+        const cleanPhone = toAppStorageFormat(input.phone || '');
+        if (!cleanPhone || cleanPhone.length !== 10) {
+            return { success: false, message: 'Enter valid 10-digit phone number.' };
+        }
+
+        const selectedDealerId = String(input.selectedDealerId || '').trim() || null;
+        const ownerTenantId = String(input.ownerTenantId || '').trim() || null;
+        const dealershipTenantId = selectedDealerId || ownerTenantId;
+
+        if (!dealershipTenantId) {
+            return { success: false, message: 'Activate a dealership context first.' };
+        }
+
+        const { data: dealershipTenant, error: dealerTypeError } = await adminClient
+            .from('id_tenants')
+            .select('id, type, name')
+            .eq('id', dealershipTenantId)
+            .maybeSingle();
+        if (dealerTypeError) {
+            return { success: false, message: dealerTypeError.message };
+        }
+        const tenantType = String((dealershipTenant as any)?.type || '').toUpperCase();
+        if (tenantType !== 'DEALER' && tenantType !== 'DEALERSHIP') {
+            return { success: false, message: 'Lead check runs only in dealership context.' };
+        }
+
+        const { data: member, error: memberError } = await adminClient
+            .from('id_members')
+            .select('id, full_name, phone, primary_phone')
+            .or(`phone.eq.${cleanPhone},primary_phone.eq.${cleanPhone}`)
+            .maybeSingle();
+        if (memberError) {
+            return { success: false, message: memberError.message };
+        }
+
+        const sessionUser = await getAuthUser();
+        const actorContext = await resolveActorContext();
+
+        let query = adminClient
+            .from('crm_leads')
+            .select('id, display_id, status, customer_name, created_at, updated_at, owner_tenant_id, utm_data')
+            .eq('owner_tenant_id', dealershipTenantId)
+            .eq('is_deleted', false)
+            .not('status', 'in', '("CLOSED")')
+            .limit(1);
+
+        if (member?.id) {
+            query = query.or(`customer_id.eq.${member.id},customer_phone.eq.${cleanPhone}`);
+        } else {
+            query = query.eq('customer_phone', cleanPhone);
+        }
+
+        const { data: leadRows, error: leadError } = await query;
+        if (leadError) {
+            return { success: false, message: leadError.message };
+        }
+
+        const lead = Array.isArray(leadRows) ? leadRows[0] : null;
+        let existingLead: {
+            id: string;
+            displayId: string;
+            status: string;
+            customerName: string | null;
+            dealershipName: string | null;
+            createdByName: string | null;
+            createdAt: string | null;
+            lastEditedByName: string | null;
+            lastEditedAt: string | null;
+        } | null = null;
+
+        if (lead?.id) {
+            const leadCreatedAt = String((lead as any).created_at || '').trim() || null;
+            const leadUpdatedAt = String((lead as any).updated_at || '').trim() || null;
+            const dealershipName = String((dealershipTenant as any)?.name || '').trim() || null;
+
+            const [createdEventResult, latestEditEventResult] = await Promise.all([
+                adminClient
+                    .from('crm_lead_events')
+                    .select('actor_user_id, created_at')
+                    .eq('lead_id', String(lead.id))
+                    .eq('event_type', 'LEAD_CREATED')
+                    .order('created_at', { ascending: true })
+                    .limit(1)
+                    .maybeSingle(),
+                adminClient
+                    .from('crm_lead_events')
+                    .select('actor_user_id, created_at')
+                    .eq('lead_id', String(lead.id))
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle(),
+            ]);
+
+            const createdById = String((createdEventResult.data as any)?.actor_user_id || '').trim() || null;
+            const createdAtFromEvent = String((createdEventResult.data as any)?.created_at || '').trim() || null;
+            const latestEditEvent = latestEditEventResult.data;
+
+            const createdAt = createdAtFromEvent || leadCreatedAt;
+            let fallbackCreatorId: string | null = null;
+            if (!createdById) {
+                const { data: fallbackCreator } = await adminClient
+                    .from('id_members')
+                    .select('id')
+                    .or('primary_phone.eq.9820760596,phone.eq.9820760596')
+                    .limit(1)
+                    .maybeSingle();
+                fallbackCreatorId = String((fallbackCreator as any)?.id || '').trim() || null;
+            }
+
+            const lastEditorId = String((latestEditEvent as any)?.actor_user_id || '').trim() || null;
+            const lastEditedAt =
+                String((latestEditEvent as any)?.created_at || '').trim() || leadUpdatedAt || leadCreatedAt;
+
+            const effectiveCreatorId = createdById || fallbackCreatorId;
+            const { shares, share_requests } = readLeadModuleData((lead as any)?.utm_data);
+            const requesterTenantId = String(actorContext.actorTenantId || '').trim() || null;
+            const userIsOwner = !!sessionUser?.id && !!effectiveCreatorId && sessionUser.id === effectiveCreatorId;
+            const hasTenantShare =
+                !!requesterTenantId &&
+                shares.some(
+                    share => share.active !== false && String(share.target_tenant_id || '').trim() === requesterTenantId
+                );
+            const pendingShareRequest =
+                !!sessionUser?.id &&
+                !!requesterTenantId &&
+                share_requests.some(
+                    req =>
+                        String(req.requester_tenant_id || '').trim() === requesterTenantId &&
+                        String(req.requester_user_id || '').trim() === String(sessionUser.id) &&
+                        String(req.status || '').toUpperCase() === 'PENDING'
+                );
+            const actorIds = Array.from(new Set([effectiveCreatorId, lastEditorId].filter(Boolean))) as string[];
+            const memberNameMap = await resolveActorDisplayNames(actorIds);
+
+            existingLead = {
+                id: String(lead.id),
+                displayId: normalizeLeadDisplayId(lead),
+                status: String(lead.status || 'NEW'),
+                customerName: (lead as any).customer_name || null,
+                dealershipName,
+                createdByName: effectiveCreatorId ? memberNameMap.get(effectiveCreatorId) || 'Team' : 'Team',
+                createdAt,
+                lastEditedByName:
+                    (lastEditorId ? memberNameMap.get(lastEditorId) || 'Team' : null) ||
+                    (effectiveCreatorId ? memberNameMap.get(effectiveCreatorId) || 'Team' : 'Team'),
+                lastEditedAt,
+                ownerUserId: effectiveCreatorId,
+                canWrite: userIsOwner || hasTenantShare,
+                canRequestShare: !userIsOwner && !hasTenantShare,
+                pendingShareRequest: !!pendingShareRequest,
+            };
+        }
+
+        return {
+            success: true,
+            phone: cleanPhone,
+            ownerTenantId: dealershipTenantId,
+            selectedDealerId: dealershipTenantId,
+            member: member?.id
+                ? {
+                      id: String(member.id),
+                      fullName: String(member.full_name || '').trim() || null,
+                      phone: String((member as any).primary_phone || member.phone || cleanPhone),
+                  }
+                : null,
+            existingLead,
+        };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+}
+
+async function getLeadOwnerUserId(leadId: string): Promise<string | null> {
+    const { data: createdEvent } = await adminClient
+        .from('crm_lead_events')
+        .select('actor_user_id')
+        .eq('lead_id', leadId)
+        .eq('event_type', 'LEAD_CREATED')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    return String((createdEvent as any)?.actor_user_id || '').trim() || null;
+}
+
+export async function requestLeadShareAccessAction(input: {
+    leadId: string;
+    note?: string;
+    requesterTenantId?: string;
+}) {
+    const user = await getAuthUser();
+    const actorContext = await resolveActorContext(input.requesterTenantId || null);
+    const requesterTenantId = String(input.requesterTenantId || actorContext.actorTenantId || '').trim();
+    if (!requesterTenantId) {
+        return { success: false, message: 'Active tenant context required for request.' };
+    }
+
+    const { data: lead, error: leadError } = await adminClient
+        .from('crm_leads')
+        .select('id, utm_data')
+        .eq('id', input.leadId)
+        .maybeSingle();
+    if (leadError || !lead) return { success: false, message: leadError?.message || 'Lead not found' };
+
+    const ownerUserId = await getLeadOwnerUserId(input.leadId);
+    if (user?.id && ownerUserId && ownerUserId === user.id) {
+        return { success: false, message: 'You are already lead owner.' };
+    }
+
+    const { data: requesterTenant } = await adminClient
+        .from('id_tenants')
+        .select('id, name')
+        .eq('id', requesterTenantId)
+        .maybeSingle();
+    const requesterTenantName = String((requesterTenant as any)?.name || '').trim() || 'Team';
+
+    const { notes, tasks, shares, share_requests } = readLeadModuleData((lead as any).utm_data);
+    const alreadyShared = shares.some(
+        share => share.active !== false && String(share.target_tenant_id || '').trim() === requesterTenantId
+    );
+    if (alreadyShared) {
+        return { success: true, message: 'Lead already shared with your team.' };
+    }
+
+    const hasPending = share_requests.some(
+        req =>
+            String(req.requester_tenant_id || '').trim() === requesterTenantId &&
+            (!user?.id || String(req.requester_user_id || '').trim() === String(user.id)) &&
+            String(req.status || '').toUpperCase() === 'PENDING'
+    );
+    if (hasPending) {
+        return { success: true, message: 'Share request already pending with lead owner.' };
+    }
+
+    const requesterName =
+        ((user as any)?.user_metadata?.full_name as string | undefined) ||
+        ((user as any)?.user_metadata?.name as string | undefined) ||
+        ((user as any)?.email as string | undefined) ||
+        null;
+
+    const normalizedNote = (input.note || '').trim();
+
+    const requestRow: LeadShareRequest = {
+        id: `SHARE_REQ_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        requester_user_id: user?.id || actorContext.actorUserId || null,
+        requester_name: requesterName,
+        requester_tenant_id: requesterTenantId,
+        requester_tenant_name: requesterTenantName,
+        requested_at: new Date().toISOString(),
+        status: 'PENDING',
+        note: normalizedNote || null,
+    };
+
+    const shareRequestNote: LeadModuleNote | null = normalizedNote
+        ? {
+              id: `NOTE_SHARE_REQ_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+              body: `Share request: ${normalizedNote}`,
+              created_at: requestRow.requested_at,
+              created_by: user?.id || actorContext.actorUserId || null,
+              created_by_name: requestRow.requester_name || requestRow.requester_tenant_name || 'Team',
+              attachments: [],
+          }
+        : null;
+
+    const nextNotes = shareRequestNote ? [shareRequestNote, ...notes] : notes;
+
+    const nextUtmData = mergeLeadModuleData((lead as any).utm_data, {
+        notes: nextNotes,
+        tasks,
+        shares,
+        share_requests: [requestRow, ...share_requests],
+    });
+
+    const updateResult = await updateCrmLeadCompat(input.leadId, { utm_data: nextUtmData }, new Date().toISOString());
+    if (!updateResult.success) {
+        return { success: false, message: updateResult.message || 'Failed to save share request' };
+    }
+
+    await logLeadEvent({
+        leadId: input.leadId,
+        eventType: 'LEAD_SHARE_REQUESTED',
+        notes: `Share requested by ${requestRow.requester_name || 'Team'} (${requesterTenantName})`,
+        changedValue: {
+            request_id: requestRow.id,
+            requester_tenant_id: requesterTenantId,
+            requester_tenant_name: requesterTenantName,
+            note: requestRow.note,
+        },
+        actorUserId: user?.id || actorContext.actorUserId || null,
+        actorTenantId: requesterTenantId,
+    });
+
+    return {
+        success: true,
+        message: 'Share request sent to lead owner.',
+        noteSaved: Boolean(shareRequestNote),
+    };
+}
+
+export async function getLeadShareRequestsInboxAction(input?: { tenantId?: string }) {
+    const user = await getAuthUser();
+    if (!user?.id)
+        return { success: false, message: 'Authentication required', rows: [] as LeadShareRequestInboxItem[] };
+
+    const actorContext = await resolveActorContext(input?.tenantId || null);
+    const scopedTenantId = String(input?.tenantId || actorContext.actorTenantId || '').trim() || null;
+    if (!scopedTenantId) {
+        return { success: false, message: 'Active tenant context required.', rows: [] as LeadShareRequestInboxItem[] };
+    }
+
+    const { data: leads, error: leadsError } = await adminClient
+        .from('crm_leads')
+        .select('id, display_id, customer_name, utm_data, owner_tenant_id, selected_dealer_tenant_id')
+        .or(`owner_tenant_id.eq.${scopedTenantId},selected_dealer_tenant_id.eq.${scopedTenantId}`)
+        .eq('is_deleted', false)
+        .order('updated_at', { ascending: false });
+    if (leadsError) {
+        return { success: false, message: leadsError.message, rows: [] as LeadShareRequestInboxItem[] };
+    }
+
+    const rows: LeadShareRequestInboxItem[] = [];
+    (leads || []).forEach((lead: any) => {
+        const { share_requests } = readLeadModuleData(lead?.utm_data);
+        share_requests.forEach(req => {
+            const requestStatus = String(req.status || '').toUpperCase();
+            if (requestStatus !== 'PENDING') return;
+            const requesterTenantId = String(req.requester_tenant_id || '').trim();
+            if (!requesterTenantId) return;
+            rows.push({
+                requestId: String(req.id || ''),
+                leadId: String(lead.id || ''),
+                leadDisplayId: normalizeLeadDisplayId(lead),
+                customerName: String(lead.customer_name || '').trim() || null,
+                requesterTenantId,
+                requesterTenantName: String(req.requester_tenant_name || '').trim() || null,
+                requesterTenantType: null,
+                requesterName: String(req.requester_name || '').trim() || null,
+                requestedAt: String(req.requested_at || '').trim() || '',
+                note: String(req.note || '').trim() || null,
+                status: 'PENDING',
+            });
+        });
+    });
+
+    const requesterTenantIds = Array.from(new Set(rows.map(row => row.requesterTenantId).filter(Boolean)));
+    if (requesterTenantIds.length > 0) {
+        const { data: requesterTenants } = await adminClient
+            .from('id_tenants')
+            .select('id, type, name')
+            .in('id', requesterTenantIds);
+        const tenantMap = new Map<string, { type: string | null; name: string | null }>();
+        (requesterTenants || []).forEach((tenant: any) => {
+            const id = String(tenant?.id || '').trim();
+            if (!id) return;
+            tenantMap.set(id, {
+                type:
+                    String(tenant?.type || '')
+                        .trim()
+                        .toUpperCase() || null,
+                name: String(tenant?.name || '').trim() || null,
+            });
+        });
+
+        rows.forEach(row => {
+            const tenant = tenantMap.get(row.requesterTenantId);
+            if (!tenant) return;
+            row.requesterTenantType = tenant.type || null;
+            if (!row.requesterTenantName && tenant.name) {
+                row.requesterTenantName = tenant.name;
+            }
+        });
+    }
+
+    rows.sort((a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime());
+    return { success: true, rows };
+}
+
+export async function approveLeadShareRequestAction(input: { leadId: string; requestId: string; note?: string }) {
+    const user = await getAuthUser();
+    if (!user?.id) return { success: false, message: 'Authentication required' };
+
+    const leadId = String(input.leadId || '').trim();
+    const requestId = String(input.requestId || '').trim();
+    if (!leadId || !requestId) {
+        return { success: false, message: 'Lead ID and request ID are required.' };
+    }
+
+    const ownerUserId = await getLeadOwnerUserId(leadId);
+    if (!ownerUserId || ownerUserId !== user.id) {
+        return { success: false, message: 'Only lead owner can approve request.' };
+    }
+
+    const { data: lead, error: leadError } = await adminClient
+        .from('crm_leads')
+        .select('id, utm_data')
+        .eq('id', leadId)
+        .maybeSingle();
+    if (leadError || !lead) return { success: false, message: leadError?.message || 'Lead not found' };
+
+    const { share_requests } = readLeadModuleData((lead as any).utm_data);
+    const request = share_requests.find(req => String(req.id || '').trim() === requestId);
+    if (!request) return { success: false, message: 'Share request not found.' };
+    if (String(request.status || '').toUpperCase() !== 'PENDING') {
+        return { success: false, message: 'Only pending requests can be approved.' };
+    }
+
+    const targetTenantId = String(request.requester_tenant_id || '').trim();
+    if (!targetTenantId) return { success: false, message: 'Requester tenant missing on share request.' };
+
+    return await shareLeadAccessAction({
+        leadId,
+        targetTenantIds: [targetTenantId],
+        note: (input.note || '').trim() || request.note || undefined,
+    });
+}
+
+export async function rejectLeadShareRequestAction(input: { leadId: string; requestId: string; note?: string }) {
+    const user = await getAuthUser();
+    if (!user?.id) return { success: false, message: 'Authentication required' };
+
+    const leadId = String(input.leadId || '').trim();
+    const requestId = String(input.requestId || '').trim();
+    if (!leadId || !requestId) {
+        return { success: false, message: 'Lead ID and request ID are required.' };
+    }
+
+    const ownerUserId = await getLeadOwnerUserId(leadId);
+    if (!ownerUserId || ownerUserId !== user.id) {
+        return { success: false, message: 'Only lead owner can reject request.' };
+    }
+
+    const { data: lead, error: leadError } = await adminClient
+        .from('crm_leads')
+        .select('id, utm_data')
+        .eq('id', leadId)
+        .maybeSingle();
+    if (leadError || !lead) return { success: false, message: leadError?.message || 'Lead not found' };
+
+    const { notes, tasks, shares, share_requests } = readLeadModuleData((lead as any).utm_data);
+    let updated = false;
+    const nextRequests = share_requests.map(req => {
+        if (String(req.id || '').trim() !== requestId) return req;
+        if (String(req.status || '').toUpperCase() !== 'PENDING') return req;
+        updated = true;
+        return { ...req, status: 'REJECTED' as const };
+    });
+
+    if (!updated) {
+        return { success: false, message: 'Pending share request not found.' };
+    }
+
+    const now = new Date().toISOString();
+    const nextUtmData = mergeLeadModuleData((lead as any).utm_data, {
+        notes,
+        tasks,
+        shares,
+        share_requests: nextRequests,
+    });
+    const updateResult = await updateCrmLeadCompat(leadId, { utm_data: nextUtmData }, now);
+    if (!updateResult.success) {
+        return { success: false, message: updateResult.message || 'Failed to reject share request.' };
+    }
+
+    const actorContext = await resolveActorContext();
+    await logLeadEvent({
+        leadId,
+        eventType: 'LEAD_SHARE_REJECTED',
+        notes: `Share request rejected${input.note ? `: ${input.note}` : ''}`,
+        changedValue: { request_id: requestId, note: (input.note || '').trim() || null },
+        actorUserId: user.id,
+        actorTenantId: actorContext.actorTenantId,
+    });
+
+    return { success: true, message: 'Share request rejected.' };
+}
+
+export async function shareLeadAccessAction(input: { leadId: string; targetTenantIds: string[]; note?: string }) {
+    const user = await getAuthUser();
+    if (!user?.id) return { success: false, message: 'Authentication required' };
+
+    const ownerUserId = await getLeadOwnerUserId(input.leadId);
+    if (!ownerUserId || ownerUserId !== user.id) {
+        return { success: false, message: 'Only lead owner can share this lead.' };
+    }
+
+    const targetTenantIds = Array.from(
+        new Set((input.targetTenantIds || []).map(id => String(id || '').trim()).filter(Boolean))
+    );
+    if (targetTenantIds.length === 0) {
+        return { success: false, message: 'Select at least one tenant to share.' };
+    }
+
+    const { data: lead, error: leadError } = await adminClient
+        .from('crm_leads')
+        .select('id, utm_data')
+        .eq('id', input.leadId)
+        .maybeSingle();
+    if (leadError || !lead) return { success: false, message: leadError?.message || 'Lead not found' };
+
+    const { data: targetTenants } = await adminClient
+        .from('id_tenants')
+        .select('id, name, type')
+        .in('id', targetTenantIds);
+    const targetTenantMap = new Map<string, { name: string; type: string }>();
+    (targetTenants || []).forEach((row: any) => {
+        const id = String(row?.id || '').trim();
+        if (!id) return;
+        targetTenantMap.set(id, {
+            name: String(row?.name || '').trim() || `Tenant ${id.slice(0, 6).toUpperCase()}`,
+            type: String(row?.type || '')
+                .trim()
+                .toUpperCase(),
+        });
+    });
+
+    const { notes, tasks, shares, share_requests } = readLeadModuleData((lead as any).utm_data);
+    const now = new Date().toISOString();
+    const actorName =
+        ((user as any)?.user_metadata?.full_name as string | undefined) ||
+        ((user as any)?.user_metadata?.name as string | undefined) ||
+        ((user as any)?.email as string | undefined) ||
+        'Lead Owner';
+
+    const nextShares = [...shares];
+    targetTenantIds.forEach(targetTenantId => {
+        const idx = nextShares.findIndex(share => String(share.target_tenant_id || '').trim() === targetTenantId);
+        const targetMeta = targetTenantMap.get(targetTenantId);
+        if (idx >= 0) {
+            nextShares[idx] = {
+                ...nextShares[idx],
+                active: true,
+                shared_at: now,
+                shared_by_user_id: user.id,
+                shared_by_name: actorName,
+                target_tenant_type: targetMeta?.type || nextShares[idx].target_tenant_type || null,
+                note: (input.note || '').trim() || nextShares[idx].note || null,
+            };
+            return;
+        }
+        nextShares.push({
+            id: `LEAD_SHARE_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            target_tenant_id: targetTenantId,
+            target_tenant_type: targetMeta?.type || null,
+            shared_by_user_id: user.id,
+            shared_by_name: actorName,
+            shared_at: now,
+            active: true,
+            note: (input.note || '').trim() || null,
+        });
+    });
+
+    const nextRequests = share_requests.map(req =>
+        targetTenantIds.includes(String(req.requester_tenant_id || '').trim()) &&
+        String(req.status || '').toUpperCase() === 'PENDING'
+            ? { ...req, status: 'APPROVED' as const }
+            : req
+    );
+
+    const nextUtmData = mergeLeadModuleData((lead as any).utm_data, {
+        notes,
+        tasks,
+        shares: nextShares,
+        share_requests: nextRequests,
+    });
+    const updateResult = await updateCrmLeadCompat(input.leadId, { utm_data: nextUtmData }, now);
+    if (!updateResult.success) {
+        return { success: false, message: updateResult.message || 'Failed to share lead' };
+    }
+
+    const actorContext = await resolveActorContext();
+    for (const targetTenantId of targetTenantIds) {
+        const meta = targetTenantMap.get(targetTenantId);
+        await logLeadEvent({
+            leadId: input.leadId,
+            eventType: 'LEAD_SHARED',
+            notes: `Lead shared to ${meta?.name || targetTenantId}`,
+            changedValue: {
+                to_tenant_id: targetTenantId,
+                to_tenant_name: meta?.name || null,
+                to_tenant_type: meta?.type || null,
+                shared_by_user_id: user.id,
+                shared_by_name: actorName,
+                note: (input.note || '').trim() || null,
+            },
+            actorUserId: user.id,
+            actorTenantId: actorContext.actorTenantId,
+        });
+    }
+
+    return { success: true, message: 'Lead shared successfully.' };
+}
+
 // Helper to format text as Title Case
 function toTitleCase(str: string): string {
     if (!str) return '';
@@ -1783,6 +3128,37 @@ export async function createLeadAction(data: {
                 .eq('id', authUser.id)
                 .maybeSingle();
             actorIsStaff = !isEndCustomerRole(actorMember?.role);
+        }
+
+        // For finance-team users, dealership context must be explicitly granted by dealership.
+        if (authUser?.id && actorIsStaff && data.selected_dealer_id) {
+            const financeTenantForAccess = financeTenantId || effectiveOwnerId || null;
+            if (financeTenantForAccess) {
+                const { data: financeTenant } = await adminClient
+                    .from('id_tenants')
+                    .select('type')
+                    .eq('id', financeTenantForAccess)
+                    .maybeSingle();
+
+                if (String(financeTenant?.type || '').toUpperCase() === 'BANK') {
+                    const { data: accessRow } = await adminClient
+                        .from('dealer_finance_user_access')
+                        .select('dealer_tenant_id')
+                        .eq('finance_tenant_id', financeTenantForAccess)
+                        .eq('dealer_tenant_id', data.selected_dealer_id)
+                        .eq('user_id', authUser.id)
+                        .eq('crm_access', true)
+                        .maybeSingle();
+
+                    if (!accessRow) {
+                        return {
+                            success: false,
+                            message:
+                                'No CRM access for selected dealership. Ask dealership admin to grant access first.',
+                        };
+                    }
+                }
+            }
         }
 
         let customerId: string;

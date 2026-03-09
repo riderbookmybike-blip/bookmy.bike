@@ -49,6 +49,7 @@ export const M2Footer = () => {
             title: 'Services & Support',
             links: [
                 { label: 'Help Center', href: '#' },
+                { label: 'Team Onboarding', href: '/welcome' },
                 { label: 'Finance Options', href: '#' },
                 { label: 'Insurance Hub', href: '#' },
                 { label: 'RTO Rules', href: '#' },

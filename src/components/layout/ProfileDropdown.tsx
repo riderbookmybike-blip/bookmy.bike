@@ -119,7 +119,9 @@ export function ProfileDropdown({
     // O'Circle vs Business mode toggle (persisted)
     const [businessMode, setBusinessMode] = useState(() => {
         if (typeof window === 'undefined') return false;
-        return localStorage.getItem('bkmb_sidebar_mode') === 'business';
+        const savedMode = localStorage.getItem('bkmb_sidebar_mode');
+        if (!savedMode) return true;
+        return savedMode === 'business';
     });
     const toggleMode = () => {
         setBusinessMode(prev => {
@@ -443,12 +445,23 @@ export function ProfileDropdown({
     const primaryFinanceMembership = financeMemberships[0] || null;
     const effectiveActiveFinanceId = financeId || primaryFinanceMembership?.tenant_id || null;
     const isFinanceTeamOnly = financeMemberships.length > 0 && dealerMemberships.length === 0;
+    const hasFinanceMembership = financeMemberships.length > 0;
 
     useEffect(() => {
         if (isFinanceTeamOnly && primaryFinanceMembership?.tenant_id && !financeId) {
             setFinanceContext(primaryFinanceMembership.tenant_id);
         }
     }, [isFinanceTeamOnly, primaryFinanceMembership?.tenant_id, financeId, setFinanceContext]);
+
+    useEffect(() => {
+        if (!hasFinanceMembership) return;
+        const allowedFinanceIds = new Set(financeMemberships.map(m => m.tenant_id).filter(Boolean) as string[]);
+        if (allowedFinanceIds.size === 0) return;
+        if (!financeId || !allowedFinanceIds.has(financeId)) {
+            const fallbackFinanceId = primaryFinanceMembership?.tenant_id;
+            if (fallbackFinanceId) setFinanceContext(fallbackFinanceId);
+        }
+    }, [hasFinanceMembership, financeMemberships, financeId, primaryFinanceMembership?.tenant_id, setFinanceContext]);
 
     useEffect(() => {
         const loadMappedDealersForFinanceTeam = async () => {
@@ -1195,6 +1208,7 @@ export function ProfileDropdown({
                                                                 )}
 
                                                                 {!isFinanceTeamOnly &&
+                                                                    !hasFinanceMembership &&
                                                                     dealerLinkedFinancers
                                                                         .filter(f => f.id !== effectiveActiveFinanceId)
                                                                         .map(f => (

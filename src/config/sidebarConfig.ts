@@ -553,6 +553,14 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 color: 'text-slate-400',
                 allowedTenants: ['BANK'],
             },
+            {
+                title: 'Onboarding Requests',
+                href: '/dashboard/settings/onboarding-requests',
+                icon: UserCheck,
+                color: 'text-indigo-600',
+                allowedTenants: ['AUMS', 'DEALER', 'BANK'],
+                allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'DEALERSHIP_ADMIN', 'FINANCE_ADMIN', 'FINANCER_ADMIN'],
+            },
 
             {
                 title: 'Brand Guidelines',

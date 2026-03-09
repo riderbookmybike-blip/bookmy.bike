@@ -539,7 +539,12 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             return;
         }
 
-        const result = await addLeadNoteAction({ leadId: lead.id, body, attachments: uploadedAttachments });
+        const result = await addLeadNoteAction({
+            leadId: lead.id,
+            body,
+            attachments: uploadedAttachments,
+            actorTenantId: tenantId || undefined,
+        });
         if (!result.success) {
             if (uploadedAttachments.length > 0) {
                 await supabase.storage.from('documents').remove(uploadedAttachments.map(attachment => attachment.path));
@@ -627,7 +632,11 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         setLocalIntentScore(newScore); // optimistic
         setUpdatingScore(true);
         try {
-            const result = await updateLeadIntentScoreAction({ leadId: lead.id, intentScore: newScore });
+            const result = await updateLeadIntentScoreAction({
+                leadId: lead.id,
+                intentScore: newScore,
+                actorTenantId: tenantId || undefined,
+            });
             if (!result.success) {
                 setLocalIntentScore(previousScore); // revert
                 toast.error(result.message || 'Failed to update score');
@@ -1278,7 +1287,11 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                         onClick={async () => {
                                             setEditSaving(true);
                                             try {
-                                                const res = await updateLeadAction({ leadId: lead.id, ...editForm });
+                                                const res = await updateLeadAction({
+                                                    leadId: lead.id,
+                                                    actorTenantId: tenantId || undefined,
+                                                    ...editForm,
+                                                });
                                                 if (res.success) {
                                                     setIsEditing(false);
                                                     router.refresh();

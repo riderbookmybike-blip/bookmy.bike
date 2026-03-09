@@ -62,7 +62,7 @@ async function resolveLeadReference(leadRef?: string | null): Promise<LeadContex
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate);
     const query = adminClient
         .from('crm_leads')
-        .select('id, display_id, customer_name, selected_dealer_tenant_id, owner_tenant_id, preferred_financier_id')
+        .select('id, display_id, customer_name, selected_dealer_tenant_id, owner_tenant_id')
         .limit(1);
     const { data } = isUuid
         ? await query.eq('id', candidate).maybeSingle()
@@ -393,7 +393,10 @@ export default async function Page({ params, searchParams }: Props) {
               } as CatalogItem)
             : null;
 
-    let fetchError: any = skuError || modelError;
+    // Normalize Supabase errors: an empty `{}` object is truthy but has no message.
+    // Only treat as a real error when the error has an actual message string.
+    const normalizedSkuError = skuError && typeof skuError.message === 'string' && skuError.message ? skuError : null;
+    let fetchError: any = normalizedSkuError || modelError;
     if (!resolvedVariant) fetchError = fetchError || { message: 'No matching variant in catalog' };
 
     let sotPricingSnapshot: any = null;
@@ -1257,7 +1260,7 @@ export default async function Page({ params, searchParams }: Props) {
             // ignore parse errors
         }
     }
-    const resolvedFinance = await resolveFinanceScheme(product.make, product.model, leadId, viewerContext);
+    const resolvedFinance = await resolveFinanceScheme(product.make, product.model, leadId ?? undefined, viewerContext);
 
     const tenantIdsForMeta = Array.from(
         new Set(

@@ -3,7 +3,8 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Share2, Heart, ArrowRight, Wallet, Sparkles, Zap, Package, Shield, Youtube } from 'lucide-react';
+import { Share2, Wallet, Zap, Package, Shield } from 'lucide-react';
+import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { Logo } from '@/components/brand/Logo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 
@@ -29,26 +30,6 @@ export interface FloatingCommandBarProps {
     insuranceAddonsCount?: number;
     onOpenVideo?: () => void;
 }
-
-const ActionIcon = ({
-    icon: Icon,
-    onClick,
-    label,
-    colorClass,
-}: {
-    icon: any;
-    onClick: () => void;
-    label: string;
-    colorClass: string;
-}) => (
-    <button
-        onClick={onClick}
-        title={label}
-        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${colorClass} hover:scale-110 active:scale-95`}
-    >
-        <Icon size={17} strokeWidth={2.2} />
-    </button>
-);
 
 const PriceMetric = ({
     icon: Icon,
@@ -98,7 +79,6 @@ export default function FloatingCommandBar({
     coinPricing,
     forceMobileLayout,
     handleShareQuote,
-    handleSaveQuote,
     handleBookingRequest,
     serviceability,
     isGated,
@@ -106,14 +86,13 @@ export default function FloatingCommandBar({
     accessoriesTotal = 0,
     insuranceTotal = 0,
     insuranceAddonsCount = 0,
-    onOpenVideo,
 }: FloatingCommandBarProps) {
     const isShareMode = isGated;
     const isServiceabilityBlocked = serviceability?.status === 'SET' && !serviceability?.isServiceable;
     const isDisabled = !isShareMode && isServiceabilityBlocked;
     const primaryAction = isShareMode ? handleShareQuote : handleBookingRequest;
-    const primaryLabel = isDisabled ? 'NOT SERVICEABLE' : isShareMode ? 'SHARE QUOTE' : 'GET QUOTE';
     const privilegedSavings = Math.max(0, totalSavings + (coinPricing?.discount || 0));
+    const bCoinDiscount = coinPricing?.discount || 0;
     const onRoadBase = Math.max(0, displayOnRoad + privilegedSavings);
     const showDesktopBreakdown = !forceMobileLayout;
 
@@ -151,23 +130,6 @@ export default function FloatingCommandBar({
             amountClass: insuranceAddonAmount > 0 ? 'text-blue-600' : 'text-slate-400',
             labelClass: insuranceAddonAmount > 0 ? 'text-blue-500' : 'text-slate-400',
         },
-        {
-            key: 'privileged',
-            icon: Sparkles,
-            label: "O'Circle Benefit",
-            amount: `− ₹ ${privilegedSavings.toLocaleString('en-IN')}`,
-            amountClass: 'text-emerald-600',
-            labelClass: 'text-emerald-600',
-        },
-        {
-            key: 'final-offer',
-            icon: Zap,
-            label: 'Final Offer',
-            amount: `₹ ${displayOnRoad.toLocaleString('en-IN')}`,
-            amountClass: 'text-[#C99700]',
-            labelClass: 'text-brand-primary',
-            bCoin: coinsNeededForPrice(displayOnRoad),
-        },
     ];
 
     return (
@@ -178,7 +140,7 @@ export default function FloatingCommandBar({
                     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.8),rgba(255,255,255,0.2)_50%,rgba(255,215,0,0.03))]" />
 
                     <div className="relative z-10 p-3 md:px-6 md:py-3.5 flex items-center justify-between gap-3">
-                        {/* ═══ SECTION 1: Vehicle Identity (Left) ═══ */}
+                        {/* ═══ SECTION 1: Vehicle Identity (Left) — 3 rows: Model, Variant, Color ═══ */}
                         <div
                             className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} items-center gap-3.5 min-w-0 shrink-0`}
                         >
@@ -191,19 +153,22 @@ export default function FloatingCommandBar({
                                     className="object-contain"
                                 />
                             </div>
-                            <div className="flex flex-col min-w-0">
-                                <span className="text-sm font-black text-slate-900 uppercase italic tracking-tight leading-none mt-0.5 truncate">
-                                    {displayModel}{' '}
-                                    <span className="text-[10px] font-semibold text-slate-500 tracking-[0.08em] not-italic">
-                                        {displayVariant}
-                                    </span>
+                            <div className="flex flex-col min-w-0 gap-0.5">
+                                {/* Row 1: Model */}
+                                <span className="text-sm font-black text-slate-900 uppercase italic tracking-tight leading-none truncate">
+                                    {displayModel}
                                 </span>
-                                <div className="flex items-center gap-1.5 mt-1">
+                                {/* Row 2: Variant */}
+                                <span className="text-[10px] font-semibold text-slate-500 tracking-[0.08em] leading-none truncate">
+                                    {displayVariant}
+                                </span>
+                                {/* Row 3: Color */}
+                                <div className="flex items-center gap-1.5 mt-0.5">
                                     <div
                                         className="w-2.5 h-2.5 rounded-full border border-slate-300 shadow-sm"
                                         style={{ backgroundColor: activeColorConfig.hex }}
                                     />
-                                    <span className="text-[9px] font-semibold tracking-[0.08em] text-slate-500 uppercase leading-none">
+                                    <span className="text-[9px] font-semibold tracking-[0.08em] text-slate-400 uppercase leading-none truncate">
                                         {displayColor}
                                     </span>
                                 </div>
@@ -213,20 +178,77 @@ export default function FloatingCommandBar({
                         </div>
 
                         {/* ═══ SECTION 2: Pricing Details (Center) ═══ */}
-                        <div className="flex-1 flex items-center justify-center min-w-0">
+                        <div className="flex-1 flex items-center min-w-0">
                             {showDesktopBreakdown && (
-                                <div className="hidden md:flex items-center divide-x divide-slate-200/70">
+                                <div className="hidden md:flex items-stretch gap-1.5 w-full">
                                     {desktopMetrics.map(metric => (
-                                        <PriceMetric
+                                        <div
                                             key={metric.key}
-                                            icon={metric.icon}
-                                            label={metric.label}
-                                            amount={metric.amount}
-                                            amountClass={metric.amountClass}
-                                            labelClass={metric.labelClass}
-                                            bCoin={metric.bCoin}
-                                        />
+                                            className={`flex-1 flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-slate-200/70 hover:border-slate-300 hover:shadow-sm transition-all duration-200`}
+                                        >
+                                            <div className="flex items-end gap-1.5 justify-center">
+                                                <p
+                                                    className={`text-[13px] font-black font-mono tabular-nums leading-none ${metric.amountClass || 'text-slate-800'}`}
+                                                >
+                                                    {metric.amount}
+                                                </p>
+                                            </div>
+                                            <p
+                                                className={`mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.08em] ${metric.labelClass || 'text-slate-500'}`}
+                                            >
+                                                <metric.icon size={9} />
+                                                {metric.label}
+                                            </p>
+                                        </div>
                                     ))}
+
+                                    {/* O'Circle Privileged — emerald card */}
+                                    <div className="flex-[1.2] flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-emerald-300/70 hover:border-emerald-400 hover:shadow-sm transition-all duration-200">
+                                        <p className="text-[13px] font-black font-mono tabular-nums leading-none text-emerald-600">
+                                            − ₹ {Math.max(0, totalSavings).toLocaleString('en-IN')}
+                                        </p>
+                                        <div className="mt-1 inline-flex items-center gap-1">
+                                            <OCircleLogo size={10} color="#7EB4E2" strokeWidth={16} />
+                                            <span className="text-[8px] font-bold tracking-[-0.03em]">
+                                                <span className="text-[#7EB4E2]">O&apos;</span>
+                                                <span className="text-slate-700">Circle</span>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* bCoin Wallet — amber card */}
+                                    {bCoinDiscount > 0 && (
+                                        <div className="flex-[1.2] flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-amber-300/70 hover:border-amber-400 hover:shadow-sm transition-all duration-200">
+                                            <p className="text-[13px] font-black font-mono tabular-nums leading-none text-amber-600">
+                                                − ₹ {bCoinDiscount.toLocaleString('en-IN')}
+                                            </p>
+                                            <div className="mt-1 inline-flex items-center gap-1">
+                                                <Logo variant="icon" size={9} customColor="#C99700" />
+                                                <span className="text-[8px] font-black text-slate-900 leading-none">
+                                                    Wallet
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Final Offer — gold accent card */}
+                                    <div className="flex-[2] flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-[#FFD700]/50 hover:border-[#FFD700] hover:shadow-sm transition-all duration-200">
+                                        <div className="flex items-center gap-2 justify-center">
+                                            <p className="text-[14px] font-black font-mono tabular-nums leading-none text-[#C99700]">
+                                                ₹ {displayOnRoad.toLocaleString('en-IN')}
+                                            </p>
+                                            <div className="flex items-center gap-0.5">
+                                                <Logo variant="icon" size={12} customColor="#FFD700" />
+                                                <span className="text-[14px] font-black text-[#FFD700] font-mono tabular-nums leading-none">
+                                                    {coinsNeededForPrice(displayOnRoad).toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p className="mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.08em] text-brand-primary">
+                                            <Zap size={9} />
+                                            Final Offer
+                                        </p>
+                                    </div>
                                 </div>
                             )}
 
@@ -256,55 +278,35 @@ export default function FloatingCommandBar({
                             </div>
                         </div>
 
-                        {/* ═══ SECTION 3: Actions + CTA (Right) ═══ */}
-                        <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                            {/* Section Divider */}
-                            <div
-                                className={`${forceMobileLayout ? 'hidden' : 'hidden md:block'} w-px h-10 bg-gradient-to-b from-transparent via-slate-200 to-transparent`}
-                            />
-
-                            {/* Action Icons — Desktop only */}
-                            <div className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} items-center gap-1`}>
-                                {onOpenVideo && (
-                                    <ActionIcon
-                                        icon={Youtube}
-                                        onClick={onOpenVideo}
-                                        label="Watch Video"
-                                        colorClass="text-slate-400 hover:text-red-600 hover:bg-red-50"
+                        {/* ═══ SECTION 3: CTA Button Only (Right) ═══ */}
+                        <div className="flex items-center shrink-0">
+                            {/* CTA Button — icon-only circle with pulse ring */}
+                            <div className="relative">
+                                {!isDisabled && (
+                                    <span
+                                        className="absolute inset-0 rounded-full bg-[#FFD700]/30 animate-ping"
+                                        style={{ animationDuration: '2.5s' }}
                                     />
                                 )}
-                                <ActionIcon
-                                    icon={Share2}
-                                    onClick={handleShareQuote}
-                                    label="Share Quote"
-                                    colorClass="text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                                />
-                                <ActionIcon
-                                    icon={Heart}
-                                    onClick={handleSaveQuote}
-                                    label="Save Quote"
-                                    colorClass="text-slate-400 hover:text-rose-500 hover:bg-rose-50"
-                                />
+                                <button
+                                    onClick={primaryAction}
+                                    disabled={isDisabled}
+                                    title={isDisabled ? 'Not Serviceable' : isShareMode ? 'Share Quote' : 'Get Quote'}
+                                    className={`relative w-11 h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all duration-300 group
+                                        ${
+                                            isDisabled
+                                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                                                : 'bg-[#FFD700] hover:bg-[#F4B000] text-slate-900 shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] hover:-translate-y-0.5 active:scale-95'
+                                        }
+                                    `}
+                                >
+                                    <Share2
+                                        size={17}
+                                        strokeWidth={2.5}
+                                        className="group-hover:scale-110 transition-transform duration-200"
+                                    />
+                                </button>
                             </div>
-
-                            {/* CTA Button */}
-                            <button
-                                onClick={primaryAction}
-                                disabled={isDisabled}
-                                className={`h-11 md:h-12 px-5 md:px-8 font-black text-[11px] md:text-xs uppercase tracking-[0.12em] rounded-full flex items-center gap-2.5 transition-all group
-                                    ${
-                                        isDisabled
-                                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                            : 'bg-[#FFD700] hover:bg-[#F4B000] text-slate-900 shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] hover:-translate-y-0.5'
-                                    }
-                                `}
-                            >
-                                {primaryLabel}
-                                <ArrowRight
-                                    size={15}
-                                    className="group-hover:translate-x-1 transition-transform duration-200"
-                                />
-                            </button>
                         </div>
                     </div>
                 </div>

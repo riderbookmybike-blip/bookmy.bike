@@ -535,7 +535,7 @@ export function DesktopPDP({
     };
 
     return (
-        <div className="relative min-h-screen bg-white transition-colors duration-500 font-sans pt-[calc(var(--header-h)+120px)] pb-20">
+        <div className="relative min-h-screen bg-white transition-colors duration-500 font-sans pt-[104px] pb-20">
             {/* Parity Snapshot — hidden DOM element for Playwright parity tests */}
             <ParitySnapshot data={data} product={product} />
             {/* Always-mounted parity markers — these must exist regardless of active hero tab */}
@@ -583,7 +583,7 @@ export function DesktopPDP({
                     className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-brand-primary/[0.02] rounded-full blur-[120px]"
                 />
             </div>
-            <div className="store-page-shell tv-pdp-shell pb-32 md:pb-36 space-y-12 relative z-10">
+            <div className="store-page-shell tv-pdp-shell pb-24 md:pb-28 space-y-8 relative z-10">
                 {visibleOtherOffers.length > 0 && (
                     <div className="rounded-3xl border border-slate-200 bg-white/90 backdrop-blur-xl p-4 md:p-5">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3">

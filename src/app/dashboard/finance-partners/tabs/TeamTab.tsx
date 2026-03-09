@@ -300,6 +300,70 @@ export default function TeamTab({
         }
     };
 
+    const handleUpdateMember = async () => {
+        if (!tenantId || !selectedMember?.id) {
+            setSubmitError('Tenant or member information missing.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        setSubmitError('');
+
+        try {
+            const response = await fetch('/api/finance-partners/add-member', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tenantId,
+                    memberId: selectedMember.id,
+                    designation: selectedMember.designation,
+                    status: selectedMember.status,
+                    serviceability: { states: [], areas: [], dealerIds: selectedDealerIds },
+                }),
+            });
+
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body?.error || 'Unable to update member');
+            }
+
+            setTeam(prev =>
+                prev.map(member =>
+                    member.id === selectedMember.id
+                        ? {
+                              ...member,
+                              serviceability: {
+                                  ...(member.serviceability || { states: [], areas: [] }),
+                                  dealerIds: selectedDealerIds,
+                              },
+                          }
+                        : member
+                )
+            );
+            setSelectedMember(prev =>
+                prev
+                    ? {
+                          ...prev,
+                          serviceability: {
+                              ...(prev.serviceability || { states: [], areas: [] }),
+                              dealerIds: selectedDealerIds,
+                          },
+                      }
+                    : prev
+            );
+
+            setIsModalOpen(false);
+            setHasFoundExisting(false);
+            setLookupMobile('');
+            setNewMemberData({ name: '', email: '', phone: '' });
+            setFoundMemberId(null);
+        } catch (error: unknown) {
+            setSubmitError(getErrorMessage(error) || 'Unable to update member');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header / Controls */}
@@ -941,11 +1005,7 @@ export default function TeamTab({
                                         <button
                                             onClick={() => {
                                                 if (selectedMember) {
-                                                    setIsModalOpen(false);
-                                                    setHasFoundExisting(false);
-                                                    setLookupMobile('');
-                                                    setNewMemberData({ name: '', email: '', phone: '' });
-                                                    setFoundMemberId(null);
+                                                    handleUpdateMember();
                                                     return;
                                                 }
 

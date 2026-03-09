@@ -73,6 +73,9 @@ export default function FinancerAccessModal({
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-14">
                             Managing <span className="text-blue-500">{financeName}</span> Staff Access to your CRM
                         </p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-14 mt-1">
+                            Team list is sourced from financer roster. Access is controlled by your dealership.
+                        </p>
                     </div>
                     <button
                         onClick={onClose}
