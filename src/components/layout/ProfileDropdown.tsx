@@ -573,6 +573,10 @@ export function ProfileDropdown({
         ? `/app/${activeMembership.tenants.slug}/dashboard`
         : '/dashboard';
     const isAdminWorkspaceRole = ADMIN_ROLES.has(activeWorkspaceRole);
+    const hasLeadCreateAccess = dealerMemberships.length > 0 || financeMemberships.length > 0;
+    const createLeadHref = workspaceBasePath.includes('/dashboard')
+        ? `${workspaceBasePath.replace('/dashboard', '')}/leads?action=create`
+        : '/leads?action=create';
 
     useEffect(() => {
         // If user has no business workspaces, force O'Circle mode to avoid empty middle panel.
@@ -665,6 +669,17 @@ export function ProfileDropdown({
                 color: 'text-indigo-500',
                 bg: 'bg-indigo-500/10',
             },
+            ...(hasLeadCreateAccess
+                ? [
+                      {
+                          label: 'Create Lead',
+                          icon: MessageSquare,
+                          href: createLeadHref,
+                          color: 'text-amber-500',
+                          bg: 'bg-amber-500/10',
+                      },
+                  ]
+                : []),
             {
                 label: 'Profile',
                 icon: LucideUser,
@@ -689,7 +704,7 @@ export function ProfileDropdown({
         ];
 
         return workspaceItems;
-    }, [user, hasWorkspaceAccess, workspaceBasePath, isAdminWorkspaceRole, businessMode]);
+    }, [user, hasWorkspaceAccess, workspaceBasePath, isAdminWorkspaceRole, businessMode, hasLeadCreateAccess, createLeadHref]);
 
     const isLight = tone === 'light' || (tone !== 'dark' && (mounted ? theme !== 'dark' : true));
     const isDarkSurface = !isLight;
