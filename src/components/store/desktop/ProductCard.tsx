@@ -74,6 +74,9 @@ export const ProductCard = ({
     fallbackDealerId,
     pricingMode: globalPricingMode = 'finance',
     onTogglePricingMode,
+    offerMode: propOfferMode,
+    onOfferModeChange: propOnOfferModeChange,
+    ...props
 }: {
     v: ProductVariant;
     viewMode?: 'grid' | 'list';
@@ -88,15 +91,17 @@ export const ProductCard = ({
     onLocationClick?: () => void;
     isTv?: boolean;
     bestOffer?: {
-        price: number;
-        dealer: string;
+        price?: number;
+        dealer?: string;
         dealerId?: string;
-        isServiceable: boolean;
+        isServiceable?: boolean;
         dealerLocation?: string;
         studio_id?: string;
         bundleValue?: number;
         bundlePrice?: number;
-    };
+        tat_effective_hours?: number | null;
+        delivery_tat_days?: number | null;
+    } | null;
     onColorChange?: (colorId: string) => void;
     onExplodeColors?: () => void;
     leadId?: string;
@@ -122,11 +127,18 @@ export const ProductCard = ({
     fallbackDealerId?: string | null;
     pricingMode?: 'cash' | 'finance';
     onTogglePricingMode?: () => void;
+    offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
+    onOfferModeChange?: (mode: 'BEST_OFFER' | 'FAST_DELIVERY') => void;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { trackEvent } = useAnalytics();
     const { language } = useI18n();
-    const { pricingMode: globalPricingModeCtx, setPricingMode: setGlobalPricingMode } = useDiscovery();
+    const {
+        pricingMode: globalPricingModeCtx,
+        setPricingMode: setGlobalPricingMode,
+        offerMode: globalOfferMode,
+    } = useDiscovery();
+    const effectiveOfferMode = propOfferMode || globalOfferMode;
     // If the parent explicitly wires onTogglePricingMode it is managing mode — use the prop.
     // Otherwise fall back to the global DiscoveryContext so all cards stay in sync automatically.
     const resolvedGlobalMode: 'cash' | 'finance' = onTogglePricingMode ? globalPricingMode : globalPricingModeCtx;
@@ -919,7 +931,7 @@ export const ProductCard = ({
                         </button>
                     </div>
 
-                    {bestOffer && bestOffer.price < 0 && (
+                    {bestOffer && bestOffer.price !== undefined && bestOffer.price < 0 && (
                         <div className="absolute top-4 left-4 z-30">
                             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500 text-white rounded-lg border border-emerald-400/30 shadow-[0_3px_10px_rgba(16,185,129,0.25)]">
                                 <Sparkles size={9} className="fill-white text-white" />
@@ -930,7 +942,7 @@ export const ProductCard = ({
                         </div>
                     )}
 
-                    {bestOffer && bestOffer.price > 0 && (
+                    {bestOffer && bestOffer.price !== undefined && bestOffer.price > 0 && (
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
@@ -1398,6 +1410,50 @@ export const ProductCard = ({
                                                         >
                                                             ₹{formatRoundedPrice(effectiveOfferPrice)}
                                                         </span>
+
+                                                        {/* Delivery TAT Line */}
+                                                        {bestOffer &&
+                                                            (bestOffer.tat_effective_hours !== undefined ||
+                                                                bestOffer.delivery_tat_days !== undefined) && (
+                                                                <div
+                                                                    className={`mt-1 flex items-center gap-1.5 ${effectiveOfferMode === 'FAST_DELIVERY' ? 'px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg shadow-[0_2px_8px_rgba(16,185,129,0.08)]' : 'opacity-60'}`}
+                                                                >
+                                                                    <Clock
+                                                                        size={10}
+                                                                        className={
+                                                                            effectiveOfferMode === 'FAST_DELIVERY'
+                                                                                ? 'text-emerald-500'
+                                                                                : 'text-slate-400'
+                                                                        }
+                                                                    />
+                                                                    <span
+                                                                        className={`text-[9px] font-black uppercase tracking-widest italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'text-emerald-600' : 'text-slate-500'}`}
+                                                                    >
+                                                                        {(() => {
+                                                                            const hrs =
+                                                                                bestOffer.tat_effective_hours || 0;
+                                                                            const days =
+                                                                                bestOffer.delivery_tat_days || 0;
+                                                                            if (hrs > 0 && hrs <= 24)
+                                                                                return `Delivery in ${hrs} hrs`;
+                                                                            if (days > 0) {
+                                                                                const dayHrs = hrs % 24;
+                                                                                return dayHrs > 0
+                                                                                    ? `Delivery in ${days} days ${dayHrs} hrs`
+                                                                                    : `Delivery in ${days} days`;
+                                                                            }
+                                                                            if (hrs > 24) {
+                                                                                const d = Math.floor(hrs / 24);
+                                                                                const h = hrs % 24;
+                                                                                return h > 0
+                                                                                    ? `Delivery in ${d} days ${h} hrs`
+                                                                                    : `Delivery in ${d} days`;
+                                                                            }
+                                                                            return 'Delivery by 7-10 Days';
+                                                                        })()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1488,14 +1544,6 @@ export const ProductCard = ({
                                     />
                                 </Link>
                             )}
-                        </div>
-                    )}
-                    {!isTv && (
-                        <div className="flex items-center justify-center gap-2 opacity-80 pt-1 mt-1">
-                            <StarRating rating={v.rating || 4.5} size={9} />
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                                • {getStableReviewCount(v)} Ratings
-                            </span>
                         </div>
                     )}
                 </div>

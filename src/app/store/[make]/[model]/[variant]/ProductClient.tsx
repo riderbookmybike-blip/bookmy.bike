@@ -15,6 +15,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -142,6 +143,7 @@ export default function ProductClient({
     const { memberships } = useTenant();
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
     const { trackEvent } = useAnalytics();
+    const { offerMode } = useDiscovery();
     const activeSkuRef = useRef<string | null>(null);
     const activeSkuStartedAtRef = useRef<number | null>(null);
     const lastImmediateDwellFlushRef = useRef<number>(0);
@@ -444,6 +446,7 @@ export default function ProductClient({
             disabled: hasResolvedDealer,
             prefetchedPricing: initialServerPricing,
             prefetchedLocation: initialLocation,
+            offerMode,
         });
 
     // Update client state when hook returns new data

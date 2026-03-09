@@ -13,7 +13,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const router = useRouter();
-    const { pricingMode, setPricingMode, searchQuery, setSearchQuery } = useDiscovery();
+    const { pricingMode, setPricingMode, offerMode, setOfferMode, searchQuery, setSearchQuery } = useDiscovery();
 
     // We no longer manage searchQuery local state here, we use the DiscoveryContext
     const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
@@ -179,6 +179,9 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         if (pricingMode !== 'finance') params.set('mode', pricingMode);
         else params.delete('mode');
 
+        if (offerMode !== 'BEST_OFFER') params.set('offer', offerMode);
+        else params.delete('offer');
+
         const queryString = params.toString();
         if (queryString !== searchParams.toString()) {
             if (process.env.NODE_ENV !== 'production') {
@@ -202,6 +205,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         showOClubOnly,
         availableMakes,
         pricingMode,
+        offerMode,
     ]);
 
     const filteredVehicles = useMemo(() => {
@@ -402,6 +406,8 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         filteredVehicles,
         pricingMode,
         setPricingMode,
+        offerMode,
+        setOfferMode,
         toggleFilter,
         clearAll,
     };

@@ -4,12 +4,15 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { useSearchParams } from 'next/navigation';
 
 type PricingMode = 'cash' | 'finance';
+type OfferMode = 'BEST_OFFER' | 'FAST_DELIVERY';
 
 interface DiscoveryContextType {
     resultsCount: number | null;
     setResultsCount: (count: number | null) => void;
     pricingMode: PricingMode;
     setPricingMode: React.Dispatch<React.SetStateAction<PricingMode>>;
+    offerMode: OfferMode;
+    setOfferMode: React.Dispatch<React.SetStateAction<OfferMode>>;
     locationLabel: string | null;
     setLocationLabel: (label: string | null) => void;
     showDiscoveryBar: boolean;
@@ -30,19 +33,33 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
     // A lazy useState initializer also runs on the server where localStorage is undefined,
     // causing a hydration mismatch when the client resolves a stored 'cash' value.
     const [pricingMode, setPricingMode] = useState<PricingMode>('finance');
+    const [offerMode, setOfferMode] = useState<OfferMode>('BEST_OFFER');
 
     // On mount (client only): read saved preference and apply it
     useEffect(() => {
-        const stored = localStorage.getItem('bkmb_pricing_mode');
-        if (stored === 'cash' || stored === 'finance') {
-            setPricingMode(stored);
+        const storedPricing = localStorage.getItem('bkmb_pricing_mode');
+        if (storedPricing === 'cash' || storedPricing === 'finance') {
+            setPricingMode(storedPricing);
         }
-    }, []); // ← runs once on mount only, no searchParams dependency
 
-    // Persist pricing mode changes to localStorage
+        const storedOfferMode = localStorage.getItem('bkmb_offer_mode');
+        const urlOffer = searchParams.get('offer');
+
+        if (urlOffer === 'BEST_OFFER' || urlOffer === 'FAST_DELIVERY') {
+            setOfferMode(urlOffer);
+        } else if (storedOfferMode === 'BEST_OFFER' || storedOfferMode === 'FAST_DELIVERY') {
+            setOfferMode(storedOfferMode);
+        }
+    }, [searchParams]);
+
+    // Persist changes to localStorage
     useEffect(() => {
         localStorage.setItem('bkmb_pricing_mode', pricingMode);
     }, [pricingMode]);
+
+    useEffect(() => {
+        localStorage.setItem('bkmb_offer_mode', offerMode);
+    }, [offerMode]);
 
     const [locationLabel, setLocationLabel] = useState<string | null>(null);
     const [showDiscoveryBar, setShowDiscoveryBar] = useState(false);
@@ -56,6 +73,8 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
                 setResultsCount,
                 pricingMode,
                 setPricingMode,
+                offerMode,
+                setOfferMode,
                 locationLabel,
                 setLocationLabel,
                 showDiscoveryBar,

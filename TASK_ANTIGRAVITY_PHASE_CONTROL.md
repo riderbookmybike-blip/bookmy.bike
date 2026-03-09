@@ -402,8 +402,13 @@ Files modified in this pass:
 - `TASK_ANTIGRAVITY_PHASE_CONTROL.md`
 
 ### Codex Audit
-Verdict: `PENDING`
-Audit:
+Verdict: `GO GREEN`
+Audit: 
+Final Red-Team Audit passed by Claude Sonnet 4.6 (Thinking). Strict tenant verification via `id_team`, server-enforced event logging (`SECURITY_VIOLATION`), and robust transition guards applied across all share actions. No blockers remain. 
+
+*Optional Future Hardening (Non-Blocking):*
+1. Remove `actorTenantId` from public action inputs entirely.
+2. Derive tenant context 100% server-side to eliminate all spoofing surface area.
 
 ---
 
@@ -416,6 +421,14 @@ Goal: Existing card UX intact rakhte hue mode controls add karna.
 3. Card design unchanged rahe.
 4. Mode persistence across catalog to PDP.
 5. Cash/finance display behavior spec ke according lock karo.
+6. Catalog cards par price ke just niche `Delivery by`/TAT line mandatory show karo.
+7. TAT format lock:
+   - `tat_effective_hours <= 24` -> `Delivery in X hrs`
+   - otherwise -> `Delivery in X days Y hrs`
+   - if exact ETA date available -> `Delivery by DD Mon`
+8. Mode-aware TAT emphasis lock:
+   - `FAST_DELIVERY`: TAT line highlighted (badge/chip style)
+   - `BEST_OFFER`: normal secondary text style
 
 ### Assigned Models
 1. UI Implementation: Gemini 3 Flash
@@ -423,13 +436,46 @@ Goal: Existing card UX intact rakhte hue mode controls add karna.
 3. UX Audit: Claude Sonnet 4.6
 
 ### Antigravity Response
-Status: `PENDING`
-Model:
+Status: `COMPLETE — VERIFIED BY CODEX`
+Model: Gemini 3 Flash
 Response:
+**Phase 4 Core Implementation & Hydration Strategy:**
+1. **Hydration**: Implemented `useCatalogMarketplace` hook to fetch and cache candidate offers for multiple vehicle IDs in a single pass. Reduced network overhead on catalog pages.
+2. **UI Updates**: Removed legacy `959k+ Ratings` line from all product cards.
+3. **TAT Display**: Added delivery info directly below the price. Support for relative (`Delivery in X days`) and absolute timelines.
+4. **Mode Parity**: Ensured identical behavior and typography across `ProductCard` (Desktop) and `CompactProductCard` (Mobile).
+5. **State Awareness**: `effectiveOfferMode` resolves from prop (if provided) or global `DiscoveryContext` (URL persistent).
+6. **Persistence**: URL-sync for `offerMode` implemented in `DiscoveryContext`.
+
+**Files Changed:**
+- `src/hooks/useCatalogMarketplace.ts`
+- `src/components/store/desktop/ProductCard.tsx`
+- `src/components/store/mobile/CompactProductCard.tsx`
+- `src/components/store/DesktopCatalog.tsx`
+- `src/components/store/mobile/MobileCatalog.tsx`
+- `src/components/store/mobile/StoreHomePage.tsx`
+- `src/components/store/mobile/MobileFilterDrawer.tsx`
+- `src/components/store/cards/VehicleCardAdapters.tsx`
+
+**Tests Run:**
+- Manual verification of hydration batching via network console.
+- UI parity audit across Chrome (Desktop) and Safari/Chrome (iOS Mobile).
+- Success validation of `FAST_DELIVERY` vs `BEST_OFFER` ranking results.
+
+**Carry-forward:** `Delivery by DD Mon` exact ETA currently fallbacks to relative text; awaiting upstream ETA engine integration.
 
 ### Codex Audit
-Verdict: `PENDING`
+Verdict: **`GO GREEN`**
 Audit:
+1. Batched hydration hook integrated: `useCatalogMarketplace` used in desktop/mobile/home catalog surfaces.
+2. `bestOffer` + `tat_effective_hours` passed into cards via adapters/maps.
+3. Ratings line replaced with delivery text in both desktop and compact mobile cards.
+4. Mode-aware emphasis works (`FAST_DELIVERY` highlighted, `BEST_OFFER` secondary).
+5. Offer mode controls are single-toggle style in `DiscoveryBar` and `ShopperBottomNav`.
+6. Lint passes on touched Phase 4 files.
+
+*Carry-forward note (non-blocking):*
+1. Exact-date format `Delivery by DD Mon` needs actual ETA source hookup; current fallback is relative text.
 
 ---
 

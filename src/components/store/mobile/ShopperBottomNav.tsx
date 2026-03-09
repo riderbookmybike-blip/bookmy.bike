@@ -1,11 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Heart, Globe, CreditCard, Banknote, X, Pencil, Bike, SlidersHorizontal } from 'lucide-react';
+import {
+    Home,
+    Heart,
+    Globe,
+    CreditCard,
+    Banknote,
+    X,
+    Pencil,
+    Bike,
+    SlidersHorizontal,
+    Sparkles,
+    Zap as ZapIcon,
+    GitCompareArrows,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 // ─── Pricing constants ────────────────────────────────────────────────────────
 const DP_MIN = 5000;
@@ -65,12 +80,13 @@ export function ShopperBottomNav() {
                 if (tab.key !== 'ocircle') return tab;
                 // Filter-relevant pages → show Filter tab
                 if (isFilterPage) {
+                    const hasCompare = favorites.length > 0;
                     return {
                         ...tab,
-                        key: 'filter' as const,
-                        label: 'Filter',
-                        icon: SlidersHorizontal,
-                        href: null,
+                        key: hasCompare ? 'compare' : ('filter' as const),
+                        label: hasCompare ? `Compare (${favorites.length})` : 'Filter',
+                        icon: hasCompare ? GitCompareArrows : SlidersHorizontal,
+                        href: hasCompare ? '/store/compare/favorites' : null,
                     };
                 }
                 // Other pages → keep O' Circle
@@ -90,6 +106,7 @@ export function ShopperBottomNav() {
     const [editingDp, setEditingDp] = useState(false);
     const [dpRaw, setDpRaw] = useState('');
     const dpInputRef = useRef<HTMLInputElement>(null);
+    const { offerMode, setOfferMode } = useDiscovery();
 
     const handleBodyTypeSelect = (type: string) => {
         setRideSheetOpen(false);
@@ -259,26 +276,48 @@ export function ShopperBottomNav() {
                                 </button>
                             </div>
 
-                            {/* Finance / Cash toggle */}
-                            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl mb-5">
-                                {(['finance', 'cash'] as const).map(m => (
-                                    <button
-                                        key={m}
-                                        onClick={() => {
-                                            setPricingMode(m);
-                                            dispatchPricing(m, downpayment, tenure);
-                                            if (m === 'cash') setSheetOpen(false);
-                                        }}
-                                        className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
-                                            pricingMode === m
-                                                ? 'bg-[#FFD700] text-black shadow-sm shadow-amber-300/40'
-                                                : 'text-slate-400'
-                                        }`}
-                                    >
-                                        {m === 'finance' ? '⚡ Finance / EMI' : '💵 Cash'}
-                                    </button>
-                                ))}
-                            </div>
+                            {/* Finance / Cash toggle (Single-button Flip) */}
+                            <button
+                                onClick={() => {
+                                    const next = pricingMode === 'finance' ? 'cash' : 'finance';
+                                    setPricingMode(next);
+                                    dispatchPricing(next, downpayment, tenure);
+                                    if (next === 'cash') setSheetOpen(false);
+                                }}
+                                className="w-full flex items-center justify-center gap-3 p-3 bg-white shadow-sm border border-black/5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 active:scale-[0.98] mb-3"
+                            >
+                                {pricingMode === 'finance' ? (
+                                    <>
+                                        <Banknote size={14} className="text-emerald-500" />
+                                        <span className="text-slate-900">Cash Mode</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ZapIcon size={14} className="text-amber-500" />
+                                        <span className="text-slate-900">Finance Mode</span>
+                                    </>
+                                )}
+                            </button>
+
+                            {/* Offer Mode Selection (Single-button Flip) */}
+                            <button
+                                onClick={() =>
+                                    setOfferMode(offerMode === 'BEST_OFFER' ? 'FAST_DELIVERY' : 'BEST_OFFER')
+                                }
+                                className="w-full flex items-center justify-center gap-3 p-3 bg-white shadow-sm border border-black/5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 active:scale-[0.98] mb-6"
+                            >
+                                {offerMode === 'BEST_OFFER' ? (
+                                    <>
+                                        <ZapIcon size={14} className="text-blue-500" />
+                                        <span className="text-slate-900">Fast Delivery</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles size={14} className="text-amber-500" />
+                                        <span className="text-slate-900">Best Offer</span>
+                                    </>
+                                )}
+                            </button>
 
                             {/* Downpayment */}
                             <div className="mb-5">

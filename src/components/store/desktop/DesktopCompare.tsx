@@ -255,7 +255,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
     };
 
     const [compactMode, setCompactMode] = useState(false);
-    const { pricingMode, setPricingMode } = useDiscovery();
+    const { pricingMode, setPricingMode, offerMode, setOfferMode } = useDiscovery();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.compare.defaultView);
     const [isTvViewport, setIsTvViewport] = useState(false);
 
@@ -565,6 +565,8 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                             setPricingMode(mode);
                                             if (mode === 'finance') openDpEdit();
                                         }}
+                                        offerMode={offerMode}
+                                        onOfferModeChange={setOfferMode}
                                         reduceEffects={isTvViewport && viewMode === 'list'}
                                         viewMode={viewMode}
                                         allowedViewModes={VEHICLE_MODE_CONFIG.compare.allowedViews}

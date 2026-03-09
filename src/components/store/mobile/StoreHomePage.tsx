@@ -38,6 +38,8 @@ import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { ProductCard } from '../desktop/ProductCard';
 import { CompactProductCard } from './CompactProductCard';
+import { useCatalogMarketplace } from '@/hooks/useCatalogMarketplace';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 /* ────────── Palette ────────── */
 const GOLD = '#FFD700';
@@ -210,6 +212,9 @@ export function StoreHomePage({
             (principal * ratePerMonth * Math.pow(1 + ratePerMonth, tenure)) / (Math.pow(1 + ratePerMonth, tenure) - 1);
         return Math.round(emi);
     };
+
+    const { offerMode } = useDiscovery();
+    const { winnersMap } = useCatalogMarketplace(parsedLocation?.district, parsedLocation?.stateCode, offerMode);
 
     return (
         <div className="flex flex-col bg-white text-slate-900 overflow-x-hidden min-h-[100dvh]">
@@ -506,6 +511,7 @@ export function StoreHomePage({
                                     location: trendingLocationName,
                                     district: parsedLocation?.district || undefined,
                                 }}
+                                bestOffer={winnersMap[item.id] as any}
                             />
                         ))}
                     </div>

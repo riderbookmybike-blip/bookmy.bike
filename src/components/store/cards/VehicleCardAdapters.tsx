@@ -14,6 +14,8 @@ interface BaseVehicleCardAdapterProps {
     tenure: number;
     pricingMode?: 'cash' | 'finance';
     onTogglePricingMode?: () => void;
+    offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
+    onOfferModeChange?: (mode: 'BEST_OFFER' | 'FAST_DELIVERY') => void;
     variantCount?: number;
     onExplore?: () => void;
     onExplodeColors?: () => void;
@@ -33,6 +35,18 @@ interface BaseVehicleCardAdapterProps {
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
     showBcoinBadge?: boolean;
+    bestOffer?: {
+        price?: number;
+        dealer?: string;
+        dealerId?: string;
+        isServiceable?: boolean;
+        dealerLocation?: string;
+        studio_id?: string;
+        bundleValue?: number;
+        bundlePrice?: number;
+        tat_effective_hours?: number | null;
+        delivery_tat_days?: number | null;
+    } | null;
 }
 
 function BaseVehicleCardAdapter({
@@ -57,6 +71,9 @@ function BaseVehicleCardAdapter({
     walletCoins,
     showOClubPrompt,
     showBcoinBadge,
+    offerMode,
+    onOfferModeChange,
+    bestOffer,
 }: BaseVehicleCardAdapterProps) {
     const resolvedViewMode = getSafeViewMode(mode, viewMode);
 
@@ -82,6 +99,9 @@ function BaseVehicleCardAdapter({
             walletCoins={walletCoins}
             showOClubPrompt={showOClubPrompt}
             showBcoinBadge={showBcoinBadge}
+            offerMode={offerMode}
+            onOfferModeChange={onOfferModeChange}
+            bestOffer={bestOffer}
         />
     );
 }

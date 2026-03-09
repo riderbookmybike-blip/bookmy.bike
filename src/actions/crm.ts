@@ -3455,24 +3455,17 @@ export async function createLeadAction(data: {
             };
         }
 
-        if (isCrmManualSource && referralBenefitEligible && !hasReferralInput) {
-            return {
-                success: false,
-                message: "Referral is mandatory. Enter O' Circle Membership ID or referrer contact.",
-            };
-        }
+        const isStrictReferralRequired =
+            isCrmManualSource ||
+            actorIsStaff ||
+            isStaffContextSource(data.source) ||
+            normalizedSource === 'DEALER_REFERRAL';
 
-        if (
-            isCrmManualSource &&
-            referralBenefitEligible &&
-            hasExplicitReferralInput &&
-            !resolvedReferrer?.memberId &&
-            !referredByPhoneInput &&
-            !referredByNameInput
-        ) {
+        if (isStrictReferralRequired && !resolvedReferrer?.memberId) {
             return {
                 success: false,
-                message: "O' Circle Membership ID not found. Add referrer phone or name to continue.",
+                message:
+                    "Referral is strictly mandatory for staff/dealer created leads. Please provide a valid O' Circle Membership ID or registered referrer phone.",
             };
         }
 

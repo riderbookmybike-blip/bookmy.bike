@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ProductVariant } from '@/types/productMaster';
 import { IDV_DEPRECIATION_RATE } from '@/lib/constants/pricingConstants';
 import { getDeliveryChargeByDistance } from '@/lib/pricing/deliveryCharge';
+import { OfferMode, rankCandidates, type CandidateOffer } from '@/lib/marketplace/winnerEngine';
 
 interface UseDealerContextProps {
     product: any;
@@ -14,6 +15,7 @@ interface UseDealerContextProps {
     disabled?: boolean;
     prefetchedPricing?: ServerPricing | null;
     prefetchedLocation?: any;
+    offerMode?: OfferMode;
 }
 
 const DEFAULT_PRICING_DEALER_TENANT_ID = process.env.NEXT_PUBLIC_DEFAULT_PRICING_DEALER_TENANT_ID || '';
@@ -146,6 +148,7 @@ export function useSystemDealerContext({
     disabled = false,
     prefetchedPricing,
     prefetchedLocation,
+    offerMode,
 }: UseDealerContextProps) {
     // These states hold the "Hydrated" versions of data implies Dealer-specific overrides
     const [dealerColors, setDealerColors] = useState<any[]>(product.colors || []);
@@ -180,11 +183,18 @@ export function useSystemDealerContext({
 
     const [resolvedLocation, setResolvedLocation] = useState<any>(prefetchedLocation || initialLocation);
     const [otherOffers, setOtherOffers] = useState<OtherOffer[]>([]);
+    const [mode, setMode] = useState<OfferMode>(offerMode || 'BEST_OFFER');
 
     // SSPP v1: Server-Side Calculated Pricing (Single Source of Truth!)
     const [serverPricing, setServerPricing] = useState<ServerPricing | null>(prefetchedPricing || null);
 
     const [isHydrating, setIsHydrating] = useState(!disabled);
+
+    useEffect(() => {
+        if (offerMode && offerMode !== mode) {
+            setMode(offerMode);
+        }
+    }, [offerMode]);
 
     useEffect(() => {
         const hydrate = async () => {
@@ -390,6 +400,7 @@ export function useSystemDealerContext({
 
                 // 3. Resolve Market Best Offers OR Specific Dealer Offers
                 let relevantOffers: any[] = [];
+                const useCandidateRpc = process.env.NEXT_PUBLIC_USE_CANDIDATE_RPC === 'true';
 
                 if (overrideDealerId) {
                     // DIRECT DEALER RESOLUTION (Quote Context)
@@ -460,25 +471,51 @@ export function useSystemDealerContext({
                     }
                 } else {
                     // MARKET BEST RESOLUTION (Default)
-                    const { data: offers } = (await supabase.rpc('get_market_best_offers', {
-                        p_district_name: district || 'ALL',
-                        p_state_code: stateCode || 'MH',
-                    })) as { data: any[]; error: any };
 
-                    if (offers && offers.length > 0) {
-                        const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
-                        relevantOffers = offers
-                            .filter((o: any) => skuIds.includes(o.vehicle_color_id))
-                            .map((o: any) => {
-                                const distanceKm = Number.isFinite(Number(o?.distance_km))
-                                    ? Number(o.distance_km)
-                                    : null;
-                                return {
-                                    ...o,
-                                    distance_km: distanceKm,
-                                    delivery_charge: getDeliveryChargeByDistance(distanceKm),
-                                };
-                            });
+                    if (useCandidateRpc) {
+                        // @ts-ignore - Supabase types out of sync with recent M5 RPC
+                        const { data: offers } = (await supabase.rpc('get_market_candidate_offers', {
+                            p_district_name: district || 'ALL',
+                            p_state_code: stateCode || 'MH',
+                        })) as { data: any[]; error: any };
+
+                        if (offers && offers.length > 0) {
+                            const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
+                            relevantOffers = offers
+                                .filter((o: any) => skuIds.includes(o.vehicle_color_id))
+                                .map((o: any) => {
+                                    const distanceKm = Number.isFinite(Number(o?.distance_km))
+                                        ? Number(o.distance_km)
+                                        : null;
+                                    return {
+                                        ...o,
+                                        distance_km: distanceKm,
+                                        delivery_charge: getDeliveryChargeByDistance(distanceKm),
+                                    };
+                                });
+                        }
+                    } else {
+                        // LEGACY RPC Fallback
+                        const { data: offers } = (await supabase.rpc('get_market_best_offers', {
+                            p_district_name: district || 'ALL',
+                            p_state_code: stateCode || 'MH',
+                        })) as { data: any[]; error: any };
+
+                        if (offers && offers.length > 0) {
+                            const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
+                            relevantOffers = offers
+                                .filter((o: any) => skuIds.includes(o.vehicle_color_id))
+                                .map((o: any) => {
+                                    const distanceKm = Number.isFinite(Number(o?.distance_km))
+                                        ? Number(o.distance_km)
+                                        : null;
+                                    return {
+                                        ...o,
+                                        distance_km: distanceKm,
+                                        delivery_charge: getDeliveryChargeByDistance(distanceKm),
+                                    };
+                                });
+                        }
                     }
                 }
 
@@ -488,12 +525,29 @@ export function useSystemDealerContext({
                 }
 
                 // 5. Identify Winning Dealer (final_effective -> distance -> tat -> updated_at)
-                const rankedOffers = rankOffers(relevantOffers as RankedOffer[]);
+                let rankedOffers: any[] = [];
+
+                if (useCandidateRpc) {
+                    const bp =
+                        Number(serverPricing?.ex_showroom || 0) +
+                        Number(serverPricing?.rto?.STATE || 0) +
+                        Number(serverPricing?.insurance?.base_total || 0);
+                    rankedOffers = rankCandidates(
+                        relevantOffers as CandidateOffer[],
+                        mode,
+                        bp,
+                        getDeliveryChargeByDistance
+                    );
+                } else {
+                    rankedOffers = rankOffers(relevantOffers as RankedOffer[]);
+                }
                 const winningOffer = rankedOffers[0];
                 const winningDealerId = winningOffer.dealer_id;
                 const bundleIds = new Set(winningOffer.bundle_ids || []);
                 const winningDealerName = winningOffer.dealer_name;
-                const winningOfferAmount = Number(winningOffer.best_offer || 0);
+                const winningOfferAmount = useCandidateRpc
+                    ? Number((winningOffer as any).offer_amount || 0)
+                    : Number(winningOffer.best_offer || 0);
 
                 // SSPP v1.6: Merge Winner Details back into SSPP state
                 setServerPricing(prev =>
@@ -527,7 +581,9 @@ export function useSystemDealerContext({
                         dealer_id: offer.dealer_id,
                         dealer_name: offer.dealer_name,
                         studio_id: offer.studio_id || null,
-                        best_offer: Number(offer.best_offer || 0),
+                        best_offer: useCandidateRpc
+                            ? Number((offer as any).offer_amount || 0)
+                            : Number(offer.best_offer || 0),
                         distance_km: Number.isFinite(Number(offer.distance_km)) ? Number(offer.distance_km) : null,
                         delivery_tat_days: Number.isFinite(Number(offer.delivery_tat_days))
                             ? Number(offer.delivery_tat_days)
@@ -592,7 +648,7 @@ export function useSystemDealerContext({
         };
 
         hydrate();
-    }, [product.id, initialLocation?.district, selectedColor, disabled]);
+    }, [product.id, initialLocation?.district, selectedColor, disabled, mode]);
 
     return {
         dealerColors,
@@ -602,5 +658,7 @@ export function useSystemDealerContext({
         isHydrating,
         resolvedLocation,
         serverPricing, // SSPP v1: Single Source of Truth pricing breakdown
+        offerMode: mode,
+        setOfferMode: setMode,
     };
 }

@@ -44,6 +44,7 @@ import { CompareTray, type CompareItem } from './CompareTray';
 import { CompactProductCard } from './mobile/CompactProductCard';
 import { MobileFilterDrawer } from './mobile/MobileFilterDrawer';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
+import { useCatalogMarketplace } from '@/hooks/useCatalogMarketplace';
 import { CatalogGridSkeleton } from './CatalogSkeleton';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { getSelfMemberLocation, updateSelfMemberLocation } from '@/actions/members';
@@ -242,6 +243,8 @@ export const DesktopCatalog = ({
         filteredVehicles,
         pricingMode,
         setPricingMode,
+        offerMode,
+        setOfferMode,
         toggleFilter,
         clearAll,
     } = filters;
@@ -318,6 +321,13 @@ export const DesktopCatalog = ({
         userDistrict?: string; // User's actual district
         fallbackDistrict?: string; // Nearest serviceable district if user's is not serviceable
     }>({ status: 'loading' });
+
+    // Marketplace Hydration (TAT, Winner Engine)
+    const { winnersMap, isLoading: isMarketplaceLoading } = useCatalogMarketplace(
+        serviceability.district,
+        serviceability.stateCode,
+        offerMode
+    );
 
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
 
@@ -1205,6 +1215,8 @@ export const DesktopCatalog = ({
                         setPricingMode(mode as any);
                         if (mode === 'finance') openDpEdit();
                     }}
+                    offerMode={offerMode}
+                    onOfferModeChange={setOfferMode}
                     reduceEffects={isTv && viewMode === 'list'}
                     onCompareClick={() => {
                         if (viewMode === 'list') {
@@ -1568,6 +1580,7 @@ export const DesktopCatalog = ({
                                         serviceability={serviceability}
                                         onLocationClick={() => setIsLocationPickerOpen(true)}
                                         isTv={isTv}
+                                        offerMode={offerMode}
                                         leadId={leadId}
                                         fallbackDealerId={resolvedDealerId}
                                         walletCoins={isLoggedIn ? availableCoins : null}
@@ -1597,7 +1610,6 @@ export const DesktopCatalog = ({
                                             const key = `${v.make}::${v.model}::${v.variant}`;
                                             setExplodedVariant(prev => (prev === key ? null : key));
                                         }}
-                                        pricingMode={pricingMode}
                                         onTogglePricingMode={() =>
                                             setPricingMode(prev => {
                                                 const next = prev === 'cash' ? 'finance' : 'cash';
@@ -1605,6 +1617,7 @@ export const DesktopCatalog = ({
                                                 return next;
                                             })
                                         }
+                                        bestOffer={winnersMap[v.id] as any}
                                     />
                                 );
                             })}
@@ -1733,6 +1746,10 @@ export const DesktopCatalog = ({
                             sections={mobileFilterSections}
                             onClearAll={clearAll}
                             activeFilterCount={activeFilterCount}
+                            downpayment={downpayment}
+                            onDownpaymentChange={setDownpayment}
+                            tenure={tenure}
+                            onTenureChange={setTenure}
                             sortBy={sortBy}
                             onSortChange={() => {}}
                         />

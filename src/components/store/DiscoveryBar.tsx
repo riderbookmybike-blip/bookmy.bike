@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { SlidersHorizontal, LayoutGrid, List, Zap, Banknote, GitCompareArrows, Share2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { SlidersHorizontal, LayoutGrid, List, Zap, Banknote, GitCompareArrows, Share2, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 
 interface DiscoveryBarProps {
@@ -12,6 +12,8 @@ interface DiscoveryBarProps {
     onSearchSubmit?: (query: string) => void;
     pricingMode: 'cash' | 'finance';
     onPricingModeChange: (mode: 'cash' | 'finance') => void;
+    offerMode: 'BEST_OFFER' | 'FAST_DELIVERY';
+    onOfferModeChange: (mode: 'BEST_OFFER' | 'FAST_DELIVERY') => void;
     onShareClick?: () => void;
     shareLabel?: string;
     shareActive?: boolean;
@@ -35,6 +37,8 @@ export function DiscoveryBar({
     onSearchSubmit,
     pricingMode,
     onPricingModeChange,
+    offerMode,
+    onOfferModeChange,
     onShareClick,
     shareLabel = 'Share',
     shareActive = false,
@@ -121,77 +125,86 @@ export function DiscoveryBar({
 
                         {/* ── Right: All controls as separate pill buttons ── */}
                         <div className="flex-none flex items-center gap-1.5">
-                            {/* ── PRICING MODE button (shows alternate mode) ── */}
+                            {/* ── PRICING MODE toggle (Single-button Flip) ── */}
                             <button
                                 onClick={() => onPricingModeChange(nextPricingMode)}
-                                className={`${pillBase} ${pillInactive}`}
+                                className={`${pillBase} bg-white shadow-sm border-black/10 text-slate-900 hover:border-black/20`}
                                 aria-label={
-                                    nextPricingMode === 'finance'
-                                        ? 'Switch to finance and open finance settings'
-                                        : 'Switch to cash pricing'
+                                    nextPricingMode === 'finance' ? 'View finance pricing' : 'View cash pricing'
                                 }
                             >
-                                {nextPricingMode === 'finance' ? <Zap size={12} /> : <Banknote size={12} />}
-                                {nextPricingMode === 'finance' ? 'Finance' : 'Cash'}
+                                {nextPricingMode === 'finance' ? (
+                                    <>
+                                        <Zap size={11} className="text-amber-500" />
+                                        <span>Finance</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Banknote size={11} className="text-emerald-500" />
+                                        <span>Cash</span>
+                                    </>
+                                )}
                             </button>
 
-                            {/* ── COMPARE button ── */}
-                            {onCompareClick && (
-                                <button
-                                    onClick={onCompareClick}
-                                    className={`${pillBase} ${
-                                        displayCompareCount > 0
-                                            ? 'bg-[#F4B000] text-black border-black/10 shadow-lg shadow-black/20'
-                                            : pillInactive
-                                    } group active:scale-[0.98]`}
-                                >
-                                    <GitCompareArrows
-                                        size={12}
-                                        className="group-hover:rotate-180 transition-transform duration-500"
-                                    />
-                                    <span>Compare</span>
-                                    {displayCompareCount > 0 && (
-                                        <motion.span
-                                            initial={{ scale: 0 }}
-                                            animate={{ scale: 1 }}
-                                            className="flex items-center justify-center min-w-[16px] h-[16px] bg-brand-primary text-black text-[8px] font-black rounded-full"
+                            {/* ── OFFER MODE toggle (Single-button Flip CTA) ── */}
+                            <button
+                                onClick={() =>
+                                    onOfferModeChange(offerMode === 'BEST_OFFER' ? 'FAST_DELIVERY' : 'BEST_OFFER')
+                                }
+                                className={`${pillBase} bg-white shadow-sm border-black/10 text-slate-900 hover:border-black/20`}
+                                aria-label={
+                                    offerMode === 'BEST_OFFER' ? 'View fast delivery offers' : 'View best offers'
+                                }
+                            >
+                                {offerMode === 'BEST_OFFER' ? (
+                                    <>
+                                        <Zap size={11} className="text-blue-500" />
+                                        <span>Fast Delivery</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles size={11} className="text-amber-500" />
+                                        <span>Best Offer</span>
+                                    </>
+                                )}
+                            </button>
+
+                            {/* ── FILTER / COMPARE Slot (Consolidated) ── */}
+                            <AnimatePresence mode="wait">
+                                {displayCompareCount > 0 ? (
+                                    <motion.button
+                                        key="compare"
+                                        initial={{ opacity: 0, scale: 0.9, rotateY: 90 }}
+                                        animate={{ opacity: 1, scale: 1.05, rotateY: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, rotateY: -90 }}
+                                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                        onClick={onCompareClick}
+                                        className={`${pillBase} bg-[#F4B000] border-amber-400 text-black shadow-lg shadow-amber-200/50`}
+                                    >
+                                        <GitCompareArrows size={14} className="rotate-12" />
+                                        <span>Compare ({displayCompareCount})</span>
+                                    </motion.button>
+                                ) : (
+                                    onFilterClick && (
+                                        <motion.button
+                                            key="filter"
+                                            initial={{ opacity: 0, scale: 0.9, rotateY: -90 }}
+                                            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+                                            exit={{ opacity: 0, scale: 0.9, rotateY: 90 }}
+                                            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                            onClick={onFilterClick}
+                                            className={`${pillBase} bg-white shadow-sm border-black/10 text-slate-900 hover:border-black/20 group`}
                                         >
-                                            {displayCompareCount}
-                                        </motion.span>
-                                    )}
-                                </button>
-                            )}
-
-                            {/* ── VIEW MODE toggle button (shows opposite mode) ── */}
-                            {canToggleView && viewMode && (
-                                <button
-                                    onClick={() => onViewModeChange(nextViewMode)}
-                                    className={`${pillBase} ${pillInactive}`}
-                                    aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-                                >
-                                    {viewMode === 'grid' ? <List size={13} /> : <LayoutGrid size={13} />}
-                                    <span>{viewMode === 'grid' ? 'List View' : 'Grid View'}</span>
-                                </button>
-                            )}
-
-                            {/* ── FILTER button ── */}
-                            {onFilterClick && (
-                                <button
-                                    onClick={onFilterClick}
-                                    className={`${pillBase} relative group ${
-                                        hasActiveFilters ? 'bg-[#F4B000] text-black border-black/20' : pillInactive
-                                    }`}
-                                >
-                                    <SlidersHorizontal
-                                        size={13}
-                                        className="group-hover:rotate-12 transition-transform duration-500"
-                                    />
-                                    <span>Filter</span>
-                                    {hasActiveFilters && (
-                                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#F4B000] rounded-full ring-2 ring-white" />
-                                    )}
-                                </button>
-                            )}
+                                            <SlidersHorizontal
+                                                size={13}
+                                                className="group-hover:rotate-12 transition-transform duration-500 text-slate-900"
+                                            />
+                                            <span>Filter</span>
+                                            {hasActiveFilters && <div className="w-1 h-1 rounded-full bg-amber-500" />}
+                                        </motion.button>
+                                    )
+                                )}
+                            </AnimatePresence>
 
                             {/* ── SHARE button ── */}
                             {onShareClick && (

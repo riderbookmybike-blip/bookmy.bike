@@ -87,6 +87,11 @@ interface MobileFilterDrawerProps {
     /** Sort */
     sortBy: string;
     onSortChange: (val: string) => void;
+    /** Finance */
+    downpayment: number;
+    onDownpaymentChange: (val: number) => void;
+    tenure: number;
+    onTenureChange: (val: number) => void;
 }
 
 export function MobileFilterDrawer({
@@ -97,6 +102,10 @@ export function MobileFilterDrawer({
     activeFilterCount,
     sortBy,
     onSortChange,
+    downpayment,
+    onDownpaymentChange,
+    tenure,
+    onTenureChange,
 }: MobileFilterDrawerProps) {
     // Lock body scroll when open
     useEffect(() => {

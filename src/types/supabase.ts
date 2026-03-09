@@ -253,35 +253,80 @@ export type Database = {
                 Row: {
                     created_at: string | null;
                     finish: string | null;
+                    gallery_img_1: string | null;
+                    gallery_img_2: string | null;
+                    gallery_img_3: string | null;
+                    gallery_img_4: string | null;
+                    gallery_img_5: string | null;
+                    gallery_img_6: string | null;
                     hex_primary: string | null;
                     hex_secondary: string | null;
                     id: string;
+                    is_flipped: boolean;
+                    media_shared: boolean;
                     model_id: string;
                     name: string;
+                    offset_x: number | null;
+                    offset_y: number | null;
+                    pdf_url_1: string | null;
                     position: number | null;
+                    primary_image: string | null;
                     updated_at: string | null;
+                    video_url_1: string | null;
+                    video_url_2: string | null;
+                    zoom_factor: number | null;
                 };
                 Insert: {
                     created_at?: string | null;
                     finish?: string | null;
+                    gallery_img_1?: string | null;
+                    gallery_img_2?: string | null;
+                    gallery_img_3?: string | null;
+                    gallery_img_4?: string | null;
+                    gallery_img_5?: string | null;
+                    gallery_img_6?: string | null;
                     hex_primary?: string | null;
                     hex_secondary?: string | null;
                     id?: string;
+                    is_flipped?: boolean;
+                    media_shared?: boolean;
                     model_id: string;
                     name: string;
+                    offset_x?: number | null;
+                    offset_y?: number | null;
+                    pdf_url_1?: string | null;
                     position?: number | null;
+                    primary_image?: string | null;
                     updated_at?: string | null;
+                    video_url_1?: string | null;
+                    video_url_2?: string | null;
+                    zoom_factor?: number | null;
                 };
                 Update: {
                     created_at?: string | null;
                     finish?: string | null;
+                    gallery_img_1?: string | null;
+                    gallery_img_2?: string | null;
+                    gallery_img_3?: string | null;
+                    gallery_img_4?: string | null;
+                    gallery_img_5?: string | null;
+                    gallery_img_6?: string | null;
                     hex_primary?: string | null;
                     hex_secondary?: string | null;
                     id?: string;
+                    is_flipped?: boolean;
+                    media_shared?: boolean;
                     model_id?: string;
                     name?: string;
+                    offset_x?: number | null;
+                    offset_y?: number | null;
+                    pdf_url_1?: string | null;
                     position?: number | null;
+                    primary_image?: string | null;
                     updated_at?: string | null;
+                    video_url_1?: string | null;
+                    video_url_2?: string | null;
+                    zoom_factor?: number | null;
                 };
                 Relationships: [
                     {
@@ -339,8 +384,8 @@ export type Database = {
                 Row: {
                     addons: Json;
                     created_at: string | null;
-                    discount_percentage: number | null;
                     discount_payout_config: Json | null;
+                    discount_percentage: number | null;
                     display_id: string | null;
                     effective_from: string | null;
                     gst_percentage: number | null;
@@ -361,8 +406,8 @@ export type Database = {
                 Insert: {
                     addons?: Json;
                     created_at?: string | null;
-                    discount_percentage?: number | null;
                     discount_payout_config?: Json | null;
+                    discount_percentage?: number | null;
                     display_id?: string | null;
                     effective_from?: string | null;
                     gst_percentage?: number | null;
@@ -383,8 +428,8 @@ export type Database = {
                 Update: {
                     addons?: Json;
                     created_at?: string | null;
-                    discount_percentage?: number | null;
                     discount_payout_config?: Json | null;
+                    discount_percentage?: number | null;
                     display_id?: string | null;
                     effective_from?: string | null;
                     gst_percentage?: number | null;
@@ -479,16 +524,31 @@ export type Database = {
                     emission_standard: string | null;
                     engine_cc: number | null;
                     fuel_type: string | null;
+                    gallery_img_1: string | null;
+                    gallery_img_2: string | null;
+                    gallery_img_3: string | null;
+                    gallery_img_4: string | null;
+                    gallery_img_5: string | null;
+                    gallery_img_6: string | null;
                     hsn_code: string | null;
                     id: string;
+                    is_flipped: boolean;
                     item_tax_rate: number | null;
+                    media_shared: boolean;
                     name: string;
+                    offset_x: number | null;
+                    offset_y: number | null;
+                    pdf_url_1: string | null;
                     position: number | null;
+                    primary_image: string | null;
                     product_type: string;
                     segment: string | null;
                     slug: string | null;
                     status: string | null;
                     updated_at: string | null;
+                    video_url_1: string | null;
+                    video_url_2: string | null;
+                    zoom_factor: number | null;
                 };
                 Insert: {
                     body_type?: string | null;
@@ -497,16 +557,31 @@ export type Database = {
                     emission_standard?: string | null;
                     engine_cc?: number | null;
                     fuel_type?: string | null;
+                    gallery_img_1?: string | null;
+                    gallery_img_2?: string | null;
+                    gallery_img_3?: string | null;
+                    gallery_img_4?: string | null;
+                    gallery_img_5?: string | null;
+                    gallery_img_6?: string | null;
                     hsn_code?: string | null;
                     id?: string;
+                    is_flipped?: boolean;
                     item_tax_rate?: number | null;
+                    media_shared?: boolean;
                     name: string;
+                    offset_x?: number | null;
+                    offset_y?: number | null;
+                    pdf_url_1?: string | null;
                     position?: number | null;
+                    primary_image?: string | null;
                     product_type: string;
                     segment?: string | null;
                     slug?: string | null;
                     status?: string | null;
                     updated_at?: string | null;
+                    video_url_1?: string | null;
+                    video_url_2?: string | null;
+                    zoom_factor?: number | null;
                 };
                 Update: {
                     body_type?: string | null;
@@ -515,16 +590,31 @@ export type Database = {
                     emission_standard?: string | null;
                     engine_cc?: number | null;
                     fuel_type?: string | null;
+                    gallery_img_1?: string | null;
+                    gallery_img_2?: string | null;
+                    gallery_img_3?: string | null;
+                    gallery_img_4?: string | null;
+                    gallery_img_5?: string | null;
+                    gallery_img_6?: string | null;
                     hsn_code?: string | null;
                     id?: string;
+                    is_flipped?: boolean;
                     item_tax_rate?: number | null;
+                    media_shared?: boolean;
                     name?: string;
+                    offset_x?: number | null;
+                    offset_y?: number | null;
+                    pdf_url_1?: string | null;
                     position?: number | null;
+                    primary_image?: string | null;
                     product_type?: string;
                     segment?: string | null;
                     slug?: string | null;
                     status?: string | null;
                     updated_at?: string | null;
+                    video_url_1?: string | null;
+                    video_url_2?: string | null;
+                    zoom_factor?: number | null;
                 };
                 Relationships: [
                     {
@@ -547,10 +637,17 @@ export type Database = {
                     id: string;
                     inclusion_type: string | null;
                     is_active: boolean | null;
+                    is_available: boolean;
                     label: string | null;
                     last_publish_job_id: string | null;
                     offer_amount: number | null;
                     state_code: string;
+                    tat_days: number | null;
+                    tat_effective_hours: number | null;
+                    tat_hours_input: number | null;
+                    tat_override_hours: number | null;
+                    tat_source: string;
+                    tat_updated_at: string | null;
                     tenant_id: string;
                     updated_at: string | null;
                     vehicle_color_id: string | null;
@@ -566,10 +663,17 @@ export type Database = {
                     id?: string;
                     inclusion_type?: string | null;
                     is_active?: boolean | null;
+                    is_available?: boolean;
                     label?: string | null;
                     last_publish_job_id?: string | null;
                     offer_amount?: number | null;
                     state_code: string;
+                    tat_days?: number | null;
+                    tat_effective_hours?: number | null;
+                    tat_hours_input?: number | null;
+                    tat_override_hours?: number | null;
+                    tat_source?: string;
+                    tat_updated_at?: string | null;
                     tenant_id: string;
                     updated_at?: string | null;
                     vehicle_color_id?: string | null;
@@ -585,10 +689,17 @@ export type Database = {
                     id?: string;
                     inclusion_type?: string | null;
                     is_active?: boolean | null;
+                    is_available?: boolean;
                     label?: string | null;
                     last_publish_job_id?: string | null;
                     offer_amount?: number | null;
                     state_code?: string;
+                    tat_days?: number | null;
+                    tat_effective_hours?: number | null;
+                    tat_hours_input?: number | null;
+                    tat_override_hours?: number | null;
+                    tat_source?: string;
+                    tat_updated_at?: string | null;
                     tenant_id?: string;
                     updated_at?: string | null;
                     vehicle_color_id?: string | null;
@@ -1174,6 +1285,7 @@ export type Database = {
                     min_qty: number;
                     model_id: string;
                     name: string;
+                    oem_sku: string | null;
                     offset_x: number | null;
                     offset_y: number | null;
                     pdf_url_1: string | null;
@@ -1215,6 +1327,7 @@ export type Database = {
                     min_qty?: number;
                     model_id: string;
                     name: string;
+                    oem_sku?: string | null;
                     offset_x?: number | null;
                     offset_y?: number | null;
                     pdf_url_1?: string | null;
@@ -1256,6 +1369,7 @@ export type Database = {
                     min_qty?: number;
                     model_id?: string;
                     name?: string;
+                    oem_sku?: string | null;
                     offset_x?: number | null;
                     offset_y?: number | null;
                     pdf_url_1?: string | null;
@@ -1335,6 +1449,7 @@ export type Database = {
                     is_required: boolean | null;
                     max_value: number | null;
                     min_value: number | null;
+                    onboarding_question: string | null;
                     position: number | null;
                     product_types: string[];
                     spec_key: string;
@@ -1359,6 +1474,7 @@ export type Database = {
                     is_required?: boolean | null;
                     max_value?: number | null;
                     min_value?: number | null;
+                    onboarding_question?: string | null;
                     position?: number | null;
                     product_types?: string[];
                     spec_key: string;
@@ -1383,6 +1499,7 @@ export type Database = {
                     is_required?: boolean | null;
                     max_value?: number | null;
                     min_value?: number | null;
+                    onboarding_question?: string | null;
                     position?: number | null;
                     product_types?: string[];
                     spec_key?: string;
@@ -1398,6 +1515,7 @@ export type Database = {
                     created_at: string | null;
                     finish: string | null;
                     id: string;
+                    image_url: string | null;
                     material: string | null;
                     model_id: string;
                     name: string;
@@ -1411,6 +1529,7 @@ export type Database = {
                     created_at?: string | null;
                     finish?: string | null;
                     id?: string;
+                    image_url?: string | null;
                     material?: string | null;
                     model_id: string;
                     name: string;
@@ -1424,6 +1543,7 @@ export type Database = {
                     created_at?: string | null;
                     finish?: string | null;
                     id?: string;
+                    image_url?: string | null;
                     material?: string | null;
                     model_id?: string;
                     name?: string;
@@ -1511,15 +1631,24 @@ export type Database = {
                     created_at: string | null;
                     cylinders: number | null;
                     displacement: number | null;
+                    emission_norm: string | null;
                     engine_type: string | null;
+                    external_fuel: string | null;
                     front_brake: string | null;
                     front_suspension: string | null;
                     front_tyre: string | null;
                     front_wheel_size: string | null;
                     fuel_capacity: number | null;
+                    gallery_img_1: string | null;
+                    gallery_img_2: string | null;
+                    gallery_img_3: string | null;
+                    gallery_img_4: string | null;
+                    gallery_img_5: string | null;
+                    gallery_img_6: string | null;
                     ground_clearance: number | null;
                     headlamp_type: string | null;
                     id: string;
+                    is_flipped: boolean;
                     kerb_weight: number | null;
                     killswitch: boolean | null;
                     led_headlamp: boolean | null;
@@ -1529,19 +1658,24 @@ export type Database = {
                     low_oil_indicator: boolean | null;
                     max_power: string | null;
                     max_torque: string | null;
+                    media_shared: boolean;
                     mileage_arai: number | null;
                     model_id: string;
                     motor_power: string | null;
                     name: string;
                     navigation: boolean | null;
                     num_valves: number | null;
+                    offset_x: number | null;
+                    offset_y: number | null;
                     overall_height: number | null;
                     overall_length: number | null;
                     overall_width: number | null;
                     pass_light: boolean | null;
+                    pdf_url_1: string | null;
                     pillion_footrest: boolean | null;
                     pillion_seat: boolean | null;
                     position: number | null;
+                    primary_image: string | null;
                     range_km: number | null;
                     rear_brake: string | null;
                     rear_suspension: string | null;
@@ -1550,21 +1684,26 @@ export type Database = {
                     ride_modes: string | null;
                     seat_height: number | null;
                     service_interval: string | null;
+                    silent_start: string | null;
                     slug: string | null;
                     speedometer: string | null;
                     stand_alarm: boolean | null;
                     start_type: string | null;
                     status: string | null;
+                    storage_litres: number | null;
                     top_speed: number | null;
                     transmission: string | null;
                     tripmeter: string | null;
                     tyre_type: string | null;
                     updated_at: string | null;
                     usb_charging: boolean | null;
+                    video_url_1: string | null;
+                    video_url_2: string | null;
                     warranty_km: number | null;
                     warranty_years: number | null;
                     wheel_type: string | null;
                     wheelbase: number | null;
+                    zoom_factor: number | null;
                 };
                 Insert: {
                     air_filter?: string | null;
@@ -1583,15 +1722,24 @@ export type Database = {
                     created_at?: string | null;
                     cylinders?: number | null;
                     displacement?: number | null;
+                    emission_norm?: string | null;
                     engine_type?: string | null;
+                    external_fuel?: string | null;
                     front_brake?: string | null;
                     front_suspension?: string | null;
                     front_tyre?: string | null;
                     front_wheel_size?: string | null;
                     fuel_capacity?: number | null;
+                    gallery_img_1?: string | null;
+                    gallery_img_2?: string | null;
+                    gallery_img_3?: string | null;
+                    gallery_img_4?: string | null;
+                    gallery_img_5?: string | null;
+                    gallery_img_6?: string | null;
                     ground_clearance?: number | null;
                     headlamp_type?: string | null;
                     id?: string;
+                    is_flipped?: boolean;
                     kerb_weight?: number | null;
                     killswitch?: boolean | null;
                     led_headlamp?: boolean | null;
@@ -1601,19 +1749,24 @@ export type Database = {
                     low_oil_indicator?: boolean | null;
                     max_power?: string | null;
                     max_torque?: string | null;
+                    media_shared?: boolean;
                     mileage_arai?: number | null;
                     model_id: string;
                     motor_power?: string | null;
                     name: string;
                     navigation?: boolean | null;
                     num_valves?: number | null;
+                    offset_x?: number | null;
+                    offset_y?: number | null;
                     overall_height?: number | null;
                     overall_length?: number | null;
                     overall_width?: number | null;
                     pass_light?: boolean | null;
+                    pdf_url_1?: string | null;
                     pillion_footrest?: boolean | null;
                     pillion_seat?: boolean | null;
                     position?: number | null;
+                    primary_image?: string | null;
                     range_km?: number | null;
                     rear_brake?: string | null;
                     rear_suspension?: string | null;
@@ -1622,21 +1775,26 @@ export type Database = {
                     ride_modes?: string | null;
                     seat_height?: number | null;
                     service_interval?: string | null;
+                    silent_start?: string | null;
                     slug?: string | null;
                     speedometer?: string | null;
                     stand_alarm?: boolean | null;
                     start_type?: string | null;
                     status?: string | null;
+                    storage_litres?: number | null;
                     top_speed?: number | null;
                     transmission?: string | null;
                     tripmeter?: string | null;
                     tyre_type?: string | null;
                     updated_at?: string | null;
                     usb_charging?: boolean | null;
+                    video_url_1?: string | null;
+                    video_url_2?: string | null;
                     warranty_km?: number | null;
                     warranty_years?: number | null;
                     wheel_type?: string | null;
                     wheelbase?: number | null;
+                    zoom_factor?: number | null;
                 };
                 Update: {
                     air_filter?: string | null;
@@ -1655,15 +1813,24 @@ export type Database = {
                     created_at?: string | null;
                     cylinders?: number | null;
                     displacement?: number | null;
+                    emission_norm?: string | null;
                     engine_type?: string | null;
+                    external_fuel?: string | null;
                     front_brake?: string | null;
                     front_suspension?: string | null;
                     front_tyre?: string | null;
                     front_wheel_size?: string | null;
                     fuel_capacity?: number | null;
+                    gallery_img_1?: string | null;
+                    gallery_img_2?: string | null;
+                    gallery_img_3?: string | null;
+                    gallery_img_4?: string | null;
+                    gallery_img_5?: string | null;
+                    gallery_img_6?: string | null;
                     ground_clearance?: number | null;
                     headlamp_type?: string | null;
                     id?: string;
+                    is_flipped?: boolean;
                     kerb_weight?: number | null;
                     killswitch?: boolean | null;
                     led_headlamp?: boolean | null;
@@ -1673,19 +1840,24 @@ export type Database = {
                     low_oil_indicator?: boolean | null;
                     max_power?: string | null;
                     max_torque?: string | null;
+                    media_shared?: boolean;
                     mileage_arai?: number | null;
                     model_id?: string;
                     motor_power?: string | null;
                     name?: string;
                     navigation?: boolean | null;
                     num_valves?: number | null;
+                    offset_x?: number | null;
+                    offset_y?: number | null;
                     overall_height?: number | null;
                     overall_length?: number | null;
                     overall_width?: number | null;
                     pass_light?: boolean | null;
+                    pdf_url_1?: string | null;
                     pillion_footrest?: boolean | null;
                     pillion_seat?: boolean | null;
                     position?: number | null;
+                    primary_image?: string | null;
                     range_km?: number | null;
                     rear_brake?: string | null;
                     rear_suspension?: string | null;
@@ -1694,21 +1866,26 @@ export type Database = {
                     ride_modes?: string | null;
                     seat_height?: number | null;
                     service_interval?: string | null;
+                    silent_start?: string | null;
                     slug?: string | null;
                     speedometer?: string | null;
                     stand_alarm?: boolean | null;
                     start_type?: string | null;
                     status?: string | null;
+                    storage_litres?: number | null;
                     top_speed?: number | null;
                     transmission?: string | null;
                     tripmeter?: string | null;
                     tyre_type?: string | null;
                     updated_at?: string | null;
                     usb_charging?: boolean | null;
+                    video_url_1?: string | null;
+                    video_url_2?: string | null;
                     warranty_km?: number | null;
                     warranty_years?: number | null;
                     wheel_type?: string | null;
                     wheelbase?: number | null;
+                    zoom_factor?: number | null;
                 };
                 Relationships: [
                     {
@@ -2044,28 +2221,55 @@ export type Database = {
             };
             crm_dealer_shares: {
                 Row: {
+                    approved_at: string | null;
+                    approved_by: string | null;
                     dealer_tenant_id: string | null;
                     id: string;
                     is_primary: boolean | null;
                     lead_id: string | null;
+                    rejected_at: string | null;
+                    rejected_by: string | null;
+                    requested_by: string | null;
+                    revoked_at: string | null;
+                    revoked_by: string | null;
+                    share_type: string;
                     shared_at: string | null;
                     shared_by: string | null;
+                    status: string;
                 };
                 Insert: {
+                    approved_at?: string | null;
+                    approved_by?: string | null;
                     dealer_tenant_id?: string | null;
                     id?: string;
                     is_primary?: boolean | null;
                     lead_id?: string | null;
+                    rejected_at?: string | null;
+                    rejected_by?: string | null;
+                    requested_by?: string | null;
+                    revoked_at?: string | null;
+                    revoked_by?: string | null;
+                    share_type?: string;
                     shared_at?: string | null;
                     shared_by?: string | null;
+                    status?: string;
                 };
                 Update: {
+                    approved_at?: string | null;
+                    approved_by?: string | null;
                     dealer_tenant_id?: string | null;
                     id?: string;
                     is_primary?: boolean | null;
                     lead_id?: string | null;
+                    rejected_at?: string | null;
+                    rejected_by?: string | null;
+                    requested_by?: string | null;
+                    revoked_at?: string | null;
+                    revoked_by?: string | null;
+                    share_type?: string;
                     shared_at?: string | null;
                     shared_by?: string | null;
+                    status?: string;
                 };
                 Relationships: [
                     {
@@ -2479,6 +2683,8 @@ export type Database = {
             crm_leads: {
                 Row: {
                     created_at: string | null;
+                    created_by: string;
+                    created_by_tenant_id: string | null;
                     credit_score: number | null;
                     current_address: string | null;
                     current_ownership: string | null;
@@ -2500,18 +2706,20 @@ export type Database = {
                     interest_variant: string | null;
                     is_deleted: boolean | null;
                     is_serviceable: boolean | null;
+                    last_activity_at: string | null;
                     notes: string | null;
                     owner_tenant_id: string | null;
                     permanent_address: string | null;
                     permanent_ownership: string | null;
                     price_snapshot: Json | null;
                     referral_data: Json | null;
-                    referred_by_id: string | null;
+                    referred_by_id: string;
                     referred_by_name: string | null;
                     selected_dealer_tenant_id: string | null;
                     source: string | null;
                     status: string | null;
                     tenant_id: string | null;
+                    updated_at: string | null;
                     utm_campaign: string | null;
                     utm_content: string | null;
                     utm_data: Json | null;
@@ -2521,6 +2729,8 @@ export type Database = {
                 };
                 Insert: {
                     created_at?: string | null;
+                    created_by: string;
+                    created_by_tenant_id?: string | null;
                     credit_score?: number | null;
                     current_address?: string | null;
                     current_ownership?: string | null;
@@ -2542,18 +2752,20 @@ export type Database = {
                     interest_variant?: string | null;
                     is_deleted?: boolean | null;
                     is_serviceable?: boolean | null;
+                    last_activity_at?: string | null;
                     notes?: string | null;
                     owner_tenant_id?: string | null;
                     permanent_address?: string | null;
                     permanent_ownership?: string | null;
                     price_snapshot?: Json | null;
                     referral_data?: Json | null;
-                    referred_by_id?: string | null;
+                    referred_by_id: string;
                     referred_by_name?: string | null;
                     selected_dealer_tenant_id?: string | null;
                     source?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
+                    updated_at?: string | null;
                     utm_campaign?: string | null;
                     utm_content?: string | null;
                     utm_data?: Json | null;
@@ -2563,6 +2775,8 @@ export type Database = {
                 };
                 Update: {
                     created_at?: string | null;
+                    created_by?: string;
+                    created_by_tenant_id?: string | null;
                     credit_score?: number | null;
                     current_address?: string | null;
                     current_ownership?: string | null;
@@ -2584,18 +2798,20 @@ export type Database = {
                     interest_variant?: string | null;
                     is_deleted?: boolean | null;
                     is_serviceable?: boolean | null;
+                    last_activity_at?: string | null;
                     notes?: string | null;
                     owner_tenant_id?: string | null;
                     permanent_address?: string | null;
                     permanent_ownership?: string | null;
                     price_snapshot?: Json | null;
                     referral_data?: Json | null;
-                    referred_by_id?: string | null;
+                    referred_by_id?: string;
                     referred_by_name?: string | null;
                     selected_dealer_tenant_id?: string | null;
                     source?: string | null;
                     status?: string | null;
                     tenant_id?: string | null;
+                    updated_at?: string | null;
                     utm_campaign?: string | null;
                     utm_content?: string | null;
                     utm_data?: Json | null;
@@ -2604,6 +2820,20 @@ export type Database = {
                     utm_term?: string | null;
                 };
                 Relationships: [
+                    {
+                        foreignKeyName: 'crm_leads_created_by_tenant_id_fkey';
+                        columns: ['created_by_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_leads_created_by_tenant_id_fkey';
+                        columns: ['created_by_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
                     {
                         foreignKeyName: 'fk_leads_customer_protect';
                         columns: ['customer_id'];
@@ -3319,6 +3549,54 @@ export type Database = {
                     },
                 ];
             };
+            crm_share_audit_log: {
+                Row: {
+                    changed_at: string;
+                    changed_by: string | null;
+                    id: string;
+                    lead_id: string;
+                    metadata: Json | null;
+                    new_status: string;
+                    old_status: string | null;
+                    share_id: string;
+                };
+                Insert: {
+                    changed_at?: string;
+                    changed_by?: string | null;
+                    id?: string;
+                    lead_id: string;
+                    metadata?: Json | null;
+                    new_status: string;
+                    old_status?: string | null;
+                    share_id: string;
+                };
+                Update: {
+                    changed_at?: string;
+                    changed_by?: string | null;
+                    id?: string;
+                    lead_id?: string;
+                    metadata?: Json | null;
+                    new_status?: string;
+                    old_status?: string | null;
+                    share_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'crm_share_audit_log_share_id_fkey';
+                        columns: ['share_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_dealer_shares';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'crm_share_audit_log_share_id_fkey';
+                        columns: ['share_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'v_share_actors';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             crm_tasks: {
                 Row: {
                     assignee_ids: string[] | null;
@@ -3631,6 +3909,90 @@ export type Database = {
                     status?: string;
                 };
                 Relationships: [];
+            };
+            fin_marketplace_schemes: {
+                Row: {
+                    allowed_tenures: number[];
+                    created_at: string;
+                    id: string;
+                    is_marketplace_active: boolean;
+                    lender_name: string;
+                    lender_tenant_id: string | null;
+                    ltv: number;
+                    max_loan_amount: number;
+                    max_tenure: number;
+                    min_loan_amount: number;
+                    min_tenure: number;
+                    processing_fee: number;
+                    processing_fee_type: string;
+                    roi: number;
+                    scheme_code: string;
+                    status: string;
+                    target_sku_ids: string[];
+                    updated_at: string;
+                    valid_from: string;
+                    valid_until: string | null;
+                };
+                Insert: {
+                    allowed_tenures: number[];
+                    created_at?: string;
+                    id?: string;
+                    is_marketplace_active?: boolean;
+                    lender_name: string;
+                    lender_tenant_id?: string | null;
+                    ltv: number;
+                    max_loan_amount: number;
+                    max_tenure: number;
+                    min_loan_amount?: number;
+                    min_tenure: number;
+                    processing_fee?: number;
+                    processing_fee_type?: string;
+                    roi: number;
+                    scheme_code: string;
+                    status?: string;
+                    target_sku_ids: string[];
+                    updated_at?: string;
+                    valid_from: string;
+                    valid_until?: string | null;
+                };
+                Update: {
+                    allowed_tenures?: number[];
+                    created_at?: string;
+                    id?: string;
+                    is_marketplace_active?: boolean;
+                    lender_name?: string;
+                    lender_tenant_id?: string | null;
+                    ltv?: number;
+                    max_loan_amount?: number;
+                    max_tenure?: number;
+                    min_loan_amount?: number;
+                    min_tenure?: number;
+                    processing_fee?: number;
+                    processing_fee_type?: string;
+                    roi?: number;
+                    scheme_code?: string;
+                    status?: string;
+                    target_sku_ids?: string[];
+                    updated_at?: string;
+                    valid_from?: string;
+                    valid_until?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'fin_marketplace_schemes_lender_tenant_id_fkey';
+                        columns: ['lender_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'fin_marketplace_schemes_lender_tenant_id_fkey';
+                        columns: ['lender_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                ];
             };
             i18n_languages: {
                 Row: {
@@ -4899,52 +5261,79 @@ export type Database = {
             };
             inv_purchase_orders: {
                 Row: {
+                    chassis_number: string | null;
                     created_at: string;
                     created_by: string | null;
                     dealer_tenant_id: string;
+                    dispatch_date: string | null;
+                    dispatch_doc_url: string | null;
                     display_id: string | null;
                     docket_number: string | null;
+                    engine_number: string | null;
                     expected_delivery_date: string | null;
                     id: string;
                     payment_status: Database['public']['Enums']['inv_payment_status'];
                     po_status: Database['public']['Enums']['inv_po_status'];
                     quote_id: string;
+                    receiving_branch_id: string | null;
                     request_id: string;
+                    supplier_tenant_id: string | null;
+                    supplier_warehouse: string | null;
+                    supplier_warehouse_id: string | null;
                     total_po_value: number;
+                    transporter_contact: string | null;
                     transporter_name: string | null;
                     updated_at: string;
                     updated_by: string | null;
                 };
                 Insert: {
+                    chassis_number?: string | null;
                     created_at?: string;
                     created_by?: string | null;
                     dealer_tenant_id: string;
+                    dispatch_date?: string | null;
+                    dispatch_doc_url?: string | null;
                     display_id?: string | null;
                     docket_number?: string | null;
+                    engine_number?: string | null;
                     expected_delivery_date?: string | null;
                     id?: string;
                     payment_status?: Database['public']['Enums']['inv_payment_status'];
                     po_status?: Database['public']['Enums']['inv_po_status'];
                     quote_id: string;
+                    receiving_branch_id?: string | null;
                     request_id: string;
+                    supplier_tenant_id?: string | null;
+                    supplier_warehouse?: string | null;
+                    supplier_warehouse_id?: string | null;
                     total_po_value: number;
+                    transporter_contact?: string | null;
                     transporter_name?: string | null;
                     updated_at?: string;
                     updated_by?: string | null;
                 };
                 Update: {
+                    chassis_number?: string | null;
                     created_at?: string;
                     created_by?: string | null;
                     dealer_tenant_id?: string;
+                    dispatch_date?: string | null;
+                    dispatch_doc_url?: string | null;
                     display_id?: string | null;
                     docket_number?: string | null;
+                    engine_number?: string | null;
                     expected_delivery_date?: string | null;
                     id?: string;
                     payment_status?: Database['public']['Enums']['inv_payment_status'];
                     po_status?: Database['public']['Enums']['inv_po_status'];
                     quote_id?: string;
+                    receiving_branch_id?: string | null;
                     request_id?: string;
+                    supplier_tenant_id?: string | null;
+                    supplier_warehouse?: string | null;
+                    supplier_warehouse_id?: string | null;
                     total_po_value?: number;
+                    transporter_contact?: string | null;
                     transporter_name?: string | null;
                     updated_at?: string;
                     updated_by?: string | null;
@@ -4972,10 +5361,121 @@ export type Database = {
                         referencedColumns: ['id'];
                     },
                     {
+                        foreignKeyName: 'inv_purchase_orders_receiving_branch_id_fkey';
+                        columns: ['receiving_branch_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_locations';
+                        referencedColumns: ['id'];
+                    },
+                    {
                         foreignKeyName: 'inv_purchase_orders_request_id_fkey';
                         columns: ['request_id'];
                         isOneToOne: false;
                         referencedRelation: 'inv_requests';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_purchase_orders_supplier_tenant_id_fkey';
+                        columns: ['supplier_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_purchase_orders_supplier_tenant_id_fkey';
+                        columns: ['supplier_tenant_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'tenants';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_purchase_orders_supplier_warehouse_id_fkey';
+                        columns: ['supplier_warehouse_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'id_locations';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            inv_quote_line_items: {
+                Row: {
+                    created_at: string;
+                    id: string;
+                    notes: string | null;
+                    offered_amount: number;
+                    quote_id: string;
+                    request_item_id: string;
+                };
+                Insert: {
+                    created_at?: string;
+                    id?: string;
+                    notes?: string | null;
+                    offered_amount?: number;
+                    quote_id: string;
+                    request_item_id: string;
+                };
+                Update: {
+                    created_at?: string;
+                    id?: string;
+                    notes?: string | null;
+                    offered_amount?: number;
+                    quote_id?: string;
+                    request_item_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_quote_line_items_quote_id_fkey';
+                        columns: ['quote_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_dealer_quotes';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'inv_quote_line_items_request_item_id_fkey';
+                        columns: ['request_item_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'inv_request_items';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            inv_quote_terms: {
+                Row: {
+                    advance_percent: number | null;
+                    created_at: string;
+                    credit_days: number | null;
+                    expected_dispatch_days: number | null;
+                    notes: string | null;
+                    payment_mode: string | null;
+                    quote_id: string;
+                    updated_at: string;
+                };
+                Insert: {
+                    advance_percent?: number | null;
+                    created_at?: string;
+                    credit_days?: number | null;
+                    expected_dispatch_days?: number | null;
+                    notes?: string | null;
+                    payment_mode?: string | null;
+                    quote_id: string;
+                    updated_at?: string;
+                };
+                Update: {
+                    advance_percent?: number | null;
+                    created_at?: string;
+                    credit_days?: number | null;
+                    expected_dispatch_days?: number | null;
+                    notes?: string | null;
+                    payment_mode?: string | null;
+                    quote_id?: string;
+                    updated_at?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'inv_quote_terms_quote_id_fkey';
+                        columns: ['quote_id'];
+                        isOneToOne: true;
+                        referencedRelation: 'inv_dealer_quotes';
                         referencedColumns: ['id'];
                     },
                 ];
@@ -5093,19 +5593,25 @@ export type Database = {
             inv_stock: {
                 Row: {
                     battery_make: string | null;
+                    battery_number: string | null;
+                    battery_type: string | null;
                     branch_id: string;
                     chassis_number: string;
                     created_at: string;
                     engine_number: string;
                     id: string;
                     is_shared: boolean;
+                    key_number: string | null;
                     locked_at: string | null;
                     locked_by_tenant_id: string | null;
-                    media_chassis_url: string;
+                    manufacturing_date: string | null;
+                    media_chassis_url: string | null;
                     media_damage_urls: string[] | null;
-                    media_engine_url: string;
-                    media_qc_video_url: string;
+                    media_engine_url: string | null;
+                    media_gallery: Json | null;
+                    media_qc_video_url: string | null;
                     media_sticker_url: string | null;
+                    media_vehicle_url: string | null;
                     po_id: string;
                     qc_notes: string | null;
                     qc_status: Database['public']['Enums']['inv_qc_status'];
@@ -5116,19 +5622,25 @@ export type Database = {
                 };
                 Insert: {
                     battery_make?: string | null;
+                    battery_number?: string | null;
+                    battery_type?: string | null;
                     branch_id: string;
                     chassis_number: string;
                     created_at?: string;
                     engine_number: string;
                     id?: string;
                     is_shared?: boolean;
+                    key_number?: string | null;
                     locked_at?: string | null;
                     locked_by_tenant_id?: string | null;
-                    media_chassis_url: string;
+                    manufacturing_date?: string | null;
+                    media_chassis_url?: string | null;
                     media_damage_urls?: string[] | null;
-                    media_engine_url: string;
-                    media_qc_video_url: string;
+                    media_engine_url?: string | null;
+                    media_gallery?: Json | null;
+                    media_qc_video_url?: string | null;
                     media_sticker_url?: string | null;
+                    media_vehicle_url?: string | null;
                     po_id: string;
                     qc_notes?: string | null;
                     qc_status?: Database['public']['Enums']['inv_qc_status'];
@@ -5139,19 +5651,25 @@ export type Database = {
                 };
                 Update: {
                     battery_make?: string | null;
+                    battery_number?: string | null;
+                    battery_type?: string | null;
                     branch_id?: string;
                     chassis_number?: string;
                     created_at?: string;
                     engine_number?: string;
                     id?: string;
                     is_shared?: boolean;
+                    key_number?: string | null;
                     locked_at?: string | null;
                     locked_by_tenant_id?: string | null;
-                    media_chassis_url?: string;
+                    manufacturing_date?: string | null;
+                    media_chassis_url?: string | null;
                     media_damage_urls?: string[] | null;
-                    media_engine_url?: string;
-                    media_qc_video_url?: string;
+                    media_engine_url?: string | null;
+                    media_gallery?: Json | null;
+                    media_qc_video_url?: string | null;
                     media_sticker_url?: string | null;
+                    media_vehicle_url?: string | null;
                     po_id?: string;
                     qc_notes?: string | null;
                     qc_status?: Database['public']['Enums']['inv_qc_status'];
@@ -6202,6 +6720,56 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            v_share_actors: {
+                Row: {
+                    dealer_tenant_id: string | null;
+                    id: string | null;
+                    initiated_by: string | null;
+                    is_primary: boolean | null;
+                    lead_id: string | null;
+                    resolved_actor: string | null;
+                    resolved_at: string | null;
+                    share_type: string | null;
+                    shared_at: string | null;
+                    shared_by: string | null;
+                    status: string | null;
+                };
+                Insert: {
+                    dealer_tenant_id?: string | null;
+                    id?: string | null;
+                    initiated_by?: string | null;
+                    is_primary?: boolean | null;
+                    lead_id?: string | null;
+                    resolved_actor?: never;
+                    resolved_at?: never;
+                    share_type?: string | null;
+                    shared_at?: string | null;
+                    shared_by?: string | null;
+                    status?: string | null;
+                };
+                Update: {
+                    dealer_tenant_id?: string | null;
+                    id?: string | null;
+                    initiated_by?: string | null;
+                    is_primary?: boolean | null;
+                    lead_id?: string | null;
+                    resolved_actor?: never;
+                    resolved_at?: never;
+                    share_type?: string | null;
+                    shared_at?: string | null;
+                    shared_by?: string | null;
+                    status?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'lead_dealer_shares_lead_id_fkey';
+                        columns: ['lead_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'crm_leads';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
         };
         Functions: {
             check_is_super_admin: { Args: { p_user_id: string }; Returns: boolean };
@@ -6215,6 +6783,7 @@ export type Database = {
             };
             create_booking_from_quote: { Args: { quote_id: string }; Returns: string };
             encode_base33: { Args: { length: number; num: number }; Returns: string };
+            gen_sku_code_9: { Args: never; Returns: string };
             generate_display_id: { Args: never; Returns: string };
             get_dealer_offers: {
                 Args: { p_state_code: string; p_tenant_id: string };
@@ -6231,6 +6800,18 @@ export type Database = {
                     vehicle_color_id: string;
                 }[];
             };
+            get_fin_winner: {
+                Args: { p_downpayment: number; p_sku_id: string; p_tenure: number };
+                Returns: {
+                    lender_name: string;
+                    monthly_emi: number;
+                    processing_fee: number;
+                    processing_fee_type: string;
+                    roi: number;
+                    scheme_code: string;
+                    scheme_id: string;
+                }[];
+            };
             get_market_best_offers: {
                 Args: { p_district_name: string; p_state_code: string };
                 Returns: {
@@ -6240,9 +6821,26 @@ export type Database = {
                     bundle_value: number;
                     dealer_id: string;
                     dealer_name: string;
+                    delivery_tat_days: number;
                     district: string;
                     is_serviceable: boolean;
                     studio_id: string;
+                    tat_effective_hours: number;
+                    vehicle_color_id: string;
+                }[];
+            };
+            get_market_candidate_offers: {
+                Args: { p_district_name: string; p_state_code: string };
+                Returns: {
+                    dealer_id: string;
+                    dealer_name: string;
+                    delivery_tat_days: number;
+                    district: string;
+                    is_serviceable: boolean;
+                    offer_amount: number;
+                    studio_id: string;
+                    tat_effective_hours: number;
+                    updated_at: string;
                     vehicle_color_id: string;
                 }[];
             };

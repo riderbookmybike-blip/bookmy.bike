@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Heart, Pencil, CircleHelp, ArrowRight, Zap, Palette } from 'lucide-react';
+import { Heart, Pencil, CircleHelp, ArrowRight, Zap, Palette, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 import type { ProductVariant } from '@/types/productMaster';
@@ -12,6 +12,7 @@ import Image from 'next/image';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { slugify } from '@/utils/slugs';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 interface CompactProductCardProps {
     v: ProductVariant;
@@ -25,6 +26,11 @@ interface CompactProductCardProps {
     showOClubPrompt?: boolean;
     onExplodeColors?: () => void;
     isExploded?: boolean;
+    bestOffer?: {
+        tat_effective_hours?: number | null;
+        delivery_tat_days?: number | null;
+    } | null;
+    offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
 }
 
 export function CompactProductCard({
@@ -39,9 +45,13 @@ export function CompactProductCard({
     showOClubPrompt,
     onExplodeColors,
     isExploded = false,
+    bestOffer,
+    offerMode: propOfferMode,
 }: CompactProductCardProps) {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { trackEvent } = useAnalytics();
+    const { offerMode: globalOfferMode } = useDiscovery();
+    const effectiveOfferMode = propOfferMode || globalOfferMode;
     const isSaved = isFavorite(v.id);
     const [selectedHex, setSelectedHex] = useState<string | null>(() => {
         const match = v.availableColors?.find(c => c.imageUrl === v.imageUrl) || v.availableColors?.[0];
@@ -310,6 +320,42 @@ export function CompactProductCard({
                             </div>
                         </div>
                     </div>
+
+                    {/* Delivery TAT Line (Mobile) */}
+                    {bestOffer &&
+                        (bestOffer.tat_effective_hours !== undefined || bestOffer.delivery_tat_days !== undefined) && (
+                            <div
+                                className={`mt-1 flex items-center gap-1.5 ${effectiveOfferMode === 'FAST_DELIVERY' ? 'px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg' : 'opacity-60'}`}
+                            >
+                                <Clock
+                                    size={9}
+                                    className={
+                                        effectiveOfferMode === 'FAST_DELIVERY' ? 'text-emerald-500' : 'text-slate-400'
+                                    }
+                                />
+                                <span
+                                    className={`text-[8px] font-black uppercase tracking-wider italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'text-emerald-600' : 'text-slate-500'}`}
+                                >
+                                    {(() => {
+                                        const hrs = bestOffer.tat_effective_hours || 0;
+                                        const days = bestOffer.delivery_tat_days || 0;
+                                        if (hrs > 0 && hrs <= 24) return `Delivery in ${hrs} hrs`;
+                                        if (days > 0) {
+                                            const dayHrs = (bestOffer.tat_effective_hours || 0) % 24;
+                                            return dayHrs > 0
+                                                ? `Delivery in ${days} days ${dayHrs} hrs`
+                                                : `Delivery in ${days} days`;
+                                        }
+                                        if (hrs > 24) {
+                                            const d = Math.floor(hrs / 24);
+                                            const h = hrs % 24;
+                                            return h > 0 ? `Delivery in ${d} days ${h} hrs` : `Delivery in ${d} days`;
+                                        }
+                                        return 'Delivery in 7-10 Days';
+                                    })()}
+                                </span>
+                            </div>
+                        )}
 
                     {/* Lowest EMI Block — hidden if loan < ₹15k (auto cash-flip) */}
                     {showEmi && (

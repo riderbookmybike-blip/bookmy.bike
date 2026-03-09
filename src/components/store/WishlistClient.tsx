@@ -16,6 +16,7 @@ import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 import { FilterChip } from '@/components/store/ui/FilterChip';
 import { VEHICLE_MODE_CONFIG, getSafeViewMode } from '@/components/store/cards/vehicleModeConfig';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 // Filter Group Component (Extracted)
 const FilterGroup = ({
@@ -127,7 +128,7 @@ export const WishlistClient = () => {
     // Local State for Filters
     const [activeCategory, setActiveCategory] = useState<'ALL' | 'MOTORCYCLE' | 'SCOOTER' | 'MOPED'>('ALL');
     const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi'>('popular');
-    const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>('finance');
+    const { pricingMode, setPricingMode, offerMode, setOfferMode } = useDiscovery();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.favorites.defaultView);
 
     // Map favorites to full ProductVariant data from catalog
@@ -341,6 +342,8 @@ export const WishlistClient = () => {
                     if (next === 'finance') setIsDpEditOpen(true);
                     else setIsDpEditOpen(false);
                 }}
+                offerMode={offerMode}
+                onOfferModeChange={setOfferMode}
                 viewMode={viewMode}
                 allowedViewModes={VEHICLE_MODE_CONFIG.favorites.allowedViews}
                 onViewModeChange={mode => setViewMode(getSafeViewMode('favorites', mode))}

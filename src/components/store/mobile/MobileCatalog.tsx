@@ -36,6 +36,8 @@ import { CompareTray, type CompareItem } from '../CompareTray';
 import { CatalogGridSkeleton } from '../CatalogSkeleton';
 import { VEHICLE_MODE_CONFIG, compareLimitMessage } from '../cards/vehicleModeConfig';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
+import { useCatalogMarketplace } from '@/hooks/useCatalogMarketplace';
+import { useDiscovery } from '@/contexts/DiscoveryContext';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
@@ -65,6 +67,7 @@ export const MobileCatalog = ({
     const isLoading = externalLoading;
     const router = useRouter();
     const { availableCoins, isLoggedIn } = useOClubWallet();
+    const { offerMode } = useDiscovery();
     const isSmart = mode === 'smart';
 
     const {
@@ -178,6 +181,13 @@ export const MobileCatalog = ({
         };
         checkCurrentServiceability();
     }, []);
+
+    // Marketplace Hydration (TAT, Winner Engine)
+    const { winnersMap, isLoading: isMarketplaceLoading } = useCatalogMarketplace(
+        serviceability.district,
+        serviceability.stateCode,
+        offerMode
+    );
 
     useEffect(() => {
         const handleSearchToggle = () => setIsMobileFilterOpen(true);
@@ -383,6 +393,7 @@ export const MobileCatalog = ({
                                                       leadId={leadId}
                                                       fallbackDealerId={resolvedDealerId}
                                                       onEditDownpayment={() => setIsMobileFilterOpen(true)}
+                                                      bestOffer={winnersMap[v.id] as any}
                                                   />
                                               ))}
                                           </div>
@@ -427,6 +438,7 @@ export const MobileCatalog = ({
                                                       leadId={leadId}
                                                       fallbackDealerId={resolvedDealerId}
                                                       onEditDownpayment={() => setIsMobileFilterOpen(true)}
+                                                      bestOffer={winnersMap[v.id] as any}
                                                       onExplodeColors={() => {
                                                           const key = `${v.make}::${v.model}::${v.variant}`;
                                                           setExplodedVariant(prev => (prev === key ? null : key));
