@@ -56,8 +56,29 @@ export function ShopperBottomNav() {
     const { userRole, memberships } = useTenant();
     const hasActiveTeamMembership = (memberships || []).some(m => {
         if (String(m?.status || '').toUpperCase() !== 'ACTIVE') return false;
+
         const type = String(m?.tenants?.type || '').toUpperCase();
-        return type === 'DEALER' || type === 'DEALERSHIP' || type === 'BANK' || type === 'SUPER_ADMIN';
+        const role = String(m?.role || '').toUpperCase();
+
+        const isTeamType =
+            type === 'DEALER' ||
+            type === 'DEALERSHIP' ||
+            type === 'BANK' ||
+            type === 'FINANCER' ||
+            type === 'FINANCE' ||
+            type === 'SUPER_ADMIN';
+
+        const isTeamRole =
+            role.includes('DEALER') ||
+            role.includes('DEALERSHIP') ||
+            role.includes('BANK') ||
+            role.includes('FINANCE') ||
+            role.includes('FINANCER') ||
+            role.includes('ADMIN') ||
+            role.includes('OWNER') ||
+            role.includes('STAFF');
+
+        return isTeamType || isTeamRole;
     });
     const isTeamRole = Boolean(userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
     const isTeamUser = hasActiveTeamMembership || isTeamRole;
