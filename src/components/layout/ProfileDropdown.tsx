@@ -662,13 +662,6 @@ export function ProfileDropdown({
 
         // Business mode
         const workspaceItems = [
-            {
-                label: 'Dashboard',
-                icon: LayoutDashboard,
-                href: workspaceBasePath,
-                color: 'text-indigo-500',
-                bg: 'bg-indigo-500/10',
-            },
             ...(hasLeadCreateAccess
                 ? [
                       {
@@ -680,6 +673,13 @@ export function ProfileDropdown({
                       },
                   ]
                 : []),
+            {
+                label: 'Dashboard',
+                icon: LayoutDashboard,
+                href: workspaceBasePath,
+                color: 'text-indigo-500',
+                bg: 'bg-indigo-500/10',
+            },
             {
                 label: 'Profile',
                 icon: LucideUser,
@@ -704,7 +704,15 @@ export function ProfileDropdown({
         ];
 
         return workspaceItems;
-    }, [user, hasWorkspaceAccess, workspaceBasePath, isAdminWorkspaceRole, businessMode, hasLeadCreateAccess, createLeadHref]);
+    }, [
+        user,
+        hasWorkspaceAccess,
+        workspaceBasePath,
+        isAdminWorkspaceRole,
+        businessMode,
+        hasLeadCreateAccess,
+        createLeadHref,
+    ]);
 
     const isLight = tone === 'light' || (tone !== 'dark' && (mounted ? theme !== 'dark' : true));
     const isDarkSurface = !isLight;

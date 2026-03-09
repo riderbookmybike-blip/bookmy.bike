@@ -6,8 +6,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Home, Heart, Globe, CreditCard, Banknote, X, Pencil, Bike, SlidersHorizontal } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
-import { useTenant } from '@/lib/tenant/tenantContext';
-import { QuickLeadMiniModal } from '@/components/leads/QuickLeadMiniModal';
 
 // ─── Pricing constants ────────────────────────────────────────────────────────
 const DP_MIN = 5000;
@@ -53,55 +51,6 @@ export function ShopperBottomNav() {
     const pathname = usePathname();
     const router = useRouter();
     const { favorites } = useFavorites();
-    const { userRole, memberships } = useTenant();
-    const hasActiveTeamMembership = (memberships || []).some(m => {
-        if (String(m?.status || '').toUpperCase() !== 'ACTIVE') return false;
-
-        const type = String(m?.tenants?.type || '').toUpperCase();
-        const role = String(m?.role || '').toUpperCase();
-
-        const isTeamType =
-            type === 'DEALER' ||
-            type === 'DEALERSHIP' ||
-            type === 'BANK' ||
-            type === 'FINANCER' ||
-            type === 'FINANCE' ||
-            type === 'SUPER_ADMIN';
-
-        const isTeamRole =
-            role.includes('DEALER') ||
-            role.includes('DEALERSHIP') ||
-            role.includes('BANK') ||
-            role.includes('FINANCE') ||
-            role.includes('FINANCER') ||
-            role.includes('ADMIN') ||
-            role.includes('OWNER') ||
-            role.includes('STAFF');
-
-        return isTeamType || isTeamRole;
-    });
-    const isTeamRole = Boolean(userRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
-    const isTeamUser = hasActiveTeamMembership || isTeamRole;
-    const [isBusinessMode, setIsBusinessMode] = useState(false);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-
-        const syncBusinessMode = () => {
-            setIsBusinessMode(localStorage.getItem('bkmb_sidebar_mode') === 'business');
-        };
-
-        syncBusinessMode();
-        window.addEventListener('storage', syncBusinessMode);
-        window.addEventListener('focus', syncBusinessMode);
-
-        return () => {
-            window.removeEventListener('storage', syncBusinessMode);
-            window.removeEventListener('focus', syncBusinessMode);
-        };
-    }, []);
-
-    const isTeamContext = isTeamUser || isBusinessMode;
 
     // Pages where the last tab should show "Filter" instead of Lead/O'Circle
     const isFilterPage = Boolean(
@@ -114,17 +63,7 @@ export function ShopperBottomNav() {
         () =>
             STATIC_TABS.map(tab => {
                 if (tab.key !== 'ocircle') return tab;
-                // Team mode/user → always show Lead next to Favorites
-                if (isTeamContext) {
-                    return {
-                        ...tab,
-                        key: 'lead' as const,
-                        label: 'Lead',
-                        icon: Banknote,
-                        href: null,
-                    };
-                }
-                // Non-team users on filter-relevant pages → show Filter tab
+                // Filter-relevant pages → show Filter tab
                 if (isFilterPage) {
                     return {
                         ...tab,
@@ -134,10 +73,10 @@ export function ShopperBottomNav() {
                         href: null,
                     };
                 }
-                // End user on other pages → keep O' Circle
+                // Other pages → keep O' Circle
                 return tab;
             }),
-        [isFilterPage, isTeamContext]
+        [isFilterPage]
     );
 
     // ── Pricing state ─────────────────────────────────────────────────────────
@@ -145,7 +84,6 @@ export function ShopperBottomNav() {
     const [downpayment, setDownpayment] = useState(10000);
     const [tenure, setTenure] = useState(36);
     const [sheetOpen, setSheetOpen] = useState(false);
-    const [isQuickLeadOpen, setIsQuickLeadOpen] = useState(false);
     const [rideSheetOpen, setRideSheetOpen] = useState(false);
     const sheetRef = useRef<HTMLDivElement>(null);
     const rideSheetRef = useRef<HTMLDivElement>(null);
@@ -527,24 +465,6 @@ export function ShopperBottomNav() {
                             );
                         }
 
-                        if (tab.key === 'lead') {
-                            return (
-                                <button
-                                    key={tab.key}
-                                    type="button"
-                                    onClick={() => setIsQuickLeadOpen(true)}
-                                    className={cls}
-                                >
-                                    <div className="relative">
-                                        <Icon size={20} strokeWidth={1.5} />
-                                    </div>
-                                    <span className="text-[9px] font-semibold uppercase tracking-[0.15em]">
-                                        {tab.label}
-                                    </span>
-                                </button>
-                            );
-                        }
-
                         if (tab.key === 'filter') {
                             return (
                                 <button
@@ -590,7 +510,6 @@ export function ShopperBottomNav() {
                     })}
                 </div>
             </nav>
-            <QuickLeadMiniModal isOpen={isQuickLeadOpen} onClose={() => setIsQuickLeadOpen(false)} />
         </>
     );
 }
