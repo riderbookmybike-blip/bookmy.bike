@@ -15,8 +15,9 @@ async function resolveActorContext(actorTenantId?: string | null) {
     } = await supabase.auth.getUser();
 
     const actorUserId = user?.id || null;
+    let finalActorTenantId = actorTenantId || null;
 
-    if (!actorTenantId && actorUserId) {
+    if (!finalActorTenantId && actorUserId) {
         const { data: teamMembership } = await adminClient
             .from('id_team')
             .select('tenant_id')
@@ -26,10 +27,73 @@ async function resolveActorContext(actorTenantId?: string | null) {
             .limit(1)
             .maybeSingle();
 
-        actorTenantId = teamMembership?.tenant_id || null;
+        finalActorTenantId = teamMembership?.tenant_id || null;
     }
 
-    return { actorUserId, actorTenantId };
+    return { actorUserId, actorTenantId: finalActorTenantId };
+}
+
+async function verifyLeadAccess(leadId: string, actorTenantId: string | null): Promise<boolean> {
+    if (!actorTenantId) return false;
+
+    // Fast path: actor is the lead owner
+    const { data: lead } = await adminClient.from('crm_leads').select('owner_tenant_id').eq('id', leadId).single();
+
+    if (lead?.owner_tenant_id === actorTenantId) {
+        return true;
+    }
+
+    // Slow path: actor has an explicitly APPROVED share for this lead
+    const { data: share } = await adminClient
+        .from('crm_dealer_shares')
+        .select('id')
+        .eq('lead_id', leadId)
+        .eq('dealer_tenant_id', actorTenantId)
+        .eq('status', 'APPROVED')
+        .limit(1)
+        .maybeSingle();
+
+    return !!share;
+}
+
+async function verifyShareTransitionAccess(shareId: string, actorTenantId: string | null): Promise<boolean> {
+    if (!actorTenantId) return false;
+
+    const { data: share } = await adminClient
+        .from('crm_dealer_shares')
+        .select(
+            `
+            dealer_tenant_id,
+            crm_leads ( owner_tenant_id )
+        `
+        )
+        .eq('id', shareId)
+        .single();
+
+    if (!share) return false;
+
+    const ownerTenantId = Array.isArray(share.crm_leads)
+        ? share.crm_leads[0]?.owner_tenant_id
+        : (share.crm_leads as any)?.owner_tenant_id;
+
+    return actorTenantId === ownerTenantId || actorTenantId === share.dealer_tenant_id;
+}
+
+async function logSecurityViolation(
+    leadId: string,
+    actorUserId: string | null,
+    actorTenantId: string | null,
+    action: string,
+    details: any
+) {
+    await adminClient.from('crm_lead_events').insert({
+        lead_id: leadId,
+        event_type: 'SECURITY_VIOLATION',
+        actor_user_id: actorUserId,
+        actor_tenant_id: actorTenantId,
+        notes: `Unauthorized share action attempt: ${action}`,
+        changed_value: JSON.stringify(details),
+    });
 }
 
 export async function requestLeadShareAction(input: {
@@ -42,6 +106,14 @@ export async function requestLeadShareAction(input: {
 
     if (!actorUserId) {
         return { success: false, message: 'Authentication required' };
+    }
+
+    const hasAccess = await verifyLeadAccess(input.leadId, actorTenantId);
+    if (!hasAccess) {
+        await logSecurityViolation(input.leadId, actorUserId, actorTenantId, 'requestLeadShareAction', {
+            targetTenantId: input.targetTenantId,
+        });
+        return { success: false, message: 'Forbidden: You do not have permission to share this lead.' };
     }
 
     // Insert as PENDING — DB trigger enforces requested_by NOT NULL
@@ -87,6 +159,14 @@ export async function approveLeadShareAction(input: { shareId: string; leadId: s
         return { success: false, message: 'Authentication required' };
     }
 
+    const hasAccess = await verifyShareTransitionAccess(input.shareId, actorTenantId);
+    if (!hasAccess) {
+        await logSecurityViolation(input.leadId, actorUserId, actorTenantId, 'approveLeadShareAction', {
+            shareId: input.shareId,
+        });
+        return { success: false, message: 'Forbidden: You do not have permission to approve this share.' };
+    }
+
     const now = new Date().toISOString();
 
     const { error } = await adminClient
@@ -126,6 +206,14 @@ export async function revokeLeadShareAction(input: {
 
     if (!actorUserId) {
         return { success: false, message: 'Authentication required' };
+    }
+
+    const hasAccess = await verifyShareTransitionAccess(input.shareId, actorTenantId);
+    if (!hasAccess) {
+        await logSecurityViolation(input.leadId, actorUserId, actorTenantId, 'revokeLeadShareAction', {
+            shareId: input.shareId,
+        });
+        return { success: false, message: 'Forbidden: You do not have permission to revoke this share.' };
     }
 
     const now = new Date().toISOString();
@@ -168,6 +256,14 @@ export async function rejectLeadShareAction(input: {
 
     if (!actorUserId) {
         return { success: false, message: 'Authentication required' };
+    }
+
+    const hasAccess = await verifyShareTransitionAccess(input.shareId, actorTenantId);
+    if (!hasAccess) {
+        await logSecurityViolation(input.leadId, actorUserId, actorTenantId, 'rejectLeadShareAction', {
+            shareId: input.shareId,
+        });
+        return { success: false, message: 'Forbidden: You do not have permission to reject this share.' };
     }
 
     const now = new Date().toISOString();
