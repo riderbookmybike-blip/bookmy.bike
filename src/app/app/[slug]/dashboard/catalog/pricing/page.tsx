@@ -93,6 +93,14 @@ const getRtoTotalForDefaultType = (row: any): number => {
     return Number(row?.rto_total_state) || 0;
 };
 
+const getNetInsuranceTotal = (row: any): number => {
+    const mandatoryBase = Number(row?.ins_sum_mandatory_insurance) || 0;
+    const mandatoryGst = Number(row?.ins_sum_mandatory_insurance_gst_amount) || 0;
+    const mandatoryTotal = mandatoryBase + mandatoryGst;
+    if (mandatoryTotal > 0) return mandatoryTotal;
+    return Number(row?.ins_total) || 0;
+};
+
 export default function PricingPage() {
     const supabase = createClient();
     const { tenantId, tenantSlug } = useTenant();
@@ -364,7 +372,7 @@ export default function PricingPage() {
                 const skuId = row.sku_id;
                 if (!skuId) return;
                 const selectedRtoTotal = getRtoTotalForDefaultType(row);
-                const insuranceTotal = Number(row.ins_total) || 0;
+                const insuranceTotal = getNetInsuranceTotal(row);
                 const exShowroomTotal = Number(row.ex_showroom) || 0;
                 const onRoadTotal = Number(row.on_road_price) || exShowroomTotal + selectedRtoTotal + insuranceTotal;
                 priceMap.set(skuId, {
@@ -437,10 +445,7 @@ export default function PricingPage() {
                             };
                         }).filter(Boolean);
                         return {
-                            base_total:
-                                Number(row.ins_total || 0) ||
-                                Number(row.ins_sum_mandatory_insurance || 0) +
-                                    Number(row.ins_sum_mandatory_insurance_gst_amount || 0),
+                            base_total: getNetInsuranceTotal(row),
                             gst_rate: Number(row.ins_gst_rate || 18),
                             od: { base: odBase, gst: Math.max(0, odGst), total: Number(row.ins_od_total || 0) },
                             tp: { base: tpBase, gst: Math.max(0, tpGst), total: Number(row.ins_tp_total || 0) },
@@ -634,6 +639,7 @@ export default function PricingPage() {
                     rto_total_state, rto_total_bh, rto_total_company,
                     ins_od_base:ins_own_damage_premium_amount, ins_od_total:ins_own_damage_total_amount,
                     ins_tp_base:ins_liability_only_premium_amount, ins_tp_total:ins_liability_only_total_amount,
+                    ins_sum_mandatory_insurance, ins_sum_mandatory_insurance_gst_amount,
                     ins_total:ins_gross_premium, ins_gst_rate,
                     addon_pa_amount:addon_personal_accident_cover_amount, addon_pa_gst:addon_personal_accident_cover_gst_amount, addon_pa_total:addon_personal_accident_cover_total_amount,
                     addon_zerodep_amount:addon_zero_depreciation_amount, addon_zerodep_gst:addon_zero_depreciation_gst_amount, addon_zerodep_total:addon_zero_depreciation_total_amount,
@@ -653,7 +659,7 @@ export default function PricingPage() {
             if (!data) return;
             const d = data as any;
             const selectedRtoTotal = getRtoTotalForDefaultType(d);
-            const insuranceTotal = Number(d.ins_total || 0);
+            const insuranceTotal = getNetInsuranceTotal(d);
             const exShowroomTotal = Number(d.ex_showroom || 0);
             const onRoadTotal = Number(d.on_road_price || 0) || exShowroomTotal + selectedRtoTotal + insuranceTotal;
             const ADDON_MAP_RT = [
@@ -728,7 +734,7 @@ export default function PricingPage() {
                                   default: d.rto_default_type || 'STATE',
                               },
                               insurance_data: {
-                                  base_total: Number(d.ins_total || 0),
+                                  base_total: insuranceTotal,
                                   gst_rate: Number(d.ins_gst_rate || 18),
                                   od: { base: odBase, gst: Math.max(0, odTotal - odBase), total: odTotal },
                                   tp: { base: tpBase, gst: Math.max(0, tpTotal - tpBase), total: tpTotal },
