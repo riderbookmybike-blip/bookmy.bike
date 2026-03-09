@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatDisplayId } from '@/utils/displayId';
 import { toast } from 'sonner';
 import DocumentManager from '@/components/modules/leads/DocumentManager';
+import SharePanel from '@/components/modules/leads/SharePanel';
 import {
     addLeadNoteAction,
     addLeadTaskAction,
@@ -193,7 +194,8 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
         | 'NOTES'
         | 'TIMELINE'
         | 'INBOX'
-        | 'OCLUB';
+        | 'OCLUB'
+        | 'SHARE';
     const [activeTab, setActiveTab] = useState<TabKey>('LEAD');
     const [groups, setGroups] = useState({
         transactionQuotes: true,
@@ -301,6 +303,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             { key: 'TRANSACTIONS', label: 'TRANSACTION', count: quoteCount + bookingCount + receiptCount },
             { key: 'MEMBER', label: 'MEMBER', count: 0 },
             { key: 'DOCUMENTS', label: 'DOCUMENTS', count: lead.customerId ? 1 : 0 },
+            { key: 'SHARE', label: 'SHARE', count: 0 },
             { key: 'TASKS', label: 'TASK', count: tasks.filter(task => !task.completed).length },
             { key: 'NOTES', label: 'NOTES', count: notes.length },
             { key: 'INBOX', label: 'INBOX', count: 0 },
@@ -549,7 +552,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             if (uploadedAttachments.length > 0) {
                 await supabase.storage.from('documents').remove(uploadedAttachments.map(attachment => attachment.path));
             }
-            toast.error(result.message || 'Failed to save note');
+            toast.error('message' in result ? result.message : 'Failed to save note');
             setSavingNote(false);
             return;
         }
@@ -580,7 +583,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
             priority: taskPriority,
         });
         if (!result.success) {
-            toast.error(result.message || 'Failed to add task');
+            toast.error('message' in result ? result.message : 'Failed to add task');
             setSavingTask(false);
             return;
         }
@@ -1355,7 +1358,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                     'mx-4 mt-4'
                 )}
             >
-                <div className={cn('text-[9px] font-black uppercase tracking-widest w-full', 'grid grid-cols-10')}>
+                <div className={cn('text-[9px] font-black uppercase tracking-widest w-full', 'grid grid-cols-11')}>
                     {tabs.map((tab, idx) => (
                         <button
                             key={tab.key}
@@ -1363,7 +1366,7 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                             className={cn(
                                 'py-3 text-center transition-all relative whitespace-nowrap',
                                 'w-full',
-                                idx < 9 ? 'border-r border-slate-100 dark:border-white/10' : '',
+                                idx < 10 ? 'border-r border-slate-100 dark:border-white/10' : '',
                                 activeTab === tab.key
                                     ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                                     : 'bg-transparent text-slate-400 hover:text-slate-600 hover:bg-white/30 dark:hover:bg-white/10'
@@ -2292,6 +2295,12 @@ export default function LeadEditorTable({ profile }: { profile: LeadProfile }) {
                                 {notes.length === 0 && <div className="text-xs text-slate-400">No notes yet.</div>}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'SHARE' && (
+                    <div className="mx-4 mt-4">
+                        <SharePanel leadId={lead.id} />
                     </div>
                 )}
 
