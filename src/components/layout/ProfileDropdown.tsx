@@ -985,19 +985,6 @@ export function ProfileDropdown({
                                                         <div className="flex items-center gap-0 p-1 rounded-2xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10">
                                                             <button
                                                                 onClick={() => {
-                                                                    if (businessMode) toggleMode();
-                                                                }}
-                                                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
-                                                                    !businessMode
-                                                                        ? 'bg-brand-primary text-black shadow-md shadow-brand-primary/20'
-                                                                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
-                                                                }`}
-                                                            >
-                                                                <Logo variant="icon" size={12} />
-                                                                O&apos; Circle
-                                                            </button>
-                                                            <button
-                                                                onClick={() => {
                                                                     if (!businessMode) toggleMode();
                                                                 }}
                                                                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
@@ -1008,6 +995,19 @@ export function ProfileDropdown({
                                                             >
                                                                 <Building2 size={12} />
                                                                 The Crew
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (businessMode) toggleMode();
+                                                                }}
+                                                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+                                                                    !businessMode
+                                                                        ? 'bg-brand-primary text-black shadow-md shadow-brand-primary/20'
+                                                                        : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
+                                                                }`}
+                                                            >
+                                                                <Logo variant="icon" size={12} />
+                                                                O&apos; Circle
                                                             </button>
                                                         </div>
                                                     )}
