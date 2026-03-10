@@ -82,6 +82,11 @@ interface SKUPriceRow {
     isPopular?: boolean;
     originalIsPopular?: boolean;
     updatedByName?: string;
+    tatHoursInput?: number | null;
+    tatDaysInput?: number | null;
+    tatSource?: string;
+    originalTatHoursInput?: number | null;
+    originalTatDaysInput?: number | null;
 }
 
 const normalizeOfferDelta = (value: number) => (Number.isFinite(value) ? Math.trunc(value) : 0);
@@ -322,7 +327,9 @@ export default function PricingPage() {
                 tenantSlug !== 'aums'
                     ? supabase
                           .from('cat_price_dealer')
-                          .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
+                          .select(
+                              'vehicle_color_id, offer_amount, inclusion_type, is_active, tat_days, tat_hours_input, tat_source'
+                          )
                           .eq('state_code', activeStateCode)
                           .eq('tenant_id', tenantId as string)
                     : Promise.resolve({ data: [] as any, error: null as any }),
@@ -474,6 +481,15 @@ export default function PricingPage() {
                 activeMap.set(o.vehicle_color_id, o.is_active);
             });
 
+            const tatMap = new Map<string, { days: number | null; hours: number | null; source: string }>();
+            offerData?.forEach((o: any) => {
+                tatMap.set(o.vehicle_color_id, {
+                    days: o.tat_days ?? null,
+                    hours: o.tat_hours_input ?? null,
+                    source: o.tat_source || 'MANUAL',
+                });
+            });
+
             const formattedSkus: SKUPriceRow[] = (skuData || []).map((sku: any) => {
                 const model = sku.model;
                 const variant = sku.vehicle_variant || sku.accessory_variant || sku.service_variant;
@@ -602,6 +618,11 @@ export default function PricingPage() {
                     isPopular: priceRecord?.isPopular || false,
                     originalIsPopular: priceRecord?.isPopular || false,
                     updatedByName: priceRecord?.updatedByName,
+                    tatHoursInput: tatMap.get(sku.id)?.hours ?? null,
+                    tatDaysInput: tatMap.get(sku.id)?.days ?? null,
+                    tatSource: tatMap.get(sku.id)?.source || 'MANUAL',
+                    originalTatHoursInput: tatMap.get(sku.id)?.hours ?? null,
+                    originalTatDaysInput: tatMap.get(sku.id)?.days ?? null,
                 };
             });
 
@@ -920,6 +941,18 @@ export default function PricingPage() {
         setLastEditTime(Date.now());
     };
 
+    const handleUpdateTat = (skuId: string, payload: { days: number | null; hours: number | null }) => {
+        setSkus(prev =>
+            prev.map(s =>
+                s.id === skuId
+                    ? { ...s, tatDaysInput: payload.days, tatHoursInput: payload.hours, tatSource: 'MANUAL' }
+                    : s
+            )
+        );
+        setHasUnsavedChanges(true);
+        setLastEditTime(Date.now());
+    };
+
     const handleBackfill = async () => {
         if (tenantSlug !== 'aums') return;
         const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode;
@@ -1084,7 +1117,9 @@ export default function PricingPage() {
                         s.offerAmount !== s.originalOfferAmount ||
                         s.inclusionType !== s.originalInclusionType ||
                         s.localIsActive !== s.originalLocalIsActive ||
-                        s.isPopular !== s.originalIsPopular
+                        s.isPopular !== s.originalIsPopular ||
+                        s.tatHoursInput !== s.originalTatHoursInput ||
+                        s.tatDaysInput !== s.originalTatDaysInput
                 );
 
                 const offerPayload = changedDealerRows.map(s => ({
@@ -1094,7 +1129,9 @@ export default function PricingPage() {
                     offer_amount: normalizeOfferDelta(s.offerAmount),
                     inclusion_type: s.inclusionType,
                     is_active: s.localIsActive,
-                    is_popular: s.isPopular || false,
+                    tat_days: s.tatDaysInput ?? 0,
+                    tat_hours_input: s.tatHoursInput ?? null,
+                    tat_source: s.tatSource || 'MANUAL',
                 }));
 
                 if (offerPayload.length === 0) {
@@ -1126,6 +1163,8 @@ export default function PricingPage() {
                             originalStatus: s.status,
                             originalLocalIsActive: s.localIsActive,
                             originalIsPopular: s.isPopular,
+                            originalTatDaysInput: s.tatDaysInput ?? null,
+                            originalTatHoursInput: s.tatHoursInput ?? null,
                         }))
                     );
                     setLastSavedAt(Date.now());
@@ -1341,6 +1380,7 @@ export default function PricingPage() {
                             onUpdatePublishStage={handleUpdatePublishStage}
                             onUpdateLocalStatus={handleUpdateLocalStatus}
                             onUpdatePopular={handleUpdatePopular}
+                            onUpdateTat={handleUpdateTat}
                             onBulkUpdate={handleBulkUpdate}
                             onSaveAll={handleSaveAll}
                             states={states}

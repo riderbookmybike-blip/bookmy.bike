@@ -512,6 +512,7 @@ export const DesktopCatalog = ({
             // Tier 3: Browser Geolocation
             if (navigator.geolocation) {
                 // console.log('[Location] Requesting geolocation...');
+                let hasRetriedAfterTimeout = false;
                 navigator.geolocation.getCurrentPosition(
                     async position => {
                         const { latitude, longitude } = position.coords;
@@ -659,6 +660,85 @@ export const DesktopCatalog = ({
                     },
                     async err => {
                         console.error('[Location] Geolocation error:', err.code, err.message);
+                        // TIMEOUT can happen while permission prompt is open in incognito.
+                        // Retry once with a longer timeout before falling back to IP location.
+                        if (err.code === 3 && !hasRetriedAfterTimeout) {
+                            hasRetriedAfterTimeout = true;
+                            navigator.geolocation.getCurrentPosition(
+                                async position => {
+                                    const { latitude, longitude } = position.coords;
+                                    try {
+                                        const supabaseClient = createClient();
+                                        const { data: nearestData } = await supabaseClient.rpc('get_nearest_pincode', {
+                                            p_lat: latitude,
+                                            p_lon: longitude,
+                                        });
+                                        if (nearestData && nearestData.length > 0) {
+                                            const nearest = nearestData[0];
+                                            const pincode = nearest.pincode;
+                                            const stateCode = nearest.rto_code?.substring(0, 2) || 'MH';
+                                            const result = await checkServiceability(pincode);
+                                            const displayLoc =
+                                                result.district || nearest.district || nearest.taluka || pincode;
+                                            const userDist = result.district || nearest.district;
+                                            setServiceability({
+                                                status: result.isServiceable ? 'serviceable' : 'unserviceable',
+                                                location: displayLoc,
+                                                district: result.isServiceable ? userDist : result.district || userDist,
+                                                stateCode: result.stateCode || stateCode,
+                                                userDistrict: userDist,
+                                                fallbackDistrict: result.isServiceable
+                                                    ? undefined
+                                                    : result.district || undefined,
+                                            });
+                                            const payload = {
+                                                pincode,
+                                                taluka: nearest.taluka || '',
+                                                district: userDist,
+                                                state: result.state || null,
+                                                stateCode: result.stateCode || stateCode,
+                                                lat: latitude,
+                                                lng: longitude,
+                                                manuallySet: false,
+                                            };
+                                            localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+                                            try {
+                                                await setLocationCookie(payload);
+                                            } catch (cookieErr) {
+                                                console.error('[Location] Cookie set failed:', cookieErr);
+                                            }
+                                            window.dispatchEvent(new Event('locationChanged'));
+                                            return;
+                                        }
+                                    } catch (retryErr) {
+                                        console.error('[Location] Geolocation retry failed:', retryErr);
+                                    }
+                                    const resolvedByIp = await applyIpFallback();
+                                    if (!resolvedByIp) {
+                                        setServiceability({ status: 'unset' });
+                                        setIsLocationPickerOpen(true);
+                                    }
+                                },
+                                async retryErr => {
+                                    console.error(
+                                        '[Location] Geolocation retry error:',
+                                        retryErr.code,
+                                        retryErr.message
+                                    );
+                                    const resolvedByIp = await applyIpFallback();
+                                    if (!resolvedByIp) {
+                                        setServiceability({ status: 'unset' });
+                                        setIsLocationPickerOpen(true);
+                                    }
+                                },
+                                {
+                                    enableHighAccuracy: false,
+                                    timeout: 30000,
+                                    maximumAge: 0,
+                                }
+                            );
+                            return;
+                        }
                         const resolvedByIp = await applyIpFallback();
                         if (!resolvedByIp) {
                             setServiceability({ status: 'unset' });
@@ -667,7 +747,7 @@ export const DesktopCatalog = ({
                     },
                     {
                         enableHighAccuracy: true,
-                        timeout: 10000, // 10 seconds timeout
+                        timeout: 30000, // allow user time to act on permission prompt
                         maximumAge: 300000, // Use cached location if less than 5 min old
                     }
                 );
@@ -1056,6 +1136,7 @@ export const DesktopCatalog = ({
                 if (filteredColors.length === 0) return [v];
                 return filteredColors.map(color => ({
                     ...v,
+                    id: color.id || v.id,
                     color: color.name,
                     imageUrl: color.imageUrl || v.imageUrl,
                     zoomFactor: color.zoomFactor ?? v.zoomFactor,
@@ -1617,6 +1698,7 @@ export const DesktopCatalog = ({
                                                 return next;
                                             })
                                         }
+                                        pricingMode={pricingMode}
                                         bestOffer={winnersMap[v.id] as any}
                                     />
                                 );

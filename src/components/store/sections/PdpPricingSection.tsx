@@ -85,6 +85,27 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
         totalSurge > 0 ? `Total: ₹ ${totalSurge.toLocaleString('en-IN')}` : null,
     ].filter(Boolean) as string[];
 
+    const winnerTatHoursRaw = data?.tat_effective_hours ?? data?.delivery_tat_hours ?? null;
+    const winnerTatDaysRaw = data?.delivery_tat_days ?? data?.tat_days ?? null;
+    const winnerTatHours =
+        winnerTatHoursRaw !== null && winnerTatHoursRaw !== undefined ? Number(winnerTatHoursRaw) : null;
+    const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
+    const deliveryTatLabel = (() => {
+        if (winnerTatHours !== null && Number.isFinite(winnerTatHours) && winnerTatHours >= 0) {
+            if (winnerTatHours === 0) return '4 HRS';
+            if (winnerTatHours <= 72) return `${winnerTatHours} HRS`;
+            const d = Math.floor(winnerTatHours / 24);
+            const h = winnerTatHours % 24;
+            return h > 0 ? `${d} DAYS ${h} HRS` : `${d} DAYS`;
+        }
+        if (winnerTatDays !== null && Number.isFinite(winnerTatDays) && winnerTatDays >= 0) {
+            if (winnerTatDays === 0) return '4 HRS';
+            if (winnerTatDays <= 3) return `${winnerTatDays * 24} HRS`;
+            return `${winnerTatDays} DAYS`;
+        }
+        return 'ETA UPDATING';
+    })();
+
     const breakup = [
         { label: 'Ex-Showroom', value: baseExShowroom },
         {
@@ -111,6 +132,7 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
         },
         { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
+        { label: 'Delivery TAT', value: deliveryTatLabel, isInfo: true },
 
         ...(totalSavings > 0
             ? [

@@ -38,23 +38,60 @@ export async function resolveFinanceRoute(dealerTenantId: string): Promise<Resol
         const strategy: RoutingStrategy = config.routingStrategy || 'MANUAL';
         const routing = config.financeRouting;
 
-        // 2) Fetch all active bank partners with their schemes
+        // 2) Fetch all active bank partners
         const { data: banks, error: bErr } = await adminClient
             .from('id_tenants')
-            .select('id, name, config')
+            .select('id, name')
             .eq('type', 'BANK')
             .eq('status', 'ACTIVE');
 
         if (bErr) throw bErr;
 
+        // 3) Fetch all active schemes from normalized table
+        const bankIds = (banks || []).map(b => b.id);
+        const { data: schemes, error: sErr } = await adminClient
+            .from('fin_marketplace_schemes')
+            .select('*')
+            .in('lender_tenant_id', bankIds)
+            .eq('is_marketplace_active', true)
+            .eq('status', 'ACTIVE');
+
+        if (sErr) throw sErr;
+
         const bankMap = new Map<string, { id: string; name: string; schemes: BankScheme[] }>();
         const allSchemes: { partnerId: string; partnerName: string; scheme: BankScheme }[] = [];
 
+        // Group schemes by bank
         for (const b of banks || []) {
-            const schemes: BankScheme[] = ((b.config as any)?.schemes || []).filter((s: BankScheme) => s.isActive);
-            bankMap.set(b.id, { id: b.id, name: b.name, schemes });
-            for (const s of schemes) {
-                allSchemes.push({ partnerId: b.id, partnerName: b.name, scheme: s });
+            bankMap.set(b.id, { id: b.id, name: b.name, schemes: [] });
+        }
+
+        for (const s of schemes || []) {
+            const mapped: BankScheme = {
+                id: s.scheme_code,
+                name: s.scheme_code,
+                interestRate: Number(s.roi),
+                interestType: (s as any).interest_type || 'REDUCING',
+                maxLTV: Number(s.ltv),
+                payout: Number(s.processing_fee),
+                payoutType: s.processing_fee_type as any,
+                minLoanAmount: Number(s.min_loan_amount),
+                maxLoanAmount: Number(s.max_loan_amount),
+                minTenure: s.min_tenure,
+                maxTenure: s.max_tenure,
+                allowedTenures: s.allowed_tenures || [],
+                isActive: true,
+                isPrimary: false,
+                validFrom: s.valid_from,
+                validTo: s.valid_until,
+                charges: s.charges_jsonb || [],
+                applicability: { brands: 'ALL', models: 'ALL', dealerships: 'ALL' },
+            } as any;
+
+            const bank = bankMap.get(s.lender_tenant_id);
+            if (bank) {
+                bank.schemes.push(mapped);
+                allSchemes.push({ partnerId: bank.id, partnerName: bank.name, scheme: mapped });
             }
         }
 
@@ -118,8 +155,28 @@ export async function resolveFinanceRoute(dealerTenantId: string): Promise<Resol
                 };
             }
 
-            // Sort by interest rate ascending (cheapest first)
-            const sorted = [...allSchemes].sort((a, b) => a.scheme.interestRate - b.scheme.interestRate);
+            // Sort by total cost of credit (APR proxy) — accounts for FLAT vs REDUCING + charges
+            const computeCost = (scheme: any): number => {
+                const refLoan = 100000;
+                const refTenure = 36;
+                const roi = scheme.interestRate ?? 0;
+                const iType = scheme.interestType || 'REDUCING';
+                let emi: number;
+                if (iType === 'FLAT') {
+                    emi = (refLoan + refLoan * (roi / 100) * (refTenure / 12)) / refTenure;
+                } else {
+                    const mr = roi / 100 / 12;
+                    emi = mr === 0 ? refLoan / refTenure : refLoan * (mr / (1 - Math.pow(1 + mr, -refTenure)));
+                }
+                let upfront = 0;
+                for (const c of scheme.charges || []) {
+                    if (c.impact === 'UPFRONT') {
+                        upfront += c.type === 'PERCENTAGE' ? refLoan * ((c.value || 0) / 100) : c.value || 0;
+                    }
+                }
+                return emi * refTenure + upfront;
+            };
+            const sorted = [...allSchemes].sort((a, b) => computeCost(a.scheme) - computeCost(b.scheme));
             const best = sorted[0];
 
             return {
@@ -128,7 +185,7 @@ export async function resolveFinanceRoute(dealerTenantId: string): Promise<Resol
                 partnerName: best.partnerName,
                 scheme: best.scheme,
                 allSchemes: sorted.map(s => s.scheme),
-                reason: `Cheapest: ${best.partnerName} @ ${best.scheme.interestRate}%`,
+                reason: `Cheapest (Total Cost): ${best.partnerName} @ ${best.scheme.interestRate}% ${best.scheme.interestType || 'REDUCING'}`,
             };
         }
 

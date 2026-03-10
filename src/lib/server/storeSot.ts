@@ -14,6 +14,7 @@
  */
 
 import { adminClient } from '@/lib/supabase/admin';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { slugify } from '@/utils/slugs';
 import { resolvePricingContext } from '@/lib/server/pricingContext';
 import type {
@@ -846,6 +847,19 @@ export async function getDealerDelta({
 export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<CatalogSnapshotRow[]> {
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     const maxAttempts = 3;
+    const fetchActiveCatalogSkus = async (client: any) => {
+        return client.from('cat_skus').select(CATALOG_SKU_SELECT).eq('status', 'ACTIVE').order('position');
+    };
+    const fetchPublishedPricingRows = async (client: any, skuIds: string[]) => {
+        return client
+            .from('cat_price_state_mh')
+            .select(
+                'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular'
+            )
+            .in('sku_id', skuIds)
+            .eq('state_code', stateCode)
+            .eq('publish_stage', 'PUBLISHED');
+    };
 
     try {
         let skus: any[] | null = null;
@@ -889,7 +903,33 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
 
                 console.error('[StoreSot:getCatalogSnapshot] Error:', safeMessage);
             }
-            return [];
+
+            // Fallback path for transient admin-client fetch failures in dev/proxy environments.
+            const fallbackUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+            const fallbackAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+            if (!fallbackUrl || !fallbackAnonKey) {
+                return [];
+            }
+
+            try {
+                const fallbackClient = createSupabaseClient(fallbackUrl, fallbackAnonKey, {
+                    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+                });
+                const { data: fallbackSkus, error: fallbackError } = await fetchActiveCatalogSkus(
+                    fallbackClient as any
+                );
+                if (fallbackError || !fallbackSkus || fallbackSkus.length === 0) {
+                    return [];
+                }
+                skus = fallbackSkus;
+                console.warn('[StoreSot:getCatalogSnapshot] Recovered using anon fallback client.');
+            } catch (fallbackException) {
+                const fallbackMessage = String(
+                    (fallbackException as any)?.message || fallbackException || 'Unknown error'
+                );
+                console.error('[StoreSot:getCatalogSnapshot] Fallback failed:', fallbackMessage.slice(0, 300));
+                return [];
+            }
         }
 
         // Filter to VEHICLE-type products only — exclude accessories & services from catalog
@@ -906,14 +946,28 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
         });
 
         const skuIds = vehicleSkus.map((s: any) => s.id);
-        const { data: pricing } = await (adminClient as any)
-            .from('cat_price_state_mh')
-            .select(
-                'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular'
-            )
-            .in('sku_id', skuIds)
-            .eq('state_code', stateCode)
-            .eq('publish_stage', 'PUBLISHED');
+        let pricing: any[] | null = null;
+        try {
+            const { data } = await fetchPublishedPricingRows(adminClient as any, skuIds);
+            pricing = data || [];
+        } catch {
+            const fallbackUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+            const fallbackAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+            if (fallbackUrl && fallbackAnonKey) {
+                try {
+                    const fallbackClient = createSupabaseClient(fallbackUrl, fallbackAnonKey, {
+                        auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+                    });
+                    const { data } = await fetchPublishedPricingRows(fallbackClient as any, skuIds);
+                    pricing = data || [];
+                    console.warn('[StoreSot:getCatalogSnapshot] Pricing recovered using anon fallback client.');
+                } catch {
+                    pricing = [];
+                }
+            } else {
+                pricing = [];
+            }
+        }
 
         const pricingMap = new Map<string, any>((pricing || []).map((p: any) => [p.sku_id, p]));
 

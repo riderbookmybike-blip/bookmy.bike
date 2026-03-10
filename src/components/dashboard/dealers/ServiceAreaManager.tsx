@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { X, Plus, MapPin, Loader2, Navigation } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,6 +15,10 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
         Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+}
+
+function normalizeDistrictName(name: string | null | undefined) {
+    return (name || '').trim().toLowerCase();
 }
 
 export const ServiceAreaManager = ({
@@ -35,6 +39,8 @@ export const ServiceAreaManager = ({
     const [homeInfo, setHomeInfo] = useState<{ district: string; lat: number; lon: number } | null>(null);
     const [allDistricts, setAllDistricts] = useState<any[]>([]); // { name, lat, lon, distance? }
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [areaLoadError, setAreaLoadError] = useState<string | null>(null);
+    const hasAttemptedAutoSeed = useRef(false);
 
     const supabase = createClient();
 
@@ -99,22 +105,28 @@ export const ServiceAreaManager = ({
 
     const fetchAreas = async () => {
         setLoading(true);
-        const { data, error } = await supabase.from('id_dealer_service_areas').select('*').eq('tenant_id', tenantId);
+        setAreaLoadError(null);
+        try {
+            const { data, error } = await supabase
+                .from('id_dealer_service_areas')
+                .select('*')
+                .eq('tenant_id', tenantId);
 
-        if (data) {
-            setAreas(data);
-
-            // Defaulting Logic: If no areas exist but we have home info, add home district
-            // We use a separate check to avoid repeated attempts if the add is in progress
-            if (data.length === 0 && homeInfo && !adding) {
-                // Check if it really doesn't exist (safety)
-                const alreadyHasHome = data.some(a => a.district === homeInfo.district);
-                if (!alreadyHasHome) {
-                    await addDistrict(homeInfo.district, true);
-                }
+            if (error) {
+                console.error('Service areas fetch error:', error);
+                setAreaLoadError('Unable to load service areas right now.');
+                setAreas([]);
+                return;
             }
+
+            setAreas(data || []);
+        } catch (error) {
+            console.error('Service areas fetch exception:', error);
+            setAreaLoadError('Unable to load service areas right now.');
+            setAreas([]);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const fetchPrimaryMappings = async (districts: string[]) => {
@@ -141,24 +153,38 @@ export const ServiceAreaManager = ({
     useEffect(() => {
         const init = async () => {
             if (tenantId) {
-                await fetchHomeLocation();
-                await fetchAllDistricts();
+                hasAttemptedAutoSeed.current = false;
+                fetchAreas();
+                await Promise.allSettled([fetchHomeLocation(), fetchAllDistricts()]);
             }
         };
         init();
-    }, [tenantId]);
+    }, [tenantId, defaultStateCode]);
 
-    // Re-fetch areas once homeInfo is ready if empty
     useEffect(() => {
-        if (tenantId && homeInfo) {
-            fetchAreas();
-        }
-    }, [tenantId, homeInfo?.district]); // Depend on the specific district name to avoid loops
+        const tryAutoSeed = async () => {
+            if (
+                !tenantId ||
+                !homeInfo ||
+                !homeInfo.district ||
+                areas.length > 0 ||
+                adding ||
+                hasAttemptedAutoSeed.current
+            ) {
+                return;
+            }
+            hasAttemptedAutoSeed.current = true;
+            await addDistrict(homeInfo.district, true);
+        };
+        tryAutoSeed();
+    }, [tenantId, homeInfo?.district, areas.length, adding]);
 
     useEffect(() => {
         if (areas.length > 0) {
             const districts = areas.map(a => a.district).filter(Boolean);
             fetchPrimaryMappings(districts);
+        } else {
+            setPrimaryMap({});
         }
     }, [areas, defaultStateCode]);
 
@@ -239,15 +265,16 @@ export const ServiceAreaManager = ({
 
     // Calculate distances and sort
     const sortedDistricts = useMemo(() => {
-        if (!homeInfo) return allDistricts;
-
-        return allDistricts
+        const existingDistricts = new Set(areas.map(a => normalizeDistrictName(a?.district)).filter(Boolean));
+        const base = allDistricts
             .map(d => ({
                 ...d,
-                distance: getDistance(homeInfo.lat, homeInfo.lon, d.lat, d.lon),
+                distance: homeInfo ? getDistance(homeInfo.lat, homeInfo.lon, d.lat, d.lon) : undefined,
             }))
-            .sort((a, b) => (a.distance || 0) - (b.distance || 0))
-            .filter(d => !areas.some(a => a.district === d.name)); // Filter out already added
+            .filter(d => !existingDistricts.has(normalizeDistrictName(d?.name))); // Filter out already added
+
+        if (!homeInfo) return base;
+        return base.sort((a, b) => (a.distance || 0) - (b.distance || 0));
     }, [allDistricts, homeInfo, areas]);
 
     const filteredSuggestions = useMemo(() => {
@@ -259,6 +286,12 @@ export const ServiceAreaManager = ({
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl p-6 relative">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Serviceable Areas</h3>
             <p className="text-sm text-slate-500 mb-6">Manage the districts where this dealer provides service.</p>
+            {!homeInfo && !loading && (
+                <p className="text-xs text-amber-600 dark:text-amber-300 mb-4">
+                    Add warehouse/showroom pincode for proximity suggestions.
+                </p>
+            )}
+            {areaLoadError && <p className="text-xs text-rose-500 mb-4">{areaLoadError}</p>}
 
             <div className="flex gap-2 mb-6 relative">
                 <div className="relative flex-1">

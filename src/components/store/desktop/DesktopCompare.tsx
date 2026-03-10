@@ -276,8 +276,32 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
     const [isPricingExpanded, setIsPricingExpanded] = useState(true);
     const [isDiffExpanded, setIsDiffExpanded] = useState(true);
     const [isAllSpecsExpanded, setIsAllSpecsExpanded] = useState(true);
+    const [explodedVariantIds, setExplodedVariantIds] = useState<Set<string>>(new Set());
     const fullCardsRef = useRef<HTMLDivElement>(null);
     const scrollAnchorRef = useRef<HTMLDivElement>(null);
+
+    const gridVariants = useMemo(() => {
+        const out: any[] = [];
+        activeVariants.forEach(v => {
+            const isExploded = explodedVariantIds.has(v.id);
+            const colors = Array.isArray(v.availableColors) ? v.availableColors : [];
+            if (!isExploded || colors.length <= 1) {
+                out.push(v);
+                return;
+            }
+            colors.forEach(color => {
+                out.push({
+                    ...v,
+                    id: color.id || `${v.id}::${color.name}`,
+                    __baseVariantId: v.id,
+                    color: color.name,
+                    imageUrl: color.imageUrl || v.imageUrl,
+                    availableColors: [color, ...colors.filter(c => c.id !== color.id)],
+                });
+            });
+        });
+        return out;
+    }, [activeVariants, explodedVariantIds]);
     const walletDiscount = useMemo(
         () => (isLoggedIn ? discountForCoins(Math.floor(availableCoins / 13) * 13) : 0),
         [availableCoins, isLoggedIn]
@@ -780,8 +804,9 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                     ref={scrollAnchorRef}
                                     className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pb-4"
                                 >
-                                    {activeVariants.map(v => {
+                                    {gridVariants.map(v => {
                                         const CardAdapter = isWishlist ? CompareCardAdapter : VariantCompareCardAdapter;
+                                        const baseVariantId = (v as any).__baseVariantId || v.id;
                                         return (
                                             <CardAdapter
                                                 key={v.id}
@@ -800,8 +825,16 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                         return next;
                                                     })
                                                 }
-                                                isInCompare={!removedVariantIds.has(v.id)}
-                                                onCompare={() => removeVariant(v.id)}
+                                                isInCompare={!removedVariantIds.has(baseVariantId)}
+                                                onCompare={() => removeVariant(baseVariantId)}
+                                                onExplodeColors={() =>
+                                                    setExplodedVariantIds(prev => {
+                                                        const next = new Set(prev);
+                                                        if (next.has(baseVariantId)) next.delete(baseVariantId);
+                                                        else next.add(baseVariantId);
+                                                        return next;
+                                                    })
+                                                }
                                             />
                                         );
                                     })}

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 type PricingMode = 'cash' | 'finance';
 type OfferMode = 'BEST_OFFER' | 'FAST_DELIVERY';
@@ -38,7 +38,12 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
     // On mount (client only): read saved preference and apply it
     useEffect(() => {
         const storedPricing = localStorage.getItem('bkmb_pricing_mode');
-        if (storedPricing === 'cash' || storedPricing === 'finance') {
+        const urlMode = searchParams.get('mode');
+
+        // URL param takes priority over localStorage
+        if (urlMode === 'cash' || urlMode === 'finance') {
+            setPricingMode(urlMode);
+        } else if (storedPricing === 'cash' || storedPricing === 'finance') {
             setPricingMode(storedPricing);
         }
 

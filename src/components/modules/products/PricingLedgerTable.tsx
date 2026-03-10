@@ -90,6 +90,11 @@ interface SKUPriceRow {
     hex_primary?: string;
     hex_secondary?: string;
     updatedByName?: string;
+    tatHoursInput?: number | null;
+    tatDaysInput?: number | null;
+    tatSource?: string;
+    originalTatHoursInput?: number | null;
+    originalTatDaysInput?: number | null;
 }
 
 interface PricingLedgerTableProps {
@@ -104,6 +109,7 @@ interface PricingLedgerTableProps {
     onUpdatePublishStage?: (skuId: string, stage: string) => void; // AUMS: update canonical pricing publish_stage
     onUpdateLocalStatus?: (skuId: string, isActive: boolean) => void;
     onUpdatePopular?: (skuId: string, isPopular: boolean) => void;
+    onUpdateTat?: (skuId: string, payload: { days: number | null; hours: number | null }) => void;
     onSaveAll?: () => void;
     states: RegistrationRule[];
     selectedStateId: string;
@@ -187,6 +193,22 @@ const CopyButton = ({ text, title }: { text: string; title?: string }) => {
     );
 };
 
+const MAX_TAT_DAYS = 180;
+
+const formatTatInputValue = (days?: number | null) => {
+    if (days === null || days === undefined || !Number.isFinite(Number(days))) return '';
+    return String(Math.min(MAX_TAT_DAYS, Math.max(0, Math.round(Number(days)))));
+};
+
+const parseTatInputValue = (raw: string): number | null => {
+    const input = String(raw || '').trim();
+    if (!input) return null;
+    if (!/^\d+$/.test(input)) return null;
+    const d = parseInt(input, 10);
+    if (Number.isNaN(d) || d < 0) return null;
+    return Math.min(MAX_TAT_DAYS, d);
+};
+
 export default function PricingLedgerTable({
     initialSkus,
     processedSkus,
@@ -198,6 +220,7 @@ export default function PricingLedgerTable({
     onUpdatePublishStage,
     onUpdateLocalStatus,
     onUpdatePopular,
+    onUpdateTat,
     onSaveAll,
     states,
     selectedStateId,
@@ -232,6 +255,8 @@ export default function PricingLedgerTable({
     const [openStatusDropdownId, setOpenStatusDropdownId] = useState<string | null>(null);
     const [editingOfferSkuId, setEditingOfferSkuId] = useState<string | null>(null);
     const [editingOfferValue, setEditingOfferValue] = useState<string>('');
+    const [editingTatSkuId, setEditingTatSkuId] = useState<string | null>(null);
+    const [editingTatValue, setEditingTatValue] = useState<string>('');
 
     // Only allow editing when all selected rows belong to the SAME variant
     const singleVariantSelected = useMemo(() => {
@@ -1330,6 +1355,13 @@ export default function PricingLedgerTable({
                                         </th>
                                     )}
 
+                                    {/* TAT column — dealer only */}
+                                    {!isAums && activeCategory === 'vehicles' && (
+                                        <th className="px-2 py-1.5 text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-center whitespace-nowrap w-[130px]">
+                                            TAT (Days)
+                                        </th>
+                                    )}
+
                                     <th
                                         className="px-2 py-1.5 text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 text-right whitespace-nowrap cursor-pointer hover:text-emerald-600 transition-colors border-l border-l-slate-100 dark:border-l-slate-800"
                                         onClick={() => handleSort('updatedAt')}
@@ -1387,7 +1419,7 @@ export default function PricingLedgerTable({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {paginatedSkus.map(sku => {
+                                {paginatedSkus.map((sku, rowIndex) => {
                                     const offerDelta = Math.round(Number(sku.offerAmount || 0));
                                     const gstRate = sku.gstRate || 28;
                                     const basePrice = Math.round(sku.exShowroom / (1 + gstRate / 100));
@@ -2298,6 +2330,98 @@ export default function PricingLedgerTable({
                                                             </div>
                                                         );
                                                     })()}
+                                                </td>
+                                            )}
+
+                                            {/* TAT input cell — dealer only */}
+                                            {!isAums && activeCategory === 'vehicles' && (
+                                                <td className="px-1 py-1 text-center w-[130px]">
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            value={
+                                                                editingTatSkuId === sku.id
+                                                                    ? editingTatValue
+                                                                    : formatTatInputValue(sku.tatDaysInput)
+                                                            }
+                                                            placeholder="0-180"
+                                                            onFocus={() => {
+                                                                setEditingTatSkuId(sku.id);
+                                                                setEditingTatValue(
+                                                                    formatTatInputValue(sku.tatDaysInput)
+                                                                );
+                                                            }}
+                                                            onChange={e => {
+                                                                if (editingTatSkuId === sku.id) {
+                                                                    setEditingTatValue(e.target.value);
+                                                                }
+                                                            }}
+                                                            onBlur={() => {
+                                                                if (editingTatSkuId === sku.id) {
+                                                                    const parsed = parseTatInputValue(editingTatValue);
+                                                                    onUpdateTat?.(sku.id, {
+                                                                        days: parsed,
+                                                                        hours:
+                                                                            parsed === null
+                                                                                ? null
+                                                                                : parsed === 0
+                                                                                  ? 4
+                                                                                  : 0,
+                                                                    });
+                                                                    setEditingTatSkuId(null);
+                                                                    setEditingTatValue('');
+                                                                }
+                                                            }}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter') {
+                                                                    (e.target as HTMLInputElement).blur();
+                                                                }
+                                                            }}
+                                                            className="w-[72px] text-center text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-transparent border border-slate-200 dark:border-slate-700 rounded-md px-1 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-400 focus:border-emerald-400"
+                                                        />
+                                                        {isSelected && selectedSkuIds.size > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                title="Copy TAT to all selected rows"
+                                                                onClick={() => {
+                                                                    const currentTat = {
+                                                                        days: sku.tatDaysInput ?? null,
+                                                                        hours: sku.tatHoursInput ?? null,
+                                                                    };
+                                                                    selectedSkuIds.forEach(id => {
+                                                                        if (id !== sku.id)
+                                                                            onUpdateTat?.(id, currentTat);
+                                                                    });
+                                                                }}
+                                                                className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 dark:text-amber-400 transition-all"
+                                                            >
+                                                                <Copy size={12} />
+                                                            </button>
+                                                        )}
+                                                        {rowIndex < paginatedSkus.length - 1 && (
+                                                            <button
+                                                                type="button"
+                                                                title="Copy TAT to rows below"
+                                                                onClick={() => {
+                                                                    const currentTat = {
+                                                                        days: sku.tatDaysInput ?? null,
+                                                                        hours: sku.tatHoursInput ?? null,
+                                                                    };
+                                                                    for (
+                                                                        let i = rowIndex + 1;
+                                                                        i < paginatedSkus.length;
+                                                                        i += 1
+                                                                    ) {
+                                                                        onUpdateTat?.(paginatedSkus[i].id, currentTat);
+                                                                    }
+                                                                }}
+                                                                className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-600 dark:bg-sky-900/20 dark:hover:bg-sky-900/40 dark:text-sky-400 transition-all"
+                                                            >
+                                                                <ArrowDown size={12} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             )}
 

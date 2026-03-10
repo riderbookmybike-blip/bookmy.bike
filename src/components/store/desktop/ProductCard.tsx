@@ -4,8 +4,6 @@ import React, { useState, useEffect, useRef, useCallback, useTransition } from '
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import {
     Heart,
-    Star,
-    StarHalf,
     MapPin,
     Bluetooth,
     ArrowRight,
@@ -32,20 +30,6 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
-
-const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    return (
-        <div className="flex items-center gap-0.5">
-            {[...Array(fullStars)].map((_, i) => (
-                <Star key={`full-${i}`} size={size} className="fill-[#F4B000] text-[#F4B000]" />
-            ))}
-            {hasHalfStar && <StarHalf size={size} className="fill-[#F4B000] text-[#F4B000]" />}
-        </div>
-    );
-};
 
 export const ProductCard = ({
     v,
@@ -269,12 +253,6 @@ export const ProductCard = ({
         setSelectedHex(primaryColor?.hexCode || null);
     }, [v.id, v.imageUrl, v.availableColors, v.zoomFactor, v.isFlipped, v.offsetX, v.offsetY]);
 
-    const [_ratingCount, setRatingCount] = useState(() => {
-        // Initialize with random count between 500-999 * 100
-        const randomFactor = Math.floor(Math.random() * (999 - 500 + 1) + 500);
-        return randomFactor * 100;
-    });
-
     const effectiveServerPricing = (v as any)?.serverPricing;
 
     // Use the comprehensive price from SystemCatalogLogic (already includes offer)
@@ -286,7 +264,11 @@ export const ProductCard = ({
 
     // Location & Dealer Labels - derived directly from ProductVariant
     const priceSourceLocation =
-        v.dealerLocation || effectiveServerPricing?.location?.district || v.price?.pricingSource || undefined;
+        bestOffer?.dealerLocation ||
+        v.dealerLocation ||
+        effectiveServerPricing?.location?.district ||
+        v.price?.pricingSource ||
+        undefined;
 
     const cleanedPriceSourceLocation = priceSourceLocation
         ? priceSourceLocation.replace(/^(Best:|Base:)\s*/i, '').trim()
@@ -328,10 +310,12 @@ export const ProductCard = ({
         return cleanedPriceSourceLocation.split(',')[0]?.trim();
     })();
 
-    const dealerLabel = v.studioName?.trim();
+    const winnerDealerName =
+        (bestOffer as any)?.dealer || (bestOffer as any)?.dealer_name || (bestOffer as any)?.dealerName || null;
+    const dealerLabel = (winnerDealerName || v.studioName || '').trim();
     const dealerLabelDisplay = dealerLabel || 'UNASSIGNED';
     const districtLabelDisplay = districtLabel || null;
-    const studioDisplayLabel = v.studioCode || null;
+    const studioDisplayLabel = bestOffer?.studio_id || v.studioCode || null;
     const studioIdLabel = studioDisplayLabel || bestOffer?.studio_id || null;
 
     // Combine District and Studio Code
@@ -353,7 +337,15 @@ export const ProductCard = ({
     const pricingLabel = isTrulyOnRoad ? 'ON-ROAD' : 'EX-SHOWROOM';
 
     const onRoad = v.price?.onRoad || 0;
-    const offerPrice = v.price?.offerPrice || basePrice;
+    const rawWinnerDelta =
+        (bestOffer as any)?.price ??
+        (bestOffer as any)?.offer_amount ??
+        (bestOffer as any)?.best_offer ??
+        (bestOffer as any)?.offerAmount ??
+        null;
+    const bestOfferDelta = rawWinnerDelta !== null && rawWinnerDelta !== undefined ? Number(rawWinnerDelta) : null;
+    const offerPriceFromWinner = bestOfferDelta !== null && Number.isFinite(onRoad) ? onRoad + bestOfferDelta : null;
+    const offerPrice = offerPriceFromWinner ?? v.price?.offerPrice ?? basePrice;
     const discountBasedDelta = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
     const mappedOfferDelta =
         typeof v.price?.offerPrice === 'number' && typeof v.price?.onRoad === 'number'
@@ -384,7 +376,7 @@ export const ProductCard = ({
     const isConfirmedPrice = !!bestOffer;
     // Savings calculation
 
-    const offerDelta = typeof bestOffer?.price === 'number' ? bestOffer.price : mappedOfferDelta;
+    const offerDelta = bestOfferDelta !== null && Number.isFinite(bestOfferDelta) ? bestOfferDelta : mappedOfferDelta;
     const offerDeltaForParity = offerDelta;
     // Calculate savings based on source (Live Best Offer vs Server/Mapped Data)
     const bundleSavings = bestOffer
@@ -425,6 +417,34 @@ export const ProductCard = ({
     // Handle optional serviceability
     const safeServiceability = serviceability || { status: 'unset' };
     const isUnserviceable = safeServiceability.status === 'unserviceable';
+    const winnerTatHoursRaw =
+        (bestOffer as any)?.tat_effective_hours ??
+        (bestOffer as any)?.tatEffectiveHours ??
+        (bestOffer as any)?.delivery_tat_hours ??
+        null;
+    const winnerTatDaysRaw =
+        (bestOffer as any)?.delivery_tat_days ??
+        (bestOffer as any)?.deliveryTatDays ??
+        (bestOffer as any)?.tat_days ??
+        null;
+    const winnerTatHours =
+        winnerTatHoursRaw !== null && winnerTatHoursRaw !== undefined ? Number(winnerTatHoursRaw) : null;
+    const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
+    const deliveryTatLabel = (() => {
+        if (winnerTatHours !== null && Number.isFinite(winnerTatHours) && winnerTatHours >= 0) {
+            if (winnerTatHours === 0) return 'Delivery in 4 hrs';
+            if (winnerTatHours <= 72) return `Delivery in ${winnerTatHours} hrs`;
+            const d = Math.floor(winnerTatHours / 24);
+            const h = winnerTatHours % 24;
+            return h > 0 ? `Delivery in ${d} days ${h} hrs` : `Delivery in ${d} days`;
+        }
+        if (winnerTatDays !== null && Number.isFinite(winnerTatDays) && winnerTatDays >= 0) {
+            if (winnerTatDays === 0) return 'Delivery in 4 hrs';
+            if (winnerTatDays <= 3) return `Delivery in ${winnerTatDays * 24} hrs`;
+            return `Delivery in ${winnerTatDays} days`;
+        }
+        return 'Delivery ETA updating';
+    })();
 
     const shouldDevanagari = language === 'hi' || language === 'mr';
     const scriptText = (value?: string) => {
@@ -554,14 +574,13 @@ export const ProductCard = ({
                                 >
                                     {displayModel}
                                 </h3>
-                                <div
-                                    className={`flex items-center gap-2 bg-slate-100 ${isTv ? 'px-1 py-0.5' : 'px-2 py-1'} rounded-md`}
-                                >
-                                    <StarRating rating={v.rating || 4.5} size={isTv ? 8 : 10} />
+                                {/* Delivery TAT Line - Replaces Ratings slot */}
+                                <div className="flex items-center gap-1.5">
+                                    <Clock size={10} className="text-slate-400" />
                                     <span
-                                        className={`text-[10px] font-black uppercase tracking-widest text-slate-600 ${isTv ? '' : ''}`}
+                                        className={`text-[9px] uppercase tracking-widest italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'font-black text-slate-600' : 'font-bold text-slate-400'}`}
                                     >
-                                        {v.rating || '4.5'}
+                                        {deliveryTatLabel}
                                     </span>
                                 </div>
                             </div>
@@ -848,24 +867,24 @@ export const ProductCard = ({
                 >
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 z-0" />
 
-                    {/* SAVE pill for non-bestOffer cards */}
-                    {mappedOfferDelta < 0 && !bestOffer && (
+                    {/* SAVE pill */}
+                    {offerDelta < 0 && (
                         <div className="absolute top-4 left-4 z-20">
                             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500 text-white rounded-lg shadow-[0_3px_10px_rgba(16,185,129,0.25)] border border-emerald-300/35 transition-all">
                                 <Sparkles size={9} className="fill-white text-white" />
                                 <span className="text-[9px] font-black uppercase tracking-[0.12em]">
-                                    Save ₹{formatRoundedPrice(Math.abs(mappedOfferDelta))}
+                                    Save ₹{formatRoundedPrice(Math.abs(offerDelta))}
                                 </span>
                             </div>
                         </div>
                     )}
-                    {/* SURGE pill (keep as pill) for non-bestOffer cards */}
-                    {mappedOfferDelta > 0 && !bestOffer && (
+                    {/* SURGE pill */}
+                    {offerDelta > 0 && (
                         <div className="absolute top-4 left-4 z-20">
                             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-rose-500 text-white rounded-lg shadow-[0_3px_10px_rgba(244,63,94,0.25)] border border-rose-300/35 transition-all">
                                 <Zap size={9} className="fill-white text-white" />
                                 <span className="text-[9px] font-black uppercase tracking-[0.12em]">
-                                    Surge ₹{formatRoundedPrice(mappedOfferDelta)}
+                                    Surge ₹{formatRoundedPrice(offerDelta)}
                                 </span>
                             </div>
                         </div>
@@ -1352,7 +1371,15 @@ export const ProductCard = ({
                                                                                             Delivery TAT
                                                                                         </span>
                                                                                         <span className="text-[11px] font-black text-slate-900 uppercase">
-                                                                                            7-10 Days
+                                                                                            {deliveryTatLabel
+                                                                                                .replace(
+                                                                                                    'Delivery in ',
+                                                                                                    ''
+                                                                                                )
+                                                                                                .replace(
+                                                                                                    'Delivery ',
+                                                                                                    ''
+                                                                                                )}
                                                                                         </span>
                                                                                     </div>
                                                                                 </div>
@@ -1405,55 +1432,12 @@ export const ProductCard = ({
 
                                                     <div className="flex flex-col items-start gap-0.5">
                                                         <span
-                                                            className="text-[24px] md:text-[28px] font-black italic leading-none"
+                                                            onClick={handleFlip}
+                                                            className="text-[24px] md:text-[28px] font-black italic leading-none cursor-pointer hover:scale-105 active:scale-95 transition-all"
                                                             style={{ color: cashPrimaryText }}
                                                         >
                                                             ₹{formatRoundedPrice(effectiveOfferPrice)}
                                                         </span>
-
-                                                        {/* Delivery TAT Line */}
-                                                        {bestOffer &&
-                                                            (bestOffer.tat_effective_hours !== undefined ||
-                                                                bestOffer.delivery_tat_days !== undefined) && (
-                                                                <div
-                                                                    className={`mt-1 flex items-center gap-1.5 ${effectiveOfferMode === 'FAST_DELIVERY' ? 'px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg shadow-[0_2px_8px_rgba(16,185,129,0.08)]' : 'opacity-60'}`}
-                                                                >
-                                                                    <Clock
-                                                                        size={10}
-                                                                        className={
-                                                                            effectiveOfferMode === 'FAST_DELIVERY'
-                                                                                ? 'text-emerald-500'
-                                                                                : 'text-slate-400'
-                                                                        }
-                                                                    />
-                                                                    <span
-                                                                        className={`text-[9px] font-black uppercase tracking-widest italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'text-emerald-600' : 'text-slate-500'}`}
-                                                                    >
-                                                                        {(() => {
-                                                                            const hrs =
-                                                                                bestOffer.tat_effective_hours || 0;
-                                                                            const days =
-                                                                                bestOffer.delivery_tat_days || 0;
-                                                                            if (hrs > 0 && hrs <= 24)
-                                                                                return `Delivery in ${hrs} hrs`;
-                                                                            if (days > 0) {
-                                                                                const dayHrs = hrs % 24;
-                                                                                return dayHrs > 0
-                                                                                    ? `Delivery in ${days} days ${dayHrs} hrs`
-                                                                                    : `Delivery in ${days} days`;
-                                                                            }
-                                                                            if (hrs > 24) {
-                                                                                const d = Math.floor(hrs / 24);
-                                                                                const h = hrs % 24;
-                                                                                return h > 0
-                                                                                    ? `Delivery in ${d} days ${h} hrs`
-                                                                                    : `Delivery in ${d} days`;
-                                                                            }
-                                                                            return 'Delivery by 7-10 Days';
-                                                                        })()}
-                                                                    </span>
-                                                                </div>
-                                                            )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1546,6 +1530,16 @@ export const ProductCard = ({
                             )}
                         </div>
                     )}
+
+                    {/* Delivery TAT Line — below CTA, replaces old ratings strip */}
+                    <div className="mt-2 flex items-center justify-center gap-1.5">
+                        <Clock size={10} className="text-slate-400" />
+                        <span
+                            className={`text-[9px] uppercase tracking-widest italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'font-black text-slate-600' : 'font-bold text-slate-400'}`}
+                        >
+                            {deliveryTatLabel}
+                        </span>
+                    </div>
                 </div>
             </motion.div>
         </div>

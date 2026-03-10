@@ -56,8 +56,58 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
             const { data, error } = await query.maybeSingle();
 
             if (data) {
+                const { data: schemeRows, error: schemeError } = await supabase
+                    .from('fin_marketplace_schemes')
+                    .select('*')
+                    .eq('lender_tenant_id', data.id)
+                    .order('updated_at', { ascending: false });
+
+                if (schemeError) {
+                    console.error('[BankFullDetail] Failed to load schemes:', schemeError);
+                }
+
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const cfg = (data.config as Record<string, any>) || {};
+                const normalizedSchemes = ((schemeRows as any[]) || []).map(s => ({
+                    id: s.scheme_code,
+                    name: s.scheme_code,
+                    isActive: s.is_marketplace_active && s.status === 'ACTIVE',
+                    validFrom: s.valid_from || undefined,
+                    validTo: s.valid_until || undefined,
+                    minTenure: s.min_tenure ?? 12,
+                    maxTenure: s.max_tenure ?? 36,
+                    allowedTenures: Array.isArray(s.allowed_tenures) ? s.allowed_tenures : [],
+                    minLoanAmount: s.min_loan_amount ?? 25000,
+                    maxLoanAmount: s.max_loan_amount ?? 300000,
+                    maxLTV: s.ltv ?? 100,
+                    interestRate: s.roi ?? 0,
+                    interestType: (s as any).interest_type || 'REDUCING',
+                    payout: 0,
+                    payoutType: 'FIXED',
+                    charges:
+                        Array.isArray((s as any).charges_jsonb) && (s as any).charges_jsonb.length > 0
+                            ? (s as any).charges_jsonb
+                            : s.processing_fee > 0
+                              ? [
+                                    {
+                                        id: 'processing_fee',
+                                        name: 'Processing Fee',
+                                        type: s.processing_fee_type || 'FIXED',
+                                        value: s.processing_fee,
+                                        calculationBasis: 'LOAN_AMOUNT',
+                                        impact: 'UPFRONT',
+                                        taxStatus: 'NOT_APPLICABLE',
+                                    },
+                                ]
+                              : [],
+                    applicability: {
+                        brands: 'ALL',
+                        models: 'ALL',
+                        dealerships: 'ALL',
+                    },
+                    isPrimary: false,
+                }));
+
                 const mapped: BankPartner = {
                     id: data.id,
                     displayId: data.display_id || data.id.slice(0, 8).toUpperCase(),
@@ -80,7 +130,7 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                     },
                     locations: cfg?.locations || [],
                     team: cfg?.team || [],
-                    schemes: cfg?.schemes || [],
+                    schemes: normalizedSchemes,
                     chargesMaster: cfg?.chargesMaster || [],
                     management: cfg?.management || { states: [], areas: [], dealerIds: [] },
                 };

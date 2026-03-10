@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { BankPartner } from '@/types/bankPartner';
+import React, { useState, useMemo, useEffect } from 'react';
+import { BankPartner, BankScheme } from '@/types/bankPartner';
 import { calculateAPRForAllSchemes, APRCalculation } from './tabs/utils/aprCalculator';
 import { BarChart3, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Info, Building2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 type SortField = keyof APRCalculation | 'partnerName';
 type SortDirection = 'asc' | 'desc' | null;
@@ -21,13 +22,61 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
     const [partnerFilter, setPartnerFilter] = useState('');
     const [roiFilter, setRoiFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
     const [aprFilter, setAprFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
+    const [schemesByBank, setSchemesByBank] = useState<Map<string, BankScheme[]>>(new Map());
+
+    // Fetch schemes from normalized table
+    useEffect(() => {
+        async function loadSchemes() {
+            const supabase = createClient();
+            const bankIds = banks.map(b => b.id);
+            if (bankIds.length === 0) return;
+
+            const { data } = await supabase
+                .from('fin_marketplace_schemes')
+                .select('*')
+                .in('lender_tenant_id', bankIds)
+                .eq('is_marketplace_active', true)
+                .eq('status', 'ACTIVE');
+
+            const map = new Map<string, BankScheme[]>();
+            for (const s of data || []) {
+                const mapped: BankScheme = {
+                    id: s.scheme_code,
+                    name: s.scheme_code,
+                    interestRate: Number(s.roi),
+                    interestType: (s as any).interest_type || 'REDUCING',
+                    maxLTV: Number(s.ltv),
+                    payout: Number(s.processing_fee),
+                    payoutType: s.processing_fee_type as any,
+                    minLoanAmount: Number(s.min_loan_amount),
+                    maxLoanAmount: Number(s.max_loan_amount),
+                    minTenure: s.min_tenure,
+                    maxTenure: s.max_tenure,
+                    allowedTenures: s.allowed_tenures || [],
+                    isActive: true,
+                    isPrimary: false,
+                    validFrom: s.valid_from,
+                    validTo: s.valid_until,
+                    charges: (s as any).charges_jsonb || [],
+                    applicability: { brands: 'ALL', models: 'ALL', dealerships: 'ALL' },
+                } as any;
+                const tid = s.lender_tenant_id;
+                if (tid) {
+                    if (!map.has(tid)) map.set(tid, []);
+                    map.get(tid)!.push(mapped);
+                }
+            }
+            setSchemesByBank(map);
+        }
+        loadSchemes();
+    }, [banks]);
 
     // Calculate APR for all schemes from all partners
     const allSchemesData = useMemo(() => {
         const consolidated: ConsolidatedAPR[] = [];
 
         banks.forEach(bank => {
-            const schemes = bank.config?.schemes || [];
+            const schemes = schemesByBank.get(bank.id) || [];
             if (schemes.length === 0) return;
 
             // Map to BankPartner format
@@ -58,7 +107,7 @@ export default function AllSchemesAPRView({ banks }: { banks: any[] }) {
         });
 
         return consolidated;
-    }, [banks, assetValue, tenureMonths]);
+    }, [banks, schemesByBank, assetValue, tenureMonths]);
 
     // Apply filters and sorting
     const filteredAndSortedData = useMemo(() => {

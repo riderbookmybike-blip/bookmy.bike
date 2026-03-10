@@ -21,18 +21,42 @@ export default function BankList() {
     const fetchBanks = async () => {
         setLoading(true);
         const supabase = createClient();
+
+        // Fetch banks
         const { data, error } = await supabase
             .from('id_tenants')
             .select('*')
             .eq('type', 'BANK')
             .order('name', { ascending: true });
 
-        if (data) {
-            setBanks(data);
-        }
         if (error) {
             console.error('Error fetching banks:', error);
+            setLoading(false);
+            return;
         }
+
+        // Fetch scheme counts from normalized table
+        const bankIds = (data || []).map(b => b.id);
+        const { data: schemeCounts } = await supabase
+            .from('fin_marketplace_schemes')
+            .select('lender_tenant_id')
+            .in('lender_tenant_id', bankIds)
+            .eq('is_marketplace_active', true)
+            .eq('status', 'ACTIVE');
+
+        const countMap = new Map<string, number>();
+        for (const s of schemeCounts || []) {
+            const tid = s.lender_tenant_id;
+            if (tid) countMap.set(tid, (countMap.get(tid) || 0) + 1);
+        }
+
+        // Attach scheme counts to bank data
+        const banksWithCounts = (data || []).map(b => ({
+            ...b,
+            _schemeCount: countMap.get(b.id) || 0,
+        }));
+
+        setBanks(banksWithCounts);
         setLoading(false);
     };
 
@@ -64,16 +88,9 @@ export default function BankList() {
         { key: 'status', header: 'Status', type: 'badge' as const, align: 'center' as const, width: '120px' },
     ];
 
-    const getSchemesCount = (config: unknown) => {
-        if (!config || typeof config !== 'object') return 0;
-        const record = config as Record<string, unknown>;
-        const schemes = record.schemes;
-        return Array.isArray(schemes) ? schemes.length : 0;
-    };
-
     // Combine real data with display properties
     const finalData = banks.map(p => {
-        const schemesCount = getSchemesCount(p.config);
+        const schemesCount = (p as any)._schemeCount || 0;
         return {
             ...p,
             displayId: p.display_id || p.id.slice(0, 8).toUpperCase(),

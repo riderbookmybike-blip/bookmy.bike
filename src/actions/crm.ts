@@ -8372,19 +8372,37 @@ export async function reconcileReceipt(receiptId: string) {
 export async function getBankSchemes(bankId: string) {
     try {
         const { data, error } = await adminClient
-            .from('id_tenants')
-            .select('config')
-            .eq('id', bankId)
-            .eq('type', 'BANK')
-            .single();
+            .from('fin_marketplace_schemes')
+            .select('*')
+            .eq('lender_tenant_id', bankId)
+            .eq('status', 'ACTIVE');
 
-        if (error || !data?.config) {
-            console.error('[getBankSchemes] Error:', getErrorMessage(error) || 'No config found');
+        if (error) {
+            console.error('[getBankSchemes] Error:', getErrorMessage(error));
             return [];
         }
 
-        const schemes = (data.config as any)?.schemes || [];
-        return schemes.filter((s: any) => s.isActive !== false);
+        // Map to legacy BankScheme shape for backward compatibility
+        return (data || []).map((s: any) => ({
+            id: s.scheme_code,
+            name: s.scheme_code,
+            interestRate: Number(s.roi),
+            interestType: (s as any).interest_type || 'REDUCING',
+            maxLTV: Number(s.ltv),
+            payout: 0,
+            payoutType: 'PERCENTAGE',
+            minLoanAmount: Number(s.min_loan_amount),
+            maxLoanAmount: Number(s.max_loan_amount),
+            minTenure: s.min_tenure,
+            maxTenure: s.max_tenure,
+            allowedTenures: s.allowed_tenures || [],
+            isActive: s.is_marketplace_active,
+            isPrimary: false,
+            validFrom: s.valid_from,
+            validTo: s.valid_until,
+            charges: s.charges_jsonb || [],
+            applicability: { brands: 'ALL', models: 'ALL', dealerships: 'ALL' },
+        }));
     } catch (error: unknown) {
         console.error('[getBankSchemes] Fatal:', getErrorMessage(error));
         return [];

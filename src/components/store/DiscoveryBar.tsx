@@ -130,7 +130,9 @@ export function DiscoveryBar({
                                 onClick={() => onPricingModeChange(nextPricingMode)}
                                 className={`${pillBase} bg-white shadow-sm border-black/10 text-slate-900 hover:border-black/20`}
                                 aria-label={
-                                    nextPricingMode === 'finance' ? 'View finance pricing' : 'View cash pricing'
+                                    nextPricingMode === 'finance'
+                                        ? 'Switch to finance pricing'
+                                        : 'Switch to cash pricing'
                                 }
                             >
                                 {nextPricingMode === 'finance' ? (

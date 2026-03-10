@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Heart, Pencil, CircleHelp, ArrowRight, Zap, Palette, Clock } from 'lucide-react';
+import { Heart, Pencil, CircleHelp, ArrowRight, Zap, Palette, Clock, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { buildProductUrl } from '@/lib/utils/urlHelper';
 import type { ProductVariant } from '@/types/productMaster';
@@ -50,7 +50,7 @@ export function CompactProductCard({
 }: CompactProductCardProps) {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { trackEvent } = useAnalytics();
-    const { offerMode: globalOfferMode } = useDiscovery();
+    const { offerMode: globalOfferMode, setPricingMode, pricingMode } = useDiscovery();
     const effectiveOfferMode = propOfferMode || globalOfferMode;
     const isSaved = isFavorite(v.id);
     const [selectedHex, setSelectedHex] = useState<string | null>(() => {
@@ -96,6 +96,34 @@ export function CompactProductCard({
     const factor = getEmiFactor(activeTenure);
     const emiValue = Math.max(0, Math.round(loanAmount * factor));
     const showEmi = loanAmount >= MIN_LOAN_AMOUNT && emiValue > 0;
+    const winnerTatHoursRaw =
+        (bestOffer as any)?.tat_effective_hours ??
+        (bestOffer as any)?.tatEffectiveHours ??
+        (bestOffer as any)?.delivery_tat_hours ??
+        null;
+    const winnerTatDaysRaw =
+        (bestOffer as any)?.delivery_tat_days ??
+        (bestOffer as any)?.deliveryTatDays ??
+        (bestOffer as any)?.tat_days ??
+        null;
+    const winnerTatHours =
+        winnerTatHoursRaw !== null && winnerTatHoursRaw !== undefined ? Number(winnerTatHoursRaw) : null;
+    const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
+    const deliveryTatLabel = (() => {
+        if (winnerTatHours !== null && Number.isFinite(winnerTatHours) && winnerTatHours >= 0) {
+            if (winnerTatHours === 0) return 'Delivery in 4 hrs';
+            if (winnerTatHours <= 72) return `Delivery in ${winnerTatHours} hrs`;
+            const d = Math.floor(winnerTatHours / 24);
+            const h = winnerTatHours % 24;
+            return h > 0 ? `Delivery in ${d} days ${h} hrs` : `Delivery in ${d} days`;
+        }
+        if (winnerTatDays !== null && Number.isFinite(winnerTatDays) && winnerTatDays >= 0) {
+            if (winnerTatDays === 0) return 'Delivery in 4 hrs';
+            if (winnerTatDays <= 3) return `Delivery in ${winnerTatDays * 24} hrs`;
+            return `Delivery in ${winnerTatDays} days`;
+        }
+        return 'Delivery ETA updating';
+    })();
 
     const bcoinTotal = coinsNeededForPrice(baseDisplayPrice);
 
@@ -141,6 +169,13 @@ export function CompactProductCard({
             variant_slug: slugify(v.variant || ''),
             source: 'STORE_CATALOG',
         });
+    };
+
+    const handleFlip = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextMode = pricingMode === 'cash' ? 'finance' : 'cash';
+        setPricingMode(nextMode);
     };
 
     return (
@@ -224,10 +259,10 @@ export function CompactProductCard({
                 )}
             </Link>
 
-            {/* Content */}
-            <Link href={href} onClick={trackCatalogClick} className="flex flex-col gap-1.5 p-3 pt-2">
-                {/* Make & Model */}
-                <div>
+            {/* Content Wrap */}
+            <div className="flex flex-col flex-1">
+                {/* Make & Model Wrapper */}
+                <Link href={href} onClick={trackCatalogClick} className="block p-3 pt-2">
                     <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 leading-none">
                         {v.make}
                     </p>
@@ -235,10 +270,10 @@ export function CompactProductCard({
                         {v.model}
                     </h3>
                     <p className="text-[10px] font-semibold text-slate-400 leading-tight line-clamp-1">{v.variant}</p>
-                </div>
+                </Link>
 
                 {/* Modern Pricing & EMI Stack */}
-                <div className="mt-auto flex flex-col gap-3">
+                <div className="mt-auto flex flex-col gap-3 p-3 pt-0">
                     {/* On-Road Price */}
                     <div className="flex flex-col items-start">
                         <div className="flex items-center gap-1.5 mb-1">
@@ -247,8 +282,8 @@ export function CompactProductCard({
                             </p>
                             <CircleHelp size={10} className="text-slate-500" />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <p className="text-[18px] font-black text-slate-900 leading-none">
+                        <div className="flex items-center gap-2" onClick={handleFlip}>
+                            <p className="text-[18px] font-black text-slate-900 leading-none cursor-pointer hover:scale-105 active:scale-95 transition-all">
                                 ₹{formatRoundedPrice(v.price?.onRoad || v.price?.exShowroom || 0)}
                             </p>
                             <div className="flex items-center gap-1 bg-[#F4B000]/10 px-1.5 py-0.5 rounded border border-[#F4B000]/20 relative group/bcoin">
@@ -321,42 +356,6 @@ export function CompactProductCard({
                         </div>
                     </div>
 
-                    {/* Delivery TAT Line (Mobile) */}
-                    {bestOffer &&
-                        (bestOffer.tat_effective_hours !== undefined || bestOffer.delivery_tat_days !== undefined) && (
-                            <div
-                                className={`mt-1 flex items-center gap-1.5 ${effectiveOfferMode === 'FAST_DELIVERY' ? 'px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg' : 'opacity-60'}`}
-                            >
-                                <Clock
-                                    size={9}
-                                    className={
-                                        effectiveOfferMode === 'FAST_DELIVERY' ? 'text-emerald-500' : 'text-slate-400'
-                                    }
-                                />
-                                <span
-                                    className={`text-[8px] font-black uppercase tracking-wider italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'text-emerald-600' : 'text-slate-500'}`}
-                                >
-                                    {(() => {
-                                        const hrs = bestOffer.tat_effective_hours || 0;
-                                        const days = bestOffer.delivery_tat_days || 0;
-                                        if (hrs > 0 && hrs <= 24) return `Delivery in ${hrs} hrs`;
-                                        if (days > 0) {
-                                            const dayHrs = (bestOffer.tat_effective_hours || 0) % 24;
-                                            return dayHrs > 0
-                                                ? `Delivery in ${days} days ${dayHrs} hrs`
-                                                : `Delivery in ${days} days`;
-                                        }
-                                        if (hrs > 24) {
-                                            const d = Math.floor(hrs / 24);
-                                            const h = hrs % 24;
-                                            return h > 0 ? `Delivery in ${d} days ${h} hrs` : `Delivery in ${d} days`;
-                                        }
-                                        return 'Delivery in 7-10 Days';
-                                    })()}
-                                </span>
-                            </div>
-                        )}
-
                     {/* Lowest EMI Block — hidden if loan < ₹15k (auto cash-flip) */}
                     {showEmi && (
                         <div className="flex flex-col items-start border-t border-slate-100 pt-2">
@@ -369,8 +368,8 @@ export function CompactProductCard({
                                     Lowest EMI
                                 </p>
                             </div>
-                            <div className="flex items-baseline mb-1">
-                                <span className="text-[18px] font-black text-emerald-500 italic leading-none">
+                            <div className="flex items-baseline mb-1" onClick={handleFlip}>
+                                <span className="text-[18px] font-black text-emerald-500 italic leading-none cursor-pointer hover:scale-105 active:scale-95 transition-all">
                                     ₹{formatRoundedPrice(emiValue)}
                                 </span>
                                 <span className="text-slate-200 text-sm font-light select-none mx-1">/</span>
@@ -378,7 +377,7 @@ export function CompactProductCard({
                                     {activeTenure} mo
                                 </span>
                             </div>
-                            <div className="flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                            <div className="flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 w-fit">
                                 <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest leading-none">
                                     Downpayment ₹{formatRoundedPrice(downpayment || 0)}
                                 </span>
@@ -402,7 +401,17 @@ export function CompactProductCard({
                         </div>
                     )}
                 </div>
-            </Link>
+            </div>
+
+            {/* Delivery TAT Line — below pricing, replaces old ratings strip */}
+            <div className="mx-3 mb-2 flex items-center justify-center gap-1">
+                <Clock size={8} className="text-slate-400" />
+                <span
+                    className={`text-[7px] uppercase tracking-wider italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'font-black text-slate-600' : 'font-bold text-slate-400'}`}
+                >
+                    {deliveryTatLabel}
+                </span>
+            </div>
 
             {/* Color Swatches (Desktop High-Fidelity) */}
             {swatches.length > 1 && (

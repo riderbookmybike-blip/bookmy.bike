@@ -96,7 +96,6 @@ export function ShopperBottomNav() {
     );
 
     // ── Pricing state ─────────────────────────────────────────────────────────
-    const [pricingMode, setPricingMode] = useState<'cash' | 'finance'>('finance');
     const [downpayment, setDownpayment] = useState(10000);
     const [tenure, setTenure] = useState(36);
     const [sheetOpen, setSheetOpen] = useState(false);
@@ -106,7 +105,7 @@ export function ShopperBottomNav() {
     const [editingDp, setEditingDp] = useState(false);
     const [dpRaw, setDpRaw] = useState('');
     const dpInputRef = useRef<HTMLInputElement>(null);
-    const { offerMode, setOfferMode } = useDiscovery();
+    const { offerMode, setOfferMode, pricingMode, setPricingMode } = useDiscovery();
 
     const handleBodyTypeSelect = (type: string) => {
         setRideSheetOpen(false);
@@ -119,7 +118,7 @@ export function ShopperBottomNav() {
 
     useEffect(() => {
         const saved = readPricing();
-        setPricingMode(saved.mode || 'finance');
+        // pricingMode is now managed by DiscoveryContext via useEffect on searchParams
         setDownpayment(saved.downpayment || 10000);
         setTenure(saved.tenure || 36);
     }, []);

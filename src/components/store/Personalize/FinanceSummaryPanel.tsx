@@ -69,16 +69,7 @@ export default function FinanceSummaryPanel({
         emiTenure,
     });
 
-    const {
-        netLoan,
-        grossLoan,
-        totalFunded,
-        totalUpfront: _totalUpfront,
-        totalInterest,
-        totalOutflow,
-        upfrontCharges,
-        fundedCharges,
-    } = metrics;
+    const { netLoan, grossLoan, totalFunded, totalInterest, totalOutflow, upfrontCharges, fundedCharges } = metrics;
 
     const calcAmt = (charge: any): number => {
         if (charge.type === 'PERCENTAGE') {
@@ -90,14 +81,12 @@ export default function FinanceSummaryPanel({
 
     return (
         <div className="flex flex-col h-full">
-            {/* HEADER: Finance Partner */}
             <div className="space-y-3 pb-4 border-b border-slate-200/60 shrink-0">
                 <Row label="Financier" value={initialFinance?.bank?.name || 'Standard'} />
                 <Row label="Scheme" value={initialFinance?.scheme?.name || 'Standard'} />
                 <Row label="Interest Rate" value={`${formatInterestRate(annualInterest)} (${interestType})`} />
             </div>
 
-            {/* CONTENT: Calculation Flow */}
             <div className="flex-1 flex flex-col justify-evenly py-3 gap-1">
                 <Row label="Asset Cost (Net SOT)" value={`₹${(totalOnRoad + totalSavings).toLocaleString()}`} />
                 {totalSavings > 0 && (

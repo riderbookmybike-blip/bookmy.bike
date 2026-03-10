@@ -662,7 +662,16 @@ export default function ProductClient({
                 taluka: resolvedLocation?.taluka || null,
                 district: resolvedLocation?.district || null,
                 stateCode: resolvedLocation?.stateCode || null,
-                delivery_tat_days: 7,
+                delivery_tat_days:
+                    ((bestOffer as any)?.delivery_tat_days ??
+                    (bestOffer as any)?.deliveryTatDays ??
+                    (bestOffer as any)?.tat_days ??
+                    ((bestOffer as any)?.tat_effective_hours ?? (bestOffer as any)?.tatEffectiveHours ?? null) !== null)
+                        ? Math.ceil(
+                              Number((bestOffer as any)?.tat_effective_hours ?? (bestOffer as any)?.tatEffectiveHours) /
+                                  24
+                          )
+                        : null,
                 checked_at: new Date().toISOString(),
             },
             pricing_snapshot: {
@@ -965,12 +974,27 @@ export default function ProductClient({
         setUserDownPayment,
     };
 
+    const winnerTatHours =
+        (bestOffer as any)?.tat_effective_hours ??
+        (bestOffer as any)?.tatEffectiveHours ??
+        (bestOffer as any)?.delivery_tat_hours ??
+        null;
+    const winnerTatDays =
+        (bestOffer as any)?.delivery_tat_days ??
+        (bestOffer as any)?.deliveryTatDays ??
+        (bestOffer as any)?.tat_days ??
+        (winnerTatHours !== null && winnerTatHours !== undefined ? Math.ceil(Number(winnerTatHours) / 24) : null);
+
     const commonProps = {
         product,
         makeParam,
         modelParam,
         variantParam,
-        data,
+        data: {
+            ...data,
+            tat_effective_hours: winnerTatHours,
+            delivery_tat_days: winnerTatDays,
+        },
         handlers,
         leadContext: leadContext || undefined,
         initialLocation: resolvedLocation || initialLocation,

@@ -105,32 +105,72 @@ export async function onboardBank(formData: { bankName: string; website: string;
 }
 
 export async function updateBankSchemes(bankId: string, schemes: any[]) {
-    // console.log('[UpdateBankSchemes] Updating schemes for:', bankId);
-
     try {
-        // 1. Fetch current config
-        const { data: tenant, error: fetchError } = await adminClient
+        // 1. Get bank name for lender_name field
+        const { data: bank, error: bankError } = await adminClient
             .from('id_tenants')
-            .select('config')
+            .select('name')
             .eq('id', bankId)
             .single();
 
-        if (fetchError) throw fetchError;
+        if (bankError) throw bankError;
 
-        // 2. Update config with new schemes
-        const newConfig = {
-            ...((tenant.config as Record<string, any>) || {}),
-            schemes,
-        };
+        // 2. Upsert each scheme into fin_marketplace_schemes
+        for (const s of schemes) {
+            const row = {
+                scheme_code: s.id,
+                lender_name: bank.name,
+                lender_tenant_id: bankId,
+                target_sku_ids: [] as string[],
+                min_loan_amount: s.minLoanAmount || 25000,
+                max_loan_amount: s.maxLoanAmount || 300000,
+                roi: s.interestRate || 0,
+                ltv: s.maxLTV || 100,
+                min_tenure: s.minTenure || 12,
+                max_tenure: s.maxTenure || 36,
+                allowed_tenures: s.allowedTenures || [],
+                processing_fee: (() => {
+                    const charge = (s.charges || []).find(
+                        (c: any) =>
+                            c.name?.toLowerCase().includes('processing') ||
+                            c.name?.toLowerCase().includes('facilitation')
+                    );
+                    return charge?.value || 0;
+                })(),
+                processing_fee_type: (() => {
+                    const charge = (s.charges || []).find(
+                        (c: any) =>
+                            c.name?.toLowerCase().includes('processing') ||
+                            c.name?.toLowerCase().includes('facilitation')
+                    );
+                    return charge?.type || 'FIXED';
+                })(),
+                is_marketplace_active: s.isActive !== false,
+                valid_from: s.validFrom || new Date().toISOString().split('T')[0],
+                valid_until: s.validTo || null,
+                status: 'ACTIVE',
+                interest_type: s.interestType || 'REDUCING',
+                charges_jsonb: s.charges || [],
+            };
 
-        const { error: updateError } = await adminClient
-            .from('id_tenants')
-            .update({ config: newConfig })
-            .eq('id', bankId);
+            const { error: upsertError } = await adminClient
+                .from('fin_marketplace_schemes')
+                .upsert(row, { onConflict: 'lender_tenant_id,scheme_code' });
 
-        if (updateError) throw updateError;
+            if (upsertError) throw upsertError;
+        }
 
-        // console.log('[UpdateBankSchemes] Schemes updated successfully');
+        // 3. Deactivate schemes not in the new list
+        const activeSchemeIds = schemes.map(s => s.id).filter(Boolean);
+        if (activeSchemeIds.length > 0) {
+            const inList = `(${activeSchemeIds.map((id: string) => `"${String(id).replace(/"/g, '\\"')}"`).join(',')})`;
+            await adminClient
+                .from('fin_marketplace_schemes')
+                .update({ is_marketplace_active: false })
+                .eq('lender_tenant_id', bankId)
+                .not('scheme_code', 'in', inList);
+        }
+
         return { success: true };
     } catch (error: unknown) {
         console.error('[UpdateBankSchemes] Fatal Error:', error);

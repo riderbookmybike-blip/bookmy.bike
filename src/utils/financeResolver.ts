@@ -26,13 +26,53 @@ export async function resolveFinanceScheme(
     const persona = viewerContext?.persona || 'CUSTOMER';
 
     // 0. Fetch all active bank partners
-    const { data: allBanks } = await supabase
+    const { data: rawBanks } = await supabase
         .from('id_tenants')
-        .select('id, name, config')
+        .select('id, name')
         .eq('type', 'BANK')
         .eq('status', 'ACTIVE');
 
-    if (!allBanks || allBanks.length === 0) return null;
+    if (!rawBanks || rawBanks.length === 0) return null;
+
+    // Fetch schemes from normalized table and attach to bank objects
+    const bankIds = rawBanks.map(b => b.id);
+    const { data: schemeRows } = await supabase
+        .from('fin_marketplace_schemes')
+        .select('*')
+        .in('lender_tenant_id', bankIds)
+        .eq('is_marketplace_active', true)
+        .eq('status', 'ACTIVE');
+
+    const schemesByBank = new Map<string, BankScheme[]>();
+    for (const s of schemeRows || []) {
+        const mapped: BankScheme = {
+            id: s.scheme_code,
+            name: s.scheme_code,
+            interestRate: Number(s.roi),
+            interestType: (s as any).interest_type || 'REDUCING',
+            maxLTV: Number(s.ltv),
+            payout: Number(s.processing_fee),
+            payoutType: s.processing_fee_type as any,
+            minLoanAmount: Number(s.min_loan_amount),
+            maxLoanAmount: Number(s.max_loan_amount),
+            minTenure: s.min_tenure,
+            maxTenure: s.max_tenure,
+            allowedTenures: s.allowed_tenures || [],
+            isActive: true,
+            isPrimary: false,
+            validFrom: s.valid_from,
+            validTo: s.valid_until,
+            charges: (s as any).charges_jsonb || [],
+            applicability: { brands: 'ALL', models: 'ALL', dealerships: 'ALL' },
+        } as any;
+        const tid = s.lender_tenant_id;
+        if (tid) {
+            if (!schemesByBank.has(tid)) schemesByBank.set(tid, []);
+            schemesByBank.get(tid)!.push(mapped);
+        }
+    }
+
+    const allBanks = rawBanks.map(b => ({ ...b, schemes: schemesByBank.get(b.id) || [] }));
 
     // P0: Lead's Preferred Financier (highest priority, regardless of persona)
     if (leadId) {
@@ -67,19 +107,62 @@ export async function resolveFinanceScheme(
 }
 
 /**
- * CUSTOMER: Pick the scheme with the lowest interest rate across ALL banks.
- * This gives the customer the best possible EMI.
+ * Compute normalized total cost of credit for a scheme.
+ * Uses a standard ₹1,00,000 loan at 36 months as reference.
+ * Total cost = (EMI × tenure) + upfront charges.
+ * This is equivalent to APR-based ranking for same-tenure comparisons.
+ */
+function computeNormalizedCost(scheme: BankScheme): number {
+    const refLoan = 100000;
+    const refTenure = 36;
+    const roi = scheme.interestRate ?? 0;
+    const interestType = (scheme as any).interestType || 'REDUCING';
+
+    // EMI calculation based on interest type
+    let emi: number;
+    if (interestType === 'FLAT') {
+        // FLAT: EMI = (P + P × ROI × years) / months
+        emi = (refLoan + refLoan * (roi / 100) * (refTenure / 12)) / refTenure;
+    } else {
+        // REDUCING: EMI = P × r × (1+r)^n / ((1+r)^n - 1)
+        const monthlyRate = roi / 100 / 12;
+        if (monthlyRate === 0) {
+            emi = refLoan / refTenure;
+        } else {
+            emi = refLoan * (monthlyRate / (1 - Math.pow(1 + monthlyRate, -refTenure)));
+        }
+    }
+
+    // Sum upfront charges
+    let upfrontCharges = 0;
+    const charges = scheme.charges || [];
+    for (const c of charges) {
+        if ((c as any).impact === 'UPFRONT') {
+            if ((c as any).type === 'PERCENTAGE') {
+                upfrontCharges += refLoan * (((c as any).value || 0) / 100);
+            } else {
+                upfrontCharges += (c as any).value || 0;
+            }
+        }
+    }
+
+    return emi * refTenure + upfrontCharges;
+}
+
+/**
+ * CUSTOMER: Pick the scheme with the lowest Total Cost of Credit across ALL banks.
+ * This accounts for interest type (FLAT vs REDUCING), charges, and gives the true cheapest loan.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resolveForCustomer(allBanks: any[], make: string, model: string) {
-    let bestResult: { bank: any; scheme: BankScheme; rate: number } | null = null;
+    let bestResult: { bank: any; scheme: BankScheme; cost: number } | null = null;
 
     for (const bank of allBanks) {
         const eligible = getEligibleSchemes(bank, make, model);
         for (const scheme of eligible) {
-            const effectiveRate = scheme.interestRate ?? Infinity;
-            if (!bestResult || effectiveRate < bestResult.rate) {
-                bestResult = { bank, scheme, rate: effectiveRate };
+            const totalCost = computeNormalizedCost(scheme);
+            if (!bestResult || totalCost < bestResult.cost) {
+                bestResult = { bank, scheme, cost: totalCost };
             }
         }
     }
@@ -94,9 +177,7 @@ function resolveForCustomer(allBanks: any[], make: string, model: string) {
 
 /**
  * DEALER: Pick the scheme with the highest payout (dealer commission) across ALL banks.
- * Payout can be FIXED (₹) or PERCENTAGE (%). We normalize to compare.
- * Since we don't have the exact loan amount here, for PERCENTAGE payouts we use
- * a normalized score (percentage * 1000) to compare against fixed amounts.
+ * If no payout data exists (all payouts = 0), fall back to cheapest-for-customer ranking.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resolveForDealer(allBanks: any[], make: string, model: string, forcedBankId?: string | null) {
@@ -127,12 +208,12 @@ function resolveForDealer(allBanks: any[], make: string, model: string, forcedBa
         }
     }
 
-    if (bestResult) {
-        return { bank: bestResult.bank, scheme: bestResult.scheme, logic: 'DEALER_BEST_PAYOUT' as FinanceLogic };
+    // If best payout is 0 (no commission data), fall back to cheapest-for-customer
+    if (!bestResult || bestResult.payoutScore === 0) {
+        return resolveForCustomer(allBanks, make, model);
     }
 
-    // Fallback: any active scheme
-    return fallbackFirstScheme(allBanks, make, model);
+    return { bank: bestResult.bank, scheme: bestResult.scheme, logic: 'DEALER_BEST_PAYOUT' as FinanceLogic };
 }
 
 /**
@@ -172,7 +253,7 @@ function resolveForBanker(allBanks: any[], make: string, model: string, bankTena
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getEligibleSchemes(bank: any, make: string, model: string): BankScheme[] {
-    const schemes: BankScheme[] = bank.config?.schemes || [];
+    const schemes: BankScheme[] = bank.schemes || [];
     return schemes.filter(s => {
         if (!s.isActive) return false;
         return isApplicable(s, make, model);
@@ -239,7 +320,7 @@ function fallbackFirstScheme(allBanks: any[], make: string, model: string) {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findBestSchemeForBank(bank: any, make: string, model: string) {
-    const schemes: BankScheme[] = bank.config?.schemes || [];
+    const schemes: BankScheme[] = bank.schemes || [];
     const activeSchemes = schemes.filter(s => s.isActive);
 
     // a. Model-targeted

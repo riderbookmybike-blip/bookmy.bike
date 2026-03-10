@@ -355,6 +355,7 @@ export const MobileCatalog = ({
                                   const colors = sourceVariant.availableColors || [];
                                   const colourCards = colors.map(color => ({
                                       ...sourceVariant,
+                                      id: color.id || sourceVariant.id,
                                       color: color.name,
                                       imageUrl: color.imageUrl || sourceVariant.imageUrl,
                                       availableColors: [color, ...colors.filter(c => c.id !== color.id)],

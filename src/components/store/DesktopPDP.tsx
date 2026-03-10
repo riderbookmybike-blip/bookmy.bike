@@ -36,6 +36,7 @@ import {
     Camera,
     SlidersHorizontal,
     Edit2,
+    Calendar,
 } from 'lucide-react';
 import DynamicHeader from './Personalize/DynamicHeader';
 import { formatDisplayIdForUI } from '@/lib/displayId';
@@ -140,6 +141,7 @@ import AccordionRegistration from './Personalize/Accordion/AccordionRegistration
 import FlatItemList from './Personalize/Accordion/FlatItemList';
 import FloatingCommandBar from './Personalize/FloatingCommandBar';
 import FinanceSummaryPanel from './Personalize/FinanceSummaryPanel';
+import AmortizationPanel from './Personalize/AmortizationPanel';
 import DownPaymentSlider from './Personalize/DownPaymentSlider';
 import {
     computeFinanceMetrics,
@@ -370,6 +372,35 @@ export function DesktopPDP({
         totalSurge > 0 ? `Total: ₹${totalSurge.toLocaleString('en-IN')}` : null,
     ].filter(Boolean) as string[];
 
+    const winnerTatHoursRaw =
+        (bestOffer as any)?.tat_effective_hours ??
+        (bestOffer as any)?.tatEffectiveHours ??
+        (bestOffer as any)?.delivery_tat_hours ??
+        null;
+    const winnerTatDaysRaw =
+        (bestOffer as any)?.delivery_tat_days ??
+        (bestOffer as any)?.deliveryTatDays ??
+        (bestOffer as any)?.tat_days ??
+        null;
+    const winnerTatHours =
+        winnerTatHoursRaw !== null && winnerTatHoursRaw !== undefined ? Number(winnerTatHoursRaw) : null;
+    const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
+    const deliveryTatLabel = (() => {
+        if (winnerTatHours !== null && Number.isFinite(winnerTatHours) && winnerTatHours >= 0) {
+            if (winnerTatHours === 0) return '4 HRS';
+            if (winnerTatHours <= 72) return `${winnerTatHours} HRS`;
+            const d = Math.floor(winnerTatHours / 24);
+            const h = winnerTatHours % 24;
+            return h > 0 ? `${d} DAYS ${h} HRS` : `${d} DAYS`;
+        }
+        if (winnerTatDays !== null && Number.isFinite(winnerTatDays) && winnerTatDays >= 0) {
+            if (winnerTatDays === 0) return '4 HRS';
+            if (winnerTatDays <= 3) return `${winnerTatDays * 24} HRS`;
+            return `${winnerTatDays} DAYS`;
+        }
+        return 'ETA UPDATING';
+    })();
+
     const priceBreakupData = [
         { label: 'Ex-Showroom', value: baseExShowroom },
         {
@@ -396,7 +427,7 @@ export function DesktopPDP({
         },
         { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
-        { label: 'Delivery TAT', value: '7 DAYS', isInfo: true },
+        { label: 'Delivery TAT', value: deliveryTatLabel, isInfo: true },
         ...(totalSavings > 0
             ? [
                   {
@@ -525,6 +556,7 @@ export function DesktopPDP({
         { id: 'PRICING', label: 'Pricing', subtext: `₹${displayOnRoad.toLocaleString()}`, icon: Wallet },
         { id: 'FINANCE', label: 'Finance', subtext: `₹${footerEmi.toLocaleString('en-IN')}/mo`, icon: Banknote },
         { id: 'FINANCE_SUMMARY', label: 'Summary', subtext: `${emiTenure}mo Plan`, icon: SlidersHorizontal },
+        { id: 'AMORTIZATION', label: 'Amortization', subtext: 'EMI Calendar', icon: Calendar },
     ];
 
     // Cinematic Animation Variants
@@ -570,6 +602,7 @@ export function DesktopPDP({
             <div data-parity-section="pricing" style={{ display: 'none' }} aria-hidden="true" />
             <div data-parity-section="finance" style={{ display: 'none' }} aria-hidden="true" />
             <div data-parity-section="finance-summary" style={{ display: 'none' }} aria-hidden="true" />
+            <div data-parity-section="amortization" style={{ display: 'none' }} aria-hidden="true" />
 
             {/* Cinematic Mesh Background */}
             <div className="fixed inset-0 pointer-events-none z-0">
@@ -847,6 +880,17 @@ export function DesktopPDP({
                                                                 interestType={financeMetrics.interestType}
                                                             />
                                                         )}
+                                                        {card.id === 'AMORTIZATION' && (
+                                                            <AmortizationPanel
+                                                                initialFinance={initialFinance}
+                                                                displayOnRoad={displayOnRoad}
+                                                                userDownPayment={userDownPayment || 0}
+                                                                loanAmount={loanAmount}
+                                                                totalOnRoad={totalOnRoad}
+                                                                emiTenure={emiTenure}
+                                                                disbursementDate={new Date()}
+                                                            />
+                                                        )}
                                                     </div>
                                                 )}
                                             </motion.div>
@@ -947,7 +991,6 @@ export function DesktopPDP({
                                         </div>
                                     </div>
                                 )}
-
                                 {/* Bottom Fade — skip for Gallery and Pricing */}
                                 {isActive && card.id !== 'GALLERY' && card.id !== 'PRICING' && (
                                     <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />

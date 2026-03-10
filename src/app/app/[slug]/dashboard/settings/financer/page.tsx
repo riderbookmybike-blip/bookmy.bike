@@ -25,6 +25,8 @@ export default function FinancerSettingsPage() {
         name: '',
     });
 
+    const [schemeCounts, setSchemeCounts] = useState<Map<string, number>>(new Map());
+
     const fetchData = async () => {
         setLoading(true);
         const supabase = createClient();
@@ -34,7 +36,25 @@ export default function FinancerSettingsPage() {
             tenantId ? getDealerFinancers(tenantId) : Promise.resolve({ success: true, financerIds: [] }),
         ]);
 
-        if (banksRes.data) setBanks(banksRes.data);
+        if (banksRes.data) {
+            setBanks(banksRes.data);
+
+            // Fetch scheme counts from normalized table
+            const bankIds = banksRes.data.map(b => b.id);
+            const { data: schemes } = await supabase
+                .from('fin_marketplace_schemes')
+                .select('lender_tenant_id')
+                .in('lender_tenant_id', bankIds)
+                .eq('is_marketplace_active', true)
+                .eq('status', 'ACTIVE');
+
+            const countMap = new Map<string, number>();
+            for (const s of schemes || []) {
+                const tid = s.lender_tenant_id;
+                if (tid) countMap.set(tid, (countMap.get(tid) || 0) + 1);
+            }
+            setSchemeCounts(countMap);
+        }
         if (linksRes.success) setLinkedIds(linksRes.financerIds || []);
 
         setLoading(false);
@@ -131,15 +151,15 @@ export default function FinancerSettingsPage() {
     const data = useMemo(
         () =>
             (banks || []).map(p => {
-                const schemesCount = (p.config as any)?.schemes?.length || 0;
+                const count = schemeCounts.get(p.id) || 0;
                 return {
                     ...p,
                     displayId: p.display_id || (p.id || '').slice(0, 8).toUpperCase(),
                     product: 'Two Wheeler Loan',
-                    schemesCount: `${schemesCount} Items`,
+                    schemesCount: `${count} Items`,
                 };
             }),
-        [banks]
+        [banks, schemeCounts]
     );
 
     // Guard: only dealers can view (after hooks)
