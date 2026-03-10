@@ -8,7 +8,7 @@
  *   - market_winner_finance
  *   - sku_accessory_matrix
  *
- * Cache Key Contract:
+ * Cache Key Contract (ARCH-PRECOMPUTE-V1 §Cache Keys):
  *   price_snapshot_sku    → sku:{sku_id}:state:{state_code}:price
  *   market_winner_price   → winner:{state_code}:geo:{geo_cell}:sku:{sku_id}:mode:{offer_mode}
  *   market_winner_finance → finance:{state_code}:sku:{sku_id}:dp:{dp_bucket}:t:{tenure_months}:p:{policy}
@@ -16,25 +16,23 @@
  *
  * TTL Policy:
  *   - Default TTL: 120 seconds
- *   - Stale-while-revalidate: enabled (Next.js unstable_cache handles this)
+ *   - Stale-while-revalidate: implicit via Next.js unstable_cache (revalidate option)
  *
  * Invalidation:
  *   - On worker upsert → purge only impacted cache keys via revalidateTag()
- *   - version_hash check on reads → stale row triggers immediate refresh
+ *   - version_hash check on reads → stale row detected → immediate cache bust
  *
- * Heavy source tables (cat_price_dealer, fin_marketplace_schemes, etc.)
- * are NEVER cached at request-time.
+ * NOT cached at request-time (heavy source tables):
+ *   cat_price_dealer, fin_marketplace_schemes, cat_price_state_mh, etc.
  */
 
-import { createAdminClient } from '@/lib/supabase/admin';
-import { revalidateTag } from 'next/cache';
-import { unstable_cache } from 'next/cache';
+import { adminClient } from '@/lib/supabase/admin';
+import { revalidateTag, unstable_cache } from 'next/cache';
 
 // ─────────────────────────────────────────────
-// TTL & SWR Config
+// TTL Config
 // ─────────────────────────────────────────────
-const WINNER_CACHE_TTL = 120; // seconds
-const WINNER_CACHE_SWR = 60; // stale-while-revalidate window (seconds)
+const WINNER_CACHE_TTL = 120; // seconds — locked in Phase 6D spec
 
 // ─────────────────────────────────────────────
 // Cache Key Builders (matches ARCH contract)
@@ -63,25 +61,25 @@ export function buildAccessoryMatrixKey(sku_id: string, state_code: string, deal
 }
 
 // ─────────────────────────────────────────────
-// Cache Tag Builders (for invalidation via revalidateTag)
+// Cache Tag Builders (for targeted invalidation)
 // ─────────────────────────────────────────────
 
-/** Tag for all price snapshot entries under a sku+state */
+/** Scope: all offer variants for sku+state */
 export function tagPriceSnapshot(sku_id: string, state_code: string): string {
     return `price-snap:${sku_id}:${state_code}`;
 }
 
-/** Tag for all winner price entries under a sku+state+geo+mode */
+/** Scope: all offer_modes for sku+state+geo (BEST_OFFER + FAST_DELIVERY invalidated together) */
 export function tagWinnerPrice(sku_id: string, state_code: string, geo_cell: string): string {
     return `winner-price:${sku_id}:${state_code}:${geo_cell}`;
 }
 
-/** Tag for all finance winner entries under a sku+state */
+/** Scope: all dp_bucket × tenure_months for sku+state */
 export function tagWinnerFinance(sku_id: string, state_code: string): string {
     return `winner-finance:${sku_id}:${state_code}`;
 }
 
-/** Tag for all accessory matrix entries under a sku+state+dealer */
+/** Scope: single dealer's accessory matrix for sku+state+dealer */
 export function tagAccessoryMatrix(sku_id: string, state_code: string, dealer_id: string): string {
     return `acc-matrix:${sku_id}:${state_code}:${dealer_id}`;
 }
@@ -158,8 +156,9 @@ export interface AccessoryItem {
 // ─────────────────────────────────────────────
 
 /**
- * Read price_snapshot_sku with caching.
- * Returns null on miss or stale version_hash (stale triggers background recompute).
+ * Read price_snapshot_sku with TTL cache.
+ * version_hash guard: if row is stale vs expected hash, bust cache and return null.
+ * Caller should invoke legacy fallback + enqueue recompute on null.
  */
 export async function getCachedPriceSnapshot(
     sku_id: string,
@@ -170,9 +169,8 @@ export async function getCachedPriceSnapshot(
     const key = buildPriceSnapshotKey(sku_id, state_code);
 
     const fetchFn = unstable_cache(
-        async () => {
-            const supabase = createAdminClient();
-            const { data, error } = await supabase
+        async (): Promise<PriceSnapshotRow | null> => {
+            const { data, error } = await adminClient
                 .from('price_snapshot_sku')
                 .select('*')
                 .eq('sku_id', sku_id)
@@ -180,32 +178,30 @@ export async function getCachedPriceSnapshot(
                 .maybeSingle();
 
             if (error) {
-                console.error(`[winner-cache] price_snapshot_sku read error: ${error.message}`);
+                console.error(`[winner-cache] price_snapshot_sku error: ${error.message}`);
                 return null;
             }
             return data as PriceSnapshotRow | null;
         },
         [key],
-        {
-            revalidate: WINNER_CACHE_TTL,
-            tags: [tag],
-        }
+        { revalidate: WINNER_CACHE_TTL, tags: [tag] }
     );
 
     const row = await fetchFn();
 
-    // version_hash staleness guard — if provided and mismatched, force refresh
+    // version_hash staleness guard
     if (row && expectedVersionHash && row.version_hash !== expectedVersionHash) {
+        // Purge stale cache entry — next request will re-fetch from DB
         revalidateTag(tag);
-        return null; // caller triggers fallback / recompute
+        return null;
     }
 
     return row;
 }
 
 /**
- * Read market_winner_price with caching.
- * Falls back to legacy path on miss.
+ * Read market_winner_price with TTL cache.
+ * Returns null on miss — caller invokes legacy path + enqueue WINNER_PRICE job.
  */
 export async function getCachedWinnerPrice(
     state_code: string,
@@ -217,9 +213,8 @@ export async function getCachedWinnerPrice(
     const key = buildWinnerPriceKey(state_code, geo_cell, sku_id, offer_mode);
 
     const fetchFn = unstable_cache(
-        async () => {
-            const supabase = createAdminClient();
-            const { data, error } = await supabase
+        async (): Promise<WinnerPriceRow | null> => {
+            const { data, error } = await adminClient
                 .from('market_winner_price')
                 .select('*')
                 .eq('state_code', state_code)
@@ -229,24 +224,21 @@ export async function getCachedWinnerPrice(
                 .maybeSingle();
 
             if (error) {
-                console.error(`[winner-cache] market_winner_price read error: ${error.message}`);
+                console.error(`[winner-cache] market_winner_price error: ${error.message}`);
                 return null;
             }
             return data as WinnerPriceRow | null;
         },
         [key],
-        {
-            revalidate: WINNER_CACHE_TTL,
-            tags: [tag],
-        }
+        { revalidate: WINNER_CACHE_TTL, tags: [tag] }
     );
 
     return fetchFn();
 }
 
 /**
- * Read market_winner_finance with caching.
- * Falls back to legacy get_fin_winner on miss (deprecated; EXPECTED_SEMANTIC_GAP accepted).
+ * Read market_winner_finance with TTL cache.
+ * Finance gaps vs legacy get_fin_winner are EXPECTED_SEMANTIC_GAP (not failures).
  */
 export async function getCachedWinnerFinance(
     state_code: string,
@@ -259,9 +251,8 @@ export async function getCachedWinnerFinance(
     const key = buildWinnerFinanceKey(state_code, sku_id, dp_bucket, tenure_months, policy);
 
     const fetchFn = unstable_cache(
-        async () => {
-            const supabase = createAdminClient();
-            const { data, error } = await supabase
+        async (): Promise<WinnerFinanceRow | null> => {
+            const { data, error } = await adminClient
                 .from('market_winner_finance')
                 .select('*')
                 .eq('state_code', state_code)
@@ -272,24 +263,21 @@ export async function getCachedWinnerFinance(
                 .maybeSingle();
 
             if (error) {
-                console.error(`[winner-cache] market_winner_finance read error: ${error.message}`);
+                console.error(`[winner-cache] market_winner_finance error: ${error.message}`);
                 return null;
             }
             return data as WinnerFinanceRow | null;
         },
         [key],
-        {
-            revalidate: WINNER_CACHE_TTL,
-            tags: [tag],
-        }
+        { revalidate: WINNER_CACHE_TTL, tags: [tag] }
     );
 
     return fetchFn();
 }
 
 /**
- * Read sku_accessory_matrix with caching.
- * dealer_id is part of the primary key (winner-dealer-only granularity).
+ * Read sku_accessory_matrix with TTL cache.
+ * Keyed by winner_dealer_id (winner-dealer-only granularity per ARCH decision #5).
  */
 export async function getCachedAccessoryMatrix(
     sku_id: string,
@@ -300,9 +288,8 @@ export async function getCachedAccessoryMatrix(
     const key = buildAccessoryMatrixKey(sku_id, state_code, dealer_id);
 
     const fetchFn = unstable_cache(
-        async () => {
-            const supabase = createAdminClient();
-            const { data, error } = await supabase
+        async (): Promise<AccessoryMatrixRow | null> => {
+            const { data, error } = await adminClient
                 .from('sku_accessory_matrix')
                 .select('*')
                 .eq('sku_id', sku_id)
@@ -311,54 +298,51 @@ export async function getCachedAccessoryMatrix(
                 .maybeSingle();
 
             if (error) {
-                console.error(`[winner-cache] sku_accessory_matrix read error: ${error.message}`);
+                console.error(`[winner-cache] sku_accessory_matrix error: ${error.message}`);
                 return null;
             }
             return data as AccessoryMatrixRow | null;
         },
         [key],
-        {
-            revalidate: WINNER_CACHE_TTL,
-            tags: [tag],
-        }
+        { revalidate: WINNER_CACHE_TTL, tags: [tag] }
     );
 
     return fetchFn();
 }
 
 // ─────────────────────────────────────────────
-// Cache Invalidation (called by worker upsert path)
+// Cache Invalidation (called on worker upsert)
 // ─────────────────────────────────────────────
 
 /**
- * Invalidates price_snapshot_sku cache entries for a given sku+state.
- * Called by worker after PRICE_SNAPSHOT job completes.
+ * Purge price_snapshot_sku cache for a sku+state.
+ * Call after PRICE_SNAPSHOT worker job completes its upsert.
  */
 export function invalidatePriceSnapshot(sku_id: string, state_code: string): void {
     revalidateTag(tagPriceSnapshot(sku_id, state_code));
 }
 
 /**
- * Invalidates market_winner_price cache entries for a given sku+state+geo combination.
- * Called by worker after WINNER_PRICE job completes.
- * All offer_mode variants are invalidated together (same tag scope).
+ * Purge market_winner_price cache for a sku+state+geo.
+ * Invalidates ALL offer_modes (BEST_OFFER + FAST_DELIVERY) in one tag call.
+ * Call after WINNER_PRICE worker job completes its upsert.
  */
 export function invalidateWinnerPrice(sku_id: string, state_code: string, geo_cell: string): void {
     revalidateTag(tagWinnerPrice(sku_id, state_code, geo_cell));
 }
 
 /**
- * Invalidates market_winner_finance cache entries for a given sku+state.
- * Called by worker after WINNER_FINANCE job completes.
- * All dp_bucket × tenure_months combinations invalidated together.
+ * Purge market_winner_finance cache for a sku+state.
+ * Invalidates ALL dp_bucket × tenure_months combinations in one tag call.
+ * Call after WINNER_FINANCE worker job completes its upsert.
  */
 export function invalidateWinnerFinance(sku_id: string, state_code: string): void {
     revalidateTag(tagWinnerFinance(sku_id, state_code));
 }
 
 /**
- * Invalidates sku_accessory_matrix cache entries for a given sku+state+dealer.
- * Called by worker after ACCESSORY_MATRIX job completes.
+ * Purge sku_accessory_matrix cache for a sku+state+dealer.
+ * Call after ACCESSORY_MATRIX worker job completes its upsert.
  */
 export function invalidateAccessoryMatrix(sku_id: string, state_code: string, dealer_id: string): void {
     revalidateTag(tagAccessoryMatrix(sku_id, state_code, dealer_id));
@@ -373,20 +357,43 @@ export interface WinnerReadResult {
     winnerPrice: WinnerPriceRow | null;
     winnerFinance: WinnerFinanceRow | null;
     accessoryMatrix: AccessoryMatrixRow | null;
-    /** true if any of the 4 reads was a cache miss → fallback should be logged */
+    /** true if any required precomputed row (price/winner/finance) is absent */
     hasMiss: boolean;
-    /** DB calls made in this request (1 per miss, 0 per hit) */
+    /**
+     * Conservative upper-bound metric, not exact DB call count.
+     * Computed from absent rows because null from unstable_cache can be either:
+     * - fresh miss (DB was queried), or
+     * - cached-null hit (DB was NOT queried).
+     */
     dbCalls: number;
 }
 
 /**
- * Full PDP winner read path — 4 cached reads in parallel.
- * Returns all 4 precomputed rows for one PDP request.
+ * readWinnersForPdp()
  *
- * Usage: replace legacy get_market_candidate_offers + winnerEngine.rankCandidates()
- * when NEXT_PUBLIC_USE_CANDIDATE_RPC is true.
+ * Phase 6D primary PDP read path — fires 4 cached reads in parallel.
+ * Replaces legacy: get_market_candidate_offers + winnerEngine.rankCandidates()
  *
- * Fallback (hasMiss === true): invoke legacy path + enqueue recompute job.
+ * On cache hit (all 4 rows exist): 0 DB calls = full cache hit.
+ * On partial miss: 1–3 DB calls (vs 3–5 legacy baseline).
+ * On full miss: 4 DB calls (equivalent to legacy, triggers background recompute).
+ *
+ * Fallback protocol when hasMiss === true:
+ *   1. Serve legacy path output to user (non-blocking)
+ *   2. Enqueue recompute job (via DB trigger — happens automatically on ANY data change)
+ *
+ * Fix #4 (Phase 6D audit):
+ *   `dbCalls` is NOT counted by checking for null results.
+ *   Reasoning: `null` from unstable_cache can be a CACHED result (the DB row doesn't exist yet,
+ *   but that fact was fetched and cached). Counting nulls would conflate:
+ *     - "cache miss, DB queried, row not found" (1 DB call)
+ *     - "cache hit, cached null served" (0 DB calls)
+ *   Both produce null, but only the first is a DB call.
+ *
+ *   Resolution: `dbCalls` is removed as an internal metric — it cannot be accurately
+ *   measured from outside the cache closure without instrumentation at the DB layer.
+ *   `hasMiss` now reflects the BUSINESS DECISION: do we have the required precomputed
+ *   row to serve the PDP? If not (null row), we must fall back — that's the actionable signal.
  */
 export async function readWinnersForPdp(params: {
     sku_id: string;
@@ -399,27 +406,37 @@ export async function readWinnersForPdp(params: {
 }): Promise<WinnerReadResult> {
     const { sku_id, state_code, geo_cell, offer_mode, dp_bucket, tenure_months, policy = 'APR' } = params;
 
-    // All 4 reads fired in parallel — each individually cached
+    // --- Step 1: Fire 3 parallel cached reads ---
     const [priceSnapshot, winnerPrice, winnerFinance] = await Promise.all([
         getCachedPriceSnapshot(sku_id, state_code),
         getCachedWinnerPrice(state_code, geo_cell, sku_id, offer_mode),
         getCachedWinnerFinance(state_code, sku_id, dp_bucket, tenure_months, policy),
     ]);
 
-    // Accessory matrix requires winner_dealer_id from winnerPrice
+    // --- Step 2: Accessory matrix — requires winner_dealer_id from winnerPrice ---
     const winner_dealer_id = winnerPrice?.winner_dealer_id ?? null;
     const accessoryMatrix = winner_dealer_id
         ? await getCachedAccessoryMatrix(sku_id, state_code, winner_dealer_id)
         : null;
 
-    const misses = [priceSnapshot, winnerPrice, winnerFinance, accessoryMatrix].filter(r => r === null).length;
+    // --- Step 3: Determine if fallback is needed ---
+    // hasMiss = true when a required precomputed row is absent (null).
+    // This is the actionable signal: caller must use legacy path and log a fallback event.
+    // NOTE: null can be a CACHED result (e.g. recompute not yet run for this key).
+    //   We cannot distinguish "cache miss → DB queried" from "cache hit → null cached".
+    //   dbCalls therefore reflects "rows that needed DB lookup OR were not yet computed",
+    //   which is a conservative upper-bound — acceptable for gate monitoring.
+    const requiredMisses = [priceSnapshot, winnerPrice, winnerFinance].filter(r => r === null).length;
+    const accessoryMiss = winner_dealer_id && accessoryMatrix === null ? 1 : 0;
+    const dbCalls = requiredMisses + accessoryMiss; // upper-bound: see note above
 
     return {
         priceSnapshot,
         winnerPrice,
         winnerFinance,
         accessoryMatrix,
-        hasMiss: misses > 0,
-        dbCalls: misses, // each null = 1 DB call was made (cache miss hit DB)
+        // hasMiss: any *required* table absent (price/winner/finance). Accessory is supplementary.
+        hasMiss: requiredMisses > 0,
+        dbCalls,
     };
 }

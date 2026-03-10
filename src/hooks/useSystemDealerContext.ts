@@ -523,13 +523,18 @@ export function useSystemDealerContext({
                                 if (legacyWinner) {
                                     void (async () => {
                                         try {
+                                            // Fix #2 (Phase 6D audit): dealer_id must be a genuine dealer UUID.
+                                            // vehicle_color_id is a SKU UUID — never use it as a dealer_id fallback.
+                                            // If legacyWinner has no dealer_id, skip shadow logging for this row.
+                                            const legacyDealerId = legacyWinner.dealer_id ?? null;
+                                            if (!legacyDealerId) return;
+
                                             // @ts-ignore — log_winner_read not yet in generated types (Phase 6D M22)
                                             await supabase.rpc('log_winner_read', {
                                                 p_sku_id: activeSku,
                                                 p_state_code: normalizeClientStateCode(stateCode),
                                                 p_district: district || 'ALL',
-                                                p_legacy_dealer_id:
-                                                    legacyWinner.dealer_id ?? legacyWinner.vehicle_color_id,
+                                                p_legacy_dealer_id: legacyDealerId,
                                                 p_legacy_offer: Number(
                                                     legacyWinner.best_offer ?? legacyWinner.offer_amount ?? 0
                                                 ),

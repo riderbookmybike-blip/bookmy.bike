@@ -87,7 +87,10 @@ export async function savePrices(
             for (const district of uniqueDistricts) {
                 revalidateTag(districtTag(district), 'max');
             }
-        }
+            // Fix #1 (Phase 6D audit): referral hot-picks cache must be purged on
+            // any dealer offer/price write — it surfaces winner pricing directly.
+            revalidateTag(CACHE_TAGS.referral_hot_picks, 'max');
+        } // end: if (prices.length > 0)
 
         // Update statuses using adminClient
         if (statusUpdates.length > 0) {

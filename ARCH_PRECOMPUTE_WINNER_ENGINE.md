@@ -1,9 +1,9 @@
 # Architecture: Precomputed Winner Engine
 **Reference ID**: `ARCH-PRECOMPUTE-V1`
-**Version**: v1.8 — Business Override Early Close
-**Date**: 2026-03-10 (v1.8 20:00 IST)
+**Version**: v1.9 — Phase 6D Cache Section Final
+**Date**: 2026-03-10 (v1.9 20:04 IST)
 **Prepared by**: Codex → Antigravity
-**Status**: `PHASE 6 CONDITIONALLY COMPLETE — BUSINESS OVERRIDE APPLIED ⏳ 48H MONITORING ACTIVE`
+**Status**: `PHASE 6D CACHE LAYER IMPLEMENTED — 48H MONITORING ACTIVE`
 **Linked Phase**: Phase 6 in [`TASK_ANTIGRAVITY_PHASE_CONTROL.md`](./TASK_ANTIGRAVITY_PHASE_CONTROL.md)
 
 ---
@@ -192,19 +192,58 @@ Request (sku_id, state_code, geo_cell, offer_mode, dp_bucket, tenure_months)
 
 ---
 
-## Cache Keys and Invalidation
+## Cache Keys and Invalidation — **FINAL (Phase 6D v1.9)**
 
+> Implementation: [`src/lib/cache/winner-cache.ts`](./src/lib/cache/winner-cache.ts)
+> Invalidation API: [`src/app/api/winner-cache/invalidate/route.ts`](./src/app/api/winner-cache/invalidate/route.ts)
+> Audit log: `winner_cache_invalidation_log` (M23)
+
+### Cache Key Contract (locked)
+
+| Table | Cache Key Format | Tag (for invalidation) |
+|-------|-----------------|------------------------|
+| `price_snapshot_sku` | `sku:{sku_id}:state:{state_code}:price` | `price-snap:{sku_id}:{state_code}` |
+| `market_winner_price` | `winner:{state_code}:geo:{geo_cell}:sku:{sku_id}:mode:{offer_mode}` | `winner-price:{sku_id}:{state_code}:{geo_cell}` |
+| `market_winner_finance` | `finance:{state_code}:sku:{sku_id}:dp:{dp_bucket}:t:{tenure_months}:p:{policy}` | `winner-finance:{sku_id}:{state_code}` |
+| `sku_accessory_matrix` | `acc:{sku_id}:state:{state_code}:dealer:{dealer_id}` | `acc-matrix:{sku_id}:{state_code}:{dealer_id}` |
+
+### TTL Policy
+- **Default TTL**: `120 seconds` — hardcoded in `WINNER_CACHE_TTL` constant.
+- **Stale-while-revalidate**: Enabled implicitly via Next.js `unstable_cache` with `revalidate` option. Stale content is served while a background revalidation fetch runs.
+
+### Staleness Guard (`version_hash` check)
+- `getCachedPriceSnapshot(sku_id, state_code, expectedVersionHash?)` accepts an optional expected hash.
+- If cached row's `version_hash` ≠ expected → `revalidateTag()` is called immediately → returns `null`.
+- Caller must fall back to legacy path and enqueue a recompute job.
+- This prevents stale winners from being served even within the TTL window when a forced recompute has occurred.
+
+### Invalidation Flow (on worker upsert)
 ```
-price_snapshot_sku    → key: sku:{sku_id}:state:{state_code}:price
-market_winner_price   → key: winner:{state_code}:geo:{geo_cell}:sku:{sku_id}:mode:{offer_mode}
-market_winner_finance → key: finance:{state_code}:sku:{sku_id}:dp:{dp_bucket}:t:{tenure_months}:p:{policy}
-sku_accessory_matrix  → key: acc:{sku_id}:state:{state_code}:dealer:{dealer_id}
+process_recompute_job() completes upsert
+  ↓
+log_cache_invalidation(job_type, sku_id, state_code, ...) — M23 SQL function
+  ↓
+Inserts row into winner_cache_invalidation_log (audit trail)
+  ↓
+pg_notify('winner_cache_invalidate', {...}) — real-time signal
+  ↓
+App layer calls POST /api/winner-cache/invalidate (Bearer auth)
+  → invalidate{PriceSnapshot|WinnerPrice|WinnerFinance|AccessoryMatrix}()
+    → revalidateTag(tag) — purges ONLY impacted key, not full flush
 ```
 
-- TTL: short (≤ 5 min) + SWR pattern.
-- Invalidation: on worker upsert → purge cache key for updated row.
-- Staleness guard: `version_hash` in response; client can detect stale hit and refetch.
-- Heavy source tables (`cat_price_dealer`, `fin_marketplace_schemes`, etc.) are **never cached** at the request layer.
+**Key invariants:**
+- Invalidation is **surgical** — only the updated row's tag is purged. All unrelated SKUs remain cached.
+- WINNER_PRICE tag scope covers BOTH offer modes (`BEST_OFFER` + `FAST_DELIVERY`) — one `revalidateTag()` call handles both.
+- WINNER_FINANCE tag scope covers ALL `dp_bucket × tenure_months` combinations for a sku+state — one call handles all finance variants.
+
+### NOT cached at request-time (explicit exclusion)
+The following heavy source tables are **never** read from within a cached path at request-time:
+- `cat_price_dealer` — dealer offer pricing (only read by recompute worker)
+- `fin_marketplace_schemes` — finance scheme definitions (only read by worker)
+- `cat_price_state_mh` — OEM ex-showroom pricing (only read by worker)
+- `cat_skus` — SKU definitions (only read by worker + admin)
+- `inv_stock` — inventory stock status (only accessed via TAT trigger)
 
 ---
 
