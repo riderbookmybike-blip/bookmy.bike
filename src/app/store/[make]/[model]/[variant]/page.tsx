@@ -1229,37 +1229,7 @@ export default async function Page({ params, searchParams }: Props) {
             viewerContext = { persona: 'BANKER', tenantId: String(bankBySlug.id) };
         }
     }
-    const dealerSessionCookie = cookieStore.get('bmb_dealer_session')?.value;
-    if (!viewerContext && dealerSessionCookie) {
-        try {
-            const sessionData = JSON.parse(decodeURIComponent(dealerSessionCookie));
-            if (sessionData?.mode === 'TEAM') {
-                if (sessionData?.activeFinanceTenantId) {
-                    viewerContext = { persona: 'BANKER', tenantId: sessionData.activeFinanceTenantId };
-                } else if (sessionData?.activeDealerTenantId) {
-                    viewerContext = {
-                        persona: 'DEALER',
-                        activeFinancerId: sessionData?.activeFinanceTenantId || null,
-                    };
-                } else if (sessionData?.activeTenantId) {
-                    // Backward compatibility for old session payloads.
-                    const { data: sessionTenant } = await supabase
-                        .from('id_tenants')
-                        .select('type')
-                        .eq('id', sessionData.activeTenantId)
-                        .single();
-
-                    if (sessionTenant?.type === 'BANK') {
-                        viewerContext = { persona: 'BANKER', tenantId: sessionData.activeTenantId };
-                    } else if (sessionTenant?.type === 'DEALER') {
-                        viewerContext = { persona: 'DEALER' };
-                    }
-                }
-            }
-        } catch {
-            // ignore parse errors
-        }
-    }
+    // Marketplace always uses CUSTOMER persona. DEALER/BANKER context only applies in CRM app.
     const resolvedFinance = await resolveFinanceScheme(product.make, product.model, leadId ?? undefined, viewerContext);
 
     const tenantIdsForMeta = Array.from(
